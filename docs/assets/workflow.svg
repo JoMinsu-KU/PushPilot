@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="254" viewBox="0 0 1280 254" role="img" aria-labelledby="title description">
+  <title id="title">PushPilot proposed interaction loop</title>
+  <desc id="description">Five proposed stages: Observe the scene, Plan a bounded action, Approve the intent, Act through an adapter, and Verify against fresh evidence. Verification can require waiting or a new observation. This is a design, not a live system.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#07131f"/><stop offset="1" stop-color="#10273c"/></linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#122d44"/><stop offset="1" stop-color="#0b1e30"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="m1 1 4 3-4 3" fill="none" stroke="#53d6fa" stroke-width="1.5"/></marker>
+  </defs>
+  <rect width="1280" height="254" rx="20" fill="url(#background)"/>
+  <rect x=".5" y=".5" width="1279" height="253" rx="19.5" fill="none" stroke="#26435d"/>
+  <g font-family="Segoe UI,Arial,sans-serif">
+    <text x="30" y="33" fill="#edf8ff" font-size="18" font-weight="700" letter-spacing="-.3">One loop. Visible decisions.</text>
+    <text x="1250" y="32" fill="#86a7bd" font-size="10" text-anchor="end" letter-spacing="1.2">PROPOSED INTERACTION</text>
+    <g fill="url(#card)" stroke="#2b5069">
+      <rect x="30" y="53" width="228" height="133" rx="12"/>
+      <rect x="278" y="53" width="228" height="133" rx="12"/>
+      <rect x="526" y="53" width="228" height="133" rx="12"/>
+      <rect x="774" y="53" width="228" height="133" rx="12"/>
+      <rect x="1022" y="53" width="228" height="133" rx="12"/>
+    </g>
+    <g fill="#0c4057" stroke="#246a84">
+      <rect x="47" y="69" width="34" height="34" rx="9"/>
+      <rect x="295" y="69" width="34" height="34" rx="9"/>
+      <rect x="543" y="69" width="34" height="34" rx="9"/>
+      <rect x="791" y="69" width="34" height="34" rx="9"/>
+      <rect x="1039" y="69" width="34" height="34" rx="9"/>
+    </g>
+    <g fill="none" stroke="#63dfff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M54 86c6-10 14-10 20 0-6 10-14 10-20 0Z"/><circle cx="64" cy="86" r="3"/>
+      <path d="M302 91v-9h7v7h7v-10"/><path d="m313 81 3-3 3 3"/>
+      <path d="m550 86 6 6 13-14"/>
+      <path d="m802 77 11 9-11 9Z"/>
+      <path d="M1056 76 1065 79v8c0 5-9 9-9 9s-9-4-9-9v-8Z"/><path d="m1052 86 3 3 5-6"/>
+    </g>
+    <g fill="#628ba6" font-size="11" font-weight="600" text-anchor="end">
+      <text x="240" y="91">01</text><text x="488" y="91">02</text><text x="736" y="91">03</text><text x="984" y="91">04</text><text x="1232" y="91">05</text>
+    </g>
+    <g fill="#f0f9ff" font-size="19" font-weight="700">
+      <text x="47" y="130">Observe</text><text x="295" y="130">Plan</text><text x="543" y="130">Approve</text><text x="791" y="130">Act</text><text x="1039" y="130">Verify</text>
+    </g>
+    <g fill="#9cb9ce" font-size="12">
+      <text x="47" y="152">Capture fresh scene evidence.</text>
+      <text x="47" y="169">Keep the source visible.</text>
+      <text x="295" y="152">Propose a bounded action.</text>
+      <text x="295" y="169">Explain the expected outcome.</text>
+      <text x="543" y="152">Review intent and uncertainty.</text>
+      <text x="543" y="169">Authorize the proposed plan.</text>
+      <text x="791" y="152">Execute through an adapter.</text>
+      <text x="791" y="169">Keep mock and real distinct.</text>
+      <text x="1039" y="152">Local checks + MUSE review.</text>
+      <text x="1039" y="169">Decide from fresh evidence.</text>
+    </g>
+    <g fill="none" stroke="#53d6fa" stroke-width="1.4" marker-end="url(#arrow)">
+      <path d="M262 119h11"/><path d="M510 119h11"/><path d="M758 119h11"/><path d="M1006 119h11"/>
+    </g>
+    <path d="M1136 194v19H145v-19" fill="none" stroke="#335a72" stroke-width="1.4"/>
+    <rect x="425" y="201" width="430" height="23" rx="11.5" fill="#10273c"/>
+    <text x="640" y="217" fill="#87b9d0" font-size="11" text-anchor="middle">Continue only when accepted · Otherwise wait or re-observe</text>
+    <text x="30" y="239" fill="#62869f" font-size="10">Conceptual workflow. The application repository currently provides a development bootstrap.</text>
+  </g>
+</svg>

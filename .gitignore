@@ -1,0 +1,50 @@
+# Local credentials and machine-specific configuration
+.env
+.env.*
+!.env.example
+*.local.json
+*.local.toml
+*.pem
+*.key
+secrets/
+credentials/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Frontend/generated dependencies and outputs; retain lockfiles
+node_modules/
+.next/
+.vite/
+coverage/
+build/
+dist/
+
+# Runtime state and deployment outputs
+runtime/
+shared/
+evidence/private/
+logs/
+releases/
+release-output/
+*.log
+*.zip
+*.tar
+*.tar.gz
+
+# Editor/OS state
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini

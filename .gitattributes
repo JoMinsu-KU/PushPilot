@@ -1,0 +1,8 @@
+# Keep source portable between Windows development and GX10/Linux releases.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.pdf binary
+*.zip binary

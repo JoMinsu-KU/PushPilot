@@ -1,0 +1,26 @@
+{
+  "schema_version": "pushpilot.deployment-example.v1",
+  "status": "proposed_unverified",
+  "host_alias": "gx10",
+  "ssh_user": null,
+  "host_address": null,
+  "remote_root": "<deploy-root>",
+  "release_directory_template": "<deploy-root>/releases/{release_id}",
+  "current_link": "<deploy-root>/current",
+  "shared_directories": {
+    "config": "<deploy-root>/shared/config",
+    "secrets": "<deploy-root>/shared/secrets",
+    "evidence": "<deploy-root>/shared/evidence",
+    "logs": "<deploy-root>/shared/logs"
+  },
+  "runtime": {
+    "status": "not_selected",
+    "bind_address": null,
+    "port": null,
+    "service_manager": null,
+    "startup_command": null
+  },
+  "robot_transport_included": false,
+  "physical_execution_implemented": false,
+  "requires_read_only_host_inspection_before_deployment": true
+}

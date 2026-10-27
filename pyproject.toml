@@ -1,0 +1,11 @@
+[project]
+name = "pushpilot-main-app"
+version = "0.1.0"
+description = "Repository bootstrap for the PushPilot mission application"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.pushpilot]
+workspace_status = "bootstrap"
+runtime_implemented = false
+physical_execution_implemented = false

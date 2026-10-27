@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="480" viewBox="0 0 1280 480" role="img" aria-labelledby="title description">
+  <title id="title">PushPilot — From sight to action</title>
+  <desc id="description">An original concept illustration for a multimodal tablet workspace. An abstract robot and wheel-less car sit beside an observation review panel. No hardware or model connection is represented as live.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#06111e"/>
+      <stop offset="1" stop-color="#102740"/>
+    </linearGradient>
+    <radialGradient id="ambient" cx="79%" cy="24%" r="76%">
+      <stop stop-color="#11678c" stop-opacity=".34"/>
+      <stop offset="1" stop-color="#06111e" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#5ee8ff"/>
+      <stop offset="1" stop-color="#0089ff"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#163552"/>
+      <stop offset="1" stop-color="#0b1c2e"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#b3c9d7"/>
+      <stop offset=".45" stop-color="#7394aa"/>
+      <stop offset="1" stop-color="#38566d"/>
+    </linearGradient>
+    <linearGradient id="car" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#f5fbff"/>
+      <stop offset="1" stop-color="#a8c5d8"/>
+    </linearGradient>
+    <pattern id="specks" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r=".7" fill="#9fc7de" opacity=".11"/>
+    </pattern>
+    <clipPath id="sceneClip"><rect x="661" y="152" width="325" height="224" rx="12"/></clipPath>
+  </defs>
+  <rect width="1280" height="480" rx="24" fill="url(#background)"/>
+  <rect width="1280" height="480" rx="24" fill="url(#ambient)"/>
+  <rect x=".5" y=".5" width="1279" height="479" rx="23.5" fill="none" stroke="#26435d"/>
+  <path d="M627 0V480" stroke="#82c5e8" opacity=".07"/>
+  <g font-family="Segoe UI,Arial,sans-serif">
+    <g transform="translate(48 37)">
+      <path d="M0 15 24 1v19L0 34Z" fill="url(#cyan)"/>
+      <path d="m14 28 25-14v22Z" fill="#009eff"/>
+      <text x="53" y="29" fill="#f4faff" font-size="30" font-weight="700" letter-spacing="-.8">PushPilot</text>
+    </g>
+    <rect x="1051" y="36" width="181" height="27" rx="13.5" fill="#0b293c" stroke="#276077"/>
+    <text x="1141.5" y="54" fill="#8cdcf1" font-size="10" letter-spacing="1.2" text-anchor="middle" font-weight="600">CONCEPT ILLUSTRATION</text>
+
+    <text x="49" y="127" fill="#55d9fb" font-size="12" font-weight="700" letter-spacing="2.4">FROM SIGHT TO ACTION</text>
+    <text x="46" y="193" fill="#f4faff" font-size="51" font-weight="700" letter-spacing="-1.8">A shared plan.</text>
+    <text x="46" y="253" fill="#f4faff" font-size="51" font-weight="700" letter-spacing="-1.8">A checked outcome.</text>
+    <text x="49" y="298" fill="#aac5da" font-size="17">Multimodal intent. Visible decisions.</text>
+    <text x="49" y="325" fill="#aac5da" font-size="17">Human approval before action.</text>
+
+    <rect x="49" y="360" width="341" height="47" rx="9" fill="#0d2d44" stroke="#255975"/>
+    <path d="M66 383c4-8 8-8 12 0s8 8 12 0" fill="none" stroke="#36d3ff" stroke-width="2" stroke-linecap="round"/>
+    <text x="103" y="380" fill="#e0f2ff" font-size="12" font-weight="600">Tablet workspace</text>
+    <text x="103" y="397" fill="#8eafc7" font-size="11">Future wearable companion concept</text>
+    <text x="49" y="443" fill="#668aa5" font-size="11">Push a wheel-less car. Observe and review each bounded action.</text>
+
+    <rect x="643" y="96" width="589" height="317" rx="18" fill="#020b14" opacity=".4"/>
+    <rect x="643" y="90" width="589" height="317" rx="18" fill="url(#panel)" stroke="#326985"/>
+    <path d="M644 134h587" stroke="#31536e"/>
+    <rect x="662" y="107" width="15" height="12" rx="2" fill="none" stroke="#5ae2ff" stroke-width="1.6"/>
+    <circle cx="669.5" cy="113" r="3" fill="none" stroke="#5ae2ff" stroke-width="1.3"/>
+    <text x="687" y="118" fill="#d4e9f6" font-size="11" font-weight="700" letter-spacing="1">WORKSPACE CONCEPT</text>
+    <text x="1213" y="117" fill="#83a6bf" font-size="10" text-anchor="end">SCENE + EVIDENCE</text>
+
+    <g clip-path="url(#sceneClip)">
+      <rect x="661" y="152" width="325" height="224" fill="#0d1d2b"/>
+      <rect x="661" y="152" width="325" height="224" fill="url(#specks)"/>
+      <path d="m665 299 204-52 117 42v87H661Z" fill="#17364a"/>
+      <path d="m668 304 197-51 113 39-189 63Z" fill="#294c61" stroke="#4f7388" stroke-width="1.3"/>
+      <path d="m789 355 189-63v8l-189 64-121-51v-9Z" fill="#1b384b"/>
+      <ellipse cx="760" cy="280" rx="37" ry="11" fill="#071420" opacity=".6"/>
+      <path d="M735 269v-27h47v27c-8 9-38 9-47 0Z" fill="#375569"/>
+      <ellipse cx="758.5" cy="242" rx="23.5" ry="8" fill="#5c7f94"/>
+      <path d="M758 242v-46l-53-25" fill="none" stroke="#1b3347" stroke-width="30" stroke-linecap="round"/>
+      <path d="M758 242v-46l-53-25" fill="none" stroke="url(#metal)" stroke-width="22" stroke-linecap="round"/>
+      <path d="m706 171 61-5 58 43" fill="none" stroke="#1b3347" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="m706 171 61-5 58 43" fill="none" stroke="url(#metal)" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+      <g fill="#112d42" stroke="#38c9ef" stroke-width="2">
+        <circle cx="758" cy="197" r="13"/><circle cx="706" cy="171" r="12"/><circle cx="767" cy="166" r="11"/><circle cx="825" cy="209" r="10"/>
+      </g>
+      <g fill="#6ae1fb"><circle cx="758" cy="197" r="3"/><circle cx="706" cy="171" r="3"/><circle cx="767" cy="166" r="3"/><circle cx="825" cy="209" r="3"/></g>
+      <path d="m825 218 7 43" stroke="#8caebe" stroke-width="9" stroke-linecap="round"/>
+      <path d="m832 259 10 11" stroke="#a0c3d3" stroke-width="4" stroke-linecap="round"/>
+      <path d="m834 267 7 7 8-3" fill="none" stroke="#33c7ee" stroke-width="3" stroke-linecap="round"/>
+      <ellipse cx="882" cy="302" rx="43" ry="11" fill="#071420" opacity=".48"/>
+      <path d="m850 287 14-5 8-14 29-5 17 11 8 1 1 21-52 18-24-10Z" fill="url(#car)" stroke="#c4dce8" stroke-width="1.2"/>
+      <path d="m865 283 10-12 25-4 15 10-30 10Z" fill="#789eaf"/>
+      <path d="m885 287 42-12v21l-42 14Z" fill="#9ebdcd"/>
+      <path d="m842 286v-8h10m83-7h10v8m-103 30v8h10m83-4h10v-8" fill="none" stroke="#4cddff" stroke-width="2" stroke-linecap="round"/>
+      <rect x="675" y="341" width="178" height="23" rx="5" fill="#0b1d2d" opacity=".92"/>
+      <circle cx="687" cy="352" r="3" fill="#719ab0"/>
+      <text x="697" y="356" fill="#abc8dc" font-size="9">Illustrative scene · Not a live feed</text>
+    </g>
+    <rect x="661" y="152" width="325" height="224" rx="12" fill="none" stroke="#2d526b"/>
+
+    <text x="1005" y="166" fill="#5bdcfa" font-size="10" font-weight="700" letter-spacing="1.1">DECISION REVIEW</text>
+    <text x="1005" y="193" fill="#f0f9ff" font-size="19" font-weight="700">Make the next</text>
+    <text x="1005" y="218" fill="#f0f9ff" font-size="19" font-weight="700">action legible.</text>
+    <path d="M1005 237h207" stroke="#31536e"/>
+    <g fill="#8faec5" font-size="10">
+      <text x="1005" y="258">INTENT</text><text x="1005" y="296">OBSERVATION</text><text x="1005" y="334">NEXT DECISION</text>
+    </g>
+    <g fill="#d4e8f6" font-size="12">
+      <text x="1005" y="275">Push toward the destination</text>
+      <text x="1005" y="313">Compare expected and seen</text>
+      <text x="1005" y="351">Proceed, wait, or re-observe</text>
+    </g>
+    <rect x="1004" y="366" width="208" height="23" rx="5" fill="#073e58" stroke="#1680a1"/>
+    <text x="1108" y="382" fill="#91e9ff" font-size="10" font-weight="600" text-anchor="middle">HUMAN APPROVAL BEFORE ACTION</text>
+    <path d="M664 430h30" stroke="#2fd3ff" stroke-width="2"/>
+    <text x="706" y="434" fill="#7d9fb8" font-size="11">Design direction · Hardware and model integration are future work</text>
+  </g>
+</svg>
