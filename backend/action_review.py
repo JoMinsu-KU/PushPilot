@@ -146,6 +146,8 @@ class ActionReviewService:
                 or not state["review"] or state["review"]["id"] != payload["review_id"]
                 or state["review"]["verdict"] != "PENDING"):
             raise CommandError("This request does not match an approved simulation action awaiting review.")
+        if (state.get("plan") or {}).get("planning"):
+            raise CommandError("A live-backed plan requires its server-bound live review; no recorded comparison was dispatched.")
         self.store._require_current_map(state)
         step = state["plan"]["steps"][state["current_step"]]
         route = state["plan"]["route"]

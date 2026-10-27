@@ -96,6 +96,47 @@ test('missing, wrong-junction, stale, future and unsupported-source signals cann
   assert.equal(display.junctions[0].status, 'Signal stale · waiting');
 });
 
+function metaSignalFixture() {
+  const f = fixture(); at(f, 1, 'WAITING_SIGNAL'); f.steps[1].status = 'complete';
+  Object.assign(f.workspace, { session_id: 'session', stop_receipt: { id: 'stop-receipt', action_id: '1' } });
+  Object.assign(f.workspace.plan, { id: 'plan', revision: 7, planning: { id: 'live-plan' } });
+  Object.assign(f.workspace.signal, { source: 'meta', color: 'RED', evidence: {
+    input_kind: 'post_stop_live_frame', source: 'meta', session_id: 'session', plan_id: 'plan', plan_revision: 7,
+    junction_id: 'JUNCTION-42', signal_target: { junction_id: 'JUNCTION-42' }, color: 'RED', visible: true,
+    motion_authority: false, simulation_only: true, stop_receipt: { id: 'stop-receipt', action_id: '1' },
+    map_id: f.route.map_id, map_version: f.route.map_version, map_hash: f.route.map_hash,
+    frame: { source: 'live', map_id: f.route.map_id, map_version: f.route.map_version, map_hash: f.route.map_hash },
+  } });
+  return f;
+}
+
+test('bound MUSE RED displays waiting while color alone never advances the crossing', () => {
+  const f = metaSignalFixture();
+  assert.equal(signalDisplay(f.workspace, 'JUNCTION-42', now), 'red');
+  const display = createRouteDisplay(f.route, f.map, f.workspace, now);
+  assert.equal(display.junctions[0].status, 'Red · waiting');
+  assert.equal(display.segments[1].phase, 'waiting');
+  f.workspace.signal.color = f.workspace.signal.evidence.color = 'GREEN';
+  assert.equal(signalDisplay(f.workspace, 'JUNCTION-42', now), 'green');
+  assert.equal(createRouteDisplay(f.route, f.map, f.workspace, now).segments[1].phase, 'waiting');
+});
+
+test('MUSE signal requires matching plan, map, live frame and accepted stop evidence', () => {
+  for (const mutate of [f => delete f.workspace.signal.evidence,
+    f => f.workspace.signal.evidence.plan_id = 'other', f => f.workspace.signal.evidence.plan_revision = 8,
+    f => f.workspace.signal.evidence.session_id = 'other', f => f.workspace.signal.evidence.junction_id = 'other',
+    f => f.workspace.signal.evidence.signal_target.junction_id = 'other', f => f.workspace.signal.evidence.color = 'GREEN',
+    f => f.workspace.signal.evidence.visible = false, f => f.workspace.signal.evidence.map_hash = 'changed',
+    f => f.workspace.signal.evidence.frame.source = 'recorded', f => f.workspace.signal.evidence.frame.map_hash = 'changed',
+    f => f.workspace.signal.evidence.stop_receipt.id = 'other', f => f.steps[1].status = 'current',
+    f => delete f.workspace.stop_receipt, f => delete f.workspace.plan.planning]) {
+    const f = metaSignalFixture(); mutate(f);
+    assert.equal(signalDisplay(f.workspace, 'JUNCTION-42', now), 'unknown');
+  }
+  const f = metaSignalFixture(); f.workspace.signal.observed_at = new Date(now - 30_001).toISOString();
+  assert.equal(signalDisplay(f.workspace, 'JUNCTION-42', now), 'stale');
+});
+
 test('signal scope follows the current approach/stop/crossing and clears at arrival or termination', () => {
   const f = fixture();
   for (const index of [0, 1, 2]) { at(f, index); assert.equal(currentSignalJunction(f.workspace), 'JUNCTION-42'); }

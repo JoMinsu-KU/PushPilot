@@ -146,7 +146,9 @@ export function ActionReviewPanel({ workspace, scene, online, pending, busy, rea
     if (workspace?.review?.verdict === 'PENDING') setExpected(workspace.review.expected);
   }, [reviewId]);
   useEffect(() => { if (pendingReview) setTab('review'); }, [pendingReview, reviewId]);
-  const latestEvidence = workspace?.review?.evidence ?? [...(workspace?.events ?? [])].reverse().find(event => event.record)?.record;
+  const candidate = workspace?.review?.evidence?.input_kind === 'operator_selected_recorded_pair'
+    ? workspace.review.evidence : [...(workspace?.events ?? [])].reverse().find(event => event.record?.input_kind === 'operator_selected_recorded_pair')?.record;
+  const latestEvidence = candidate?.input_kind === 'operator_selected_recorded_pair' ? candidate : undefined;
   const evidence = readOnly ? replayEvidence : latestEvidence;
   const readiness = pairReadiness({ workspace, scene, before, expected, online, pending });
   const editable = !readOnly && !busy && !pending;

@@ -4,25 +4,28 @@
 
 **A durable simulation workspace with explicit approval and review gates.**
 
-[Architecture](../docs/ARCHITECTURE.md) · [Services](../docs/SERVICE_COMPOSITION.md) · [Live preview](../docs/LIVE_CAMERA.md) · [Contracts](../contracts/workspace.ts) · [Deployment](../deploy/README.md)
+[Architecture](../docs/ARCHITECTURE.md) · [Live intelligence](../docs/LIVE_INTELLIGENCE.md) · [Voice backend](../docs/VOICE_BACKEND.md) · [Contracts](../contracts/README.md) · [Deployment](../deploy/README.md)
 
-> **Implemented: temporary-map simulation, recorded-image review and opt-in live camera preview.** FastAPI serves a revisioned operator API and the built frontend from one origin. SQLite preserves state, decisions and command receipts. Every action receipt and signal remains simulated. Bound MUSE before/after review can affect the simulated supervisor; separate scene inspection and the ephemeral live preview cannot. None grants physical motion authority. Voice capture remains unimplemented.
+> **Implemented in code: simulation, explicit native-frame MUSE planning/action/signal services, recorded-image review and finite voice transcription uploads.** FastAPI serves a revisioned operator API and the built frontend from one origin. SQLite preserves state, deliberate selected image evidence, decisions and command receipts. Action and stop receipts remain simulated; images and model judgments retain separate sources. Preview polling itself cannot advance a mission. Browser microphone capture is disconnected. Offline checks and [actual provider records](../docs/META_API_CHECK.md) have separate scopes; real-car action/signal accuracy, ASR access and physical execution remain unverified.
 
 ## What runs today
 
 | Component | Current behavior |
 | :--- | :--- |
-| Mission supervisor | Replaceable Little Town graph; east-facing PIZZA start to BAKERY, BOOKSTORE, or SCHOOL, with route-specific PUSH, STOP, CROSS, and VERIFY actions. |
-| Admission gate | A mandatory simulated full stop, accepted action review and fresh junction-scoped simulated GREEN admit one crossing. |
-| Demo review | The operator injects PASS, FAIL, UNKNOWN or REOBSERVE with an exact observation binding. This is labelled `demo`, never MUSE image evidence. |
-| MUSE action review | `backend/action_review.py` compares an operator-selected recorded before/after pair, binds it to the pending action and applies a validated result through supervisor gates. |
-| MUSE goal adapter | Explicit `provider: meta` goal requests call Muse Spark 1.3. No provider request runs at startup; failures do not fall back to demo interpretation. |
-| Temporary map | Validated drawing facts and canonical geometry hash; deterministic shortest paths and turn descriptions. No robot coordinate transform. |
+| Mission supervisor | Selected drawing graph with route-specific PUSH, STOP, CROSS and VERIFY steps. Receipts are server-created simulation data, never hardware completion. |
+| Live planning | `planning_provider.py` sends the exact goal, unchanged native JPEG, selected graph and frame registration context to Muse Spark 1.3. `live_intelligence.py` validates and compiles the exact proposed node sequence and constraints. |
+| Admission gate | Mandatory simulated full stop, accepted bound review and current junction/approach MUSE GREEN can admit one crossing. No local color classifier. Missing reviewed signal-target metadata rejects before dispatch. |
+| Live action review | `live_review_provider.py` compares server-bound native BEFORE/AFTER frames following one simulated action; the supervisor rechecks the original request/action/map/view binding before applying a result. |
+| Bounded orchestration | `/live-actions/run` combines one action/reobservation with review and can start a configured post-STOP signal watch. `/wait` allows three judgments; background `/watch` defaults to 30 judgments/300 seconds with explicit cancellation and no startup resume. GREEN leaves CROSS pending review. |
+| Demo/recorded review | Explicit demo missions retain manually injected verdicts and colors. `action_review.py` supports operator-selected recorded pairs. Neither path may advance a live-backed plan. |
+| Symbolic goal adapter | `meta.py` preserves explicit text-only destination interpretation for offline/symbolic requests. No request runs at startup and a failed live call never falls back to it. |
+| Temporary map | Validated drawing facts/hash, generic directed path compilation, constraints and derived maneuver descriptions; `/maps/validate` previews a replacement without installing it. No robot coordinate transform. |
 | Scene inspection | Uploaded/recorded images, ArUco detection, explicit test registration, and opt-in MUSE inspection in a separate non-authoritative store. |
 | Live preview | `backend/live_camera.py` polls an explicitly configured, already running loopback helper. Up to eight native JPEG frames and a display-only registration remain in RAM, separate from recorded evidence. |
-| Evidence store | Chronological, append-only events plus exact request-ID/payload receipts. Reset retains the timeline. |
+| Voice backend | `voice.py` and `voice_api.py` validate finite mono PCM WAV in RAM, request Meta transcription and retain bounded workspace-bound transcript candidates. No browser capture, actual voice-access verification or automatic goal submission. |
+| Evidence store | Chronological events, exact request-ID/payload receipts and a private selected-native-frame ledger with pending/accepted/rejected/interrupted operation records. Reset retains history. |
 | Same-origin host | Serves `frontend/dist` when built. Unknown `/api` routes return JSON 404 rather than an HTML application page. |
-| Unavailable capabilities | Robot control, qualified control-camera observations, production registered AR, voice and fresh physical action review are unavailable. Recorded-image review is explicitly operator selected; live preview is display-only. |
+| Unavailable capabilities | Robot control/stop verification, measured vehicle pose, production metric AR, browser microphone capture and qualified physical action review. Actual live-model recognition and voice access remain unverified. |
 
 The temporary graph describes drawing centerlines. Its route is a simulation plan, not an installed robot trajectory, measured vehicle pose, or physical reachability result. Production geometry, physical stop lines, contact turning, and camera-to-BASE registration remain unqualified.
 
@@ -63,9 +66,11 @@ The preview snapshot identifies live source, camera identity/epoch, sequence, un
 
 Explicit registration requires a fresh selected frame and a consistent current four-marker view. Camera identity/epoch, dimensions or map identity changes require manual relocking. Temporary marker occlusion retains the fixed homography as `locked_occluded`, with current alignment unverified. A coherent, distributed shift in at least two markers across three new frames latches `view_changed` and withholds the overlay; no automatic refit occurs. These checks establish neither successful physical calibration nor camera-to-BASE geometry.
 
-The dedicated health field `camera_preview_connected` reports a live preview separately from workspace `camera` and `robot` capability flags. Those remain false because qualified control observations and robot transport are unsupported. Preview requests do not mutate a mission, send images to MUSE, feed action review, supply a traffic signal or update robot state. They have their own [DTO](../contracts/live-camera.ts), outside recorded-scene revisions and evidence.
+The dedicated health field `camera_preview_connected` reports preview separately from workspace `camera` and `robot` flags, which remain false for qualified control observations and robot transport. Preview requests do not mutate a mission, send images to MUSE or persist evidence. Explicit live-intelligence commands separately select original frames and copy only those observations into the private SQLite ledger. Their source is real camera input, but their action/stop receipts and state transitions remain simulation. See the [preview DTO](../contracts/live-camera.ts) and [live-intelligence DTO](../contracts/live-intelligence.ts).
 
 ## Temporary-map missions
+
+The following table preserves the default legacy demo/symbolic routes. It does not restrict live MUSE selection to the same departure or path.
 
 | Destination | Drawing-node route | Drawing distance | Reviewed actions |
 | :--- | :--- | ---: | ---: |
@@ -73,12 +78,12 @@ The dedicated health field `camera_preview_connected` reports a live preview sep
 | BAKERY | PIZZA → C → S → BAKERY | 232 mm | 8 |
 | SCHOOL | PIZZA → C → S → SCHOOL | 232 mm | 8 |
 
-The start is constrained to face east; routes are deterministic shortest paths under that initial-heading assumption. Drawing distances are not qualified TCP travel distances.
+The legacy router uses the configured east-facing start and deterministic shortest paths. Live planning may select another registered departure or a longer valid path to satisfy the user's direction/via/avoid request. For example, the existing temporary map also permits PIZZA → W → SW → SCHOOL. The configured start is a scenario declaration, not an observed physical vehicle pose. Drawing distances are not qualified TCP travel distances.
 
-1. Submit one supported destination. Demo interpretation accepts English/Korean aliases; ambiguous or unsupported goals need clarification. Actual MUSE interpretation is opt-in.
+1. Submit a supported goal. With `provider: "meta"`, a configured live-camera path defaults to native-image/graph planning. `planning_mode: "live"` requires it explicitly; `planning_mode: "symbolic"` selects legacy text-only destination interpretation. Without a configured camera, the omitted-mode legacy default remains symbolic. Voice confirmation requires a current transcript receipt and the live path.
 2. Approve the exact plan ID/revision and temporary-map identity.
 3. For each junction, run the approach PUSH and review it, then run a mandatory STOP and review it even if GREEN was observed earlier.
-4. RED or UNKNOWN waits. A fresh simulated GREEN bound to this junction automatically admits CROSS after its stop gate is satisfied.
+4. RED or UNKNOWN waits. A valid current MUSE GREEN bound to the live plan's stopped junction/approach admits CROSS after local checks. An explicit demo mission instead uses clearly labelled injected simulation colors.
 5. Review CROSS. Its stop/signal bindings are cleared, so the next junction requires its own independent stop, review, and fresh signal.
 6. Run and review the final PUSH, then VERIFY the simulated destination outcome.
 
@@ -90,27 +95,38 @@ UNKNOWN and REOBSERVE inhibit motion and require a new observation binding. FAIL
 
 ## HTTP boundary
 
-The definitive DTO and command contract is [workspace.ts](../contracts/workspace.ts).
+Shared boundaries are recorded in [workspace.ts](../contracts/workspace.ts), [live-intelligence.ts](../contracts/live-intelligence.ts) and the [voice backend contract](../docs/VOICE_BACKEND.md).
 
 | Request | Purpose |
 | :--- | :--- |
 | `GET /api/health` | Equipment-free process health. |
 | `GET /api/v1/map` | Temporary geometry, graph, source flags, and geometry hash. |
+| `POST /api/v1/maps/validate` | Read-only validation/audit of a bounded proposed map definition; does not install it. |
 | `GET /api/v1/scene` | Independent recorded-image and test-overlay inspection state. |
 | `GET /api/v1/live-camera` | Independent ephemeral preview state, source/freshness metadata and display-registration status. |
 | `GET /api/v1/live-camera/frames/{frame_id}/image` | Native JPEG from the bounded RAM cache; expired frame IDs return 404. |
 | `POST /api/v1/live-camera/registration` | Explicit fresh display lock using `{epoch, frame_id}`; no mission mutation. |
 | `GET /api/v1/state` | Current snapshot, capabilities, and chronological evidence. |
-| `POST /api/v1/goals` | Interpret a typed or future confirmed voice goal. |
+| `POST /api/v1/goals` | Typed or confirmed voice goal; explicit live/symbolic planning selection. |
+| `POST /api/v1/plans/live` | Require native-image/graph MUSE planning with optional route constraints. |
+| `POST /api/v1/live-actions/advance` / `run` | Pin BEFORE and run one simulated action; `run` also requests its fresh-image review. |
+| `POST /api/v1/live-actions/reviews` / `reobserve` | Review the bound pair or renew an uncertain observation without repeating movement. |
+| `POST /api/v1/live-signals/reviews` / `wait` | One post-stop MUSE judgment or a finite observation cycle. |
+| `POST /api/v1/live-signals/watch` / `watch/stop`; `GET /api/v1/live-signals/watch` | Start/stop/inspect a bounded background observation task; default 30 judgments/2-second interval/300-second budget, capped at 60/10/900. No physical stop command or restart resume. |
+| `GET /api/v1/live-intelligence/operations` | Inspect the latest 100 durable operation records. |
+| `GET /api/v1/live-evidence/frames/{id}/image` | Original deliberately selected JPEG from the private evidence ledger. |
+| `GET /api/v1/voice` | Backend configuration and supported upload bounds; no microphone connection claim. |
+| `POST /api/v1/voice/transcriptions` | Finite PCM WAV multipart upload; return an editable transcript candidate, not a goal. |
+| `GET /api/v1/voice/transcriptions/{id}` / `DELETE /api/v1/voice/transcriptions/{id}` | Inspect or discard a current unexpired workspace-bound candidate. |
 | `POST /api/v1/approve` | Bind approval to a plan ID and revision. |
 | `POST /api/v1/advance` | Run the next permitted bounded simulated action. |
-| `POST /api/v1/signal` | Inject a clearly simulated RED/GREEN/UNKNOWN observation. |
-| `POST /api/v1/reviews` | Inject a demo verdict for the exact pending review ID. |
+| `POST /api/v1/signal` | Inject a clearly simulated RED/GREEN/UNKNOWN observation for an explicit demo/symbolic plan; live-backed plans reject it. |
+| `POST /api/v1/reviews` | Inject a demo verdict for an eligible demo review; live-backed plans reject it. |
 | `POST /api/v1/action-reviews` | Compare an immutable recorded pair with MUSE for the pending simulated review; [exact workflow and receipt](../docs/ACTION_REVIEWS.md). |
 | `POST /api/v1/reobserve` | Replace an uncertain observation binding without movement. |
 | `POST /api/v1/cancel` / `reset` | Explicit termination and reconciliation. |
 
-Each mission mutation includes a UUID `request_id` and current `expected_revision`. Stale commands and request-ID reuse with changed payloads return HTTP 409. Exact retries return their original receipt, which may contain an older snapshot; fetch state to reconcile after an interrupted connection. Typed/voice goals cannot replace an active or waiting mission. Provider failures return sanitized errors without a demo fallback. Action-image review additionally reserves the request durably, sends provider work outside store locks, then rechecks mission/scene/map/frame identity. Recorded-scene mutations have their own revision contract. Live display registration instead binds its transient epoch/frame identity and does not create a mission receipt.
+Each mission mutation includes a UUID `request_id` and current `expected_revision`. Stale commands and changed-payload request-ID reuse return HTTP 409. Exact retries return their original receipt, which may contain an older snapshot; fetch current state after an interrupted connection. Goals cannot replace an active or waiting mission. Provider failures return sanitized errors without a demo fallback. Inference runs outside store locks and commits only after context revalidation. Recorded-scene mutations use their own revision contract; live display registration uses its transient epoch/frame identity. Map validation is read-only. Voice uploads have capture/revision fields and a separate bounded in-memory transcript lifecycle; they do not create mission receipts or submit a goal.
 
 ## Restart behavior
 
@@ -118,14 +134,15 @@ An active mission reopens as `RECOVERY_REQUIRED`. Approval, stop verification, s
 
 SQLite commits the state, event append, and command receipt together. Evidence remains append-only through cancel and reset. This first store is intended for a single local demonstration workspace; authentication, multiple operators, retention/export policy, and production migration are later work.
 
-## Still to implement
+## Remaining integration and qualification
 
-- Bounded push-to-talk upload, format validation, and Meta voice transcription, following the [voice design](../docs/VOICE_INPUT.md).
-- Connect fresh physical post-action capture and independent measurements. Recorded-pair action review already affects simulation; its selected uploads do not prove capture chronology or hardware completion.
-- A dedicated [stopped-live MUSE signal-review path](../docs/MUSE_SIGNAL_GATE.md): verify stopping, capture a fresh current-approach image, let MUSE judge RED/GREEN/UNKNOWN, then validate stop, plan/junction/approach, frame/freshness and response bindings before wait or entry. A second local color classifier is not required. The robot remains stopped while awaiting MUSE or when the result is unknown, stale or failed. Existing simulated signals and recorded reviews are unchanged.
+- Connect actual browser push-to-talk capture, editable transcript confirmation and cancellation on trusted tablet HTTPS; verify actual Meta voice access with Korean/English recordings. The [finite-upload backend](../docs/VOICE_BACKEND.md) is already implemented.
+- Exercise new native-frame planning/action/signal endpoints against the actual provider and installation. Offline transports do not establish recognition quality or latency. Configure reviewed approach-specific paper-signal targets; the current temporary map intentionally has none.
+- Connect independently qualified physical action and stop receipts, capture chronology and measured outcomes. Current live image reviews follow simulated receipts and cannot prove robot completion, physical stopping or arrival.
+- Wire the dedicated live operation controls through the tablet's complete interaction, retaining clear source and failure states. The existing frontend route geometry is reusable; an autonomous full-mission runner is not implemented.
 - Production map and metric AR registration, contact geometry, physical pushing/turning, robot transport, and independent physical verification. Test-only camera-to-drawing overlays are already available for uploaded frames and an explicitly locked live display.
 
-The model interprets intent and reviews supplied recorded evidence. Deterministic gates own state transitions; model text never supplies executable robot code or authoritative metric coordinates.
+The model selects drawing-graph routes and judges supplied image evidence. Deterministic gates own simulation transitions; model text never supplies executable robot code or authoritative robot coordinates. Full GX10 application deployment remains separate from the already running camera helper.
 
 ## Validate offline
 
@@ -134,7 +151,7 @@ python tools/dev.py check
 python tools/dev.py test
 ```
 
-The backend tests inject isolated temporary databases and offline providers. They cover stale approval/revision, review binding, mandatory stops, RED waiting/GREEN admission, stale and junction-scoped signals, uncertainty/failure, idempotency, restart reconciliation, route geometry/hash changes, static/API routing, and provider-failure isolation. Separate scene tests cover marker detection and registration using synthetic images. They never inspect the real `.env`, call Meta, or contact equipment.
+The backend tests inject isolated databases, synthetic images/audio and offline HTTP/provider transports. They cover approval/revision and request binding, native frame/hash preservation and ordering, mandatory stops, scoped signal admission, failure/uncertainty, bounded orchestration, journal/restart behavior, map constraints/replacement validation and finite voice uploads/candidate lifecycle. These checks never read the real `.env`, call Meta or contact equipment. They are not real-provider or physical success evidence.
 
 ---
 

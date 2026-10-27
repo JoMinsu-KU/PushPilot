@@ -109,7 +109,11 @@ class WorkspaceStore:
         result["signal"]["freshness_limit_ms"] = self._signal_ttl * 1000
         result["capabilities"] = {"robot": False, "camera": False, "registered_ar": False,
                                   "muse_configured": self._muse_configured, "voice": False,
-                                  "image_review": True, "recorded_action_review": True}
+                                  "image_review": True, "recorded_action_review": True,
+                                  "live_planning": getattr(self, "live_planning_enabled", False),
+                                  "live_action_review": getattr(self, "live_planning_enabled", False),
+                                  "muse_signal_review": getattr(self, "live_planning_enabled", False),
+                                  "voice_transcription": getattr(self, "voice_backend_enabled", False)}
         result["events"] = [{**json.loads(row["value"]), "sequence": row["sequence"]}
                             for row in self._db.execute("SELECT sequence,value FROM events ORDER BY sequence")]
         return result
@@ -119,6 +123,10 @@ class WorkspaceStore:
             return self._snapshot(self._load())
 
     def _next_check(self, state: dict) -> str:
+        if state["state"] == "WAITING_SIGNAL" and (state.get("plan") or {}).get("planning"):
+            return ("MUSE is watching new images for this stopped approach within a finite observation budget."
+                    if (state.get("signal_watch") or {}).get("status") == "running" else
+                    "Start a MUSE signal watch for this approach. Its reviewed signal region must be configured; no manual color can admit this live-backed plan.")
         return {
             "IDLE": "Enter a destination on the temporary map: " + ", ".join(self.map_definition.data["destinations"]) + ".",
             "PLAN_READY": "Review and explicitly approve this plan revision.",
@@ -181,6 +189,8 @@ class WorkspaceStore:
                 raise CommandError("Crossing admission is owned by the stop and signal gate.")
             self._run_step(state)
         elif action == "signal":
+            if (state.get("plan") or {}).get("planning"):
+                raise CommandError("This live-backed plan requires a post-stop MUSE signal review. Manual simulation colors cannot admit it.")
             if state["state"] not in ACTIVE | {"IDLE", "PLAN_READY"}:
                 raise CommandError("Signal input is unavailable in this mission state.")
             junction = self._signal_junction(state)
@@ -198,9 +208,10 @@ class WorkspaceStore:
             self._new_review(state)
             self._event(state, "REOBSERVED", "New simulated observation", "The previous review binding was replaced. No movement was executed.", "simulation")
         elif action == "cancel":
-            if state["state"] not in ACTIVE | {"PLAN_READY", "RECOVERY_REQUIRED"}:
+            if state["state"] not in ACTIVE | {"PLAN_READY", "RECOVERY_REQUIRED"} and not state.get("planning_pending"):
                 raise CommandError("There is no active mission to cancel.")
             state.update(state="CANCELLED", approved=False)
+            state.pop("planning_pending", None)
             self._event(state, "MISSION_CANCELLED", "Simulation cancelled", "No further simulated action is admitted. This command is not a hardware emergency stop.", "operator")
         elif action == "reset":
             if state["state"] in ACTIVE:
@@ -213,13 +224,14 @@ class WorkspaceStore:
             raise CommandError("Unknown workspace command.", 404)
 
     def _goal(self, state: dict, payload: dict) -> None:
-        if payload.get("source") == "voice":
+        if payload.get("source") == "voice" and not payload.get("voice_receipt"):
             raise CommandError("Voice transcription is not implemented. Use typed input for this milestone.", 422)
         if state["state"] not in {"IDLE", "PLAN_READY"}:
             raise CommandError("Reset a completed or terminated mission before submitting a new goal.")
         text = payload["text"].strip()
         if not text:
             raise CommandError("Enter a nonempty goal.", 422)
+        state.pop("planning_pending", None)
         if payload["provider"] == "meta":
             result = self._provider.interpret(text)
             if (not isinstance(result, dict) or result.get("destination") not in {*self.map_definition.data["destinations"], "UNKNOWN"}
@@ -323,11 +335,18 @@ class WorkspaceStore:
         node = state["plan"]["steps"][state["current_step"]].get("node_id", "unknown")
         if kind == "STOP":
             state["stopped"] = True
+        state["action_receipt"] = {"id": str(uuid4()), "source": "simulation", "kind": kind,
+                                   "action_id": state["plan"]["steps"][state["current_step"]]["id"],
+                                   "completed_at": self._at(), "physical_stop_verified": False}
+        if kind == "STOP":
+            state["stop_receipt"] = deepcopy(state["action_receipt"])
         self._new_review(state)
         self._event(state, "SIMULATED_ACTION_COMPLETED", f"Simulated {kind.lower()} completed",
                     f"Mandatory simulated full stop at {node} recorded before entry." if kind == "STOP" else f"A bounded abstract action completed at {node} in simulation. This is not physical-execution evidence.", "simulation")
 
     def _review(self, state: dict, payload: dict) -> None:
+        if (state.get("plan") or {}).get("planning"):
+            raise CommandError("This live-backed action requires its server-bound live image review.")
         if state["state"] != "REVIEW_REQUIRED" or not state["review"] or state["review"]["id"] != payload["review_id"]:
             raise CommandError("The review does not match the current pending observation.")
         verdict = payload["verdict"]
@@ -340,6 +359,8 @@ class WorkspaceStore:
 
     def _recorded_review(self, state: dict, evidence: dict) -> None:
         """Apply validated recorded evidence through the existing simulation gates."""
+        if (state.get("plan") or {}).get("planning"):
+            raise CommandError("Recorded image pairs cannot advance a live-backed action.")
         verdict = evidence["verdict"]
         state["review"].update(verdict=verdict, source="meta", observed=evidence["observed"],
                                summary=evidence["summary"], evidence=deepcopy(evidence))
@@ -392,5 +413,6 @@ class WorkspaceStore:
             return
         state["current_step"] = next_index
         state["plan"]["steps"][next_index]["status"] = "current"
-        self._event(state, "CROSSING_ADMITTED", "Simulated crossing admitted", f"Accepted stop review and a fresh simulated GREEN at {junction} admitted one bounded crossing. Later signal changes apply to the next entry.", "simulation")
+        origin = "MUSE live-image" if state["signal"]["source"] == "meta" else "simulated"
+        self._event(state, "CROSSING_ADMITTED", "Simulated crossing admitted", f"Accepted simulated stop review and a fresh {origin} GREEN at {junction} admitted one bounded simulated crossing. Later signal changes apply to the next entry; no physical motion authority.", "simulation")
         self._run_step(state)

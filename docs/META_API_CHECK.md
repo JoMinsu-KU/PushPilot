@@ -95,9 +95,15 @@ Omitting `--call-meta` only creates the labelled fixtures and manifest. The actu
 
 ## Remaining integration work
 
-- Recorded image input and structured scene inspection are verified in the limited case above; action-bound fresh-image outcome review and held-out accuracy evaluation remain pending.
-- The application implements typed-goal interpretation, recorded-pair action review, simulation decisions and event replay. Action-review receipts now retain prompt/schema versions, both image identities, result, elapsed time and reported tokens. Equivalent complete receipts for older goal/scene paths remain additional work.
-- These provider checks did not contact a live camera or robot. Temporary test-view registration used a separately recorded image; the dedicated post-stop live MUSE signal-review path is not implemented. The clarified scenario uses MUSE as the color judge, with local stop/provenance/binding validation; see [MUSE signal gate](MUSE_SIGNAL_GATE.md).
+### Native-image graph planning, October 27
+
+The native-image/graph adapter was exercised in an isolated QA workspace. Left-side and right-side natural-language requests produced different connected paths on the temporary map. An uncertain scene result was withheld without a fallback; the clarified drawing-preview prompt accepted both requested sides. The backend preserved the selected sequences rather than replacing them with a default shortest path. Plans remained unapproved and no physical car, action, audio or robot request was involved.
+
+Original images, image hashes, exact observation times and complete provider receipts remain in ignored private runtime storage. This public note records functional outcomes only. These individual checks are not recognition-accuracy, repeatability, clearance or latency benchmarks. Actual live action comparison, paper-signal judgment and voice transcription remain unverified.
+
+- Native-image graph planning is verified only in the cases above. Server-bound live action review, post-stop MUSE signal judgment, bounded waiting and finite voice uploads are implemented and tested offline; actual live action/signal/ASR evaluation remains pending.
+- Live operation receipts retain selected original images privately, map/registration/request context, prompt/schema versions, accepted result and elapsed time. Provider-reported usage is retained by the older recorded-pair reviewer; complete raw provider-envelope retention remains additional work.
+- The latest planning checks contacted the existing native camera helper and MUSE. Earlier recorded checks kept their original recording scope. No check contacted a robot or proved physical stopping, pushing, turning or arrival. See [MUSE signal gate](MUSE_SIGNAL_GATE.md).
 - The API check grants no motion authority.
 
 The adapters use validated structured output, explicit source labels and HTTP timeouts. Scene inspection rejects late results after a scene revision changes. The recorded-action path releases both stores during its provider request, applies a 50-second total timeout, and rejects results after the mission, review, map or scene changes. Recorded-pair binding does not establish fresh physical action/observation binding. Deterministic measured completion, real-image evaluation and physical disagreement handling remain additional work. Neither goal interpretation nor independent scene inspection grants motion authority.

@@ -2,11 +2,13 @@
 
 # Stop, ask MUSE, then wait or proceed
 
-**User-confirmed scenario, clarified on October 27, 2026. Dedicated live integration is planned, not implemented.**
+**User-confirmed scenario, clarified on October 27, 2026. The native-frame backend is implemented against simulated stop receipts; actual robot stopping and real-provider recognition are not verified.**
 
-[Mission](MISSION.md) · [Architecture](ARCHITECTURE.md) · [Model boundaries](META_INTELLIGENCE.md) · [Current verification](VERIFICATION.md)
+[Mission](MISSION.md) · [Live intelligence](LIVE_INTELLIGENCE.md) · [Architecture](ARCHITECTURE.md) · [Current verification](VERIFICATION.md)
 
 At each applicable intersection, the robot first stops before the stop line. After stopping is verified, the application captures a new image and asks MUSE to judge the relevant signal color. MUSE is the visual color judge. The executor waits or admits the crossing according to that result after validating its current execution context. A second local color classifier is not required by this scenario.
+
+The robot wording above describes the physical target scenario. Today's application performs the same state sequence in **simulation**, with server-created simulated action/stop receipts and explicitly selected native camera images. It sends no robot commands and cannot verify a physical stop.
 
 ## Intended observation cycle
 
@@ -23,26 +25,36 @@ The observation cycle uses bounded, deliberate requests while waiting, with at m
 
 ## MUSE judgment and local validation
 
-The planned request binds the mission, plan and map identities, STOP/wait context, junction, approach direction, configured signal target and immutable original frame identity/hash with capture provenance. MUSE receives the image and an explicit instruction identifying the signal that controls this approach. A raw-resolution region of interest may supplement the original image if its crop lineage is preserved; it cannot add missing source detail.
+The implemented request binds the mission, plan and map identities, STOP/wait context, junction, incoming road, configured signal target and immutable original frame identity/hash with capture provenance. MUSE receives the unchanged original JPEG and a server-projected signal-target polygon tied to that exact frame. The polygon is a location hint, not proof of visibility or recognition. No image crop, board rectification or re-encoding is used. A future supplemental crop would need explicit lineage and could not add missing source detail.
 
 The local supervisor validates:
 
-- An actual matching stop receipt and the current approved plan/step.
+- A matching server-created **simulation** stop receipt and the current approved plan/step. A qualified physical adapter must later supply a real measured stop receipt.
 - The current junction, approach direction, map and signal-target identity.
 - Frame provenance and the configured capture/result age policy.
 - Response schema and the exact active request/stop-context binding.
 - Absence of cancellation, fault, replacement or another invalidating state change.
 
-These checks do not independently classify RED or GREEN. A valid `GREEN` response supplies the intended visual signal judgment, while the checks establish whether this particular response can be used now. A later preview frame alone does not supersede a pending model request; a new query, changed stop context or explicit invalidation does. The robot remains stopped during provider delay.
+These checks do not independently classify RED or GREEN. A valid `GREEN` response supplies the visual signal judgment, while the checks establish whether this particular response can be used now. A later preview frame alone does not supersede a pending model request; a new query, changed stop context or explicit invalidation does. The simulated mission stays stopped during provider delay. The physical implementation must preserve actual stopping through its independently qualified controller.
 
-After admission, the current qualified crossing completes before the next approach. A later red change is not an immediate in-flight interruption request in this scenario. Each next intersection needs its own stop and MUSE observation cycle. A web HOLD or server shutdown is not a controller stop receipt.
+After admission, the current bounded simulated crossing needs its own live action review before the next approach. The future physical crossing must be separately qualified. A later red change is not an immediate in-flight interruption request in this scenario. Each next intersection needs its own stop and MUSE observation cycle. A web HOLD or server shutdown is not a controller stop receipt.
 
 ## Current implementation boundary
 
-Current signal inputs are operator-injected `simulation` observations. The supervisor implements mandatory stopping and scoped fresh-GREEN admission in that simulation. Independent recorded-scene inspection can report a model-observed color but cannot supply a mission signal or advance a step. Recorded-action PASS satisfies only its bound simulated action-review gate. Live preview remains a separate ephemeral display source.
+`POST /api/v1/live-signals/reviews` now performs one server-bound native-frame MUSE judgment while the approved simulated mission is waiting after a mandatory STOP and accepted action review. It requires an approach-specific target in the selected map. It projects that target into the original frame, persists the deliberate selected observation and request binding, runs inference outside the workspace lock, then revalidates context and age before applying a result. `RED` and `UNKNOWN` keep waiting. An accepted current `GREEN` admits one simulated crossing and binds the signal image as that crossing's BEFORE frame.
 
-No dedicated live MUSE signal endpoint, trusted post-stop capture path, physical signal-to-executor adapter or robot stopping/continuation qualification is implemented by this clarification. Existing code and historical provider evidence retain their original sources and authority. This document corrects the intended architecture without upgrading a recorded image or manual signal into physical evidence.
+`POST /api/v1/live-signals/wait` makes a finite sequence of one to three new judgments, with a 0.5–10 second interval; defaults are three attempts and two seconds. It stops on admission, exhausted attempts, failure or an invalidated context. There is no infinite background polling. The selected frame must follow the observation request under the conservative camera-host-receive/transport age bound; exposure time is still unknown. The default result acceptance window is 30 seconds in simulation, not a qualified physical tolerance.
+
+`POST /api/v1/live-signals/watch` supports a longer bounded background RED/UNKNOWN wait: defaults are 30 new judgments, two seconds between attempts and a 300-second total budget; caps are 60 judgments, a 10-second interval and 900 seconds. A successful live STOP review through `/live-actions/run` starts this watch automatically only when its current view and approach-specific target are configured. Missing targets keep waiting. GREEN ends the watch with CROSS still requiring its action review; no next mission action runs automatically. Explicit `/watch/stop`, changed execution context, provider/view failure or an exhausted budget prevents further queries, and restart never resumes a prior watch. `GET /api/v1/live-signals/watch` exposes its status. This service controls observation requests, not physical robot stopping.
+
+Live-backed plans reject manually injected colors and demo/recorded action verdicts. Separate explicit demo missions retain operator-injected `simulation` signals. Independent recorded-scene inspection may report a color but cannot supply a mission signal or advance a step. Preview polling itself remains an ephemeral display source; it does not invoke the signal provider or persist frames.
+
+Signal requests use prompt `pushpilot.live-signal.prompt.v1` and result schema `pushpilot.live-signal.result.v1`. The strict result contains only `color`, `visible`, English `summary` and `limitations`. RED/GREEN requires `visible: true`; uncertainty is UNKNOWN with `visible: false`. Request-ID retries do not resend inference. Late, expired, cancelled, superseded or interrupted results cannot resume execution automatically.
+
+Offline generated-image/mock-provider tests cover these software bindings and transitions. No actual request through the new live signal endpoint, recognition accuracy, physical signal-to-controller adapter, measured stopping or physical continuation is established by this implementation. Historical provider evidence keeps its original recorded/text source and scope.
 
 ## Map and print preparation
 
 Identify the signal that controls each approach in replaceable map metadata. Decorative traffic-light artwork is not automatically an active signal. The operator-controlled red/green target must be distinguishable in the actual camera image. Its final size and location require testing on the printed installation, including occlusion, shadows and red/green/unknown cases. MUSE as the judge does not remove the need for sufficient visible image detail. No recognition accuracy is established by the supplied 3D rendering.
+
+The current temporary map intentionally has no reviewed active-paper signal targets. Live signal requests therefore reject before dispatch until target identities, incoming approaches, board regions and descriptions are supplied in reviewed replacement-map metadata. This does not require recalibrating for a passing gripper or hose; camera registration remains fixed until an actual view/map change requires explicit relocking. See [map replacement](MAP_REPLACEMENT.md).

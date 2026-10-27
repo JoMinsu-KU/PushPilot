@@ -4,13 +4,13 @@
 
 **Say the goal. Check the words. Review the plan.**
 
-[Documentation](README.md) · [Architecture](ARCHITECTURE.md) · [Services](SERVICE_COMPOSITION.md) · [Meta intelligence](META_INTELLIGENCE.md)
+[Documentation](README.md) · [Voice backend](VOICE_BACKEND.md) · [Live intelligence](LIVE_INTELLIGENCE.md) · [Services](SERVICE_COMPOSITION.md)
 
 </div>
 
 ---
 
-**Status: visible entry UI implemented; capture and transcription remain planned.** The workspace has a microphone entry beside the accepted original query. It opens voice-input guidance with **Not connected**, a disabled **Hold to speak** control and a typed-input fallback. No microphone permission or transcription request is made. Microphone capture, transcript editing and end-to-end voice interaction have not been implemented or tested. The existing text-only Spark connection check does not establish voice access or transcription quality.
+**Status: the finite-upload transcription backend is implemented; browser microphone capture remains disconnected.** The backend accepts bounded mono PCM WAV, calls the Meta Voice adapter and returns an original-language, workspace/map-bound transcript candidate for explicit acceptance. It has offline tests, not actual-provider or microphone verification. The workspace's microphone entry still opens **Not connected** guidance with a disabled **Hold to speak** control and typed fallback; it requests no microphone permission and sends no recording. Browser capture, transcript editing and the complete spoken-goal interaction still need implementation and device checks. Historical Spark connection checks do not establish voice access or recognition quality. See the [exact upload/candidate contract](VOICE_BACKEND.md).
 
 ## Visible goal and voice entry
 
@@ -51,17 +51,17 @@ An accepted Korean transcript may be interpreted into the application's English 
 
 ## Provider boundary
 
-The planned transcription provider is **Meta Muse Voice Transcribe**, model `muse-voice-transcribe-1.0`. It supports Korean and English. The initial finite-recording path uses the documented authenticated HTTP transcription API; streaming is deferred behind the same application adapter. The dedicated voice model is preferred over Spark 1.3 audio understanding, whose documented support has limitations. See [Meta speech-to-text](https://dev.meta.ai/docs/speech-to-text) and [Spark audio limitations](https://dev.meta.ai/docs/video-understanding).
+The implemented backend adapter targets **Meta Muse Voice Transcribe**, model `muse-voice-transcribe-1.0`, whose documentation lists Korean and English. This is not a claim of verified account access or language accuracy. The finite-recording path uses the documented authenticated HTTP API; streaming remains deferred. The dedicated voice model is preferred over Spark 1.3 audio understanding, whose documented support has limitations. See [Meta speech-to-text](https://dev.meta.ai/docs/speech-to-text) and [Spark audio limitations](https://dev.meta.ai/docs/video-understanding).
 
-| Boundary | Initial design | Later option |
+| Boundary | Current implementation / remaining UI | Later option |
 |---|---|---|
-| Browser → application | Finite recorded audio upload | Browser audio chunks to the application |
+| Browser → application | Bounded upload endpoint implemented; microphone capture/encoder unconnected | Browser audio chunks to the application |
 | Application → Meta | `POST /v1/asr/transcribe`, Bearer authentication | `/v1/asr/realtime` WebSocket with the documented authentication handshake |
-| Accepted text → goal understanding | Spark through the existing planned Meta provider boundary | Same goal interpretation contract |
+| Accepted text → goal understanding | Explicit transcript receipt plus confirmed text through native-frame/graph MUSE planning | Same approval boundary |
 
-The paths in this table are **provider paths**, not implemented PushPilot endpoints. Meta's real-time WebSocket uses its documented handshake authentication; an `Authorization` header is ignored for that path. Server credentials must never be placed in the browser or proxied to it as a usable provider token.
+The `/v1/asr/...` paths in this table are **provider paths**. PushPilot implements `POST /api/v1/voice/transcriptions` and separate candidate/status endpoints described in [Voice backend](VOICE_BACKEND.md). The future Meta real-time WebSocket uses its documented handshake authentication; an `Authorization` header is ignored for that path. Server credentials must never be placed in the browser or proxied to it as a usable provider token.
 
-The finite-recording provider path requires a RIFF/WAVE file containing mono 16-bit integer PCM at 16 or 24 kHz. The backend owns bounded format validation and normalization before provider dispatch; do not assume a browser's native recording container is accepted. Pin the necessary conversion dependency with implementation, validate decoded duration/size, and apply the same temporary-audio retention policy to conversion buffers. See [file transcription requirements](https://dev.meta.ai/docs/speech-to-text).
+The implemented path requires RIFF/WAVE containing mono 16-bit integer PCM at 16 or 24 kHz, 0.2–20 seconds and at most 1 MiB. It validates the container/sample bounds and rebuilds the WAV header without ancillary metadata while preserving the PCM samples. It does not decode WebM/Opus, MP4/AAC, MP3, stereo or other rates and does not resample. The future browser must encode supported PCM WAV, or a separately reviewed pinned converter must be added. Unsupported formats fail before dispatch. See [file transcription requirements](https://dev.meta.ai/docs/speech-to-text).
 
 Use the existing backend-only `META_API_KEY` from the ignored repository-local `.env` during development. Do not expose it through frontend build variables, browser storage, URLs, transcripts, prompts, logs or replay. A real transcription call must separately establish that the key has voice access; a successful Spark call is insufficient.
 
@@ -73,9 +73,11 @@ The documented transcription API does not provide ASR confidence scores. Do not 
 
 Text-to-speech is a separate, optional capability. It is not provided by Muse Voice Transcribe. The first demo does not require another voice vendor, key or standalone speech service; optional browser speech synthesis needs device-specific validation before inclusion.
 
-## Proposed application contract
+## Implemented backend and remaining interaction records
 
-These are **design fields**, not executable schemas or existing API routes. Final names and validation belong in [`contracts/`](../contracts/README.md) when implementation begins.
+The implemented [backend contract](VOICE_BACKEND.md) uses finite upload `capture_id`, a provider `request_id`, generated `transcript_id`, source/format metadata and the exact initiating workspace/session/map binding. Candidates expire after 30 minutes, are bounded to 32 in RAM and contain no retained audio. A confirmed live goal validates `transcript_id` and preserves the original transcript separately from accepted edited text; it does not approve the plan.
+
+The table below retains the broader interaction design. A separate transcript-revision editor and full browser confirmation UI are still future work; names such as `transcript_revision_id` are not claims of implemented fields.
 
 | Record | Required relationship |
 |---|---|

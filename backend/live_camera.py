@@ -192,6 +192,8 @@ class LiveCamera:
                     "status": "candidate" if candidate else "unregistered",
                     "message": "Explicitly lock a fresh view with all four consistent print markers. Display registration only; no robot coordinates."}
         identity = {**empty, "id": reference["id"], "reference_frame_id": reference["frame_id"]}
+        if "resumed_from" in reference:
+            identity.update(resumed_from=reference["resumed_from"], resume_frame_id=reference["resume_frame_id"])
         frame = item["frame"]
         if (reference["epoch"], reference["camera_id"], reference["width"], reference["height"], reference["map"]) != (
                 item["epoch"], item["camera_id"], frame["width"], frame["height"], self._map_identity()):
@@ -259,8 +261,43 @@ class LiveCamera:
                 raise SceneError(404, "Live frame expired from the preview cache.", "LIVE_FRAME_EXPIRED")
             return self._frames[frame_id]["data"]
 
+    def capture(self, *, after_sequence: int | None = None, not_before: float | None = None) -> dict:
+        """Explicitly pin one native frame for a separate intelligence operation.
+
+        Preview polling still persists nothing. The calling service owns any
+        durable evidence. A locked drawing view is not a robot calibration.
+        """
+        with self._lock:
+            if not self.map.camera_registration_supported:
+                raise SceneError(409, "This spatial-only map has no declared camera registration. Use its model preview; do not reuse another map's live image.", "LIVE_CAPTURE_MAP_MODE")
+            item = self._latest
+            if not self.url or item is None or self._age(item) > FRESHNESS_LIMIT_MS or self._last_error:
+                raise SceneError(409, "A fresh native camera frame is required.", "LIVE_CAPTURE_UNAVAILABLE")
+            registration = self._registration(item)
+            if registration["status"] not in {"locked", "locked_partial"}:
+                raise SceneError(409, "A verified locked drawing view is required; no automatic refit was performed.", "LIVE_CAPTURE_REGISTRATION")
+            if ((after_sequence is not None and item["frame"]["sequence"] <= after_sequence)
+                    or (not_before is not None and item["accepted"] - item["upstream_age_ms"] / 1000 <= not_before)):
+                raise SceneError(409, "Wait for a new camera frame after this operation.", "LIVE_CAPTURE_NOT_NEW")
+            metadata = {**deepcopy(item["frame"]), "age_at_selection_ms": round(self._age(item), 1),
+                        "camera_id": item["camera_id"], "epoch": item["epoch"],
+                        "map_id": self.map.id, "map_version": self.map.version, "map_hash": self.map.geometry_hash,
+                        "timestamp_source": "camera_host_receive", "sensor_exposure_time_known": False,
+                        "registration": deepcopy(registration), "motion_authority": False}
+            return {"data": item["data"], "metadata": metadata}
+
+    def check_binding(self, metadata: dict) -> None:
+        """Check current identity/view, without demanding the old frame stay fresh."""
+        current = self.capture()["metadata"]
+        keys = ("epoch", "camera_id", "width", "height", "map_id", "map_version", "map_hash")
+        if (any(current[key] != metadata[key] for key in keys)
+                or current["registration"]["id"] != metadata["registration"]["id"]):
+            raise SceneError(409, "The camera or registered map changed while MUSE was working.", "LIVE_CAPTURE_CHANGED")
+
     def register(self, epoch: str, frame_id: str):
         with self._lock:
+            if not self.map.camera_registration_supported:
+                raise SceneError(409, "Camera registration is unavailable for this spatial-only map.", "LIVE_REGISTRATION_MAP_MODE")
             item = self._frames.get(frame_id)
             current = self._latest
             if (item is None or current is None or epoch != item["epoch"] or epoch != current["epoch"]
@@ -287,4 +324,96 @@ class LiveCamera:
                                "map": self._map_identity(), "homography": deepcopy(item["candidate"]["homography"])}
             self._changed = False
             self._change_checks = 0
+            return self.snapshot()
+
+    def restore_reference(self, receipt: dict):
+        """Explicitly resume a server-held fixed display reference after restart.
+
+        This does not fit a transform, recreate hidden markers or restore motion
+        authority. The caller must supply a prior private server snapshot rather
+        than accepting an arbitrary homography from a public request body.
+        """
+        with self._lock:
+            if not self.map.camera_registration_supported:
+                raise SceneError(409, "This map has no declared camera registration.", "LIVE_REFERENCE_MAP_MODE")
+            if self._changed:
+                raise SceneError(409, "A confirmed view change requires a new four-marker lock; its old reference cannot be resumed.", "LIVE_REFERENCE_CHANGED")
+            item = self._latest
+            if (not self.url or item is None or self._frames.get(item["frame"]["id"]) is not item
+                    or self._age(item) > FRESHNESS_LIMIT_MS or self._last_error
+                    or item["map"] != self._map_identity()):
+                raise SceneError(409, "A fresh current native camera frame is required to resume a fixed reference.", "LIVE_REFERENCE_UNAVAILABLE")
+            try:
+                if (not isinstance(receipt, dict) or receipt.get("schema_version") != "pushpilot.live-camera.v1"
+                        or receipt.get("enabled") is not True or receipt.get("motion_authority") is not False
+                        or receipt.get("state") not in {"live", "stale"}):
+                    raise ValueError
+                registration, old_frame = receipt["registration"], receipt["frame"]
+                if (not isinstance(registration, dict) or not isinstance(old_frame, dict)
+                        or registration.get("status") not in {"locked", "locked_partial", "locked_occluded"}
+                        or not isinstance(registration.get("id"), str) or not _HEX_ID.fullmatch(registration["id"])
+                        or not isinstance(registration.get("reference_frame_id"), str) or not _HEX_ID.fullmatch(registration["reference_frame_id"])
+                        or not isinstance(old_frame.get("id"), str) or not _HEX_ID.fullmatch(old_frame["id"])
+                        or old_frame.get("source") != "live" or type(old_frame.get("sequence")) is not int
+                        or old_frame["sequence"] < 0):
+                    raise ValueError
+                previous_identity = (receipt["epoch"], receipt["camera_id"], old_frame["width"], old_frame["height"],
+                                     receipt["map_id"], receipt["map_version"], receipt["map_hash"])
+                current_identity = (item["epoch"], item["camera_id"], item["frame"]["width"], item["frame"]["height"], *self._map_identity())
+                if (previous_identity != current_identity or type(old_frame["width"]) is not int
+                        or type(old_frame["height"]) is not int or item["frame"]["sequence"] < old_frame["sequence"]):
+                    raise ValueError
+                homography = registration["homography"]
+                if (not isinstance(homography, list) or len(homography) != 3
+                        or any(not isinstance(row, list) or len(row) != 3 for row in homography)
+                        or any(isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value)
+                               for row in homography for value in row)):
+                    raise ValueError
+                matrix = np.array(homography, dtype=np.float64)
+                determinant = float(np.linalg.det(matrix))
+                if not math.isfinite(determinant) or abs(determinant) <= 1e-12:
+                    raise ValueError
+                existing = self._reference
+                if existing and (existing.get("resumed_from") != registration["id"]
+                                 or existing["homography"] != homography
+                                 or (existing["epoch"], existing["camera_id"], existing["width"], existing["height"], existing["map"]) !=
+                                    (item["epoch"], item["camera_id"], item["frame"]["width"], item["frame"]["height"], self._map_identity())):
+                    raise ValueError
+            except (KeyError, TypeError, ValueError, OverflowError):
+                raise SceneError(409, "The prior server reference does not match this camera epoch, dimensions, map or valid fixed transform.", "LIVE_REFERENCE_IDENTITY") from None
+            known = self._known_corners()
+            centers, errors, seen = [], [], set()
+            try:
+                for marker in item["detection"]["markers"]:
+                    identifier = marker["id"]
+                    if identifier not in known or identifier in seen:
+                        raise ValueError
+                    observed = np.array(marker["corners"], dtype=np.float64)
+                    if observed.shape != (4, 2) or not np.isfinite(observed).all():
+                        raise ValueError
+                    expected = cv2.perspectiveTransform(known[identifier].reshape(-1, 1, 2), matrix).reshape(4, 2)
+                    if not np.isfinite(expected).all():
+                        raise ValueError
+                    distances = np.linalg.norm(observed - expected, axis=1)
+                    if float(np.sqrt(np.mean(distances**2))) > 3.0 or float(np.max(distances)) > 6.0:
+                        raise ValueError
+                    centers.append(np.mean(known[identifier], axis=0))
+                    errors.extend(distances.tolist())
+                    seen.add(identifier)
+                board = self.map.data["board"]
+                separation = 0.15 * math.hypot(board["width_mm"], board["height_mm"])
+                distributed = any(np.linalg.norm(first-second) >= separation
+                                  for index, first in enumerate(centers) for second in centers[index+1:])
+                if len(seen) < 2 or not distributed or not errors:
+                    raise ValueError
+            except (KeyError, TypeError, ValueError, OverflowError, cv2.error):
+                raise SceneError(409, "At least two distributed known visible markers must agree with the exact prior fixed reference.", "LIVE_REFERENCE_MARKERS") from None
+            if self._reference is None:
+                frame = item["frame"]
+                self._reference = {"id": uuid4().hex, "frame_id": registration["reference_frame_id"],
+                                   "epoch": item["epoch"], "camera_id": item["camera_id"],
+                                   "width": frame["width"], "height": frame["height"], "map": self._map_identity(),
+                                   "homography": deepcopy(homography), "resumed_from": registration["id"],
+                                   "resume_frame_id": frame["id"]}
+                self._change_checks = 0
             return self.snapshot()

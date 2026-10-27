@@ -200,6 +200,8 @@ class LiveCameraTests(unittest.TestCase):
                 scene = client.get("/api/v1/scene").json()
                 mission = client.get("/api/v1/state").json()
                 app.state.live_camera = self.preview
+                app.state.display_registration.camera = self.preview
+                app.state.live_intelligence.camera = self.preview
                 frame = self.poll()["frame"]
                 response = client.get(frame["image_url"])
                 self.assertEqual(response.content, self.jpeg)

@@ -35,9 +35,13 @@ Checkboxes describe implementation scope. Automated simulation tests, real provi
 - [x] Reject goal replacement during active simulation, including signal/review waits.
 - [x] Define temporary map/route and recorded-scene DTOs with validated API inputs.
 - [x] Bind operator-selected recorded before/after images to a mission/action/review/map context.
-- [ ] Define complete voice capture/transcript and fresh physical observation contracts.
+- [x] Add native-frame planning/action/signal request and evidence contracts with durable idempotent operation reservations.
+- [x] Bind original server-selected BEFORE/AFTER frames to simulated action/stop receipts and reject late or superseded results.
+- [x] Implement one-action review orchestration and finite stopped-signal observation cycles without an infinite runner.
+- [x] Define finite voice upload/candidate/workspace binding and explicit original-versus-confirmed goal text.
+- [ ] Complete browser capture/transcript-editing contracts and independently qualified physical observations/receipts.
 
-**Evidence:** offline tests cover nominal and failure transitions with isolated state and injected providers. Mission actions/signals remain simulated. Reviews distinguish operator-injected demo verdicts from actual MUSE recorded-pair results. Independent recorded-scene inspection cannot advance a mission. Completed runs and their sources belong in [verification](VERIFICATION.md).
+**Evidence:** offline tests cover nominal/failure transitions with isolated state and injected providers. Action/stop receipts remain simulated; manual colors/verdicts, original live/recorded images and actual model results retain distinct sources. Live-backed plans reject manual/recorded bypasses. Independent scene inspection cannot advance a mission. Actual calls and completed runs keep their exact input/version scope in [verification](VERIFICATION.md).
 
 ## 2 · Operator workspace
 
@@ -51,11 +55,13 @@ Checkboxes describe implementation scope. Automated simulation tests, real provi
 - [x] Read English names and destination choices from map metadata, retaining planned-only display for older plans without segment bindings.
 - [x] Record desktop/tablet/mobile layout and SVG arrow checks in [verification](VERIFICATION.md).
 - [ ] Complete the full keyboard and contrast accessibility review.
-- [ ] Add bounded push-to-talk, backend batch transcription and editable transcript confirmation.
+- [x] Provide the backend finite-upload transcription service and explicit confirmed-transcript goal binding.
+- [ ] Connect browser push-to-talk/PCM encoding, editable transcript confirmation, cancellation and typed fallback on the actual tablet origin.
 - [x] Implement recorded-image upload and explicit MUSE scene inspection without mission advancement.
 - [x] Add operator-selected before/after recorded-image review tied to the pending simulated action.
 - [x] Add an opt-in native live camera preview with separate Live/Recorded sources, RAM frames, age labels and fixed display-registration behavior.
 - [x] Explicitly lock the installed live view and record fixed-transform observations and limits in [verification](VERIFICATION.md); this is display registration, not robot calibration.
+- [ ] Complete dedicated live action/signal operation controls and readable selected-frame evidence throughout the tablet flow.
 - [ ] Integrate live capture with receipt-bound fresh physical action evidence, independent of preview.
 
 **Evidence:** the UI must reflect backend snapshots and events, including wait, rejection, uncertainty, and recovery. [Route display](ROUTE_DISPLAY.md) separates drawing geometry and simulated progress from measured car pose. No scripted success animation substitutes for a state transition. The wearable panel remains a concept. The temporary spatial map is drawing data and a locked camera overlay is test-only; unavailable capability labels stay explicit. Actual checks and limits belong in [verification](VERIFICATION.md).
@@ -66,16 +72,24 @@ Checkboxes describe implementation scope. Automated simulation tests, real provi
 - [x] Implement backend goal interpretation using a strict response schema and fixed Meta origin.
 - [x] Verify a real application goal request producing PLAN_READY with approval still pending.
 - [x] Test sanitized provider failures, timeout, malformed output and no demo fallback.
+- [x] Implement original-native-image plus replaceable-graph MUSE route selection with exact directed-path and departure/turn/via/avoid validation.
+- [x] Add versioned live route/action/signal prompts and strict local result validation with original-frame hash preservation.
 - [ ] Extract/version the inline goal instruction and response schema in a traceable prompt catalog.
-- [ ] Integrate Meta Voice Transcribe with bounded backend audio normalization.
-- [ ] Preserve original/edited transcript revisions and reject cancelled or stale results.
+- [x] Implement the Meta Voice Transcribe adapter and bounded supported-WAV validation/canonicalization without resampling.
+- [x] Bind transcript candidates to current workspace/map state, expire/supersede them and preserve original versus explicitly confirmed text in accepted goal evidence.
+- [ ] Verify actual ASR account access and Korean/English recognition on recorded and microphone input.
+- [ ] Complete browser transcript editing/revision UI and its device end-to-end acceptance checks.
 - [x] Implement a strict-schema, frame/hash-bound recorded-scene MUSE adapter with late-result rejection.
 - [x] Record the actual-provider shop/car/signal scene case independently of simulation.
 - [x] Connect strict-schema MUSE recorded-action judgment to the supervisor with late/superseded-result rejection.
-- [ ] Persist complete provider receipts, including versions, exact inputs/results, timing and reported usage.
+- [x] Implement server-bound live BEFORE/AFTER review after simulated action receipts, including reobservation without repeated action.
+- [x] Implement new post-stop native-frame MUSE signal judgment, approach-target projection, deterministic acceptance and finite RED/UNKNOWN requery.
+- [x] Retain deliberate native originals, request bindings, prompt/schema versions, validated results and elapsed timing in the private ledger/journal.
+- [ ] Add a complete unified provider-envelope/export policy and retain usage fields where the provider reports them; missing usage remains unknown.
+- [ ] Evaluate the new live action/signal services with actual provider responses and real-car/paper-signal images; software/mock results do not establish accuracy.
 - [ ] Evaluate held-out real-car success, no-progress and occlusion cases with independent labels.
 
-**Evidence:** [Meta API records](META_API_CHECK.md) establish the stated real text and scene calls. [Action reviews](ACTION_REVIEWS.md) describes the recorded-pair integration; [verification](VERIFICATION.md) identifies actual versus injected responses. [Live preview](LIVE_CAMERA.md) is a separate source and does not automatically supply model input. Real-car accuracy, voice, trusted action-bound live capture and physical execution remain separate gates.
+**Evidence:** [Meta API records](META_API_CHECK.md) record actual requests with their exact input, prompt version and outcome, including any clarification/withheld plan. [Live intelligence](LIVE_INTELLIGENCE.md) documents the new route/review/signal code; [Action reviews](ACTION_REVIEWS.md) retains the separate recorded-pair path. Preview polling does not trigger inference. Real-car action/signal accuracy, actual voice access, physical receipt qualification and robot execution remain separate gates. Completing a backend checkbox does not establish those outcomes.
 
 ## 4 · Evaluation and isolated GX10 delivery
 
@@ -98,6 +112,8 @@ Checkboxes describe implementation scope. Automated simulation tests, real provi
 - [x] Derive east-facing PIZZA routes to BAKERY, BOOKSTORE, and SCHOOL with independent stop/signal gates at every junction.
 - [x] Select a reviewed map through `--map-path` or `PUSHPILOT_MAP_PATH`, with optional cardinal start heading and map-owned labels/aliases.
 - [x] Supply MUSE goal interpretation with the selected map's allowed destination vocabulary; keep deterministic route construction separate.
+- [x] Supply live planning with the selected symbolic directed graph and declared-start semantics; compile the selected route locally into existing AR geometry.
+- [x] Validate a proposed map through a bounded read-only API/CLI, including reachability and optional approach-specific signal targets, without installing it.
 - [x] Require matching map/version/hash for route display and new plan/registration after map replacement.
 - [x] Accept bounded private JPEG/PNG frames with hashes, timestamps and map identity.
 - [x] Detect print markers and require an explicit four-marker lock for a test-only board-to-image overlay.
@@ -108,7 +124,9 @@ Checkboxes describe implementation scope. Automated simulation tests, real provi
 - [x] Implement native preview transport and an independent memory-only live display lock, without saving preview frames into recorded evidence.
 - [x] Record installed static-view marker coverage, backend frame availability and reported receive ages in [verification](VERIFICATION.md).
 - [ ] Measure browser presentation rate, exposure-to-display latency and moving/occluded scenes; the short backend sample is not an end-to-end motion benchmark.
-- [ ] Add deliberate via-point/alternative-route selection and evaluate obstacle-aware rerouting if required by the final scenario.
+- [x] Support deliberate departure, first-turn, ordered-via and avoid constraints on a model-selected alternative directed path.
+- [ ] Configure reviewed active-paper signal targets on the installed map; the current temporary definition intentionally contains none.
+- [ ] Evaluate route interpretation across held-out user phrasings and assess obstacle-aware rerouting if required by the final scenario.
 
 ## Next demonstration gate · Same action, different evidence
 
@@ -132,7 +150,7 @@ Follow [Temporary map](TEMPORARY_MAP.md), [Route display](ROUTE_DISPLAY.md) and 
 
 ## Later expansion
 
-Extra destinations, streaming transcription, continuous listening, speech output, supplementary segmentation, real glasses, additional models, and custom policy training follow the complete core loop. Bounded push-to-talk remains planned initial-demo scope; see [Voice input](VOICE_INPUT.md).
+Extra destinations, streaming transcription, continuous listening, speech output, supplementary segmentation, real glasses, additional models and custom policy training follow the core loop. Bounded push-to-talk remains initial-demo scope: its finite-upload backend is implemented, while browser capture/confirmation and actual voice verification remain pending. See [Voice input](VOICE_INPUT.md) and [Voice backend](VOICE_BACKEND.md).
 
 The glasses companion remains a concept until its actual capture/display path is integrated and verified. Registered spatial AR remains dependent on the installed map and calibration.
 

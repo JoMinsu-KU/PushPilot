@@ -85,7 +85,21 @@ export function currentSignalJunction(workspace: WorkspaceSnapshot | null): stri
 /** Informational only: color cannot admit a crossing or move a progress segment. */
 export function signalDisplay(workspace: WorkspaceSnapshot, junctionId: string, now: number): 'red' | 'green' | 'unknown' | 'stale' {
   const signal = workspace.signal;
-  if (signal.source !== 'simulation' || signal.junction_id !== junctionId || !signal.observed_at) return 'unknown';
+  if (signal.junction_id !== junctionId || !signal.observed_at) return 'unknown';
+  if (signal.source === 'meta') {
+    const evidence = signal.evidence, plan = workspace.plan, stop = workspace.stop_receipt;
+    const route = plan?.route;
+    if (!evidence || !plan?.planning || !stop || !route
+      || evidence.input_kind !== 'post_stop_live_frame' || evidence.source !== 'meta'
+      || evidence.session_id !== workspace.session_id || evidence.plan_id !== plan.id || evidence.plan_revision !== plan.revision
+      || evidence.junction_id !== junctionId || evidence.signal_target?.junction_id !== junctionId
+      || evidence.color !== signal.color || !evidence.visible || evidence.motion_authority !== false || evidence.simulation_only !== true
+      || evidence.stop_receipt?.id !== stop.id || evidence.stop_receipt?.action_id !== stop.action_id
+      || !plan.steps.some(step => step.id === stop.action_id && step.kind === 'STOP' && step.node_id === junctionId && step.status === 'complete')
+      || evidence.map_id !== route.map_id || evidence.map_version !== route.map_version || evidence.map_hash !== route.map_hash
+      || evidence.frame?.source !== 'live' || evidence.frame.map_id !== route.map_id
+      || evidence.frame.map_version !== route.map_version || evidence.frame.map_hash !== route.map_hash) return 'unknown';
+  } else if (signal.source !== 'simulation') return 'unknown';
   const ttl = signal.freshness_limit_ms;
   const age = now - Date.parse(signal.observed_at);
   if (!Number.isFinite(age) || !Number.isFinite(ttl) || ttl! <= 0 || age < 0) return 'unknown';

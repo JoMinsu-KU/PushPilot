@@ -7,11 +7,11 @@
 **See the scene. State the goal. Review the plan. Check the outcome.**
 
 PushPilot connects an operator's intent, a spatial plan and visual evidence in one tablet workspace.<br>
-Muse Spark interprets the goal and reviews images; a deterministic supervisor decides what can happen next.
+Muse Spark selects roads from a live image and a replaceable map graph, then reviews visual outcomes; a deterministic supervisor decides what can happen next.
 
 [See the workspace](#the-workspace) · [How Meta is used](#what-meta-adds) · [Evidence and limits](#evidence-and-limits) · [Run it](#quick-start)
 
-<code>Real Meta API</code> &nbsp; <code>Live camera preview</code> &nbsp; <code>Recorded-image analysis</code> &nbsp; <code>Simulated execution</code>
+<code>Live-image MUSE planning</code> &nbsp; <code>Replaceable map graph</code> &nbsp; <code>Inspectable evidence</code> &nbsp; <code>Simulated execution</code>
 
 </div>
 
@@ -39,6 +39,8 @@ The product direction extends this **natural-language spatial interface** beyond
 ### Real input. Inspectable output.
 
 Actual goal and single-image scene requests have been exercised through the application. The [Meta API record](docs/META_API_CHECK.md) provides their conditions and scope; action-bound comparisons are shown below.
+
+**Live-image route selection is now connected.** A deliberate planning request sends the unchanged native JPEG, projected node identities, directed graph and operator query to MUSE. The backend validates and compiles the returned node sequence into the same AR route contract. It does not replace a valid selected route with its own shortest path. In two actual prompt-v2 checks, a map-left request selected `PIZZA → W → SW → SCHOOL`; a map-right request selected the eastern loop through `C → N → NE → E → SE → BAKERY → S`. Both remained unapproved drawing previews, with no physical car present. See [live intelligence](docs/LIVE_INTELLIGENCE.md) for contracts and [provider evidence](docs/META_API_CHECK.md) for exact conditions.
 
 | Input | Actual result | Consequence |
 |---|---|---|
@@ -76,7 +78,7 @@ These are labelled schematic test inputs, **not real-car photographs or physical
 
 **Muse Spark** interprets intent and compares the supplied visual evidence. **The supervisor** enforces current-plan approval, request/review identity, map binding, stop policy and junction-scoped signal admission. A recorded-action PASS cannot supply the separate simulated GREEN or bypass a mandatory stop. A failed provider request never silently becomes a demo PASS.
 
-The planned [stopped-live signal path](docs/MUSE_SIGNAL_GATE.md) makes MUSE the color judge: verify stopping, submit a fresh image of the current approach, wait on RED or uncertainty, and admit GREEN only after the supervisor validates stop, plan/junction/approach, frame/freshness and response bindings. No second local color classifier is required. The robot remains stopped during the request. This live signal integration is not implemented; existing recorded-scene inspection and recorded-action PASS keep their current limits.
+The implemented [stopped-live signal service](docs/MUSE_SIGNAL_GATE.md) makes MUSE the color judge after a matching accepted simulated stop. It selects a new image for the configured approach-specific target, waits on RED or uncertainty, and admits a simulated crossing only after stop, plan/junction/approach, frame/freshness and response bindings pass. No second local color classifier is required. A bounded wait requests new frames rather than reusing a previous signal image. Actual robot stopping and physical signal recognition remain unqualified; the current default map has no reviewed signal targets and rejects this operation until configured.
 
 SQLite events and review records connect the input, response and resulting transition for replay. Recorded imagery, actual provider responses and simulated execution retain separate source labels.
 
@@ -90,11 +92,13 @@ SQLite events and review records connect the input, response and resulting trans
 | Mission workflow | Three temporary graph routes, mandatory stops, red/unknown waiting, scoped green admission and replay | Software simulation; action receipts and signals are simulated. Explicit demo verdicts remain available and labelled. |
 | Image presentation and route overlay | Private upload, four-marker test lock, fixed-reference projection, Camera board-focus mask, full-frame display and execution-aware route portions | Progress comes from simulation; stop lines are illustrative. The mask preserves camera perspective and geometry; raw frames stay unchanged. No car tracking, robot/BASE registration or metric accuracy claim. |
 | Live camera preview | Opt-in native MJPEG helper, loopback transport, bounded RAM frames, source/age labels and explicit display-lock path | Preview only; current physical registration results belong in [verification](docs/VERIFICATION.md). No automatic MUSE submission, mission evidence, signal gate or robot observation. |
-| Stopped-live signal judgment | Designed: MUSE judges color after verified stopping; deterministic checks control admission | Not implemented. Current signal input is simulated; recorded-scene signal findings do not supply its GREEN. |
-| Voice and robot execution | Designed or deferred | Not connected. Physical pushing, turning and paper-signal operation need qualification. |
+| Live MUSE planning | Native JPEG + grounded graph → selected directed nodes → validated AR geometry | Actual left/right route-preview requests accepted; no measured car pose or physical action. |
+| Live action and signal services | Server-bound native BEFORE/AFTER review; new post-stop signal images and bounded RED/UNKNOWN waiting | Offline provider tests pass. Stop/action receipts remain simulated; real-car outcomes and paper-signal accuracy are unverified. |
+| Voice backend | Bounded PCM WAV → Meta adapter → editable, revision-bound transcript candidate | Implemented and tested offline. Actual ASR access and browser microphone capture are not verified. |
+| Robot execution | Separate future qualified adapter | Not connected. Physical pushing, turning, stopping and paper-signal operation need qualification. |
 | GX10 and glasses | GX10 hosts the standalone camera helper; full application deployment and wearable integration remain separate | Current application runs on Windows. No full GX10 application deployment or wearable connection. |
 
-The temporary print is replaceable through a reviewed JSON definition, map version, new plan and fresh camera display registration. Route geometry, English names, destination choices and MUSE destination vocabulary follow the selected map. See [Route display](docs/ROUTE_DISPLAY.md) and the [replacement workflow](docs/TEMPORARY_MAP.md#replace-the-temporary-map). Drawing geometry does not qualify physical stop lines, vehicle/tool clearance or contact turning. Raw map artwork, camera frames, credentials and operational archives are excluded from public source and release bundles.
+The temporary print is replaceable through a reviewed JSON definition, map version, new plan and fresh camera display registration. Places, aliases, directed roads, marker facts and approach-specific signal regions belong to map data. Validate a candidate with `python tools/validate_map.py --map-path /private/maps/replacement.json` or `POST /api/v1/maps/validate`, then select it at startup with `--map-path`. See [map replacement](docs/MAP_REPLACEMENT.md) and [route display](docs/ROUTE_DISPLAY.md). Drawing geometry does not qualify physical stop lines, vehicle/tool clearance or contact turning. Raw map artwork, camera frames, credentials and operational archives are excluded from public source and release bundles.
 
 See [Verification](docs/VERIFICATION.md) for completed checks, [Meta API evidence](docs/META_API_CHECK.md) for real requests, and the [Roadmap](docs/ROADMAP.md) for the next acceptance gates. Reported software tests establish the stated behavior; they do not establish physical task success or a general model-accuracy percentage.
 

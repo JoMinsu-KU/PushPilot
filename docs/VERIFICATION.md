@@ -1,12 +1,12 @@
 # Workspace verification
 
-Verified on **2026-10-27, Asia/Seoul**. This record covers the replaceable temporary map, execution-aware route display, light industrial workspace, recorded-pair action reviews and native live preview; it is not a physical mission report.
+Verified on **2026-10-27, Asia/Seoul**. This record covers replaceable-map live-image planning, bound native-image action/signal services, finite voice uploads, execution-aware route display, recorded reviews and native preview. Execution remains simulated; this is not a physical mission report.
 
 | Check | Result | Boundary |
 |---|---|---|
 | `python tools/dev.py check` | Passed | Python and JSON source syntax; no credentials loaded |
-| `python tools/dev.py test` | 136 passed | Existing mission/camera/provider checks plus drawing segments, action binding, map replacement and map-scoped goal interpretation |
-| `npm test` in `frontend` | 46 passed | Existing display/review checks plus route progress, signal scope, unapproved cancellation, malformed bindings, label bounds and destination metadata |
+| `python tools/dev.py test` | 286 application tests passed | Shared checkout also passed four independent 3D-installer tests: 290 total. Native-frame/graph planning, evidence, voice, map validation, signal watching and fixed-reference recovery are included. |
+| `npm test` in `frontend` | 48 passed | Existing display/review checks plus bound MUSE signal presentation; color alone never advances a route |
 | `npm run build` in `frontend` | Passed | TypeScript checking and Vite production bundle |
 | Real Meta application-goal requests | Accepted, `PLAN_READY` | Bakery and Bookstore interpretations; [details](META_API_CHECK.md) |
 | Real Meta image inspection | Accepted, `USABLE` | Four shops, no separate physical car, signal UNKNOWN; recorded frame only |
@@ -25,11 +25,23 @@ Verified on **2026-10-27, Asia/Seoul**. This record covers the replaceable tempo
 
 The local verification host used Windows CPython 3.14 and Node 24.19. The GX10 was inspected read-only: Ubuntu 24.04.4, ARM64, Python 3.12.3 and no Node/npm on its command path. The deployment design builds frontend assets locally and serves them from Python on GX10.
 
+## Live backend integration
+
+The software now includes graph-grounded native-image planning, exact selected-route compilation, server-captured BEFORE/new AFTER comparison, post-stop MUSE signal review, finite action/reobserve and signal-wait helpers, background signal watching, immutable selected-frame SQLite evidence and map-validation API/CLI. A configured accepted live STOP can start watching without another approval: default 30 judgments over at most 300 seconds, ending on GREEN, failure, cancellation or budget exhaustion. Finite mono PCM WAV ingestion and the official Meta transcription adapter return editable, revision/map-bound transcript receipts. Browser microphone capture remains disconnected.
+
+Offline tests exercise west departure without shortest-path replacement, one-way roads, constraints and map replacement; provider refusal/malformed output/timeouts; byte/hash persistence beyond preview eviction; post-request host-receive ordering; idempotency, supersession, cancellation and restart interruption; manual-signal bypass rejection; accepted simulated stopping before fresh RED/GREEN judgment; missing signal targets; voice format bounds and transcript binding. Mocked results establish software behavior, not recognition accuracy.
+
+Four actual live-image planning checks are recorded in [Meta evidence](META_API_CHECK.md#native-image-graph-planning-october-27). Prompt v1 accepted a left route and held a scene-uncertain right request. Prompt v2 accepted both natural-language sides: the eastern loop and western route. Neither was approved or executed. No actual live action, physical signal or ASR request was part of this backend verification.
+
+The QA browser displayed the actual western route over the live camera. Replay opened its selected original JPEG at **1920 × 1080**, with no display mask or resampling in the provider/evidence path. At **1194 × 834** and **1024 × 768**, inspected workspace and native-evidence dialogs fit the viewport without vertical overflow; image and complete-record tabs remained accessible. Long records use explicit pages. Camera SVG filtering remained `none`.
+
+Current Little Town has no reviewed signal-target regions, so its live signal requests fail closed until configured. A robot adapter, physical stop receipts, car/tool contact and turning, BASE/Z calibration, installed-map qualification, actual voice access and full GX10 application deployment remain outside verified software behavior.
+
 ## Fixed spatial workspace
 
 The current October 27 revision follows the user's industrial references and the [design system](DESIGN_SYSTEM.md): one continuous camera/map backdrop beneath the rail, header and rounded translucent mission/status overlays. The scene has no reserved right-hand column: real image detail sits behind the glass. Long routes, replay history, image tools and comparison details use bounded dialogs, tabs and explicit pages. Horizontal summary paging is allowed; vertical page/panel scrolling is not the content strategy. The first flat light-dashboard pass was rejected and remains historical.
 
-Static checks, **136 Python tests, 46 frontend tests**, and the TypeScript/Vite build passed for the current route-display integration. Board-focus tests cover map ID/version/hash binding, locked versus changed/candidate mapping, marker-inclusive bounds, full projective division, unchanged source geometry, viewport bounds and malformed/degenerate/off-image fallback. Board focus masks the surrounding workbench in original camera coordinates. Full frame remains available; no perspective rectification or generated image content is used.
+Static checks, **136 Python tests, 46 frontend tests**, and the TypeScript/Vite build passed for the earlier route-display integration. Board-focus tests cover map ID/version/hash binding, locked versus changed/candidate mapping, marker-inclusive bounds, full projective division, unchanged source geometry, viewport bounds and malformed/degenerate/off-image fallback. Board focus masks the surrounding workbench in original camera coordinates. Full frame remains available; no perspective rectification or generated image content is used.
 
 Browser verification used a separate loopback preview and a copied private state. Landscape checks covered **1194×834, 1366×1024 and 1024×768 CSS pixels**. Workspace dimensions fit the viewport; route pages, Replay, image-tool tabs and the recorded comparison were checked for lost vertical content. Review-required and RED-wait states retained the primary action, termination control and source label. The isolated simulation exercised approval, push review, mandatory stop, RED waiting, fresh GREEN crossing admission, cancellation, reset and a new unapproved plan. BEFORE selection survived the image-tools round trip. No new model request, camera capture or robot access was used for these presentation checks.
 
