@@ -37,6 +37,9 @@ evidence/private/
 logs/
 releases/
 release-output/
+# User-supplied 3D artwork and generated local Draco assets stay outside source releases.
+frontend/public/models/private/
+frontend/public/vendor/draco/
 *.log
 *.zip
 *.tar

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { MapRoute, SceneSnapshot, TemporaryMap } from '../../contracts/scene';
 import type { LiveCameraSnapshot } from '../../contracts/live-camera';
 import type { WorkspaceSnapshot } from '../../contracts/workspace';
@@ -6,10 +6,13 @@ import { Icon } from './Icons';
 import { projectPoint, type Point } from './projection';
 import { createRouteDisplay, projectRouteDisplay, type RouteDisplay } from './routeProgress';
 import { RouteLegend, RouteOverlay } from './RouteOverlay';
+import { CityViewBoundary } from './CityViewBoundary';
 import { nodeLabel } from './mapMetadata';
 import { recordedDisplay } from './boardFocus';
 import { createLivePollGate, liveDisplaySnapshot, liveFrameAge, liveFrameFresh, liveOverlayAllowed } from './liveCamera';
 import './map-scene.css';
+
+const CityModelView = lazy(() => import('./CityModelView'));
 
 const MAX_FRAME_BYTES = 8 * 1024 * 1024;
 const usableRegistration = new Set(['locked', 'locked_partial']);
@@ -275,7 +278,7 @@ export function MapScene({ workspace, readOnly = false, onSnapshot, onPreviewSou
 }) {
   const [map, setMap] = useState<TemporaryMap | null>(null);
   const [scene, setScene] = useState<SceneSnapshot | null>(null);
-  const [view, setView] = useState<'camera' | 'spatial'>('camera');
+  const [view, setView] = useState<'camera' | 'spatial' | 'city'>('camera');
   const [cameraSource, setCameraSource] = useState<'auto' | 'live' | 'recorded'>('auto');
   const [lockingLive, setLockingLive] = useState(false);
   const live = useLiveCamera();
@@ -394,22 +397,24 @@ export function MapScene({ workspace, readOnly = false, onSnapshot, onPreviewSou
   const liveMarkerCount = liveScene?.detection.marker_ids.filter(id => map?.markers.some(marker => marker.id === id)).length ?? 0;
   const canLockLive = Boolean(usingLive && liveScene?.frame && liveFresh && liveMarkerCount === 4
     && ['candidate', 'view_changed'].includes(liveScene.registration.status) && !active && !readOnly && !lockingLive);
+  const resumeAvailable = Boolean(live.status?.saved_reference_available && changedLiveScene?.registration.status === 'unregistered');
+  const canResumeLive = Boolean(usingLive && liveScene?.frame && liveFresh && resumeAvailable && !active && !readOnly && !lockingLive);
   const liveRegistrationLabel = changedLiveScene?.registration.status === 'locked_occluded' ? 'Mapping retained · markers obscured'
     : changedLiveScene?.registration.status === 'locked_partial' ? 'Mapping retained · partial markers'
     : changedLiveScene?.registration.status === 'locked' ? 'Fixed test mapping'
     : changedLiveScene?.registration.status === 'view_changed' ? 'View changed · AR hidden' : 'Live view is not locked';
-  const previewSourceLabel = view === 'spatial' ? 'Illustrative spatial view' : usingLive
+  const previewSourceLabel = view === 'city' ? '3D city model' : view === 'spatial' ? 'Illustrative spatial view' : usingLive
     ? liveScene?.frame ? liveFresh ? 'Live camera' : 'Live camera · stale' : 'Live camera · connecting'
     : scene?.frame ? scene.frame.source === 'recorded' ? 'Recorded image' : 'Uploaded image' : 'No image';
   useEffect(() => { onPreviewSource?.(previewSourceLabel); }, [onPreviewSource, previewSourceLabel]);
 
-  async function lockLiveView() {
-    if (!canLockLive || !liveScene?.frame) return;
+  async function lockLiveView(resume = false) {
+    if (!(resume ? canResumeLive : canLockLive) || !liveScene?.frame) return;
     setLockingLive(true); setError('');
     try {
-      const response = await fetch('/api/v1/live-camera/registration', {
+      const response = await fetch(`/api/v1/live-camera/registration${resume ? '/resume' : ''}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ epoch: liveScene.epoch, frame_id: liveScene.frame.id }),
+        body: JSON.stringify(resume ? { epoch: liveScene.epoch } : { epoch: liveScene.epoch, frame_id: liveScene.frame.id }),
       });
       const payload: unknown = await response.json();
       if (!response.ok) throw new Error(responseMessage(payload));
@@ -422,22 +427,23 @@ export function MapScene({ workspace, readOnly = false, onSnapshot, onPreviewSou
     <div className="map-scene-controls">
       <div className="scene-view-toggle" role="group" aria-label="Scene view">
         <button className={view === 'camera' ? 'selected' : ''} aria-label="Camera frame" aria-pressed={view === 'camera'} onClick={() => setView('camera')}><Icon name="camera" size={15}/>Camera</button>
-        <button className={view === 'spatial' ? 'selected' : ''} aria-label="Spatial map" aria-pressed={view === 'spatial'} onClick={() => setView('spatial')}><Icon name="route" size={15}/>Spatial</button>
+        <button className={view === 'spatial' ? 'selected' : ''} aria-label="Spatial map" aria-pressed={view === 'spatial'} onClick={() => setView('spatial')}><Icon name="route" size={15}/>2D Map</button>
+        <button className={view === 'city' ? 'selected' : ''} aria-label="Spatial 3D" aria-pressed={view === 'city'} onClick={() => setView('city')}><Icon name="home" size={15}/>3D City</button>
       </div>
       {view === 'camera' && liveAvailable && <div className="scene-view-toggle scene-camera-source" role="group" aria-label="Camera source"><button className={usingLive ? 'selected' : ''} aria-pressed={usingLive} onClick={() => setCameraSource('live')}>Live</button><button className={!usingLive ? 'selected' : ''} aria-pressed={!usingLive} onClick={() => setCameraSource('recorded')}>Recorded</button></div>}
       {view === 'camera' && cameraScene?.frame && <button className="scene-focus-toggle" disabled={!canBoardFocus} aria-pressed={hasBoardMask} onClick={() => setFocused(value => !value)} title={hasBoardMask ? 'Display mask only. Original camera pixels and the fixed mapping stay unchanged.' : 'Full frame. Board focus requires a valid locked test mapping.'}>{hasBoardMask ? 'Board focus' : 'Full frame'}<Icon name="eye" size={14}/></button>}
-      <button className="scene-tools-toggle" aria-label="Image tools" aria-haspopup="dialog" aria-expanded={expanded} onClick={() => openTools('image')}><Icon name="settings" size={16}/><span>Image tools</span></button>
+      {view !== 'city' && <button className="scene-tools-toggle" aria-label="Image tools" aria-haspopup="dialog" aria-expanded={expanded} onClick={() => openTools('image')}><Icon name="settings" size={16}/><span>Image tools</span></button>}
     </div>
-    <RouteLegend display={routeDisplay}/>
-    {(error || mismatchedRoute) && <div className="scene-error" role="alert"><Icon name="shield" size={16}/><span>{error || 'Map geometry changed. Create a new plan to display its route.'}</span><button onClick={() => { setError(''); void refresh(true); void refreshMap(); }} aria-label="Refresh scene state"><Icon name="refresh" size={15}/></button></div>}
+    {view !== 'city' && <RouteLegend display={routeDisplay}/>}
+    {view !== 'city' && (error || mismatchedRoute) && <div className="scene-error" role="alert"><Icon name="shield" size={16}/><span>{error || 'Map geometry changed. Create a new plan to display its route.'}</span><button onClick={() => { setError(''); void refresh(true); void refreshMap(); }} aria-label="Refresh scene state"><Icon name="refresh" size={15}/></button></div>}
     <div className="scene-visual">
-      {view === 'spatial' ? map ? <SpatialMap map={map} route={route} display={routeDisplay}/> : <div className="no-recorded-frame"><Icon name="route" size={32}/><h2>Loading temporary geometry…</h2></div> : cameraScene?.frame ? <CameraFrame scene={cameraScene} route={route} map={map} focused={focused} display={routeDisplay} live={usingLive} fresh={liveFresh}/> : <div className="no-recorded-frame"><Icon name="camera" size={32}/><h2>{usingLive ? 'Connecting to the camera…' : 'Bring your workspace into view.'}</h2><p>{usingLive ? live.status?.last_error || 'Waiting for the first decoded live image. Recorded images remain available.' : 'Load a recorded image for marker detection and scene inspection.'}</p><button disabled={readOnly || Boolean(busy)} onClick={() => usingLive ? setCameraSource('recorded') : openTools('image')}><Icon name={usingLive ? 'camera' : 'upload'} size={16}/>{usingLive ? 'View recorded image' : 'Choose a recorded frame'}</button><button className="spatial-preview-link" onClick={() => setView('spatial')}>Explore the illustrative spatial view<Icon name="arrow" size={15}/></button><small>{usingLive ? 'Live preview has no motion authority.' : 'No live camera is connected.'}</small></div>}
+      {view === 'city' ? <Suspense fallback={<div className="no-recorded-frame" role="status"><h2>Opening Spatial 3D…</h2></div>}><CityViewBoundary onReturn={() => setView('camera')}><CityModelView/></CityViewBoundary></Suspense> : view === 'spatial' ? map ? <SpatialMap map={map} route={route} display={routeDisplay}/> : <div className="no-recorded-frame"><Icon name="route" size={32}/><h2>Loading temporary geometry…</h2></div> : cameraScene?.frame ? <CameraFrame scene={cameraScene} route={route} map={map} focused={focused} display={routeDisplay} live={usingLive} fresh={liveFresh}/> : <div className="no-recorded-frame"><Icon name="camera" size={32}/><h2>{usingLive ? 'Connecting to the camera…' : 'Bring your workspace into view.'}</h2><p>{usingLive ? live.status?.last_error || 'Waiting for the first decoded live image. Recorded images remain available.' : 'Load a recorded image for marker detection and scene inspection.'}</p><button disabled={readOnly || Boolean(busy)} onClick={() => usingLive ? setCameraSource('recorded') : openTools('image')}><Icon name={usingLive ? 'camera' : 'upload'} size={16}/>{usingLive ? 'View recorded image' : 'Choose a recorded frame'}</button><button className="spatial-preview-link" onClick={() => setView('spatial')}>Explore the illustrative spatial view<Icon name="arrow" size={15}/></button><small>{usingLive ? 'Live preview has no motion authority.' : 'No live camera is connected.'}</small></div>}
     </div>
     <div className={`scene-source-plate ${usingLive && view === 'camera' ? liveFresh ? 'live-source' : 'stale-source' : ''}`}>
       <span className="scene-source-dot"/>
-      <div><strong>{view === 'spatial' ? 'Illustrative spatial view' : usingLive ? liveScene?.frame ? `Live camera${liveFresh ? '' : ' · STALE'} · ${Number.isFinite(liveAge) ? `${(liveAge / 1000).toFixed(1)} s` : 'age unknown'}` : 'Live camera · connecting' : scene?.frame ? `${scene.frame.source === 'recorded' ? 'Recorded' : 'Uploaded'} camera frame` : 'Camera not connected'}</strong><span>{view === 'spatial' ? 'Temporary geometry · no physical scan' : usingLive ? `${hasBoardMask ? 'Board focus' : 'Full frame'} · ${liveRegistrationLabel}` : hasBoardMask ? 'Board focus · background masked' : scene?.frame ? `${scene.frame.width} × ${scene.frame.height} · full frame` : 'Load a recorded image to inspect the scene'}</span></div>
-      {usingLive && view === 'camera' && ['candidate', 'view_changed'].includes(liveScene?.registration.status ?? '')
-        ? <button className="live-lock-button" disabled={!canLockLive} onClick={() => void lockLiveView()} title={active ? 'Lock a live view during mission preparation.' : 'Explicitly lock the current live camera-to-board test mapping.'}><Icon name="check" size={14}/>{lockingLive ? 'Locking…' : 'Lock live view'}</button>
+      <div><strong>{view === 'city' ? '3D city model' : view === 'spatial' ? 'Illustrative spatial view' : usingLive ? liveScene?.frame ? `Live camera${liveFresh ? '' : ' · STALE'} · ${Number.isFinite(liveAge) ? `${(liveAge / 1000).toFixed(1)} s` : 'age unknown'}` : 'Live camera · connecting' : scene?.frame ? `${scene.frame.source === 'recorded' ? 'Recorded' : 'Uploaded'} camera frame` : 'Camera not connected'}</strong><span>{view === 'city' ? 'Display only · routes use the 2D map' : view === 'spatial' ? 'Temporary geometry · no physical scan' : usingLive ? `${hasBoardMask ? 'Board focus' : 'Full frame'} · ${liveRegistrationLabel}` : hasBoardMask ? 'Board focus · background masked' : scene?.frame ? `${scene.frame.width} × ${scene.frame.height} · full frame` : 'Load a recorded image to inspect the scene'}</span></div>
+      {view === 'city' ? <span className="live-motion-note"><Icon name="eye" size={14}/>Model only</span> : usingLive && view === 'camera' && (resumeAvailable || ['candidate', 'view_changed'].includes(liveScene?.registration.status ?? ''))
+        ? <button className="live-lock-button" disabled={!(resumeAvailable ? canResumeLive : canLockLive)} onClick={() => void lockLiveView(resumeAvailable)} title={resumeAvailable ? 'Explicitly reuse the saved fixed display mapping after server validation. No refit.' : active ? 'Lock a live view during mission preparation.' : 'Explicitly lock the current live camera-to-board test mapping.'}><Icon name="check" size={14}/>{lockingLive ? 'Checking…' : resumeAvailable ? 'Resume fixed view' : 'Lock live view'}</button>
         : usingLive && view === 'camera' ? <span className="live-motion-note" title="Live preview and its test mapping have no robot motion authority."><Icon name="shield" size={14}/>Preview only</span>
           : <button onClick={() => openTools('registration')} aria-label="View recorded scene registration details" title="Recorded image registration"><Icon name="shield" size={15}/></button>}
     </div>

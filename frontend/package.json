@@ -4,20 +4,26 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "node scripts/prepare-city-assets.mjs",
     "dev": "vite --host 127.0.0.1",
     "test": "node --test tests/*.test.mjs",
+    "prebuild": "node scripts/prepare-city-assets.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
     "react": "19.3.1",
-    "react-dom": "19.3.1"
+    "react-dom": "19.3.1",
+    "three": "0.160.0"
   },
   "devDependencies": {
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "@types/three": "0.160.0",
     "typescript": "7.0.2",
     "vite": "8.3.5"
   },
-  "engines": { "node": ">=24.0.0" }
+  "engines": {
+    "node": ">=24.0.0"
+  }
 }

@@ -1,0 +1,19 @@
+{
+  "schema_version": "pushpilot.spatial-landmarks.v1",
+  "model_id": "pushpilot-seoul-city-web",
+  "model_sha256": "8ecbdf4d4c0a5a58b502f5366a96bc37fa2ce2cbfec9af14896d63743ca49f78",
+  "confirmed_by": "user",
+  "confirmed_date": "2026-10-27",
+  "design_reference_status": "user_confirmed_final_3d_layout_with_provisional_2d_artwork",
+  "scope": "Four block names in the user-annotated reference, not individual facade signs or navigation anchors.",
+  "coordinate_authority": "none",
+  "landmarks": [
+    {"id": "VILLA", "label": "Villa", "image_quadrant": "upper_left"},
+    {"id": "HANOK", "label": "Hanok", "image_quadrant": "upper_right"},
+    {"id": "PIZZA", "label": "Pizza", "image_quadrant": "lower_left"},
+    {"id": "OFFICE_BUILDING", "label": "Office Building", "image_quadrant": "lower_right"}
+  ],
+  "mission_map_changed": false,
+  "route_binding_status": "deferred_until_final_2d_map_alignment",
+  "physical_execution_enabled": false
+}

@@ -11,6 +11,9 @@ Versions below were resolved on 2026-10-27. Python license identifiers were chec
 | Material | Source/version | Upstream license | Use |
 |---|---|---|---|
 | React and React DOM | npm, 19.3.1 | MIT | Browser runtime |
+| Three.js | npm, 0.160.0 | MIT; original notice in `frontend/public/three-LICENSE.txt` | Lazy-loaded Spatial 3D renderer |
+| Draco glTF decoder | Unmodified files shipped with Three.js 0.160.0 | Apache-2.0; complete notice in `frontend/public/draco-LICENSE.txt` | Local browser decoding of the private city GLB |
+| Three.js type definitions | npm, 0.160.0 | MIT | Local type checking |
 | Pretendard Variable | [Official upstream v1.3.9](https://github.com/orioncactus/pretendard/tree/v1.3.9), unmodified full WOFF2 | [SIL Open Font License 1.1](frontend/public/fonts/pretendard/OFL.txt) | Self-hosted product typography; Korean and Latin text |
 | TypeScript | npm, 7.0.2 | Apache-2.0 | Local type checking |
 | Vite | npm, 8.3.5 | MIT | Local build/dev server |
@@ -36,6 +39,8 @@ Pretendard is copyright © 2021 Kil Hyung-jin, with Reserved Font Name Pretendar
 Meta is accessed as an external service through its documented HTTPS API; no Meta SDK or model weights are included. Provider access remains subject to the account's applicable service terms. Recorded live checks establish the limited scope in [`docs/META_API_CHECK.md`](docs/META_API_CHECK.md).
 
 ## Original and inherited artwork
+
+The user-supplied city GLB is installed separately into ignored `frontend/public/models/private/` for a private static deployment. It is not committed or included in public source archives. The provided package contains no complete asset-licensing/provenance record, so no public redistribution rights are asserted. The newly authored viewer loads the supplied geometry with local Three.js/Draco assets; it does not copy the package's HTML UI or execute its conversion scripts. Runtime-only signal neutralization and mesh batching leave the original GLB unchanged. See [`docs/SPATIAL_3D.md`](docs/SPATIAL_3D.md) for provenance, user-confirmed block names and the deferred 2D/3D route boundary.
 
 `backend/data/little-town-temporary.json` adapts geometry, graph, named destinations and marker facts from the pre-existing PushPilot `production-v11/map-definition.json`, SHA-256 `dea6c955e01f2bc91333d8e47246a960d926831772603245e89183340b52481a`. This is inherited design data, not newly authored road geometry. The adapter strips historical POC provenance paths, obsolete grasp/transport assumptions, robot transforms and artwork. New route supervision and recorded-scene processing are separately authored application code. No new license grant for the inherited material is asserted.
 

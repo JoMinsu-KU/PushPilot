@@ -21,10 +21,13 @@ export interface LiveCameraSnapshot {
   freshness_limit_ms: number;
   last_error: string | null;
   motion_authority: false;
+  saved_reference_available?: boolean;
 }
 
 /** GET /api/v1/live-camera; GET frame.image_url returns native JPEG cache bytes.
  * POST /api/v1/live-camera/registration: {epoch, frame_id} explicitly locks a
- * fresh consistent four-marker view. Registration is memory-only and display-only.
+ * fresh consistent four-marker view. A saved reference remains display-only.
+ * POST /api/v1/live-camera/registration/resume: {epoch} requests reuse of the
+ * server-held fixed reference after its identity and visible-marker checks.
  * received_at is camera-host JPEG dequeue time, not sensor exposure time.
  */
