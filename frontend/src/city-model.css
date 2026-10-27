@@ -2,6 +2,7 @@
 .city-model-host { position: absolute; inset: 0; }
 .city-model-host { background: radial-gradient(ellipse at 42% 48%, #f6f7f4 0, #e9edeb70 67%, transparent 100%); }
 .city-model-canvas { display: block; width: 100%; height: 100%; outline: none; touch-action: none; }
+.city-route-preview { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; pointer-events: none; overflow: hidden; }
 .city-model-state { position: absolute; z-index: 2; left: calc(var(--stage-content-left, 108px) + 12px); top: 40%; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; max-width: min(350px, calc(100% - var(--stage-content-left, 108px) - 30px)); padding: 19px 21px; border: 1px solid #ffffffcd; border-radius: 22px; background: #ffffffa3; box-shadow: 0 13px 48px #2d3d3910; backdrop-filter: blur(14px); color: #7c878a; font-size: 12px; line-height: 1.6; }
 .city-model-state strong { color: #535e61; font-size: 15px; font-weight: 500; letter-spacing: -.3px; }
 .city-model-state > span { max-width: 100%; overflow-wrap: anywhere; }

@@ -1,9 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { TemporaryMap } from '../../contracts/scene';
 import * as THREE from 'three';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { cityPreviewFit, projectCityPreview, type CityProjection } from './cityRoutePreview';
+import { projectRouteDisplay, type RouteDisplay } from './routeProgress';
+import { RouteOverlay } from './RouteOverlay';
+import type { Point } from './projection';
 import './city-model.css';
 
 const MODEL_URL = '/models/private/pushpilot-city.glb';
@@ -138,12 +143,23 @@ function optimizeStaticModel(root: THREE.Group, owner: Resources): THREE.Group {
 }
 
 /** A display-only model. It never estimates a car pose or supplies robot coordinates. */
-export function CityModelView() {
+export function CityModelView({ map, display }: { map: TemporaryMap | null; display: RouteDisplay | null }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const runtimeRef = useRef<ViewRuntime | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [preset, setPreset] = useState<Preset>('city');
   const [status, setStatus] = useState<ModelStatus>({ kind: 'loading', message: 'Loading the supplied city model…' });
+  const [projection, setProjection] = useState<CityProjection | null>(null);
+  const routePreview = useMemo(() => {
+    const fit = cityPreviewFit(map);
+    if (!fit || !projection || !display) return null;
+    const project = (point: Point) => projectCityPreview(point, fit, projection);
+    const projected = projectRouteDisplay(display, project);
+    const corners: Point[] = [[fit.left, fit.top], [fit.left + fit.width, fit.top],
+      [fit.left + fit.width, fit.top + fit.height], [fit.left, fit.top + fit.height]];
+    const boundary = corners.map(project);
+    return projected ? { display: projected, boundary: boundary.every((point): point is Point => point !== null) ? boundary : undefined } : null;
+  }, [map, display, projection]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -160,6 +176,7 @@ export function CityModelView() {
     let loadDeadline: number | undefined;
     setStatus({ kind: 'loading', message: 'Loading the supplied city model…' });
     setPreset('city');
+    setProjection(null);
 
     const active = () => !disposed && !failed && intersecting && !document.hidden;
     const render = () => {
@@ -168,6 +185,10 @@ export function CityModelView() {
       try {
         const changing = controls.update();
         renderer.render(scene, camera);
+        // Share the exact rendered camera, including its lens offset, with the SVG.
+        const matrix = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse).toArray();
+        setProjection(previous => previous?.width === width && previous.height === height
+          && previous.matrix.every((value, index) => value === matrix[index]) ? previous : { width, height, matrix });
         if (changing) requestRender();
       } catch {
         failed = true;
@@ -238,7 +259,7 @@ export function CityModelView() {
       renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       renderer.domElement.className = 'city-model-canvas';
       renderer.domElement.setAttribute('role', 'img');
-      renderer.domElement.setAttribute('aria-label', 'Interactive 3D city preview. Display only; no route or physical registration.');
+      renderer.domElement.setAttribute('aria-label', 'Interactive Spatial city preview. The 2D route is illustrative; city alignment is pending.');
       renderer.domElement.addEventListener('webglcontextlost', onContextLost);
       renderer.domElement.addEventListener('webglcontextrestored', onContextRestored);
       host.appendChild(renderer.domElement);
@@ -342,9 +363,14 @@ export function CityModelView() {
   const selectPreset = (next: Preset) => { runtimeRef.current?.preset(next); setPreset(next); };
   return <div className="city-model-view">
     <div className="city-model-host" ref={hostRef}/>
+    {status.kind === 'ready' && routePreview && projection && <svg className="city-route-preview"
+      viewBox={`0 0 ${projection.width} ${projection.height}`} role="img" aria-label="Current 2D route preview on the city. Alignment pending; no measured vehicle position.">
+      <title>The same selected 2D path, direction, stop lines and simulation progress as Camera. Approximate display fit only.</title>
+      <RouteOverlay display={routePreview.display} scale={Math.max(.9, Math.min(1.4, projection.width / 900))} boundary={routePreview.boundary}/>
+    </svg>}
     {status.kind !== 'ready' && <div className={`city-model-state city-model-state-${status.kind}`} role={status.kind === 'loading' ? 'status' : 'alert'}>
       {status.kind === 'loading' && <span className="city-model-loading-dot" aria-hidden="true"/>}
-      <strong>{status.kind === 'loading' ? 'Opening Spatial 3D' : 'Spatial 3D unavailable'}</strong>
+      <strong>{status.kind === 'loading' ? 'Opening Spatial' : 'Spatial unavailable'}</strong>
       <span>{status.message}</span>
       {status.kind !== 'loading' && <button type="button" onClick={() => setAttempt(value => value + 1)}>Reload 3D view</button>}
     </div>}

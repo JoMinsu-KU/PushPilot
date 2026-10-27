@@ -7,7 +7,6 @@ import { projectPoint, type Point } from './projection';
 import { createRouteDisplay, projectRouteDisplay, type RouteDisplay } from './routeProgress';
 import { RouteLegend, RouteOverlay } from './RouteOverlay';
 import { CityViewBoundary } from './CityViewBoundary';
-import { nodeLabel } from './mapMetadata';
 import { recordedDisplay } from './boardFocus';
 import { createLivePollGate, liveDisplaySnapshot, liveFrameAge, liveFrameFresh, liveOverlayAllowed } from './liveCamera';
 import './map-scene.css';
@@ -35,98 +34,7 @@ function captureLabel(frame: NonNullable<SceneSnapshot['frame']>) {
   return `Captured ${new Date(frame.captured_at).toLocaleString('en-US')}`;
 }
 
-// The same affine projection is used for the drawing, route and destination pins.
-// Building heights and facade details are illustrative, never measured obstacles.
-function architecturalPoint(x: number, y: number, z = 0): Point {
-  return [240 + .94 * x - .7 * y, 35 + .29 * x + .54 * y - z];
-}
 function polygon(points: Point[]) { return points.map(point => point.join(',')).join(' '); }
-
-function BuildingVolume({ bounds, name, selected, index }: { bounds: [number, number, number, number]; name: string; selected: boolean; index: number }) {
-  const [left, top, right, bottom] = bounds;
-  const x0 = left + 7, y0 = top + 8, x1 = right - 7, y1 = bottom - 7;
-  const height = index === 2 ? 24 : index === 1 ? 20 : 18;
-  const p = architecturalPoint;
-  const roof = [p(x0, y0, height), p(x1, y0, height), p(x1, y1, height), p(x0, y1, height)];
-  const sign = p((x0 + x1) / 2, y1, height / 2);
-  const unit = (x: number, y: number, width: number, depth: number) => <g>
-    <polygon points={polygon([p(x, y, height + 3), p(x + width, y, height + 3), p(x + width, y + depth, height + 3), p(x, y + depth, height + 3)])} fill="#eeeFEB" stroke="#b9bdb8" strokeWidth=".45"/>
-    <polygon points={polygon([p(x, y + depth, height), p(x + width, y + depth, height), p(x + width, y + depth, height + 3), p(x, y + depth, height + 3)])} fill="#d2d5cf" stroke="#b9bdb8" strokeWidth=".4"/>
-    {[2, 4, 6].map(offset => <line key={offset} x1={p(x + offset, y + 1, height + 3)[0]} y1={p(x + offset, y + 1, height + 3)[1]} x2={p(x + offset, y + depth - 1, height + 3)[0]} y2={p(x + offset, y + depth - 1, height + 3)[1]} stroke="#b4b9b3" strokeWidth=".45"/>)}
-  </g>;
-  return <g className="architectural-building">
-    <polygon points={polygon([p(x0 + 8, y0 + 9), p(x1 + 9, y0 + 9), p(x1 + 9, y1 + 9), p(x0 + 8, y1 + 9)])} fill="#b6bbb4" opacity=".16"/>
-    <polygon points={polygon([p(x0, y1), p(x1, y1), p(x1, y1, height), p(x0, y1, height)])} fill="#e8e8e1" stroke="#aeb4ad" strokeWidth=".55"/>
-    <polygon points={polygon([p(x1, y0), p(x1, y1), p(x1, y1, height), p(x1, y0, height)])} fill="#d9ddd6" stroke="#aeb4ad" strokeWidth=".55"/>
-    {Array.from({ length: 10 }, (_, number) => {
-      const x = x0 + 4 + number * (x1 - x0 - 10) / 10;
-      return <polygon key={number} points={polygon([p(x, y1, 3), p(x + 6, y1, 3), p(x + 6, y1, height - 6), p(x, y1, height - 6)])} fill={number % 3 === 0 ? '#c2cfcb' : '#d6dfd9'} stroke="#aeb9b1" strokeWidth=".35"/>;
-    })}
-    {[0, 1, 2, 3].map(number => {
-      const y = y0 + 4 + number * 7;
-      return <polygon key={number} points={polygon([p(x1, y, 4), p(x1, y + 4, 4), p(x1, y + 4, height - 5), p(x1, y, height - 5)])} fill="#c4d0c8" stroke="#a9b4ac" strokeWidth=".35"/>;
-    })}
-    <polygon points={polygon(roof)} fill="#f8f8f3" stroke="#aeb4ad" strokeWidth=".65"/>
-    <polygon points={polygon([p(x0 + 2, y0 + 2, height), p(x1 - 2, y0 + 2, height), p(x1 - 2, y1 - 2, height), p(x0 + 2, y1 - 2, height)])} fill="none" stroke="#d9dcd5" strokeWidth=".55"/>
-    {[1, 2, 3].map(number => <line key={number} x1={p(x0 + number * (x1 - x0) / 4, y0 + 2, height)[0]} y1={p(x0 + number * (x1 - x0) / 4, y0 + 2, height)[1]} x2={p(x0 + number * (x1 - x0) / 4, y1 - 2, height)[0]} y2={p(x0 + number * (x1 - x0) / 4, y1 - 2, height)[1]} stroke="#e2e4de" strokeWidth=".4"/>)}
-    {unit(x0 + 9, y0 + 8, 12, 8)}{unit(x0 + 26, y0 + 8, 12, 8)}
-    <polygon points={polygon([p(x1 - 28, y0 + 7, height + .3), p(x1 - 9, y0 + 7, height + .3), p(x1 - 9, y1 - 6, height + .3), p(x1 - 28, y1 - 6, height + .3)])} fill="#dae3df" stroke="#b9c5bd" strokeWidth=".45"/>
-    <text x={sign[0]} y={sign[1] - 1} textAnchor="middle" fontSize="4.8" letterSpacing=".6" fill="#5e685e" paintOrder="stroke" stroke="#f4f5ef" strokeWidth="1.5">{name}</text>
-    {selected && <line x1={p(x0, y1, height)[0]} y1={p(x0, y1, height)[1]} x2={p(x1, y1, height)[0]} y2={p(x1, y1, height)[1]} stroke="#da744e" strokeWidth="1.1"/>}
-  </g>;
-}
-
-function SpatialMap({ map, route, display }: { map: TemporaryMap; route: MapRoute | null; display: RouteDisplay | null }) {
-  const id = useId().replace(/:/g, '');
-  const byId = new Map(map.nodes.map(node => [node.id, node]));
-  const validRoute = route?.map_hash === map.geometry_hash && route.map_id === map.id && route.map_version === map.version ? route : null;
-  const width = map.board.width_mm, height = map.board.height_mm;
-  const p = architecturalPoint;
-  const projectedDisplay = display ? projectRouteDisplay(display, ([x, y]) => p(x, y)) : null;
-  const extent = [p(0, 0), p(width, 0), p(width, height), p(0, height)];
-  const minX = Math.min(...extent.map(point => point[0])) - 45, minY = Math.min(...extent.map(point => point[1])) - 55;
-  const viewBox = [minX, minY, Math.max(...extent.map(point => point[0])) - minX + 45, Math.max(...extent.map(point => point[1])) - minY + 55];
-  const destination = validRoute ? byId.get(validRoute.destination) : null;
-  const destinationPoint = destination ? p(destination.x_mm, destination.y_mm) : null;
-  return <div className="spatial-map-wrap">
-    <svg className="spatial-map" viewBox={viewBox.join(' ')} preserveAspectRatio="xMidYMid meet" role="img"
-      aria-label={`Illustrative architectural view of ${map.title}; temporary road geometry${validRoute ? ` with route from ${validRoute.start} to ${validRoute.destination}` : ''}; building volumes are not a physical scan`}>
-      <defs><radialGradient id={`${id}-ground-shadow`}><stop stopColor="#a2a99f" stopOpacity=".22"/><stop offset="1" stopColor="#a2a99f" stopOpacity="0"/></radialGradient></defs>
-      <ellipse cx="340" cy="218" rx="290" ry="111" fill={`url(#${id}-ground-shadow)`}/>
-      <polygon points={polygon([p(0, height), p(width, height), p(width, height, -5), p(0, height, -5)])} fill="#dadfd6" stroke="#c1c9bd" strokeWidth=".4"/>
-      <polygon points={polygon([p(width, 0), p(width, height), p(width, height, -5), p(width, 0, -5)])} fill="#d1d8cd" stroke="#c1c9bd" strokeWidth=".4"/>
-      <polygon points={polygon([p(0, 0), p(width, 0), p(width, height), p(0, height)])} fill="#f0f1eb" stroke="#c6cec1" strokeWidth=".7"/>
-      <g transform="matrix(.94 .29 -.7 .54 240 35)">
-        {Array.from({ length: Math.floor(width / 20) + 1 }, (_, index) => <line key={`x${index}`} x1={index * 20} y1="0" x2={index * 20} y2={height} stroke="#d9ddd3" strokeWidth=".35"/>)}
-        {Array.from({ length: Math.floor(height / 20) + 1 }, (_, index) => <line key={`y${index}`} x1="0" y1={index * 20} x2={width} y2={index * 20} stroke="#d9ddd3" strokeWidth=".35"/>)}
-        {map.edges.map(edge => {
-          const from = byId.get(edge.from), to = byId.get(edge.to);
-          return from && to ? <line key={`${edge.from}-${edge.to}`} x1={from.x_mm} y1={from.y_mm} x2={to.x_mm} y2={to.y_mm} stroke="#daddd4" strokeWidth={map.board.road_width_mm + 2} strokeLinecap="square"/> : null;
-        })}
-        {map.edges.map(edge => {
-          const from = byId.get(edge.from), to = byId.get(edge.to);
-          return from && to ? <g key={`${edge.from}-${edge.to}`}><line x1={from.x_mm} y1={from.y_mm} x2={to.x_mm} y2={to.y_mm} stroke="#fcfcf8" strokeWidth={map.board.road_width_mm} strokeLinecap="square"/><line x1={from.x_mm} y1={from.y_mm} x2={to.x_mm} y2={to.y_mm} stroke="#ccd0c6" strokeWidth=".7" strokeDasharray="4 5"/></g> : null;
-        })}
-        {map.building_panels.map(panel => <rect key={panel.id} x={panel.bounds_mm[0]} y={panel.bounds_mm[1]} width={panel.bounds_mm[2] - panel.bounds_mm[0]} height={panel.bounds_mm[3] - panel.bounds_mm[1]} fill="#e4e9dd" stroke="#c8d0c0" strokeWidth=".6"/>)}
-        {map.markers.map(marker => <rect key={marker.id} x={marker.center_mm[0] - 4} y={marker.center_mm[1] - 4} width="8" height="8" fill="#fbfcf8" stroke="#aeb9a7" strokeWidth=".65"/>)}
-      </g>
-      {map.building_panels.map((panel, index) => <BuildingVolume key={panel.id} bounds={panel.bounds_mm} name={nodeLabel(map, panel.id)} selected={panel.id === validRoute?.destination} index={index}/>)}
-      {map.nodes.filter(node => node.kind === 'junction').map(node => {
-        const point = p(node.x_mm, node.y_mm);
-        return <text key={node.id} x={point[0]} y={point[1] + 2} textAnchor="middle" fill="#9ca696" fontSize="5">{node.id}</text>;
-      })}
-      <RouteOverlay display={projectedDisplay} scale={.8} boundary={extent}/>
-      {destinationPoint && <g className="architectural-destination">
-        <path d={`M${destinationPoint[0]} ${destinationPoint[1] - 4}v-17`} stroke="#7b8d75" strokeWidth=".7"/>
-        <rect x={destinationPoint[0] - 31} y={destinationPoint[1] - 37} width="62" height="19" rx="7" fill="#ffffffed" stroke="#d0d9ca" strokeWidth=".6"/>
-        <circle cx={destinationPoint[0] - 21} cy={destinationPoint[1] - 27.5} r="2" fill="#81a078"/>
-        <text x={destinationPoint[0] + 3} y={destinationPoint[1] - 25.4} textAnchor="middle" fontSize="5.8" fill="#56634e">{nodeLabel(map, validRoute?.destination)}</text>
-      </g>}
-      <g stroke="#a9b3a2" strokeWidth=".5"><line x1={p(0, height + 16)[0]} y1={p(0, height + 16)[1]} x2={p(width, height + 16)[0]} y2={p(width, height + 16)[1]}/><line x1={p(0, height + 11)[0]} y1={p(0, height + 11)[1]} x2={p(0, height + 21)[0]} y2={p(0, height + 21)[1]}/><line x1={p(width, height + 11)[0]} y1={p(width, height + 11)[1]} x2={p(width, height + 21)[0]} y2={p(width, height + 21)[1]}/></g>
-      <text x={p(width / 2, height + 30)[0]} y={p(width / 2, height + 30)[1]} fontSize="5.8" fill="#9aa592" textAnchor="middle" letterSpacing=".5">{width} mm · drawing coordinates</text>
-    </svg>
-  </div>;
-}
 
 function CameraFrame({ scene, route, map, focused, display, live = false, fresh = true }: { scene: SceneSnapshot | LiveCameraSnapshot; route: MapRoute | null; map: TemporaryMap | null; focused: boolean; display: RouteDisplay | null; live?: boolean; fresh?: boolean }) {
   const id = useId().replace(/:/g, '');
@@ -162,7 +70,7 @@ function CameraFrame({ scene, route, map, focused, display, live = false, fresh 
     {scene.registration.status === 'view_changed' && <div className="overlay-inhibition"><Icon name="shield" size={17}/>View changed. The previous overlay is hidden.</div>}
     {live && !fresh ? <div className="overlay-inhibition live-warning"><Icon name="clock" size={17}/>STALE · Last decoded image. Route overlay is hidden.</div>
       : scene.registration.status === 'locked_occluded' ? <div className="overlay-inhibition partial live-warning"><Icon name="eye" size={17}/>Markers obscured · fixed mapping retained; view stability is unconfirmed.</div>
-      : scene.registration.status === 'locked_partial' && <div className={`overlay-inhibition partial ${live ? 'live-warning' : ''}`}><Icon name="eye" size={17}/>Some markers are obscured. The locked test mapping is retained.</div>}
+      : scene.registration.status === 'locked_partial' && <div className={`overlay-inhibition partial ${live ? 'live-warning' : ''}`}><Icon name="eye" size={17}/>{scene.detection.marker_ids.filter(id => map?.markers.some(marker => marker.id === id)).length}/{map?.markers.length ?? 4} markers detected · fixed mapping retained.</div>}
     {matchesMap && !overlayAllowed && scene.registration.status !== 'view_changed' && (!live || fresh) && <div className="overlay-note">{candidate ? `Lock the ${live ? 'live' : 'test'} view to project the planned route.` : 'Route overlay requires a valid locked test registration.'}</div>}
   </div>;
 }
@@ -278,7 +186,7 @@ export function MapScene({ workspace, readOnly = false, onSnapshot, onPreviewSou
 }) {
   const [map, setMap] = useState<TemporaryMap | null>(null);
   const [scene, setScene] = useState<SceneSnapshot | null>(null);
-  const [view, setView] = useState<'camera' | 'spatial' | 'city'>('camera');
+  const [view, setView] = useState<'camera' | 'spatial'>('camera');
   const [cameraSource, setCameraSource] = useState<'auto' | 'live' | 'recorded'>('auto');
   const [lockingLive, setLockingLive] = useState(false);
   const live = useLiveCamera();
@@ -403,7 +311,7 @@ export function MapScene({ workspace, readOnly = false, onSnapshot, onPreviewSou
     : changedLiveScene?.registration.status === 'locked_partial' ? 'Mapping retained · partial markers'
     : changedLiveScene?.registration.status === 'locked' ? 'Fixed test mapping'
     : changedLiveScene?.registration.status === 'view_changed' ? 'View changed · AR hidden' : 'Live view is not locked';
-  const previewSourceLabel = view === 'city' ? '3D city model' : view === 'spatial' ? 'Illustrative spatial view' : usingLive
+  const previewSourceLabel = view === 'spatial' ? 'Spatial city preview' : usingLive
     ? liveScene?.frame ? liveFresh ? 'Live camera' : 'Live camera · stale' : 'Live camera · connecting'
     : scene?.frame ? scene.frame.source === 'recorded' ? 'Recorded image' : 'Uploaded image' : 'No image';
   useEffect(() => { onPreviewSource?.(previewSourceLabel); }, [onPreviewSource, previewSourceLabel]);
@@ -427,22 +335,21 @@ export function MapScene({ workspace, readOnly = false, onSnapshot, onPreviewSou
     <div className="map-scene-controls">
       <div className="scene-view-toggle" role="group" aria-label="Scene view">
         <button className={view === 'camera' ? 'selected' : ''} aria-label="Camera frame" aria-pressed={view === 'camera'} onClick={() => setView('camera')}><Icon name="camera" size={15}/>Camera</button>
-        <button className={view === 'spatial' ? 'selected' : ''} aria-label="Spatial map" aria-pressed={view === 'spatial'} onClick={() => setView('spatial')}><Icon name="route" size={15}/>2D Map</button>
-        <button className={view === 'city' ? 'selected' : ''} aria-label="Spatial 3D" aria-pressed={view === 'city'} onClick={() => setView('city')}><Icon name="home" size={15}/>3D City</button>
+        <button className={view === 'spatial' ? 'selected' : ''} aria-label="Spatial map" aria-pressed={view === 'spatial'} onClick={() => setView('spatial')}><Icon name="route" size={15}/>Spatial</button>
       </div>
       {view === 'camera' && liveAvailable && <div className="scene-view-toggle scene-camera-source" role="group" aria-label="Camera source"><button className={usingLive ? 'selected' : ''} aria-pressed={usingLive} onClick={() => setCameraSource('live')}>Live</button><button className={!usingLive ? 'selected' : ''} aria-pressed={!usingLive} onClick={() => setCameraSource('recorded')}>Recorded</button></div>}
       {view === 'camera' && cameraScene?.frame && <button className="scene-focus-toggle" disabled={!canBoardFocus} aria-pressed={hasBoardMask} onClick={() => setFocused(value => !value)} title={hasBoardMask ? 'Display mask only. Original camera pixels and the fixed mapping stay unchanged.' : 'Full frame. Board focus requires a valid locked test mapping.'}>{hasBoardMask ? 'Board focus' : 'Full frame'}<Icon name="eye" size={14}/></button>}
-      {view !== 'city' && <button className="scene-tools-toggle" aria-label="Image tools" aria-haspopup="dialog" aria-expanded={expanded} onClick={() => openTools('image')}><Icon name="settings" size={16}/><span>Image tools</span></button>}
+      {view === 'camera' && <button className="scene-tools-toggle" aria-label="Image tools" aria-haspopup="dialog" aria-expanded={expanded} onClick={() => openTools('image')}><Icon name="settings" size={16}/><span>Image tools</span></button>}
     </div>
-    {view !== 'city' && <RouteLegend display={routeDisplay}/>}
-    {view !== 'city' && (error || mismatchedRoute) && <div className="scene-error" role="alert"><Icon name="shield" size={16}/><span>{error || 'Map geometry changed. Create a new plan to display its route.'}</span><button onClick={() => { setError(''); void refresh(true); void refreshMap(); }} aria-label="Refresh scene state"><Icon name="refresh" size={15}/></button></div>}
+    <RouteLegend display={routeDisplay}/>
+    {(error || mismatchedRoute) && <div className="scene-error" role="alert"><Icon name="shield" size={16}/><span>{error || 'Map geometry changed. Create a new plan to display its route.'}</span><button onClick={() => { setError(''); void refresh(true); void refreshMap(); }} aria-label="Refresh scene state"><Icon name="refresh" size={15}/></button></div>}
     <div className="scene-visual">
-      {view === 'city' ? <Suspense fallback={<div className="no-recorded-frame" role="status"><h2>Opening Spatial 3D…</h2></div>}><CityViewBoundary onReturn={() => setView('camera')}><CityModelView/></CityViewBoundary></Suspense> : view === 'spatial' ? map ? <SpatialMap map={map} route={route} display={routeDisplay}/> : <div className="no-recorded-frame"><Icon name="route" size={32}/><h2>Loading temporary geometry…</h2></div> : cameraScene?.frame ? <CameraFrame scene={cameraScene} route={route} map={map} focused={focused} display={routeDisplay} live={usingLive} fresh={liveFresh}/> : <div className="no-recorded-frame"><Icon name="camera" size={32}/><h2>{usingLive ? 'Connecting to the camera…' : 'Bring your workspace into view.'}</h2><p>{usingLive ? live.status?.last_error || 'Waiting for the first decoded live image. Recorded images remain available.' : 'Load a recorded image for marker detection and scene inspection.'}</p><button disabled={readOnly || Boolean(busy)} onClick={() => usingLive ? setCameraSource('recorded') : openTools('image')}><Icon name={usingLive ? 'camera' : 'upload'} size={16}/>{usingLive ? 'View recorded image' : 'Choose a recorded frame'}</button><button className="spatial-preview-link" onClick={() => setView('spatial')}>Explore the illustrative spatial view<Icon name="arrow" size={15}/></button><small>{usingLive ? 'Live preview has no motion authority.' : 'No live camera is connected.'}</small></div>}
+      {view === 'spatial' ? <Suspense fallback={<div className="no-recorded-frame" role="status"><h2>Opening Spatial…</h2></div>}><CityViewBoundary onReturn={() => setView('camera')}><CityModelView map={map} display={routeDisplay}/></CityViewBoundary></Suspense> : cameraScene?.frame ? <CameraFrame scene={cameraScene} route={route} map={map} focused={focused} display={routeDisplay} live={usingLive} fresh={liveFresh}/> : <div className="no-recorded-frame"><Icon name="camera" size={32}/><h2>{usingLive ? 'Connecting to the camera…' : 'Bring your workspace into view.'}</h2><p>{usingLive ? live.status?.last_error || 'Waiting for the first decoded live image. Recorded images remain available.' : 'Load a recorded image for marker detection and scene inspection.'}</p><button disabled={readOnly || Boolean(busy)} onClick={() => usingLive ? setCameraSource('recorded') : openTools('image')}><Icon name={usingLive ? 'camera' : 'upload'} size={16}/>{usingLive ? 'View recorded image' : 'Choose a recorded frame'}</button><button className="spatial-preview-link" onClick={() => setView('spatial')}>Explore Spatial<Icon name="arrow" size={15}/></button><small>{usingLive ? 'Live preview has no motion authority.' : 'No live camera is connected.'}</small></div>}
     </div>
     <div className={`scene-source-plate ${usingLive && view === 'camera' ? liveFresh ? 'live-source' : 'stale-source' : ''}`}>
       <span className="scene-source-dot"/>
-      <div><strong>{view === 'city' ? '3D city model' : view === 'spatial' ? 'Illustrative spatial view' : usingLive ? liveScene?.frame ? `Live camera${liveFresh ? '' : ' · STALE'} · ${Number.isFinite(liveAge) ? `${(liveAge / 1000).toFixed(1)} s` : 'age unknown'}` : 'Live camera · connecting' : scene?.frame ? `${scene.frame.source === 'recorded' ? 'Recorded' : 'Uploaded'} camera frame` : 'Camera not connected'}</strong><span>{view === 'city' ? 'Display only · routes use the 2D map' : view === 'spatial' ? 'Temporary geometry · no physical scan' : usingLive ? `${hasBoardMask ? 'Board focus' : 'Full frame'} · ${liveRegistrationLabel}` : hasBoardMask ? 'Board focus · background masked' : scene?.frame ? `${scene.frame.width} × ${scene.frame.height} · full frame` : 'Load a recorded image to inspect the scene'}</span></div>
-      {view === 'city' ? <span className="live-motion-note"><Icon name="eye" size={14}/>Model only</span> : usingLive && view === 'camera' && (resumeAvailable || ['candidate', 'view_changed'].includes(liveScene?.registration.status ?? ''))
+      <div><strong>{view === 'spatial' ? 'Spatial city preview' : usingLive ? liveScene?.frame ? `Live camera${liveFresh ? '' : ' · STALE'} · ${Number.isFinite(liveAge) ? `${(liveAge / 1000).toFixed(1)} s` : 'age unknown'}` : 'Live camera · connecting' : scene?.frame ? `${scene.frame.source === 'recorded' ? 'Recorded' : 'Uploaded'} camera frame` : 'Camera not connected'}</strong><span>{view === 'spatial' ? routeDisplay ? '2D route preview · alignment pending' : 'City model · awaiting a 2D plan' : usingLive ? `${hasBoardMask ? 'Board focus' : 'Full frame'} · ${liveRegistrationLabel}` : hasBoardMask ? 'Board focus · background masked' : scene?.frame ? `${scene.frame.width} × ${scene.frame.height} · full frame` : 'Load a recorded image to inspect the scene'}</span></div>
+      {view === 'spatial' ? <span className="live-motion-note"><Icon name="eye" size={14}/>Preview only</span> : usingLive && view === 'camera' && (resumeAvailable || ['candidate', 'view_changed'].includes(liveScene?.registration.status ?? ''))
         ? <button className="live-lock-button" disabled={!(resumeAvailable ? canResumeLive : canLockLive)} onClick={() => void lockLiveView(resumeAvailable)} title={resumeAvailable ? 'Explicitly reuse the saved fixed display mapping after server validation. No refit.' : active ? 'Lock a live view during mission preparation.' : 'Explicitly lock the current live camera-to-board test mapping.'}><Icon name="check" size={14}/>{lockingLive ? 'Checking…' : resumeAvailable ? 'Resume fixed view' : 'Lock live view'}</button>
         : usingLive && view === 'camera' ? <span className="live-motion-note" title="Live preview and its test mapping have no robot motion authority."><Icon name="shield" size={14}/>Preview only</span>
           : <button onClick={() => openTools('registration')} aria-label="View recorded scene registration details" title="Recorded image registration"><Icon name="shield" size={15}/></button>}

@@ -6,8 +6,8 @@ export class CityViewBoundary extends Component<{children: ReactNode; onReturn: 
   static getDerivedStateFromError() { return { failed: true }; }
   render() {
     return this.state.failed ? <div className="no-recorded-frame" role="alert">
-      <h2>Spatial 3D unavailable</h2>
-      <p>The 3D viewer could not open. Camera and 2D routes remain available. Refresh the page to retry the model.</p>
+      <h2>Spatial unavailable</h2>
+      <p>The city viewer could not open. Camera and its route remain available. Refresh the page to retry Spatial.</p>
       <button type="button" onClick={this.props.onReturn}>Return to Camera</button>
     </div> : this.props.children;
   }

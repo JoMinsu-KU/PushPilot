@@ -1,8 +1,8 @@
 # Spatial 3D city preview
 
-The supplied city GLB is a display-only view alongside the existing camera and 2D route map. MUSE routes continue to use the active 2D map. No route, simulated progress, vehicle position, camera registration or robot coordinate is projected onto the city model in this implementation. The user explicitly deferred joining the two views until the final 2D design is available.
+The existing **Camera / Spatial** switch remains the only scene navigation. Spatial replaces the former illustrative grid/building drawing with the supplied city GLB; there is no separate 3D City tab. MUSE routes continue to use the active 2D map. At the user's request, Spatial previews the same selected path, arrows, stop lines and simulation progress over the model, clearly labelled **2D route preview · alignment pending**. This approximate display fit is not a registered 3D route, measured vehicle position or robot coordinate.
 
-The user confirmed that the supplied 3D layout is the final design reference, while the installed 2D print is provisional test material. This does not replace the currently active 2D mission profile: the latest instruction keeps routing on that profile and uses the 3D asset for display only until the final 2D artwork and its alignment are ready.
+The user confirmed that the supplied 3D layout is the final design reference, while the installed 2D print is provisional test material. This does not replace the currently active 2D mission profile: the latest instruction keeps routing on that profile and uses the 3D asset with an illustrative route preview until the final 2D artwork and its alignment are ready.
 
 ## User-confirmed block names
 
@@ -39,24 +39,31 @@ python tools/install_city_model.py /path/to/PushPilot_city_web_package.zip
 
 The installer reads only the expected GLB entry, validates its identity and copies it to `frontend/public/models/private/pushpilot-city.glb`. The private model directory is ignored. The frontend preparation script copies pinned Draco decoder assets from the installed Three.js package to ignored `public/vendor/draco/` before build/dev. The built static frontend includes those local files, so the private deployment does not need a model or decoder CDN. Source releases built from committed Git blobs exclude the private model and generated decoders; reinstall them when preparing a private deployment.
 
-The viewer is lazy-loaded only when Spatial 3D is selected. Drag to orbit, pinch/wheel to zoom, and use City, Intersection or Reset for the predefined views. Pixel ratio is capped, shadows use a modest map and repeated planting is instanced; compatible opaque city meshes are batched. Rendering runs in the viewing browser's WebGL context; GX10 serves the static files rather than rendering frames for the tablet. Actual browser/tablet performance still requires measurement. Three.js and Draco notices are copied with the static frontend.
+The viewer is lazy-loaded only when Spatial is selected. Drag to orbit, pinch/wheel to zoom, and use City, Intersection or Reset for the predefined views. Pixel ratio is capped, shadows use a modest map and repeated planting is instanced; compatible opaque city meshes are batched. Rendering runs in the viewing browser's WebGL context; GX10 serves the static files rather than rendering frames for the tablet. Actual browser/tablet performance still requires measurement. Three.js and Draco notices are copied with the static frontend.
 
-All existing glass cards, navigation, font and stage dimensions remain in place. Only the optional scene branch and its small scoped controls are added. The oversized export staging plane is given a neutral runtime tabletop material; the city textures and original GLB bytes are preserved. A scoped error boundary keeps failed lazy-chunk loading from removing Camera and 2D navigation, and WebGL recovery remains explicit.
+All existing glass cards, navigation, font and stage dimensions remain in place. Spatial changes its scene content and adds only small scoped view controls. The oversized export staging plane is given a neutral runtime tabletop material; the city textures and original GLB bytes are preserved. A scoped error boundary keeps failed lazy-chunk loading from removing Camera navigation, and WebGL recovery remains explicit.
 
-## Later 2D/3D alignment
+## Route preview and later alignment
 
-When the final 2D map is ready, explicitly bind its identity, road graph, block/arrival anchors and signal approach targets to this model. Preserve the same MUSE-selected node/edge order and executor receipts in both views. The current 400 x 250 temporary geometry must not be stretched onto the 594 x 420 model or silently renamed. A future 3D route layer requires a validated display mapping; physical camera/BASE/contact geometry remain separate measurements.
+`MapScene` supplies the same validated `RouteDisplay` to Camera and Spatial. No plan request, alternate graph search, mission mutation, registration update or provider call is triggered by switching views. If map identity/version/hash validation fails, neither view receives that route. No invented example is substituted when a plan is absent.
+
+`cityRoutePreview.ts` keeps the temporary display fit separate from both camera registration and the mission graph. It fits the complete active graph's X/Y extent into the supplied model's illustrative road envelope (X -236 to 236, Z -149 to 149, Y 2). It never fits just the current route or binds old 2D destination names to city buildings. Replacement map coordinates recompute that fit without old place IDs. This generic envelope fit can put paths across city artwork; the user explicitly accepted approximate placement at this stage.
+
+The SVG route layer uses the exact Three camera view/projection matrix, including lens offset, orbit, zoom, pan and viewport resize. Path, arrows and junction geometry share one projection. The layer does not intercept pointer input or test model occlusion; it remains a visible illustrative overlay. Points behind the camera or outside its depth range withhold the preview. Workspace updates change the route without recreating the WebGL renderer or loading the model again. The existing legend retains its planned/simulated source and receipt-derived progress; it never displays measured car pose.
+
+When the final 2D map is ready, replace this approximate display fit with an explicit binding of map identity, road graph, block/arrival anchors and signal approach targets. Preserve the same MUSE-selected node/edge order and executor receipts in both views. Physical camera/BASE/contact geometry remain separate measurements. The current preview grants no physical execution authority.
 
 ## Verification
 
-The pinned frontend build and 48 existing frontend tests passed after integration. Four private-model import tests passed, covering fixed-entry reads without script execution, unreviewed bytes, external texture references and duplicate entries. The final joint Python suite passed 290 tests, including those import checks.
+The frontend build, 52 frontend tests, repository checks and 290 Python tests passed. The focused route-preview tests cover replacement graph fitting, exact Three-camera projection, orbit changes, degenerate input and behind-camera/depth rejection. Four private-model import tests cover fixed-entry reads without script execution, unreviewed bytes, external texture references and duplicate entries.
 
-Coordinated browser verification on the actual application confirmed:
+Browser verification on the running application confirmed:
 
-- The supplied GLB renders with the neutral tabletop and existing glass surfaces, without a route on the 3D model or console errors.
-- City, Intersection and Reset switch the view correctly.
-- Returning to 2D Map preserves the existing `PIZZA -> C -> S -> SCHOOL` route, pending approval and workspace revision 49.
-- At 1194 x 834, 1366 x 1024 and 1024 x 768, document/body heights equal viewport height: no vertical page scrolling.
-- The native camera helper and its epoch remain unchanged. The coordinating backend session explicitly resumed its genuine saved fixed display reference with matching visible markers; the old homography was reused without fitting a new one.
+- Scene navigation contains exactly Camera and Spatial; Spatial renders the supplied city and current 2D route preview.
+- Camera and Spatial expose the same selected route segment IDs and planned phases. Switching views preserves the current pending mission.
+- City, Intersection and Reset presets work. Orbit and wheel zoom update the route projection while it remains visible.
+- At 1194 x 834, 1366 x 1024 and 1024 x 768, document/body dimensions equal viewport dimensions: no vertical page scrolling. Existing glass mission/status surfaces remain in place.
+- No browser console errors or warnings were reported during these checks.
+- No mission command, camera lock/refit, service restart or robot operation was performed for this UI change.
 
-Private screenshots are saved outside Git under `output/spatial-city-20261027/` as `city-1194.jpg`, `intersection-1194.jpg`, `city-1366.jpg` and `city-1024.jpg`. These are local deployment screenshots, not public documentation assets. An available GLB viewer is not a scan, live digital twin, recognized vehicle pose or robot test.
+Private deployment screenshots remain outside Git under `output/spatial-city-20261027/`: `spatial-route-1194.png`, `spatial-route-1366.png`, `spatial-route-1024.png` and `spatial-route-intersection-1194.jpg`. An available city viewer is not a scan, live digital twin, recognized vehicle pose or robot test.
