@@ -10,6 +10,37 @@ At each applicable intersection, the robot first stops before the stop line. Aft
 
 The robot wording above describes the physical target scenario. Today's application performs the same state sequence in **simulation**, with server-created simulated action/stop receipts and explicitly selected native camera images. It sends no robot commands and cannot verify a physical stop.
 
+## Single-signal final-print concept, October 28
+
+The current design intent starts every mission at PIZZA, initially travels east in the printed map frame and requires the route to pass through one designated signal-controlled approach. The user proposes one physical paper signal at the road edge beside the Office Building block's northwest corner, at the central junction's southeast corner. This is a proposed placement, not a measured installation or a replacement of the active temporary map.
+
+Explicitly identify both the controlling junction and incoming approach. One visible signal must not silently control all four incoming roads. Initial eastbound departure alone does not determine whether the eventual central-junction approach is from the west or south; finalize the actual start position and approach path before assigning those map nodes or a stop line.
+
+Proposed English presentation labels:
+
+| Item | Display label | Binding |
+|---|---|---|
+| Central controlled intersection | `Main Junction` | Reviewed junction node in the final map |
+| Single active paper signal | `Signal 01` | One configured `SignalTarget.id` |
+| Mandatory entry from the PIZZA route | `Pizza approach` | Reviewed incoming road/node, not a compass direction inferred from the label |
+| Required stopping point | `Stop before Main Junction` | The selected approach's STOP checkpoint before its crosswalk/entry |
+
+These labels are proposed presentation names, not finalized graph IDs. They do not rename the current temporary junction `C`, register a paper target or enable a crossing. The existing target contract binds `id`, `junction_id`, `approach_from`, `bounds_mm` and `description`. It has no independent stop-line field: associate the signal with the current route's approach/STOP checkpoint and preserve that checkpoint in the bound plan. Any later schema extension must make a stop-line identity explicit rather than inventing an existing field.
+
+The same junction/approach/signal relationship belongs in map metadata, the MUSE request context and the operator's decision display. A compact printed-map label may use the same names without covering the vehicle corridor. The initial plan includes the mandatory stop and conditional wait/continue behavior. Each stopped judgment uses a new original frame selected after the bound STOP context, never the signal color seen in the initial planning image. A raised paper signal's visible face must be checked in the installed camera view; its apparent region must not be assumed from the flat board footprint alone.
+
+Example prompt instruction, to accompany the actual bound metadata:
+
+```text
+Judge only Signal 01 assigned to Main Junction for the configured Pizza approach.
+Use the supplied junction_id, approach_from and signal_target.id bindings.
+The current image must belong to the supplied post-stop observation.
+Do not select a signal for another approach or use printed decorative lights.
+If the specified controlling signal cannot be identified clearly, return UNKNOWN.
+```
+
+Example decision presentation: `Signal 01 · Main Junction`, `Approach: Pizza approach`, then `Checking signal…`, `RED · WAIT`, `GREEN · CONTINUE` or `UNKNOWN · REOBSERVE`. Show the actual MUSE summary and observation source/time with that bound result. These are design examples; the current frontend still requires the complete latest-decision presentation described in the UI audit.
+
 ## Intended observation cycle
 
 | Condition | Executor behavior |

@@ -14,6 +14,8 @@ The intended demonstration begins at **PIZZA**. The operator states or types a d
 
 **This is the scenario specification, not a completed physical demonstration.** The current temporary-map adapter provides drawing-grounded PIZZA/BAKERY/BOOKSTORE/SCHOOL routes and abstract simulation. A recorded-image overlay is test-only. Production installation, robot coordinates, actual pushing, and turning remain unqualified.
 
+The October 28 final-print design uses one proposed active paper signal for the central junction's designated PIZZA approach, with a fixed PIZZA start, initial map-east departure and mandatory passage through that controlled stop checkpoint. Junction, incoming approach and signal must be identified together; the final approach nodes and stop geometry remain pending. Proposed display names and the exact boundary are recorded in [the single-signal concept](MUSE_SIGNAL_GATE.md#single-signal-final-print-concept-october-28). The active temporary map is unchanged.
+
 ## Operator journey
 
 | Phase | What the operator sees | What the system must establish |
