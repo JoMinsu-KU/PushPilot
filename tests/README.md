@@ -8,7 +8,7 @@
 
 ## Current suite
 
-The repository contains **13 test methods** in [`test_release_bundle.py`](test_release_bundle.py). They use temporary local Git repositories and ZIP fixtures. They do not contact equipment, call a model API, change the application's Git author identity, or start a service.
+The repository contains **17 test methods**: 13 release tests in [`test_release_bundle.py`](test_release_bundle.py) and four offline connection-tool tests in [`test_muse_api_check.py`](test_muse_api_check.py). They use temporary Git/ZIP/configuration fixtures and fake provider responses. They do not read the real `.env`, contact equipment, call a model API, change the application's Git author identity, or start a service.
 
 From the repository root, with Python 3.11+ and Git on `PATH`:
 
@@ -25,6 +25,7 @@ python tools/dev.py test
 | Publication path policy | Private tracked paths, allowlisted content, example configuration, Git symlink modes. |
 | ZIP verification | Payload hashes, unsafe paths, duplicate/case-colliding entries, symlinks, size limits, malformed manifest. |
 | Command interface | Verification CLI returns the expected status. |
+| Connection checker | Local-key parsing, missing-model inhibition, bounded requests, exact response matching and credential-echo redaction using fixtures. |
 
 Fixture Git resets run only inside temporary test repositories. These tests do not reset the application repository.
 

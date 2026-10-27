@@ -14,6 +14,8 @@ PushPilot is designed to make MUSE's image-grounded understanding visible in the
 
 **The provider adapter, prompts and review schemas are not implemented in this bootstrap.** “MUSE” names the intended project integration. The exact provider model identifier, supported API features and pinned request contract must be verified and recorded when integration is built.
 
+A standalone [connection check](META_API_CHECK.md) has verified authenticated model discovery and one real `muse-spark-1.3` text completion. It does not implement image review or the mission provider adapter.
+
 ## Where the model adds value
 
 | Interaction | Intended input | Useful output | Mission consequence |

@@ -16,8 +16,11 @@ Run from the repository root. Tools require **Python 3.11+**; release operations
 | `python tools/dev.py test` | Runs `unittest` discovery in `tests/` with bytecode writing disabled. |
 | `python tools/build_release.py --output <archive.zip>` | Packages allowlisted blobs from a clean committed HEAD and writes a hash manifest. |
 | `python tools/build_release.py --verify <archive.zip>` | Validates ZIP paths, metadata, policy, sizes, and SHA-256 values without extracting. |
+| `python tools/check_muse_api.py` | Opt-in live Meta check: reads the ignored local key, queries models and sends one bounded text completion. |
 
 Commands return a nonzero exit code on failure. Successful check/build/verify commands print a compact JSON result. The test runner prints its normal test report.
+
+The Meta checker is the only command above that contacts a provider and may consume API credits. It is never invoked by `dev.py check` or `dev.py test`. See [connection setup and the observed result](../docs/META_API_CHECK.md). It is not a mission provider adapter or an image-review test.
 
 ## Build a source release
 

@@ -25,7 +25,7 @@ python tools/dev.py check
 python tools/dev.py test
 ```
 
-`check` parses Python and JSON syntax. `test` runs the current 13 release test methods. Passing these commands establishes bootstrap behavior only, not working MUSE, signal perception, AR, or robot control.
+`check` parses Python and JSON syntax. `test` runs 13 release-boundary tests and four offline connection-tool tests, without provider calls. Passing these commands establishes tooling behavior only, not image review, signal perception, AR or robot control. The separate [opt-in Meta connection check](META_API_CHECK.md) makes a real provider request.
 
 ## Implementation sequence
 
@@ -44,7 +44,7 @@ Source, identifiers, comments, logs, prompts, UI copy, accessibility text, error
 
 Commit source, contracts, versioned prompts, meaningful tests, and reviewed examples. Keep credentials, private images, runtime logs, operating profiles, mailboxes, and raw archives outside Git and release packages.
 
-`.env.example` contains proposed empty placeholders. Bootstrap tools do not consume it. Introduce documented configuration behavior with the runtime; copying the file does not enable a feature. Credentials use the existing direct-input path rather than chat.
+`.env.example` contains empty placeholders. The standalone Meta connection checker reads `META_API_KEY` from the repository-local ignored `.env`; ordinary checks/tests do not read real credentials. The future application runtime does not yet load configuration. Enter credentials directly in the local file rather than chat.
 
 ### Git and authorship
 

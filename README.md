@@ -82,15 +82,16 @@ The planned evidence model records source identity independently for the robot, 
 | Area | Status | What is available now |
 |---|---|---|
 | Repository structure and component ownership | **Ready** | Standalone workspace with component guides and development rules. |
-| Equipment-free checks | **Ready** | Python source/example-JSON checks and 13 release-boundary tests. |
+| Equipment-free checks | **Ready** | Python source/example-JSON checks, 13 release tests and four offline connection-tool tests. |
 | Source-release tooling | **Ready** | Clean-commit packaging, file hashes and archive verification. |
+| Meta API connectivity | **Verified: text only** | Authenticated model discovery and a real Muse Spark completion; [scope and command](docs/META_API_CHECK.md). |
 | Mission backend and abstract simulator | **Planned** | Responsibilities and interaction boundaries are documented. |
 | Operator frontend and evidence replay | **Planned** | English product flow and visual direction are specified. |
 | Live MUSE/provider integration | **Planned** | Goal/outcome roles and review requirements are documented. |
 | Final map, metric AR and robot integration | **Deferred** | Awaiting the final installed map and physical qualification. |
 | AR-glasses companion | **Concept** | Future experience; no wearable integration is claimed. |
 
-**Current verification: 13 passing bootstrap tests.** These exercise Git/source-release boundaries; they are not mission, model-accuracy or physical-robot results. There is no application server startup command yet.
+**Current verification: 13 release-boundary tests and four offline connection-tool tests.** These are not mission, model-accuracy or physical-robot results. The separate opt-in [Meta check](docs/META_API_CHECK.md) establishes authentication and one text completion. There is no application server startup command yet.
 
 Final road geometry and physical placement are unresolved. Current development uses symbolic locations, abstract actions and explicitly labelled test inputs. Map-specific routes, calibration, stop lines, signal regions and spatial AR remain deferred. Existing map examples are not embedded as a production dependency.
 
@@ -100,7 +101,7 @@ Final road geometry and physical placement are unresolved. Current development u
 
 - **Python 3.11 or newer**.
 - **Git** available on your command path. Release tests create isolated local Git fixtures.
-- No third-party packages, model credentials or robot connection are required for the current tooling.
+- No third-party packages, model credentials or robot connection are required for the offline checks below.
 
 From the repository root:
 

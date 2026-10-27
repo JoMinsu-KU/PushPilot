@@ -20,6 +20,7 @@ PushPilot is being developed as a tablet workspace for an image-grounded tableto
 |---|---|---|
 | Understand the product | [Mission](MISSION.md) | [Meta intelligence](META_INTELLIGENCE.md) |
 | Understand the system | [Architecture](ARCHITECTURE.md) | [Component boundaries](#component-boundaries) |
+| Test Meta authentication and text inference | [API connection check](META_API_CHECK.md) | [Meta intelligence](META_INTELLIGENCE.md) |
 | Work on the repository | [Development workflow](DEVELOPMENT.md) | [Roadmap](ROADMAP.md) |
 | Review a demonstration claim | [Evidence model](ARCHITECTURE.md#evidence-that-explains-a-decision) | [Contribution record](../CONTRIBUTIONS.md) |
 | Prepare a release | [Development workflow](DEVELOPMENT.md) | [GX10 delivery plan](../deploy/README.md) |
