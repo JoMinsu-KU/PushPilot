@@ -1,5 +1,7 @@
 # Diagram generation prompts
 
+**Retained design source, October 27, 2026:** these exact prompts document the earlier navy/cyan illustration stage. The later industrial light-dashboard [design system](../DESIGN_SYSTEM.md) defines the current interface. Original prompt text below is preserved unchanged.
+
 The four PNG diagrams were generated on October 27, 2026 (Asia/Seoul) using the built-in image generation tool. The tool did not expose a model identifier. No API key, fallback CLI or source photograph was used. The prompts below are the exact generation inputs. Files were copied into this repository without pixel edits.
 
 The diagrams are conceptual documentation. Their visible status labels and accompanying text distinguish proposed application behavior from implemented bootstrap tooling. They do not establish physical results or a deployed runtime. All four outputs were visually reviewed for copy, direction, authority boundaries and legibility.

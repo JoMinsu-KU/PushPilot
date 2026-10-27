@@ -39,9 +39,11 @@ The first use case is a controlled tabletop mission: push a wheel-less car from 
 
 **The connected workspace now uses a replaceable Little Town test map.** It plans three destinations, projects the planned route onto a registered recorded image, and supports actual Muse Spark scene inspection. Approval, bounded simulation, mandatory stops, scoped signals and evidence replay remain visible. Live camera capture, action-bound image reviews, voice and physical execution remain separate integration work. Read the [temporary-map guide](docs/TEMPORARY_MAP.md).
 
+The current [interface direction](docs/DESIGN_SYSTEM.md) follows the user's industrial light-dashboard references: off-white canvas, white panels, charcoal text, a slim icon rail, a dominant scene viewport and restrained orange accents. Earlier navy/cyan illustrations and retained screenshots document their original design stage.
+
 <p align="center">
-  <a href="docs/assets/temporary-map-workspace.jpg"><img src="docs/assets/temporary-map-workspace.jpg" width="1280" alt="Actual PushPilot temporary-map workspace: a self-authored Little Town schematic, Bakery route, junction checks, MUSE scene evidence and explicit simulation labels."></a><br>
-  <sub>Actual software screenshot · self-authored spatial schematic · simulation only. <a href="docs/VERIFICATION.md">Verification scope</a></sub>
+  <a href="docs/assets/light-industrial-workspace.jpg"><img src="docs/assets/light-industrial-workspace.jpg" width="1280" alt="PushPilot light industrial workspace: white panels, compact navigation, a self-authored Little Town schematic and source-labelled mission information."></a><br>
+  <sub>Light industrial workspace · self-authored spatial schematic · simulation only. <a href="docs/VERIFICATION.md">Verification scope</a></sub>
 </p>
 
 ## The interaction loop
@@ -189,7 +191,7 @@ Component readmes distinguish implemented runtime files from the remaining voice
 | Inspect service boundaries or voice goal input | [Service composition](docs/SERVICE_COMPOSITION.md) · [Voice input](docs/VOICE_INPUT.md) |
 | Inspect pushing, waiting and verification behavior | [Mission](docs/MISSION.md) |
 | Understand MUSE's role and evidence requirements | [Meta intelligence](docs/META_INTELLIGENCE.md) |
-| Work on the operator interface | [Frontend](frontend/README.md) |
+| Work on the operator interface | [Design system](docs/DESIGN_SYSTEM.md) · [Frontend](frontend/README.md) |
 | Work on task and provider services | [Backend](backend/README.md) |
 | Review schemas or model instructions | [Contracts](contracts/README.md) · [Prompts](prompts/README.md) |
 | Run checks or prepare a source bundle | [Tests](tests/README.md) · [Tools](tools/README.md) |

@@ -4,13 +4,15 @@
 
 **Understand the mission. Inspect the decisions. Build within clear boundaries.**
 
-[Repository](../README.md) · [Architecture](ARCHITECTURE.md) · [Services](SERVICE_COMPOSITION.md) · [Voice input](VOICE_INPUT.md) · [Mission](MISSION.md) · [Roadmap](ROADMAP.md)
+[Repository](../README.md) · [Design system](DESIGN_SYSTEM.md) · [Architecture](ARCHITECTURE.md) · [Services](SERVICE_COMPOSITION.md) · [Voice input](VOICE_INPUT.md) · [Mission](MISSION.md) · [Roadmap](ROADMAP.md)
 
 </div>
 
 ---
 
 PushPilot is being developed as a tablet workspace for an image-grounded tabletop robot mission. An operator states or types a goal, confirms the chosen text, reviews and approves the proposed task, and follows the evidence behind each decision to proceed, wait or observe again. A future glasses companion extends the interaction concept.
+
+The current [visual direction](DESIGN_SYSTEM.md) follows the user's industrial light-dashboard references: off-white surfaces, white panels, charcoal typography, a slim icon rail and restrained orange accents. Earlier navy/cyan screenshots and generated diagrams document their original design stage and do not define the current interface palette.
 
 **The temporary Little Town application is implemented for simulation and recorded-image inspection.** React/TypeScript and a FastAPI/Uvicorn backend provide graph-based plans, SQLite supervision, simulated actions/signals, demo action reviews, and Meta goal interpretation. Uploaded frames support marker detection, an explicitly locked test overlay, and a separate MUSE scene-inspection request. Scene inspection never advances the mission. Voice, live camera capture, robot registration, and physical control remain unavailable; final production geometry is unresolved.
 
@@ -19,13 +21,14 @@ PushPilot is being developed as a tablet workspace for an image-grounded tableto
 | Your goal | Start here | Continue with |
 |---|---|---|
 | Understand the product | [Mission](MISSION.md) | [Meta intelligence](META_INTELLIGENCE.md) |
+| Design the operator workspace | [Design system](DESIGN_SYSTEM.md) | [Frontend](../frontend/README.md) |
 | Understand the system | [Architecture](ARCHITECTURE.md) | [Service composition](SERVICE_COMPOSITION.md) |
 | Review voice goal entry | [Voice input](VOICE_INPUT.md) | [Frontend](../frontend/README.md) and [contracts](../contracts/README.md) |
 | Test Meta authentication and goal interpretation | [API connection check](META_API_CHECK.md) | [Meta intelligence](META_INTELLIGENCE.md) |
 | Test the temporary printed map | [Temporary map](TEMPORARY_MAP.md) | [Test inputs](TEST_INPUTS.md) and [verification](VERIFICATION.md) |
 | Work on the repository | [Development workflow](DEVELOPMENT.md) | [Roadmap](ROADMAP.md) |
 | Review a demonstration claim | [Evidence model](ARCHITECTURE.md#evidence-that-explains-a-decision) | [Contribution record](../CONTRIBUTIONS.md) |
-| Inspect completed software checks | [Verification](VERIFICATION.md) | [Actual workspace screenshot](assets/workspace-simulation.jpg) |
+| Inspect completed software checks | [Verification](VERIFICATION.md) | [Earlier workspace screenshot](assets/workspace-simulation.jpg) |
 | Prepare a release | [Development workflow](DEVELOPMENT.md) | [GX10 delivery plan](../deploy/README.md) |
 
 ## The interaction in one line
@@ -67,7 +70,7 @@ These describe separate parts of a run. For example, a real provider may review 
 - Stop before every configured intersection and evaluate its operator-switched paper signal.
 - Include bounded push-to-talk goal entry through backend Meta transcription, editable text confirmation and typed fallback in the first demo. Explicit tablet mission approval remains separate.
 - Use MUSE to interpret and review evidence; deterministic checks retain action admission authority.
-- Keep the tablet interface English, with dark navy and electric cyan. Label future wearable interaction as a concept.
+- Keep the tablet interface English and follow the industrial light-dashboard [design system](DESIGN_SYSTEM.md). Label future wearable interaction as a concept.
 - Use the replaceable temporary print adapter for simulation and explicitly labelled recorded-image overlays. Defer robot coordinates, production routes/registration, qualified stop lines, and live signal regions until the final installation is available.
 
 For implementation priorities and the conditions that open later work, read the [roadmap](ROADMAP.md). For inherited work, rights and supported claims, read [contributions](../CONTRIBUTIONS.md) and [third-party notices](../THIRD_PARTY_NOTICES.md).

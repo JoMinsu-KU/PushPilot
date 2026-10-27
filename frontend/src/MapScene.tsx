@@ -26,14 +26,14 @@ function captureLabel(frame: NonNullable<SceneSnapshot['frame']>) {
   return `Captured ${new Date(frame.captured_at).toLocaleString('en-US')}`;
 }
 
-function RouteStroke({ points, id, scale = 1, candidate = false }: { points: Point[]; id: string; scale?: number; candidate?: boolean }) {
+function RouteStroke({ points, id, scale = 1, candidate = false, drawing = false }: { points: Point[]; id: string; scale?: number; candidate?: boolean; drawing?: boolean }) {
   if (points.length < 2) return null;
-  const color = candidate ? '#ffbf66' : '#13d5ff';
+  const color = drawing ? '#e66b3c' : candidate ? '#ffbf66' : '#13d5ff';
   return <g className="map-route-layer">
     <defs>
       <marker id={id} viewBox="0 0 12 12" markerWidth={10 * scale} markerHeight={10 * scale}
         refX="9" refY="6" orient="auto" markerUnits="userSpaceOnUse">
-        <path d="m3 2 6 4-6 4" fill="none" stroke={candidate ? '#ffe5ba' : '#e3fbff'} strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="m3 2 6 4-6 4" fill="none" stroke={drawing ? '#e66b3c' : candidate ? '#ffe5ba' : '#e3fbff'} strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"/>
       </marker>
     </defs>
     <polyline points={points.map(point => point.join(',')).join(' ')} fill="none" stroke={color}
@@ -43,9 +43,9 @@ function RouteStroke({ points, id, scale = 1, candidate = false }: { points: Poi
     {directionArrows(points).map((arrow, index) => <path key={index}
       d={`M${arrow.start.join(',')} L${arrow.end.join(',')}`} fill="none" stroke={color}
       strokeWidth={2.2 * scale} markerEnd={`url(#${id})`}/>) }
-    <circle cx={points[0][0]} cy={points[0][1]} r={4.5 * scale} fill="#092b40" stroke={color} strokeWidth={2 * scale}/>
-    <circle cx={points.at(-1)![0]} cy={points.at(-1)![1]} r={6.5 * scale} fill="#075443" stroke="#64ffe0" strokeWidth={2 * scale}/>
-    <circle cx={points.at(-1)![0]} cy={points.at(-1)![1]} r={2 * scale} fill="#b9fff0"/>
+    <circle cx={points[0][0]} cy={points[0][1]} r={4.5 * scale} fill={drawing ? '#fff8f3' : '#092b40'} stroke={color} strokeWidth={2 * scale}/>
+    <circle cx={points.at(-1)![0]} cy={points.at(-1)![1]} r={6.5 * scale} fill={drawing ? '#fff' : '#075443'} stroke={drawing ? '#3a9c79' : '#64ffe0'} strokeWidth={2 * scale}/>
+    <circle cx={points.at(-1)![0]} cy={points.at(-1)![1]} r={2 * scale} fill={drawing ? '#3a9c79' : '#b9fff0'}/>
   </g>;
 }
 
@@ -57,40 +57,40 @@ function SpatialMap({ map, route }: { map: TemporaryMap; route: MapRoute | null 
     <svg className="spatial-map" viewBox={`-18 -29 ${map.board.width_mm + 36} ${map.board.height_mm + 58}`}
       role="img" aria-label={`Temporary ${map.title} road geometry${validRoute ? ` with route from ${validRoute.start} to ${validRoute.destination}` : ''}`}>
       <defs>
-        <linearGradient id={`${id}-board`} x2="1" y2="1"><stop stopColor="#122b3d"/><stop offset="1" stopColor="#0a1e2c"/></linearGradient>
+        <linearGradient id={`${id}-board`} x2="1" y2="1"><stop stopColor="#fff"/><stop offset="1" stopColor="#faf9f7"/></linearGradient>
       </defs>
-      <rect x="0" y="0" width={map.board.width_mm} height={map.board.height_mm} rx="5" fill={`url(#${id}-board)`} stroke="#265371" strokeWidth=".8"/>
+      <rect x="0" y="0" width={map.board.width_mm} height={map.board.height_mm} rx="5" fill={`url(#${id}-board)`} stroke="#dededb" strokeWidth=".8"/>
       {map.edges.map(edge => {
         const from = byId.get(edge.from); const to = byId.get(edge.to);
         return from && to ? <g key={`${edge.from}-${edge.to}`}>
-          <line x1={from.x_mm} y1={from.y_mm} x2={to.x_mm} y2={to.y_mm} stroke="#304a5a" strokeWidth={map.board.road_width_mm} strokeLinecap="square"/>
-          <line x1={from.x_mm} y1={from.y_mm} x2={to.x_mm} y2={to.y_mm} stroke="#87a3b3" strokeWidth=".65" strokeDasharray="3 3" opacity=".4"/>
+          <line x1={from.x_mm} y1={from.y_mm} x2={to.x_mm} y2={to.y_mm} stroke="#eeefed" strokeWidth={map.board.road_width_mm} strokeLinecap="square"/>
+          <line x1={from.x_mm} y1={from.y_mm} x2={to.x_mm} y2={to.y_mm} stroke="#bfc3bf" strokeWidth=".65" strokeDasharray="3 3" opacity=".65"/>
         </g> : null;
       })}
       {map.building_panels.map(panel => {
         const [x0, y0, x1, y1] = panel.bounds_mm;
         const target = validRoute?.destination === panel.id;
         return <g key={panel.id}>
-          <rect x={x0} y={y0} width={x1 - x0} height={y1 - y0} rx="3" fill={target ? '#0d3538' : '#112d40'} stroke={target ? '#187d78' : '#214c64'} strokeWidth=".8"/>
-          <path d={`M${(x0 + x1) / 2 - 9} ${y0 + 19} l9 -6 9 6 v10 h-18 Z`} fill="none" stroke={target ? '#50cebd' : '#4d819d'} strokeWidth="1.2"/>
-          <path d={`M${(x0 + x1) / 2 - 3} ${y0 + 29} v-7 h6 v7`} fill="none" stroke={target ? '#50cebd' : '#4d819d'} strokeWidth="1"/>
-          <text x={(x0 + x1) / 2} y={y1 - 10} textAnchor="middle" fill={target ? '#9aeee1' : '#83b3cd'} fontSize="6.7" letterSpacing=".8">{panel.id}</text>
+          <rect x={x0} y={y0} width={x1 - x0} height={y1 - y0} rx="3" fill={target ? '#eef6ef' : '#f8f7f4'} stroke={target ? '#c1d8c6' : '#dfdfd9'} strokeWidth=".8"/>
+          <path d={`M${(x0 + x1) / 2 - 9} ${y0 + 19} l9 -6 9 6 v10 h-18 Z`} fill={target ? '#e3eee4' : '#eeede8'} stroke={target ? '#72a68a' : '#a9ada6'} strokeWidth="1.2"/>
+          <path d={`M${(x0 + x1) / 2 - 3} ${y0 + 29} v-7 h6 v7`} fill="none" stroke={target ? '#72a68a' : '#a9ada6'} strokeWidth="1"/>
+          <text x={(x0 + x1) / 2} y={y1 - 10} textAnchor="middle" fill={target ? '#42785a' : '#696e65'} fontSize="6.7" letterSpacing=".8">{panel.id}</text>
         </g>;
       })}
       {map.nodes.filter(node => node.kind === 'junction').map(node => <g key={node.id}>
-        <rect x={node.x_mm - 8} y={node.y_mm - 8} width="16" height="16" rx="4" fill="#233e50" stroke="#45677a" strokeWidth=".7"/>
-        <text x={node.x_mm} y={node.y_mm + 2.3} fontSize="6.5" fill="#a8c5d6" textAnchor="middle">{node.id}</text>
+        <rect x={node.x_mm - 8} y={node.y_mm - 8} width="16" height="16" rx="4" fill="#fafbf9" stroke="#c8ccc6" strokeWidth=".7"/>
+        <text x={node.x_mm} y={node.y_mm + 2.3} fontSize="6.5" fill="#767d72" textAnchor="middle">{node.id}</text>
       </g>)}
-      <RouteStroke points={validRoute?.points_mm ?? []} id={`${id}-spatial-arrow`}/>
+      <RouteStroke points={validRoute?.points_mm ?? []} id={`${id}-spatial-arrow`} drawing/>
       {map.nodes.filter(node => node.kind === 'destination').map(node => <g key={node.id}>
-        <circle cx={node.x_mm} cy={node.y_mm} r="3.2" fill={node.id === validRoute?.destination ? '#43f2d0' : '#95b2c6'} stroke="#0c2738" strokeWidth="1.3"/>
-        <text x={node.x_mm} y={node.y_mm + 13} fill={node.id === validRoute?.destination ? '#85f3df' : '#a8c7d9'} textAnchor="middle" fontSize="5.5" letterSpacing=".2">{node.id === map.start ? 'START' : node.id === validRoute?.destination ? 'GOAL' : 'DESTINATION'}</text>
+        <circle cx={node.x_mm} cy={node.y_mm} r="3.2" fill={node.id === validRoute?.destination ? '#3a9c79' : '#9a9e96'} stroke="#fff" strokeWidth="1.3"/>
+        <text x={node.x_mm} y={node.y_mm + 13} fill={node.id === validRoute?.destination ? '#42785a' : '#7d8379'} textAnchor="middle" fontSize="5.5" letterSpacing=".2">{node.id === map.start ? 'START' : node.id === validRoute?.destination ? 'GOAL' : 'DESTINATION'}</text>
       </g>)}
       {map.markers.map(marker => <g key={marker.id}>
-        <rect x={marker.center_mm[0] - 4} y={marker.center_mm[1] - 4} width="8" height="8" rx=".5" fill="#0c1b27" stroke="#4b7186" strokeWidth=".7"/>
-        <text x={marker.center_mm[0]} y={marker.center_mm[1] + 1.7} textAnchor="middle" fill="#9ec2d6" fontSize="4.5">{marker.id}</text>
+        <rect x={marker.center_mm[0] - 4} y={marker.center_mm[1] - 4} width="8" height="8" rx=".5" fill="#fff" stroke="#abb1a7" strokeWidth=".7"/>
+        <text x={marker.center_mm[0]} y={marker.center_mm[1] + 1.7} textAnchor="middle" fill="#747c6f" fontSize="4.5">{marker.id}</text>
       </g>)}
-      <text x="0" y={map.board.height_mm + 23} fill="#557f9b" fontSize="5.5">DRAWING {map.board.width_mm} × {map.board.height_mm} mm · NOT ROBOT COORDINATES</text>
+      <text x="0" y={map.board.height_mm + 23} fill="#8c9287" fontSize="5.5">DRAWING {map.board.width_mm} × {map.board.height_mm} mm · NOT ROBOT COORDINATES</text>
     </svg>
     <div className="map-view-caption"><Icon name="route" size={14}/>Self-authored schematic · temporary print geometry</div>
   </div>;
@@ -251,9 +251,12 @@ export function MapScene({ workspace, readOnly = false, onSnapshot }: {
     {currentInspection && <section className="scene-inspection-result" aria-label="MUSE scene inspection result">
       <div className="scene-inspection-heading"><Icon name="spark" size={17}/><strong>MUSE IMAGE INSPECTION</strong><span className={`verdict ${currentInspection.verdict.toLowerCase()}`}>{currentInspection.verdict}</span></div>
       <p>{currentInspection.summary}</p>
-      <dl><div><dt>Visible places</dt><dd>{currentInspection.visible_places.join(', ') || 'None confirmed'}</dd></div><div><dt>Car</dt><dd>{currentInspection.car_visible ? 'Visible according to the model' : 'Not confirmed visible'}</dd></div><div><dt>Image signal</dt><dd>{currentInspection.signal} · model report only</dd></div><div><dt>Expected</dt><dd>{currentInspection.expected}</dd></div></dl>
-      {currentInspection.limitations.length > 0 && <ul>{currentInspection.limitations.map((limitation, index) => <li key={index}>{limitation}</li>)}</ul>}
-      <footer><span>{currentInspection.model} · {new Date(currentInspection.created_at).toLocaleString('en-US')}</span><strong>No motion authority</strong></footer>
+      <details className="inspection-evidence-details">
+        <summary>Inspection evidence <span>No motion authority</span></summary>
+        <dl><div><dt>Visible places</dt><dd>{currentInspection.visible_places.join(', ') || 'None confirmed'}</dd></div><div><dt>Car</dt><dd>{currentInspection.car_visible ? 'Visible according to the model' : 'Not confirmed visible'}</dd></div><div><dt>Image signal</dt><dd>{currentInspection.signal} · model report only</dd></div><div><dt>Expected</dt><dd>{currentInspection.expected}</dd></div></dl>
+        {currentInspection.limitations.length > 0 && <ul>{currentInspection.limitations.map((limitation, index) => <li key={index}>{limitation}</li>)}</ul>}
+        <footer><span>{currentInspection.model} · {new Date(currentInspection.created_at).toLocaleString('en-US')}</span><strong>No motion authority</strong></footer>
+      </details>
     </section>}
   </div>;
 }

@@ -20,6 +20,14 @@ Verified on **2026-10-27, Asia/Seoul**. This record includes the temporary-map e
 
 The local verification host used Windows CPython 3.14 and Node 24.19. The GX10 was inspected read-only: Ubuntu 24.04.4, ARM64, Python 3.12.3 and no Node/npm on its command path. The deployment design builds frontend assets locally and serves them from Python on GX10.
 
+## Light industrial restyle
+
+The subsequent October 27 visual update follows the user's industrial dashboard references and the [design system](DESIGN_SYSTEM.md): off-white canvas, white panels, a slim icon rail, charcoal typography, restrained orange controls, a dominant scene and a right mission panel. Scope is frontend presentation and design documentation; existing source labels, projective image coordinates and mission admission boundaries remain requirements.
+
+The design-only snapshot was checked independently of the concurrent recorded-action feature. Static checks, all 81 Python tests, all 7 existing frontend tests, and the TypeScript/Vite build passed. Fresh browser checks covered 1440×1000, 1280×800, 1024×768, 768×1024 and 390×844: visible controls/SVGs had no horizontal overflow and the full 1920×1080 photograph retained its 16:9 aspect ratio with the same projected route. Camera and spatial views, eight-step expanded Plan, read-only Replay, image tools and expandable inspection evidence were inspected. A copied private simulation state exercised approval, push review, mandatory stop at C, RED waiting, fresh GREEN automatic crossing admission, cancellation, reset and a new unapproved plan. No new provider request or hardware access was used for this design verification. The primary action renders as a stable element across periodic state refreshes instead of remounting a nested component.
+
+The active README image is [`assets/light-industrial-workspace.jpg`](assets/light-industrial-workspace.jpg), captured from this independently running design snapshot. It shows the original spatial schematic and a previously recorded MUSE scene result; no supplied print artwork or raw camera photograph is visible. Separate action-bound MUSE integration and its tests belong to their own verification record. This is not a full keyboard/contrast audit, device performance benchmark or GX10 deployment result.
+
 ## Meaningful failure-path coverage
 
 Offline tests cover stale revisions, request identity reuse, exact approval identity, blocked goal replacement during an active mission, required per-action review, GREEN without verified stopping, RED/UNKNOWN/stale signal inhibition, uncertain reobservation, explicit failure, restart recovery and provider rejection without a demo fallback. Test providers and databases are isolated; the ordinary suite never reads the operator's real key or contacts a model.
@@ -35,4 +43,4 @@ Visual review also found and corrected a LAN HTTP fallback that initially produc
 - The test client emits an upstream Starlette/HTTPX deprecation warning; all current tests pass. This does not affect the production HTTP server path.
 - GX10 activation, trusted tablet HTTPS/microphone testing and physical qualification have not occurred.
 
-The current public screenshot is [`assets/temporary-map-workspace.jpg`](assets/temporary-map-workspace.jpg), showing the self-authored schematic and actual model-result text. The original first-slice screenshot is retained as [`assets/workspace-simulation.jpg`](assets/workspace-simulation.jpg). Private recorded-camera screenshots remain outside Git. Neither view is a physical-run claim.
+Earlier public screenshots remain in [`assets/temporary-map-workspace.jpg`](assets/temporary-map-workspace.jpg), showing the self-authored schematic and actual model-result text, and [`assets/workspace-simulation.jpg`](assets/workspace-simulation.jpg), showing the original first slice. Both predate the light-dashboard restyle. Private recorded-camera screenshots remain outside Git. None of these views is a physical-run claim.

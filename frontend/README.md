@@ -4,9 +4,9 @@
 
 **Look. Ask. Review. A shared plan, with its evidence in view.**
 
-[Mission](../docs/MISSION.md) · [Architecture](../docs/ARCHITECTURE.md) · [Voice input](../docs/VOICE_INPUT.md) · [Development](../docs/DEVELOPMENT.md)
+[Design system](../docs/DESIGN_SYSTEM.md) · [Mission](../docs/MISSION.md) · [Architecture](../docs/ARCHITECTURE.md) · [Voice input](../docs/VOICE_INPUT.md) · [Development](../docs/DEVELOPMENT.md)
 
-The first runnable workspace uses React, TypeScript and Vite. Its dark navy and electric cyan interface connects to the Python mission backend through the versioned [workspace contract](../contracts/workspace.ts). Production builds are static files served by that backend; GX10 does not need Node.js to run the built application.
+The runnable workspace uses React, TypeScript and Vite. The current visual direction follows the user's industrial light-dashboard references: off-white canvas, white panels, charcoal typography, thin gray borders and restrained orange accents. It connects to the Python mission backend through the versioned [workspace contract](../contracts/workspace.ts). Production builds are static files served by that backend; GX10 does not need Node.js to run the built application.
 
 ## The experience
 
@@ -67,8 +67,12 @@ A partially obscured locked view retains its test mapping and displays a warning
 
 ## Visual system
 
+The [design system](../docs/DESIGN_SYSTEM.md) supersedes the earlier navy/cyan application direction. A slim full-height icon rail and clean header frame a dominant scene/map viewport, a right mission panel and a row of compact summary cards. White panels, generous spacing and quiet borders keep scene evidence and the next decision prominent. Orange identifies the active destination in navigation and primary operator actions; status colors remain semantic and always include text. The future AR-glasses companion retains an explicit concept label.
+
 CSS Grid controls the workspace, scene, plan panel and companion cards. SVG view boxes control icons and arrows; text glyphs are not used to draw action arrows. The layout adapts from a tablet/desktop composition to stacked mobile panels without horizontal scrolling. Focus indicators, explicit button names, reduced-motion preferences and non-color status text support keyboard and assistive use.
 
 The right-panel step list has a bounded, keyboard-focusable scroll area so longer routes do not bury approval and action controls. The current step scrolls within that list without moving the page. The expanded **Plan** view retains the complete list in normal page flow.
 
 Original map artwork and raw runtime photographs remain outside Git and source packages. The schematic is drawn from the reviewed temporary geometry API. Replacing map geometry invalidates overlays from mismatched historical plans instead of drawing their routes on a new map.
+
+Camera overlays use scene-specific contrast, including a light route casing and readable label backgrounds. The light dashboard palette must not reduce route legibility over recorded photographs. Preserve the intrinsic image aspect ratio and projective geometry when changing panel dimensions. Earlier screenshots and generated navy/cyan diagrams remain dated evidence rather than the current visual specification.

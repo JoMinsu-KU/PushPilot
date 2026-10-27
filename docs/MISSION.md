@@ -98,7 +98,7 @@ The demonstration should leave an inspectable sequence of the goal, actions, obs
 
 ## Interface direction
 
-The primary surface is an **English tablet workspace** in dark navy and electric cyan. Its key content is:
+The primary surface is an **English tablet workspace** following the industrial light-dashboard [design system](DESIGN_SYSTEM.md): an off-white canvas, white panels, charcoal text, a narrow icon rail and restrained orange accents. The scene is the dominant viewport, with mission decisions beside it and compact summary cards below. Its key content is:
 
 | View | Content |
 |---|---|

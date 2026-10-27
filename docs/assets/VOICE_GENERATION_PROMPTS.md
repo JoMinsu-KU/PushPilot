@@ -1,5 +1,7 @@
 # Voice diagram generation prompts
 
+**Retained design source, October 27, 2026:** these exact prompts document the earlier navy/cyan illustration stage. The later industrial light-dashboard [design system](../DESIGN_SYSTEM.md) defines the current interface. Original prompt text below is preserved unchanged.
+
 Two documentation assets were created on October 27, 2026 (Asia/Seoul) with the built-in image generation tool. The model identifier was not exposed. No API key or fallback CLI was used.
 
 `architecture-overview-voice.png` is an image-generation edit using the repository's existing generated `architecture-overview.png` as its sole edit target. The original remains available as the previous design. `voice-input-flow.png` is a new generated image without an input image. Selected outputs were copied into this repository without pixel edits.

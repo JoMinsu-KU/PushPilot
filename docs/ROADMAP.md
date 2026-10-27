@@ -39,7 +39,8 @@ Checkboxes describe implementation scope. Automated simulation tests, real provi
 
 ## 2 · Operator workspace
 
-- [x] Implement an English navy/cyan React/TypeScript workspace.
+- [x] Implement the initial English React/TypeScript workspace; its navy/cyan appearance is retained in historical screenshots.
+- [x] Complete visual verification of the industrial light-dashboard restyle in [Design system](DESIGN_SYSTEM.md).
 - [x] Connect typed goal submission, plan review and explicit approval to backend state.
 - [x] Present current simulation state, next pending check and source-labelled evidence.
 - [x] Provide explicit simulated signal and demo-review controls.

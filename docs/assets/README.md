@@ -1,17 +1,20 @@
 # Documentation artwork
 
-**PushPilot's navy/cyan visual language, with readable decisions and explicit status.**
+**Current light industrial workspace, with retained illustrations and dated design evidence.**
 
-[Repository](../../README.md) · [Architecture](../ARCHITECTURE.md) · [Generation prompts](GENERATION_PROMPTS.md) · [Voice revision prompts](VOICE_GENERATION_PROMPTS.md)
+[Repository](../../README.md) · [Current design system](../DESIGN_SYSTEM.md) · [Architecture](../ARCHITECTURE.md) · [Generation prompts](GENERATION_PROMPTS.md) · [Voice revision prompts](VOICE_GENERATION_PROMPTS.md)
 
 The repository uses a self-contained SVG cover and generated PNG process diagrams. The PNGs display directly as images, without a diagram renderer or build step. Select a diagram in its document to inspect the full-size asset. Essential technical meaning is also retained as ordinary English text and tables.
+
+The user selected an industrial light-dashboard direction on October 27, 2026. The [design system](../DESIGN_SYSTEM.md) is the current interface specification. Earlier navy/cyan artwork and its exact generation prompts are retained records from before that change; they do not prescribe the current application colors.
 
 ## Asset inventory
 
 | Asset | Canvas | Use and origin |
 |---|---|---|
 | [`hero.svg`](hero.svg) | 1280 × 480 | Active repository cover; original code-native vector. |
-| [`temporary-map-workspace.jpg`](temporary-map-workspace.jpg) | Browser screenshot | Current application: original spatial schematic, temporary Bakery route, source-labelled MUSE inspection and simulation controls; no supplied artwork or raw camera frame is visible. |
+| [`light-industrial-workspace.jpg`](light-industrial-workspace.jpg) | Browser screenshot | Active README workspace image: light industrial dashboard and self-authored temporary spatial schematic, with explicit software/evidence sources. No supplied artwork or raw camera frame is visible. |
+| [`temporary-map-workspace.jpg`](temporary-map-workspace.jpg) | Browser screenshot | Retained temporary-map workspace before the light-dashboard restyle: original spatial schematic, Bakery route, source-labelled MUSE inspection and simulation controls. |
 | [`workspace-simulation.jpg`](workspace-simulation.jpg) | Browser screenshot | Retained first-slice workspace before temporary-map integration; original illustrative scene and simulation labels. |
 | [`interaction-loop.png`](interaction-loop.png) | 1983 × 793 | Main README: Observe → Plan → Approve → Act → Verify; AI-generated. |
 | [`architecture-overview-voice.png`](architecture-overview-voice.png) | 1536 × 1024 | Active architecture: adds backend voice transcription, transcript review and credentials boundary; AI-generated edit. |
@@ -23,7 +26,7 @@ The repository uses a self-contained SVG cover and generated PNG process diagram
 
 ## Provenance
 
-The SVGs were authored for this repository on October 27, 2026 as original geometric vectors. They embed no third-party photographs, stock illustrations, fonts or vendor logos. The workspace screenshots were captured from the running local application on the same date after browser verification. The first scene's robot, wheel-less car and glasses are original SVG illustrations; the current spatial schematic draws adapted map geometry with original presentation code. The current screenshot also shows an actual recorded-image MUSE result as text. Raw camera media and supplied map artwork remain outside the public repository. These are software/provider records, not physical-execution evidence.
+The SVGs were authored for this repository on October 27, 2026 as original geometric vectors. They embed no third-party photographs, stock illustrations, fonts or vendor logos. The workspace screenshots are local application records; their corresponding checks and limits belong in [verification](../VERIFICATION.md). The first scene's robot, wheel-less car and glasses are original SVG illustrations; the spatial schematic draws adapted map geometry with original presentation code. The earlier temporary-map screenshot includes an actual recorded-image MUSE result as text. Raw camera media and supplied map artwork remain outside the public repository. These are software/provider records, not physical-execution evidence.
 
 The original four PNGs were generated on October 27, 2026 (Asia/Seoul) with the **built-in image generation tool**; their exact inputs remain in [GENERATION_PROMPTS.md](GENERATION_PROMPTS.md). A voice-enabled architecture revision and voice flow were added on the same date, with exact inputs in [VOICE_GENERATION_PROMPTS.md](VOICE_GENERATION_PROMPTS.md). The architecture revision uses the earlier repository-generated image as its sole edit target. No fallback CLI, API key or external reference image was used. Selected outputs were copied unchanged into this directory and visually reviewed for English spelling, arrows, authority boundaries, status and readability.
 
@@ -31,7 +34,7 @@ Every process illustration describes the intended design. It is not a camera obs
 
 ## Updating a diagram
 
-- Keep the dark navy background, restrained electric cyan, white headings and large English labels.
+- Follow the current [design system](../DESIGN_SYSTEM.md) for new active-interface material: light neutral surfaces, charcoal text, restrained orange accents and large readable English labels. Retain the exact original prompts and assets when documenting earlier navy/cyan design stages.
 - Preserve MUSE's interpretation/review role and the supervisor's deterministic admission authority.
 - Keep approval scoped to the mission; per-action reviews gate continuation.
 - Preserve planned, future and undeployed labels where applicable.

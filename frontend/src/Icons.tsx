@@ -27,5 +27,5 @@ export function Icon({ name, size = 22, style, className = '' }: { name: IconNam
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={style} className={className}>{paths[name]}</svg>;
 }
 export function BrandMark() {
-  return <svg width="39" height="39" viewBox="0 0 40 40" aria-hidden="true"><path fill="#00baff" d="M2 18 23 5v15L2 33Z"/><path fill="#0096f2" d="m17 25 21-13v23Z"/><path fill="#0066ca" d="m17 25 6-5v8Z"/></svg>;
+  return <svg width="39" height="39" viewBox="0 0 40 40" aria-hidden="true"><path fill="currentColor" d="M2 18 23 5v15L2 33Z"/><path fill="currentColor" d="m17 25 21-13v23Z"/><path fill="currentColor" opacity=".55" d="m17 25 6-5v8Z"/></svg>;
 }
