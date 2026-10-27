@@ -1,0 +1,199 @@
+"""Pure commissioning admission checks; no I/O, fitting, or motion authority.
+
+These checks supplement the installed receiver's policy and physical review.
+They do not replace its READY/GO, kinematics, cable-clearance or endpoint checks.
+"""
+from __future__ import annotations
+
+import math
+
+
+class GuardError(RuntimeError):
+    def __init__(self, code: str, message: str, retryable: bool = False):
+        self.code, self.message, self.retryable = code, message, retryable
+        super().__init__(message)
+
+
+def _require(condition: bool, code: str, message: str) -> None:
+    if not condition:
+        raise GuardError(code, message)
+
+
+def _number(value) -> bool:
+    return type(value) in (int, float) and math.isfinite(value)
+
+
+def _text(value) -> bool:
+    return type(value) is str and 0 < len(value.strip()) <= 256
+
+
+def _vector(value, count: int, code: str) -> list:
+    _require(type(value) is list and len(value) == count
+             and all(_number(item) and abs(item) <= 10000 for item in value),
+             code, f"A finite {count}-number vector is required.")
+    return value
+
+
+def _installation_limits(installation: dict) -> tuple[list, list]:
+    for key in ("installation_id", "map_id", "map_hash", "calibration_id", "tcp_id",
+                "tool_id", "review_reference", "camera_epoch", "registration_id"):
+        _require(_text(installation.get(key)), "INSTALLATION_INVALID", f"Installation {key} is required.")
+    lower = _vector(installation.get("workspace_min_mm"), 3, "INSTALLATION_INVALID")
+    upper = _vector(installation.get("workspace_max_mm"), 3, "INSTALLATION_INVALID")
+    _require(all(a < b for a, b in zip(lower, upper)), "INSTALLATION_INVALID",
+             "Installation workspace must have positive finite dimensions.")
+    minimum, raised = installation.get("min_tcp_z_mm"), installation.get("raised_tcp_z_mm")
+    _require(_number(minimum) and _number(raised) and lower[2] <= minimum < raised <= upper[2],
+             "INSTALLATION_INVALID", "Reviewed working and raised TCP heights must fit the workspace.")
+    for key, default, ceiling in (("max_step_mm", 30, 100), ("max_speed_mm_s", 15, 100),
+                                 ("max_accel_mm_s2", 30, 500),
+                                 ("observation_max_age_seconds", 10, 60)):
+        value = installation.get(key, default)
+        _require(_number(value) and 0 < value <= ceiling, "INSTALLATION_INVALID",
+                 f"Installation {key} exceeds its finite software ceiling.")
+    return lower, upper
+
+
+def _inside(pose: list, installation: dict, lower: list, upper: list) -> None:
+    _require(all(a <= value <= b for value, a, b in zip(pose[:3], lower, upper)),
+             "OUTSIDE_WORKSPACE", "TCP position is outside the reviewed installation workspace.")
+    _require(pose[2] >= installation["min_tcp_z_mm"], "BELOW_WORKING_Z",
+             "TCP position is below the reviewed minimum TCP height.")
+
+
+def _profile(profile, installation: dict, *, candidate: bool, lower: list, upper: list) -> dict:
+    _require(type(profile) is dict, "PROFILE_REQUIRED", "An explicit receiver profile is required.")
+    _require(profile.get("tcp_id") == installation["tcp_id"], "TCP_MISMATCH",
+             "The receiver profile TCP differs from the reviewed installation.")
+    _require(profile.get("allow_motion") is True and profile.get("site_verified") is True,
+             "PROFILE_UNQUALIFIED", "The receiver profile must explicitly allow reviewed physical motion.")
+    for field, key, default in (("translation_speed_mm_s", "max_speed_mm_s", 15),
+                                ("translation_accel_mm_s2", "max_accel_mm_s2", 30)):
+        value = profile.get(field)
+        _require(_number(value) and 0 < value <= installation.get(key, default),
+                 "PROFILE_LIMIT", f"Receiver {field} exceeds the installation limit.")
+    if candidate:
+        bounds = _vector(profile.get("tcp_bounds_base_mm"), 6, "PROFILE_BOUNDS")
+        _require(all(lower[i] <= bounds[i] < bounds[i + 3] <= upper[i] for i in range(3)),
+                 "PROFILE_BOUNDS", "Candidate profile bounds exceed the installation workspace.")
+    return profile
+
+
+def _profile_installation_binding(profile: dict, installation: dict) -> None:
+    binding = profile.get("installation_binding")
+    _require(type(binding) is dict and binding.get("site_review_explicit") is True,
+             "PROFILE_INSTALLATION_BINDING", "The profile must record an explicit review of this measured installation.")
+    for key in ("installation_id", "map_id", "map_hash", "calibration_id", "tcp_id", "tool_id",
+                "camera_epoch", "registration_id"):
+        _require(type(binding.get(key)) is type(installation[key]) and binding.get(key) == installation[key],
+                 "PROFILE_INSTALLATION_BINDING", f"Profile {key} differs from the current measured installation.")
+
+
+def _observation(observation, installation: dict, now: float) -> None:
+    if type(observation) is not dict:
+        raise GuardError("WAIT_OBSERVATION", "A fresh visible-car observation is required.", True)
+    for key in ("installation_id", "map_id", "map_hash", "calibration_id", "camera_epoch", "registration_id"):
+        _require(observation.get(key) == installation[key], "OBSERVATION_BINDING",
+                 f"Observation {key} differs from the current installation.")
+    _require(observation.get("view_status") in {"fixed", "marker_occluded"}, "VIEW_CHANGED",
+             "The observation does not belong to an unchanged fixed camera view.")
+    for key in ("observation_id", "frame_id"):
+        _require(_text(observation.get(key)), "OBSERVATION_INVALID", f"Observation {key} is required.")
+    digest = observation.get("frame_sha256")
+    _require(type(digest) is str and len(digest) == 64
+             and all(character in "0123456789abcdef" for character in digest),
+             "OBSERVATION_INVALID", "An original-frame SHA-256 is required.")
+    count = observation.get("marker_count")
+    _require(type(count) is int and 0 <= count <= 1024, "OBSERVATION_INVALID",
+             "Marker count must be a nonnegative integer.")
+    captured_at = observation.get("captured_at")
+    if (not _number(captured_at) or not _number(now) or captured_at > now
+            or now - captured_at > installation.get("observation_max_age_seconds", 10)):
+        raise GuardError("WAIT_OBSERVATION", "The car observation is missing, stale or future-dated.", True)
+    pose = observation.get("car_pose")
+    if (observation.get("car_visible") is not True or type(pose) is not list or len(pose) != 3
+            or any(not _number(value) or abs(value) > 10000 for value in pose)):
+        raise GuardError("WAIT_OBSERVATION", "The current car pose is not readable. Reobserve without replaying motion.", True)
+    # Marker visibility is deliberately not an admission condition. With the
+    # installed fixed rig, even zero decoded markers may accompany a usable car
+    # observation; the exact registration identity remains mandatory above.
+
+
+def admit(command: dict, installation: dict | None, receiver: dict,
+          observation: dict | None, *, armed: bool, now: float,
+          require_profile_binding: bool = False) -> None:
+    """Raise a structured guard error unless this one command can be admitted.
+
+    Inspection uses only receiver readiness and binding. Physical mutation also
+    requires explicit arming, qualified installation and receiver policy. The
+    caller still performs receiver preflight immediately before dispatch. Real
+    physical mutation must enable require_profile_binding; simulation fixtures
+    may leave it disabled. A matching TCP alone never migrates old geometry.
+    """
+    _require(type(command) is dict and type(receiver) is dict, "COMMAND_INVALID",
+             "A command and receiver snapshot are required.")
+    kind = command.get("kind")
+    _require(kind in {"inspect_current", "inspect_ik", "profile_update", "translate", "rotate"},
+             "COMMAND_INVALID", "Unsupported robot-control operation.")
+    _require(receiver.get("connected") is True and (receiver.get("idle") is True
+             or receiver.get("stage", receiver.get("status")) == "idle"),
+             "RECEIVER_NOT_READY", "The persistent receiver must be connected and idle.")
+    expected = command.get("expected_receiver")
+    _require(type(expected) is dict and _text(expected.get("session_id"))
+             and type(expected.get("seq")) is int and expected["seq"] >= 1
+             and _text(expected.get("profile_id"))
+             and all(type(expected[key]) is type(receiver.get(key)) and expected[key] == receiver.get(key)
+                     for key in ("session_id", "seq", "profile_id")),
+             "RECEIVER_BINDING", "Receiver session, sequence or profile changed. Refresh before creating a command.")
+    if kind in {"inspect_current", "inspect_ik"}:
+        if kind == "inspect_ik":
+            _vector(command.get("target"), 6, "TARGET_INVALID")
+        return
+    _require(armed is True, "NOT_ARMED", "Physical commissioning must be explicitly armed.")
+    _require(type(installation) is dict and installation.get("qualified") is True,
+             "INSTALLATION_UNQUALIFIED", "A qualified installation is required before physical changes.")
+    lower, upper = _installation_limits(installation)
+    _require(command.get("installation_id") == installation["installation_id"], "INSTALLATION_MISMATCH",
+             "The command does not match the current qualified installation.")
+    _require(receiver.get("physical_execution") is True, "PHYSICAL_RECEIVER_REQUIRED",
+             "The receiver must explicitly report physical execution enabled.")
+    if receiver.get("profile") is not None:
+        _require(type(receiver["profile"]) is dict and receiver["profile"].get("tcp_id") == installation["tcp_id"],
+                 "TCP_MISMATCH", "The current receiver profile TCP differs from the installation.")
+    if kind == "profile_update":
+        candidate = _profile(command.get("profile"), installation, candidate=True, lower=lower, upper=upper)
+        if require_profile_binding:
+            _profile_installation_binding(candidate, installation)
+        return
+    source = _vector(receiver.get("actual_pose"), 6, "ROBOT_POSE_INVALID")
+    target = _vector(command.get("target"), 6, "TARGET_INVALID")
+    _inside(source, installation, lower, upper)
+    _inside(target, installation, lower, upper)
+    profile = _profile(receiver.get("profile"), installation, candidate=False, lower=lower, upper=upper)
+    if require_profile_binding:
+        _profile_installation_binding(profile, installation)
+    purpose = command.get("purpose")
+    _require(purpose in {"commissioning", "push", "tool_reposition"}, "COMMAND_INVALID",
+             "An explicit supported command purpose is required.")
+    if kind == "translate":
+        _require(all(abs(a - b) <= 0.01 for a, b in zip(source[3:], target[3:])),
+                 "ORIENTATION_CHANGED", "A translation must hold the current literal TCP orientation.")
+        _require(math.dist(source[:3], target[:3]) <= installation.get("max_step_mm", 30) + 1e-9,
+                 "STEP_LIMIT", "Translation exceeds the reviewed per-command step limit.")
+        _require(not (abs(source[2] - target[2]) > 0.01 and math.dist(source[:2], target[:2]) > 0.01),
+                 "LIFT_LATERAL_COMBINED", "Lift/lower and lateral translation must be separate commands.")
+        if purpose == "push":
+            _observation(observation, installation, now)
+    else:
+        _require(purpose == "tool_reposition", "ROTATION_PURPOSE",
+                 "Wrist rotation is only tool repositioning, not a qualified vehicle turn.")
+        _require(source[2] >= installation["raised_tcp_z_mm"] and target[2] >= installation["raised_tcp_z_mm"],
+                 "ROTATION_NOT_RAISED", "Wrist rotation requires the reviewed raised TCP height.")
+        _require(all(abs(a - b) <= 0.01 for a, b in zip(source[:3], target[:3])),
+                 "ROTATION_TRANSLATES", "Tool rotation must hold its reviewed XYZ anchor.")
+        edge_id = command.get("edge_id")
+        edges = profile.get("rotation_edges")
+        _require(_text(edge_id) and type(edges) is list
+                 and any(type(edge) is dict and edge.get("id") == edge_id
+                         and edge.get("site_verified") is True and _text(edge.get("review_reference")) for edge in edges),
+                 "ROTATION_EDGE", "An explicitly reviewed receiver rotation edge is required.")

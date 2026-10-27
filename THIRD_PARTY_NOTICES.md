@@ -4,6 +4,10 @@ Status: application source, adapted PushPilot temporary-map geometry, original d
 
 Python and Node are external prerequisites; their runtimes are not bundled. Python dependencies are installed separately. The built frontend includes its React dependencies and the vendored font with their upstream notices. No software license has been selected for PushPilot itself; dependency licenses do not license this repository's original code or artwork.
 
+## Private inherited robot runtime — October 28, 2026
+
+The isolated commissioning wrappers reuse the user's earlier `poc-persistent-v1` project runtime. [The source manifest](docs/data/robot-runtime-source.json) records exact source identity, bytes and SHA-256 for host, transport, policy, kinematics and pendant script. `install_robot_runtime.py` copies only these unchanged allowlisted files into ignored private runtime storage. Public source/release packages contain the wrapper and provenance, not these inherited Python/script files, operating profiles, robot geometry, mailboxes or historical run data. This reuse does not claim new authorship or infer a new redistribution license. The wrapper uses the declared Python dependencies; no additional proprietary SDK or new robot driver is bundled.
+
 ## Dependencies
 
 Versions below were resolved on 2026-10-27. Python license identifiers were checked against installed distribution metadata; frontend identifiers are recorded by the npm lockfile. Keep upstream notices with any redistributed packages.

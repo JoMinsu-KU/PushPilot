@@ -6,6 +6,10 @@ PushPilot has existing POC robot transport, earlier tabletop experiments, a city
 
 ## Initial repository boundary
 
+### October 28, 2026 KST — isolated robot commissioning
+
+New `backend/robot_control/`, authenticated commissioning CLI/API, private durable command journal, bounded admission/review/reconciliation, equipment-free failure tests and GX10 deployment preparation were implemented under the user's explicit robot-control request. These are new wrappers around the existing `poc-persistent-v1` protocol, not a newly authored robot driver. The unchanged inherited host/policy/transport/kinematics and installed pendant script are imported privately by exact hashes in [the runtime provenance manifest](docs/data/robot-runtime-source.json); no historical profile, coordinate, mailbox or run is restored or publicly bundled. The offline helper derives a fresh profile only from explicitly reviewed measured installation/current-state inputs. Status: software verified; no new-map physical motion, car-turn, measured stop, production calibration or physical MUSE loop demonstrated. See [commissioning boundaries](docs/ROBOT_CONTROL.md).
+
 | Component | Origin and present status | Supported claim |
 |---|---|---|
 | Workspace instructions, metadata and development/deployment documentation | Prepared for this application workspace on the actual current date | Repository preparation only |

@@ -1,0 +1,16 @@
+[Unit]
+Description=PushPilot isolated robot commissioning API (starts disarmed)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/pushpilot-robot-control/current
+ExecStart=%h/pushpilot-robot-control/venv/bin/python tools/serve_robot_control.py --backend legacy --port 8897 --receiver-root %h/pushpilot-robot-control/shared/receiver --state %h/pushpilot-robot-control/shared/control.sqlite3 --token-file %h/pushpilot-robot-control/shared/control.token
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+TimeoutStopSec=15
+
+[Install]
+WantedBy=default.target

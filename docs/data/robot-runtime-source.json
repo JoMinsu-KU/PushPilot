@@ -1,0 +1,22 @@
+{
+  "schema": "pushpilot.robot-runtime-source.v1",
+  "source": "PushPilot_Main_Project_20261026",
+  "source_directory": "current/deployed/robot/hcr1-pose-receiver",
+  "build": "poc-persistent-v1",
+  "protocol": "pushpilot.hcr1-pose.experimental-v1",
+  "revision": "pose-receiver-experimental-v1",
+  "installed_directory": "runtime/robot-control/receiver",
+  "scope": "Unmodified inherited transport, policy, kinematics and installed pendant script; excludes operating profiles, mailboxes, runs and coordinates.",
+  "rights": "Inherited user project sources; no new third-party license or public redistribution permission is inferred.",
+  "files": {
+    "server.py": {"bytes": 26564, "sha256": "b84980fe2c04b471f645899ef4f8b259c557f78c14210b27cfa4b223539dc87f"},
+    "transport.py": {"bytes": 12284, "sha256": "02d539703ce5b72cd29d7923d730295b4c7321b2d9c1a05fce09ce78c87fdb00"},
+    "policy.py": {"bytes": 13871, "sha256": "2828db82d487ec924d2855abd1432847d0944cc3628130129b8476b6aa77bbfe"},
+    "submit_pose.py": {"bytes": 8137, "sha256": "463cb476ffb9500bab8f16645d97671d10957d30a1b7a8f4c6710ac81bcebda9"},
+    "ik.py": {"bytes": 5114, "sha256": "e6a419ccbc1e59004670eda526133ff8d89da67ee85f10d69c1d2e52f86354e1"},
+    "wrist.py": {"bytes": 3374, "sha256": "c4418bc568a046e66e02c3fe339d5e5d7487b26359d4970170a0cddf935c9dbb"},
+    "wrist_plan.py": {"bytes": 1686, "sha256": "fbdaad7f9bb5c99096806f3a144d104e9caf311189fd42b8cbb40b542107c21c"},
+    "hcr1_pose_receiver.stable-v1-online.script": {"bytes": 38730, "sha256": "889b79b44e3c1729597b767c506d7cb4ce993fe37e7855bea1b49453dbec6938"}
+  },
+  "aliases": {"hcr1_pose_receiver.script": "hcr1_pose_receiver.stable-v1-online.script"}
+}

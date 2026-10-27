@@ -16,6 +16,11 @@ Run from the repository root with **Python 3.12+**. Install `requirements.lock` 
 | `python tools/dev.py test` | Runs offline `unittest` discovery in `tests/` with bytecode writing disabled. |
 | `python tools/serve.py` | Serves built `frontend/dist` and the simulation API on loopback port 8080, one worker. |
 | `python tools/serve.py --api-only` | Starts the API without requiring compiled frontend assets. |
+| `python tools/serve_robot_control.py --backend mock` | Starts a separate commissioning API on loopback 8897, equipment-free and disarmed. |
+| `python tools/robotctl.py status` | Authenticated local commissioning client; token stays in its private file. |
+| `python tools/install_robot_runtime.py --help` | Hash-verified private import of unchanged inherited runtime; excludes profiles/mailboxes/runs. |
+| `python tools/prepare_robot_installation.py --help` | Offline fresh-profile preparation from explicitly reviewed measured installation, current TCP/joints and payload. |
+| `python tools/serve_rodi_host.py --help` | Separate opt-in persistent-receiver host; never auto-replays a command or PLAYs the pendant. |
 | `python tools/serve.py --live-camera-url http://127.0.0.1:8895` | Explicitly connects the application to an already-running loopback live preview; does not start a camera process. |
 | `python3 tools/camera_preview.py --device /dev/video0 --camera-id '<reviewed-camera-identity>' --port 8084` | Deliberately starts one standalone Linux native MJPEG preview helper on loopback. Requires `ffmpeg` and device permission; owns only its capture child. |
 | `python tools/build_release.py --output <archive.zip>` | Packages allowlisted blobs from a clean committed HEAD and writes a hash manifest. |
