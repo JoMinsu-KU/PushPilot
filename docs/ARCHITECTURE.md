@@ -6,6 +6,8 @@
 
 [Documentation](README.md) · [Mission](MISSION.md) · [Meta intelligence](META_INTELLIGENCE.md) · [Roadmap](ROADMAP.md)
 
+[Service composition](SERVICE_COMPOSITION.md) · [Voice input](VOICE_INPUT.md)
+
 </div>
 
 ---
@@ -14,11 +16,13 @@
 
 ## System shape
 
-[![Proposed architecture: the tablet supplies a goal and approval to the mission supervisor; source-labelled observations and MUSE interpretation inform deterministic checks; accepted bounded actions use a simulator first, with a qualified robot adapter deferred; evidence and replay explain each decision.](assets/architecture-overview.png)](assets/architecture-overview.png)
+[![Proposed voice-enabled architecture: the operator workspace exchanges bounded audio and draft transcripts with a backend voice adapter; the operator reviews text and approves a MUSE-interpreted plan; the mission supervisor retains deterministic admission authority, actions use a simulator first and observations feed evidence and replay.](assets/architecture-overview-voice.png)](assets/architecture-overview-voice.png)
 
 *Proposed system design. The illustration describes component responsibilities, not a running deployment. Select the image for the full-size view.*
 
 The **tablet workspace** presents the goal, current state and approval. The **mission supervisor** combines source-labelled observations with goal interpretation and fresh-image MUSE review, then applies deterministic admission checks. Accepted bounded actions go to the abstract simulator first; a qualified robot adapter is a later integration. Action results feed new observations, while the evidence store connects the inputs, reviews and transitions back to the operator's timeline.
+
+The planned **voice adapter** belongs inside the same backend. The first implementation accepts a finite push-to-talk recording and calls Meta's file transcription endpoint. It returns an editable draft transcript to the workspace. Only after the operator submits the text does it join the shared typed-goal interpretation path; the resulting plan still requires explicit tablet approval. The API key stays on the backend. [Voice input](VOICE_INPUT.md) defines cancellation, language and revision handling; [service composition](SERVICE_COMPOSITION.md) defines module and deployment ownership.
 
 There are two complementary decisions: the model explains what the scene supports; the supervisor determines whether the complete set of required checks permits a state transition. An image-based judgment cannot manufacture a fresh signal, a verified stop or a hardware receipt.
 
@@ -29,11 +33,14 @@ There are two complementary decisions: the model explains what the scene support
 | **Tablet workspace** | Goal entry, review, approval, scene evidence and replay | Permission to bypass backend gates |
 | **Mission supervisor** | State transitions, action sequencing, waits, faults and admission | Physical motion capability without a qualified adapter |
 | **Meta provider adapter** | Actual request/result handling, versions, timeouts and structured output validation | Authoritative robot coordinates or immediate stopping |
+| **Voice adapter** | Bounded audio intake, server-side transcription, editable draft text and capture/session binding | Mission approval, raw robot commands or physical stopping |
 | **Observation adapters** | Timestamped images, local signal observations and source identity | Metric accuracy without calibration and evaluation |
 | **Action adapter** | One bounded action and its corresponding result | Successful vehicle displacement merely because a tool reached its target |
 | **Evidence store** | Immutable inputs/results and their causal connection to decisions | A physical claim unsupported by the recorded sources |
 
 The first action adapter will be a hardware-free simulator. Runtime frameworks, endpoints, event schemas and dependency locks will be selected with the implementation rather than implied by this design.
+
+Voice is planned initial-demo scope. Start with browser capture and one modular backend containing the voice adapter, MUSE adapter, mission supervisor, simulator and evidence modules. A separate speech server is not required by this design. Realtime transcription and speech playback are later options. No voice provider request or microphone path has been verified; the completed standalone Meta probe covers text only.
 
 ## Execution gates
 

@@ -16,6 +16,8 @@ PushPilot is designed to make MUSE's image-grounded understanding visible in the
 
 A standalone [connection check](META_API_CHECK.md) has verified authenticated model discovery and one real `muse-spark-1.3` text completion. It does not implement image review or the mission provider adapter.
 
+Planned [voice input](VOICE_INPUT.md) uses **Muse Voice Transcribe** for speech-to-text before the shared goal-understanding path. Transcription returns editable input; Muse Spark interprets the submitted goal and reviews images. Neither an audio recording nor a transcript is mission approval. These adapters are separate modules within the proposed [single backend](SERVICE_COMPOSITION.md).
+
 ## Where the model adds value
 
 | Interaction | Intended input | Useful output | Mission consequence |

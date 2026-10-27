@@ -29,6 +29,8 @@ A robot reaching a commanded point does not tell an operator whether the object 
 
 The proposed experience connects an operator's goal to a shared plan, bounded actions and fresh visual reviews through the planned Meta-model integration, MUSE. The operator can inspect what was expected, what was observed and why the application continues, waits or asks for another observation.
 
+The initial demo design includes **text and push-to-talk goals**. A backend voice adapter transcribes a bounded recording with Meta Muse Voice Transcribe. The operator reviews or edits the original transcript, submits the goal to MUSE and explicitly approves the resulting plan. Read [voice input](docs/VOICE_INPUT.md) and [service composition](docs/SERVICE_COMPOSITION.md). Voice capture and transcription remain unimplemented and unverified.
+
 | Understand the task | Check the outcome | Explain the next step |
 |---|---|---|
 | Ground the goal in the supplied scene and task context. | Compare the intended action with new evidence after it stops. | Keep the model result, local checks and resulting state change connected. |
@@ -88,6 +90,7 @@ The planned evidence model records source identity independently for the robot, 
 | Mission backend and abstract simulator | **Planned** | Responsibilities and interaction boundaries are documented. |
 | Operator frontend and evidence replay | **Planned** | English product flow and visual direction are specified. |
 | Live MUSE/provider integration | **Planned** | Goal/outcome roles and review requirements are documented. |
+| Voice goal input | **Planned: initial demo** | Push-to-talk, backend transcription, editable text and explicit plan approval are designed; no voice API call has been verified. |
 | Final map, metric AR and robot integration | **Deferred** | Awaiting the final installed map and physical qualification. |
 | AR-glasses companion | **Concept** | Future experience; no wearable integration is claimed. |
 
@@ -159,6 +162,7 @@ Component directories define ownership before their application implementations 
 | Start here if you want to… | Read |
 |---|---|
 | Understand the system and authority boundaries | [Architecture](docs/ARCHITECTURE.md) |
+| Inspect service boundaries or voice goal input | [Service composition](docs/SERVICE_COMPOSITION.md) · [Voice input](docs/VOICE_INPUT.md) |
 | Inspect pushing, waiting and verification behavior | [Mission](docs/MISSION.md) |
 | Understand MUSE's role and evidence requirements | [Meta intelligence](docs/META_INTELLIGENCE.md) |
 | Work on the operator interface | [Frontend](frontend/README.md) |
@@ -177,7 +181,7 @@ Deployment requires an actual runtime, a verified target environment and a relea
 
 ## Roadmap and contribution history
 
-The next milestone is a complete **map-independent software loop**: abstract mission events, genuine Meta interaction, visible decisions and source-labelled replay. Final map and robot acceptance follow the physical setup gate. Optional voice input, extra destinations, segmentation and wearable hardware follow the core evidence loop.
+The next milestone is a complete **map-independent software loop**: text and push-to-talk goals, abstract mission events, genuine Meta interaction, visible decisions and source-labelled replay. Final map and robot acceptance follow the physical setup gate. Streaming speech, spoken status, extra destinations, segmentation and wearable hardware are later options.
 
 PushPilot builds on earlier tabletop experiments and an existing robot-transport foundation. Those materials have not been copied into this standalone application scaffold. The workspace, tools and documentation are recorded separately; later imports and implemented features must identify their origin, changes and evidence.
 

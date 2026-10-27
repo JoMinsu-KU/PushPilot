@@ -4,7 +4,7 @@
 
 **Build the map-independent application first. Preserve the boundary to hardware.**
 
-[Architecture](ARCHITECTURE.md) · [Roadmap](ROADMAP.md) · [Deployment](../deploy/README.md)
+[Architecture](ARCHITECTURE.md) · [Services](SERVICE_COMPOSITION.md) · [Voice input](VOICE_INPUT.md) · [Roadmap](ROADMAP.md) · [Deployment](../deploy/README.md)
 
 ## Start here
 
@@ -29,12 +29,14 @@ python tools/dev.py test
 
 ## Implementation sequence
 
-1. **Contracts and supervision:** versioned boundaries, explicit transitions, and a source-labelled abstract simulator.
-2. **Operator workspace:** actual supervisor state, including approval, waiting, review, uncertainty, faults, and replay.
-3. **Meta interaction:** provider adapter, versioned prompts, validated responses, and immutable request/result evidence.
-4. **Integrated hardware-free flow:** a symbolic mission, RED wait, accepted GREEN, review rejection, reobservation, and restart.
+1. **Contracts and supervision:** versioned boundaries, explicit transitions, confirmed goal revisions, voice-source provenance, and a source-labelled abstract simulator.
+2. **Operator workspace:** bounded push-to-talk and typed input, editable transcript review, plus actual supervisor state including approval, waiting, uncertainty, faults, and replay.
+3. **Meta interaction:** backend batch transcription adapter, MUSE interpretation/review adapter, versioned prompts, validated responses, and immutable request/result evidence.
+4. **Integrated hardware-free flow:** voice or typed input, explicit text confirmation and mission approval, a symbolic mission, RED wait, accepted GREEN, review rejection, reobservation, and restart.
 5. **GX10 delivery:** runtime selection, host inspection, and an isolated release/activation path.
 6. **Later physical integration:** map-specific work only after the map hold is released and the final installation is available.
+
+The first voice path uses bounded recording upload and batch file transcription inside the application backend; a standalone speech server, streaming and text-to-speech are later options. Add meaningful acceptance checks for permission denial, empty/failed transcription, cancellation, late responses and newer input. No transcript result may create mission approval, and typed entry must remain usable. Actual Korean or English transcript content is input data; UI controls, errors and source documentation remain English. See [voice input](VOICE_INPUT.md).
 
 When selecting dependencies, add manifests and lockfiles with reproducible installation and verification commands. Do not install a framework merely to populate an empty component directory.
 
@@ -80,6 +82,7 @@ See [release tooling](../tools/README.md) for exact scope and [GX10 deployment](
 | Map | Final geometry/installation unknown; defer graphs, routes, coordinates, registration, stop/exit lines, signal ROIs, and registered AR. |
 | Mission | Symbolic locations and abstract actions; wheel-less surface pushing is the intended physical scenario. |
 | Signals | Full stop even on GREEN; RED/unknown/stale/obscured observations inhibit entry. |
+| Voice | Planned backend-only Meta batch transcription; confirmed text enters the common goal path, followed by explicit mission approval. |
 | Models | Validated interpretation/review; no generated robot scripts or authoritative coordinates. |
 | Evidence | Robot, image, car-pose, signal, and model sources independently labelled. |
 | Hardware | No robot contact, profile replay, mailbox restoration, camera ownership, or service restart by default. |

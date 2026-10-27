@@ -4,22 +4,23 @@
 
 **Understand the mission. Inspect the decisions. Build within clear boundaries.**
 
-[Repository](../README.md) · [Architecture](ARCHITECTURE.md) · [Mission](MISSION.md) · [Meta intelligence](META_INTELLIGENCE.md) · [Roadmap](ROADMAP.md)
+[Repository](../README.md) · [Architecture](ARCHITECTURE.md) · [Services](SERVICE_COMPOSITION.md) · [Voice input](VOICE_INPUT.md) · [Mission](MISSION.md) · [Roadmap](ROADMAP.md)
 
 </div>
 
 ---
 
-PushPilot is being developed as a tablet workspace for an image-grounded tabletop robot mission. An operator states a goal, reviews the proposed task, and follows the evidence behind each decision to proceed, wait or observe again. A future glasses companion extends the interaction concept.
+PushPilot is being developed as a tablet workspace for an image-grounded tabletop robot mission. An operator states or types a goal, confirms the chosen text, reviews and approves the proposed task, and follows the evidence behind each decision to proceed, wait or observe again. A future glasses companion extends the interaction concept.
 
-**The repository currently contains the application bootstrap and design documentation.** The mission runtime, frontend, Meta integration and physical robot connection are planned. Final map geometry and installation are unresolved, so implementation begins with symbolic locations and explicitly simulated actions.
+**The repository currently contains the application bootstrap and design documentation.** The mission runtime, frontend, voice capture/transcription, application Meta integration and physical robot connection are planned. A standalone text connection checker exists; it does not implement the application services. Final map geometry and installation are unresolved, so implementation begins with symbolic locations and explicitly simulated actions.
 
 ## Choose a reading path
 
 | Your goal | Start here | Continue with |
 |---|---|---|
 | Understand the product | [Mission](MISSION.md) | [Meta intelligence](META_INTELLIGENCE.md) |
-| Understand the system | [Architecture](ARCHITECTURE.md) | [Component boundaries](#component-boundaries) |
+| Understand the system | [Architecture](ARCHITECTURE.md) | [Service composition](SERVICE_COMPOSITION.md) |
+| Review voice goal entry | [Voice input](VOICE_INPUT.md) | [Frontend](../frontend/README.md) and [contracts](../contracts/README.md) |
 | Test Meta authentication and text inference | [API connection check](META_API_CHECK.md) | [Meta intelligence](META_INTELLIGENCE.md) |
 | Work on the repository | [Development workflow](DEVELOPMENT.md) | [Roadmap](ROADMAP.md) |
 | Review a demonstration claim | [Evidence model](ARCHITECTURE.md#evidence-that-explains-a-decision) | [Contribution record](../CONTRIBUTIONS.md) |
@@ -37,8 +38,8 @@ The current mission begins at symbolic **PIZZA** and pushes a wheel-less car tow
 
 | Directory | Intended ownership | Present state |
 |---|---|---|
-| [`frontend/`](../frontend/README.md) | English tablet workspace, operator review and replay | Boundary documentation |
-| [`backend/`](../backend/README.md) | Mission supervisor, observations, Meta adapter and evidence | Boundary documentation |
+| [`frontend/`](../frontend/README.md) | English tablet workspace, push-to-talk/typed goal entry, transcript review and replay | Boundary documentation |
+| [`backend/`](../backend/README.md) | Mission supervisor, backend voice transcription adapter, observations, MUSE adapter and evidence | Boundary documentation |
 | [`contracts/`](../contracts/README.md) | Versioned requests, results and source-labelled events | Boundary documentation |
 | [`prompts/`](../prompts/README.md) | Versioned English model prompts and review expectations | Boundary documentation |
 | [`tools/`](../tools/) | Equipment-free source checks and release packaging | Implemented bootstrap tools |
@@ -62,6 +63,7 @@ These describe separate parts of a run. For example, a real provider may review 
 
 - Push the car on the surface; do not pick up or carry it.
 - Stop before every configured intersection and evaluate its operator-switched paper signal.
+- Include bounded push-to-talk goal entry through backend Meta transcription, editable text confirmation and typed fallback in the first demo. Explicit tablet mission approval remains separate.
 - Use MUSE to interpret and review evidence; deterministic checks retain action admission authority.
 - Keep the tablet interface English, with dark navy and electric cyan. Label future wearable interaction as a concept.
 - Defer map coordinates, routes, registration, stop lines, signal regions and spatial AR until the final installation is available.

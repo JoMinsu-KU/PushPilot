@@ -26,6 +26,7 @@ The roadmap separates work that can proceed now from work that depends on a fina
 ## 1 · Map-independent mission core
 
 - [ ] Implement versioned mission, action, observation and event contracts.
+- [ ] Define voice capture/transcription, confirmed text revisions and goal-source contracts without implying mission approval.
 - [ ] Implement the supervisor and abstract action simulator.
 - [ ] Require approval, per-action review and mandatory stop-line stopping.
 - [ ] Exercise red/unknown waiting and fresh-green admission.
@@ -37,24 +38,28 @@ The roadmap separates work that can proceed now from work that depends on a fina
 ## 2 · Operator workspace
 
 - [ ] Build the English navy/cyan tablet interface and scene placeholder.
-- [ ] Connect goal interpretation, plan review and approval to actual backend state.
+- [ ] Add bounded push-to-talk recording, backend batch transcription and editable transcript confirmation.
+- [ ] Keep typed entry on the same goal path, including permission denial, empty output, failure and cancellation.
+- [ ] Connect confirmed goal interpretation, plan review and explicit mission approval to actual backend state.
 - [ ] Show expected/observed outcome, actual model decision and next pending check.
 - [ ] Make red waiting, rejected review, uncertainty and faults visible.
 - [ ] Add a source-aware replay timeline and expandable evidence.
 - [ ] Verify keyboard access, readable contrast and tablet layouts.
 
-**Exit evidence:** the interface follows backend events and visibly changes when an outcome is rejected or unclear. It does not rely on a scripted success animation.
+**Exit evidence:** voice or typed input reaches an inspectable goal and plan; only explicit mission approval permits execution. The interface follows backend events, labels actual capture/transcription state, and visibly changes when an outcome is rejected or unclear. It does not rely on a scripted success animation.
 
 ## 3 · Genuine Meta interaction
 
 - [ ] Verify the chosen provider model/API and lock the integration contract.
 - [ ] Add versioned English goal/review prompts and validated structured responses.
+- [ ] Integrate Meta Muse Voice Transcribe through a backend-only bounded batch adapter.
+- [ ] Preserve original/edited transcripts, provider provenance and session/revision binding; reject late or cancelled results without inventing ASR confidence.
 - [ ] Send reviewed recorded/test images through actual provider calls.
 - [ ] Persist request/result evidence, versions, latency and reported usage.
 - [ ] Handle malformed output, stale imagery, timeout and disagreement without authorizing action.
 - [ ] Show at least one actual model judgment changing continuation or reobservation.
 
-**Exit evidence:** inspectable genuine provider requests and their resulting supervisor decisions. Recorded-image results are reported separately from physical execution.
+**Exit evidence:** inspectable genuine transcription and interpretation/review requests, with their confirmed input revisions and resulting supervisor decisions. Voice capture and speech recognition remain unverified until these checks exist. Recorded-image results are reported separately from physical execution.
 
 ## 4 · Evaluation and isolated delivery
 
@@ -83,7 +88,7 @@ The roadmap separates work that can proceed now from work that depends on a fina
 
 ## Optional expansion
 
-Extra destinations, voice capture, supplementary segmentation, real glasses, additional models and custom policy training follow the complete core loop. Their value must justify the integration and evaluation cost.
+Extra destinations, streaming transcription, continuous listening, text-to-speech feedback, supplementary segmentation, real glasses, additional models and custom policy training follow the complete core loop. Bounded voice goal entry is initial-demo scope, with its design in [voice input](VOICE_INPUT.md). Their value must justify the integration and evaluation cost.
 
 The glasses companion remains a future concept until its actual capture/display capabilities are integrated and verified. Spatial AR remains dependent on the final map and registration.
 

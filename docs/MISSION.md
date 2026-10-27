@@ -4,13 +4,13 @@
 
 **A small car. A visible plan. A decision at every intersection.**
 
-[Documentation](README.md) · [Architecture](ARCHITECTURE.md) · [Meta intelligence](META_INTELLIGENCE.md) · [Roadmap](ROADMAP.md)
+[Documentation](README.md) · [Architecture](ARCHITECTURE.md) · [Voice input](VOICE_INPUT.md) · [Meta intelligence](META_INTELLIGENCE.md) · [Roadmap](ROADMAP.md)
 
 </div>
 
 ---
 
-The intended demonstration begins at **PIZZA**. The operator selects a destination, reviews the understood goal and approves the mission. A robot pushes a wheel-less car across the tabletop, stops before each configured intersection, waits for a green paper signal and continues to the destination.
+The intended demonstration begins at **PIZZA**. The operator states or types a destination, confirms the chosen text, reviews the understood goal and explicitly approves the mission. A robot pushes a wheel-less car across the tabletop, stops before each configured intersection, waits for a green paper signal and continues to the destination.
 
 **This is the scenario specification, not a completed physical demonstration.** PIZZA and destinations remain symbolic until the final map and installation are available. Current software work uses abstract actions and explicit simulation.
 
@@ -26,11 +26,23 @@ The intended demonstration begins at **PIZZA**. The operator selects a destinati
 
 Each bounded action returns to verification. The workspace must make a rejected or uncertain review visibly change what happens next.
 
+## Goal entry and approval
+
+Voice input is part of the planned initial demo. The operator makes a bounded push-to-talk recording, the backend sends it to Meta Muse Voice Transcribe, and the workspace presents an editable transcript. The original provider text remains inspectable. Choosing `Use goal` submits the selected text to MUSE goal interpretation; it does not authorize execution.
+
+Typed text enters the same interpretation and plan-review path. The English interface may display actual Korean or English transcript data. Permission denial, empty transcription, failed requests or cancellation leave typed entry available and cannot create or approve a mission. A late result from an older recording cannot replace newer input.
+
+New typed or spoken goals are accepted only during non-executing preparation. While a mission is active, including signal waiting, observation review and crossing, reject recording, new goal submission and goal edits. A replacement goal follows explicit completion/termination and state reconciliation; capture cancellation does not stop the mission.
+
+Only explicit tablet approval of the current interpreted mission version authorizes the mission to proceed through its deterministic gates. See [voice input](VOICE_INPUT.md) for the full proposed service and state contract. Microphone capture and transcription are planned, not implemented.
+
 ## The nominal sequence
 
 ```text
-PIZZA
-  → review and approve goal
+Voice recording or typed request
+  → review/edit text and choose Use goal
+  → MUSE interpretation and plan review
+  → explicit approval of the PIZZA mission
   → bounded push
   → verify outcome
   → approach an intersection
@@ -90,11 +102,11 @@ The primary surface is an **English tablet workspace** in dark navy and electric
 
 | View | Content |
 |---|---|
-| **Workspace** | Goal, scene placeholder, current action, expected/observed comparison, MUSE decision and next check |
+| **Workspace** | Push-to-talk or typed goal, editable transcript, scene placeholder, current action, expected/observed comparison, MUSE decision and next check |
 | **Plan** | Current symbolic interpretation, approval state and action sequence |
 | **Replay** | Source-aware timeline with images, actual review responses and transition causes |
 
-Spatial AR route alignment is deferred with map registration. The **glasses companion** remains a clearly labelled future concept. Hardware connection, voice input and wearable display behavior must only be shown as live capabilities when they are actually implemented and supported by evidence.
+Spatial AR route alignment is deferred with map registration. The **glasses companion** remains a clearly labelled future concept. Hardware connection, microphone capture, transcription and wearable display behavior must only be shown as live capabilities when they are actually implemented and supported by evidence. Streaming transcription and spoken feedback are later extensions.
 
 ---
 

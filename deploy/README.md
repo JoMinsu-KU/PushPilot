@@ -20,6 +20,12 @@ The sequence is **local checks and reviewed commit â†’ source ZIP and manifest â
 
 The current ZIP is a source/bootstrap artifact. Installation and activation become meaningful after the frontend/backend runtime and its locked dependencies are implemented.
 
+## Planned application services
+
+The first application uses an operator browser and one modular backend containing voice transcription, MUSE interpretation/review, the mission supervisor, simulation and evidence. External Meta Spark and Meta Voice are separate provider adapters using server-held credentials. See [service composition](../docs/SERVICE_COMPOSITION.md) and [voice input](../docs/VOICE_INPUT.md).
+
+Voice capture requires HTTPS trusted by the target tablet and secure-context/microphone preflight at the actual deployed origin. Localhost development is a distinct case; a plain LAN HTTP address must not be treated as microphone-ready. Select TLS serving and lock audio conversion dependencies with the runtime. Neither is provisioned by these documents.
+
 ## Prepare a bundle locally
 
 From the repository root, with Python 3.11+ and Git on `PATH`:
