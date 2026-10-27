@@ -26,6 +26,7 @@ The current [visual direction](DESIGN_SYSTEM.md) follows the user's industrial r
 | Design the operator workspace | [Design system](DESIGN_SYSTEM.md) | [Frontend](../frontend/README.md) |
 | Follow route progress or replace the drawing | [Route display](ROUTE_DISPLAY.md) | [Map validation and replacement](MAP_REPLACEMENT.md) |
 | Understand the system | [Architecture](ARCHITECTURE.md) | [Service composition](SERVICE_COMPOSITION.md) |
+| Prepare isolated robot tests | [Robot commissioning](ROBOT_CONTROL.md) | [Dedicated GX10 delivery](../deploy/ROBOT_CONTROL.md); startup disarmed, no motion replay |
 | Review voice goal entry | [Voice input](VOICE_INPUT.md) | [Finite-upload backend](VOICE_BACKEND.md); browser capture remains disconnected |
 | Test Meta authentication and goal interpretation | [API connection check](META_API_CHECK.md) | [Meta intelligence](META_INTELLIGENCE.md) |
 | Connect image judgment to a simulated action | [Live intelligence](LIVE_INTELLIGENCE.md) | [Explicit recorded-pair alternative](ACTION_REVIEWS.md) and [verification](VERIFICATION.md) |
@@ -54,7 +55,7 @@ The mission begins at symbolic **PIZZA** and pushes a wheel-less car toward a se
 | [`prompts/`](../prompts/README.md) | Model instructions and review expectations | Goal/scene instructions plus the action-review contract; complete template catalog remains later work |
 | [`tools/`](../tools/) | Source checks, packaging, local application startup and an explicitly started standalone native camera helper | Implemented; preview helper is separate from application deployment |
 | [`tests/`](../tests/) | Release, provider-boundary, mission and API behavior | Offline automated suite |
-| [`deploy/`](../deploy/README.md) | Separate GX10 releases and shared runtime state | Standalone camera helper runs on GX10; full application not deployed |
+| [`deploy/`](../deploy/README.md) | Separate GX10 releases and shared runtime state | Isolated frontend/API release and independent camera helper verified on October 28; see deployment evidence |
 
 Run `python tools/serve.py` after installing `requirements.lock` and building `frontend/dist`; see [Development](DEVELOPMENT.md). Python 3.12+ serves both API and compiled frontend. Node 24 is required only for frontend development/build. The repository is self-contained; parent planning files, old maps and historical operating archives are not build dependencies.
 

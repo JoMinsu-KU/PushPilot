@@ -12,7 +12,7 @@ This is the independent application repository. It runs with the sanitized tempo
 
 | Requirement | Purpose |
 | :--- | :--- |
-| Python 3.12+ | FastAPI/Uvicorn, SQLite, OpenCV marker detection and NumPy geometry. GX10 has Python 3.12.3; isolated host installation remains unverified. |
+| Python 3.12+ | FastAPI/Uvicorn, SQLite, OpenCV marker detection and NumPy geometry. GX10 has Python 3.12.3; isolated ARM64 dependency installation and application startup were verified on October 28. |
 | Node 24 and npm | Build or develop the React/TypeScript frontend locally. GX10 serves compiled assets without Node. |
 | Git on `PATH` | Reviewed source identity, source packaging, and isolated release tests. |
 | `requirements.lock` and `frontend/package-lock.json` | Exact Python and frontend dependency versions. |
@@ -65,7 +65,7 @@ Live preview is disabled by default. After deliberately starting the separate na
 python tools/serve.py --port 8893 --live-camera-url http://127.0.0.1:8895
 ```
 
-This launcher does not start a camera process. [`Live camera`](LIVE_CAMERA.md) documents the explicit Linux helper, numeric-loopback URL restriction, native JPEG transport, eight-frame RAM cache, age semantics and fixed display lock. The current arrangement runs only that helper on GX10 and the application on Windows. It is not full GX10 application deployment or a qualified action-bound observation adapter. Live/Recorded selection does not redirect MUSE requests: Image tools and action review still use immutable recorded frames.
+This launcher does not start a camera process. [`Live camera`](LIVE_CAMERA.md) documents the explicit Linux helper, numeric-loopback URL restriction, native JPEG transport, eight-frame RAM cache, age semantics and fixed display lock. This is the Windows development arrangement. The deployed GX10 frontend/API instead uses host loopback to the existing helper; see [deployment verification](VERIFICATION.md#gx10-application-deployment-october-28). Live/Recorded selection does not turn Image tools into live review: recorded tools use immutable uploaded frames, while explicit live-intelligence operations select their own native observations. Neither path establishes qualified physical action observations.
 
 ## Verify the first connected slice
 
@@ -145,7 +145,7 @@ python tools/build_release.py --output ../release-bundles/pushpilot-source-v0.1.
 python tools/build_release.py --verify ../release-bundles/pushpilot-source-v0.1.0.zip
 ```
 
-The builder refuses an existing output path. The manifest binds committed source and hashes; verification checks integrity and path policy without extraction. Neither step transfers files, starts a service, authenticates a publisher, or establishes publication rights. Ignored `frontend/dist` is absent: a future GX10 release needs compiled assets built from that same clean commit in addition to source. See [GX10 deployment](../deploy/README.md).
+The builder refuses an existing output path. The manifest binds committed source and hashes; verification checks integrity and path policy without extraction. Neither step transfers files, starts a service, authenticates a publisher, or establishes publication rights. Ignored `frontend/dist` is absent: each GX10 release needs compiled assets built from that same clean commit in addition to source. See [GX10 deployment](../deploy/README.md).
 
 ## Boundaries and next implementation work
 

@@ -8,14 +8,14 @@
 
 PushPilot now has an opt-in live camera preview alongside recorded images and the spatial illustration. A standalone helper reads one explicitly selected Linux camera; an existing loopback connection supplies its original JPEGs to the application. The live preview is independent of recorded `SceneStore` media, MUSE requests, action-review evidence and mission state. Connecting it does not enable robot control, physical signal admission or fresh post-action verification.
 
-The current arrangement runs only the standalone camera helper on GX10, with an SSH forward to the Windows-hosted application. The full application has not been deployed to GX10. Actual connection observations and registration outcomes belong in [verification](VERIFICATION.md); implementation of a lock does not establish that the current physical view has been successfully registered.
+Since October 28, the GX10 deployment runs the application beside the independent camera helper and connects over host loopback. A Windows development instance can instead use the SSH-forward workflow below. Actual connection observations and registration outcomes belong in [verification](VERIFICATION.md); implementation of a lock does not establish that the current physical view has been successfully registered.
 
 ## Data path and startup
 
 | Stage | Responsibility |
 | :--- | :--- |
 | `tools/camera_preview.py` | Explicitly own one V4L2 device, read native 1920 × 1080 MJPEG through an `ffmpeg` child with video copy, and expose the latest JPEG on loopback. |
-| SSH local forward | Carry the helper's loopback HTTP service to another loopback port on the application host. No public camera listener is required. |
+| Optional SSH local forward | For Windows development, carry the helper's loopback HTTP service to another loopback port on the application host. The GX10 application connects directly over host loopback. No public camera listener is required. |
 | `backend/live_camera.py` | Poll the configured service, validate source/frame identity, keep eight immutable JPEG frames in RAM, detect markers and expose a preview-only API. |
 | Camera UI | Select Live or Recorded, decode a new image before displaying it, show age/source/registration status and preserve native perspective and overlay coordinates. |
 
@@ -30,18 +30,32 @@ python3 tools/camera_preview.py --device /dev/video0 \
   --camera-id '<reviewed-camera-identity>' --port 8084
 ```
 
-On the application host, establish the existing SSH connection's local forward:
+For a Windows development application, establish the existing SSH connection's local forward:
 
 ```sh
 ssh -N -L 127.0.0.1:8895:127.0.0.1:8084 gx10
 ```
 
-Then start the built application against that already-running loopback service:
+Then start the Windows development application against that already-running forwarded service:
 
 ```sh
 python tools/serve.py --port 8893 \
   --live-camera-url http://127.0.0.1:8895
 ```
+
+On GX10, the deployed application instead connects directly to the already-running helper:
+
+```sh
+python tools/serve.py --port 8080 --live-camera-url http://127.0.0.1:8084
+```
+
+A development computer can reach that loopback-only application through a separate forward:
+
+```sh
+ssh -N -L 127.0.0.1:8897:127.0.0.1:8080 gx10
+```
+
+Open `http://127.0.0.1:8897` on that computer. These examples do not start or restart the camera helper.
 
 PowerShell users can put each command on one line rather than using the POSIX continuation characters. `PUSHPILOT_LIVE_CAMERA_URL` is the equivalent explicit process-environment configuration. The URL must be numeric loopback HTTP with an explicit port, without credentials, paths, query strings or fragments. DNS names, remote addresses and redirects are rejected. No provider key is needed for preview.
 

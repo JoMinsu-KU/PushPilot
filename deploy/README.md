@@ -6,7 +6,9 @@
 
 [Development](../docs/DEVELOPMENT.md) · [Release tools](../tools/README.md) · [Architecture](../docs/ARCHITECTURE.md)
 
-> **Deployment status:** host inspection completed on October 27, 2026. Only the separately authorized standalone native camera helper currently runs on GX10, forwarded over SSH to the Windows application. The full application has not been installed, activated or started on GX10. Existing POC services are outside its deployment boundary. See [Live camera](../docs/LIVE_CAMERA.md).
+The separately authorized October 28 robot-control implementation has its own [commissioning deployment guide](ROBOT_CONTROL.md). It does not convert this application's simulated actions into physical execution or restart the camera/POC runtime.
+
+> **Deployment status, October 28, 2026:** the frontend and simulation backend from source commit `e5637f3` were installed and started in a separate GX10 release. One Python process serves the locally compiled frontend and API on loopback, using fresh shared state and the independently running native camera helper. Windows remains the development host. Existing POC services remain outside this deployment. See [verification](../docs/VERIFICATION.md#gx10-application-deployment-october-28) and [live camera](../docs/LIVE_CAMERA.md).
 
 ## Verified runtime direction
 
@@ -39,13 +41,13 @@ The last command requires the active Python environment to contain `requirements
 
 `--api-only` allows backend development before the frontend is built. `--state-path /absolute/path/workspace.sqlite3` selects a persistent SQLite file. The default is ignored `runtime/workspace.sqlite3` inside the application directory; use dedicated shared state for a host installation.
 
-`--live-camera-url http://127.0.0.1:8895` optionally connects to an already-running numeric loopback preview service or SSH forward; `PUSHPILOT_LIVE_CAMERA_URL` is the corresponding process-environment setting. It does not open a device, transfer the helper or start camera processes. The current helper-only GX10 arrangement is separate from this proposed full application deployment. Live preview frames and display locks remain in memory, outside the shared recorded-evidence store; no preview result authorizes robot motion.
+`--live-camera-url http://127.0.0.1:8895` optionally connects to an already-running numeric loopback preview service or SSH forward; `PUSHPILOT_LIVE_CAMERA_URL` is the corresponding process-environment setting. It does not open a device, transfer the helper or start camera processes. The deployed GX10 application connects directly to the existing helper at `http://127.0.0.1:8084`; a Windows development instance may use the SSH-forwarded endpoint instead. Preview frames and the active display mapping remain in memory; an authentic saved reference receipt can be explicitly resumed after current-view validation. No preview result authorizes robot motion.
 
 ## Source release and compiled assets
 
 [![Delivery flow from reviewed local source to an isolated GX10 release, with verification and deliberate activation.](../docs/assets/delivery-flow.png)](../docs/assets/delivery-flow.png)
 
-*The source builder is implemented. Transfer, host installation, TLS, and activation remain manual, future deployment work.*
+*Source packaging is implemented. The first isolated GX10 application release was transferred and activated manually on October 28. Trusted tablet HTTPS remains separate work; the launcher does not automate host provisioning or activation.*
 
 After reviewing and committing source, build a clean source snapshot:
 
@@ -93,7 +95,7 @@ python3 -m venv .venv
   --state-path /absolute/deploy-root/shared/state/workspace.sqlite3
 ```
 
-These installation steps have not been executed on GX10. Package versions, including OpenCV/NumPy, are locked; Linux ARM64 wheels have been resolved as a compatibility check. Installation, imports, and runtime behavior must still be verified in the isolated host environment. Do not change or restart another application's services if a dependency or port is unavailable.
+The October 28 release installed all 20 locked ARM64 wheels offline in its isolated environment. Dependency consistency, runtime imports, source checks and offline tests passed; the frontend, API and existing native camera connection were verified. A separate bounded text-only MUSE connectivity smoke passed; no image, action or signal inference was part of deployment. These checks do not qualify live signal recognition, physical motion or tablet HTTPS. Repeat the relevant checks for each new release. Do not change or restart another application's services if a dependency or port is unavailable.
 
 ## Access, credentials, and microphone capture
 
@@ -108,6 +110,8 @@ Future push-to-talk recording requires HTTPS trusted by the actual tablet, micro
 ## Activation and recovery
 
 Before activation, verify health, frontend assets, exact source labels, RED waiting, fresh GREEN admission after a mandatory stop, uncertainty handling, and replay. Do these checks in simulation with separate test state. Select a release only after its checks and the corresponding deployment authorization.
+
+The deployed application has an enabled user systemd service. It starts with the user session; `Linger=no`, so startup after boot without login has not been established. The service does not own or restart the camera helper or Rodi.
 
 On application restart, active mission state enters recovery and requires reconciliation. Previously approved plans, GREEN observations, or pending work do not regain authority automatically. Preserve shared evidence when changing or rolling back code; never restore a historical database merely to replay a mission. No autostart, service installation, service restart, or active-release change is performed by these tools.
 

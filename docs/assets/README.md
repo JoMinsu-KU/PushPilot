@@ -36,7 +36,7 @@ Camera board focus masks the surrounding background while preserving the origina
 
 The original four PNGs were generated on October 27, 2026 (Asia/Seoul) with the **built-in image generation tool**; their exact inputs remain in [GENERATION_PROMPTS.md](GENERATION_PROMPTS.md). A voice-enabled architecture revision and voice flow were added on the same date, with exact inputs in [VOICE_GENERATION_PROMPTS.md](VOICE_GENERATION_PROMPTS.md). The architecture revision uses the earlier repository-generated image as its sole edit target. No fallback CLI, API key or external reference image was used. Selected outputs were copied unchanged into this directory and visually reviewed for English spelling, arrows, authority boundaries, status and readability.
 
-Every process illustration describes the intended design. It is not a camera observation, provider result, live deployment or evidence of physical execution. Proposed application components, a later qualified robot adapter and the undeployed GX10 runtime remain visibly labelled. The source-release tools are implemented; generating a diagram does not implement the system it depicts.
+Every process illustration describes the intended design. It is not a camera observation, provider result, live deployment or evidence of physical execution. Some illustrations predate the GX10 application deployment and retain historical proposed-runtime labels. Current runtime status is documented in [GX10 deployment](../../deploy/README.md); a later qualified robot adapter remains a separate boundary. The source-release tools are implemented; generating a diagram does not implement the system it depicts.
 
 ## Updating a diagram
 

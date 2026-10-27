@@ -102,7 +102,7 @@ Provider request cancellation may not stop work already accepted by the provider
 
 ## GX10 boundary
 
-Read-only GX10 inspection on October 27, 2026 found ARM64 Ubuntu 24.04.4 and Python 3.12.3, with no Node/npm on the inspected PATH. The application has not been installed or activated there. The separately authorized standalone camera helper runs there for the development preview only; it is not the application backend or an activated application release. The isolated release/shared-state layout in [deployment](../deploy/README.md) remains unprovisioned. No frontend, backend, or voice work requires restarting POC web, Rodi, camera, or receiver services.
+Read-only GX10 inspection on October 27, 2026 found ARM64 Ubuntu 24.04.4 and Python 3.12.3, with no Node/npm on the inspected PATH. On October 28, the compiled frontend and simulation backend were installed and started in an isolated release with fresh shared state. The independent native camera helper remained running, and the application connects to it over host loopback. Windows remains the development host. The enabled application user service starts with the user session; boot without login, trusted tablet HTTPS and microphone capture remain unverified. See [deployment verification](VERIFICATION.md#gx10-application-deployment-october-28) for the exact scope. No frontend, backend, or voice work requires restarting POC web, Rodi, camera, or receiver services.
 
 Choose HTTPS termination and a certificate trusted by the tablet. Browser capture must be tested at that origin and encode supported WAV, or add a separately reviewed conversion implementation. TLS and microphone capture remain implementation gates; the existing preview and finite-upload backend do not establish them.
 

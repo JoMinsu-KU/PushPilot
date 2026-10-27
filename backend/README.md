@@ -54,13 +54,13 @@ Configuration, local credential reads, and database initialization happen in ASG
 
 ## Optional live camera preview
 
-The authorized development arrangement uses `tools/camera_preview.py` on GX10 at `127.0.0.1:8084`, SSH forwarding to client `127.0.0.1:8895`, and the Windows application on port `8893`:
+The deployed GX10 application connects directly to the independent camera helper at `127.0.0.1:8084`. The Windows development alternative uses SSH forwarding to client `127.0.0.1:8895` and an application on port `8893`:
 
 ```sh
 python tools/serve.py --port 8893 --live-camera-url http://127.0.0.1:8895
 ```
 
-The helper must be separately authorized and started. It requests native 1920 × 1080 MJPEG at 30 fps, copies JPEG bytes without re-encoding, uses a device lock and refuses a detected existing camera owner without terminating it. Requested fps is not measured browser throughput. Only this standalone helper runs on GX10; the application is not deployed there. See [Live camera preview](../docs/LIVE_CAMERA.md) for its launch and transport boundary.
+The helper must be separately authorized and started. It requests native 1920 × 1080 MJPEG at 30 fps, copies JPEG bytes without re-encoding, uses a device lock and refuses a detected existing camera owner without terminating it. Requested fps is not measured browser throughput. The frontend/API application was separately deployed to GX10 on October 28; application startup does not own or restart the helper. See [Live camera preview](../docs/LIVE_CAMERA.md) for its launch and transport boundary.
 
 The preview snapshot identifies live source, camera identity/epoch, sequence, unique frame ID, dimensions, SHA-256 and host receive/dequeue time. That time is not sensor exposure time. Reported upstream age plus transport and elapsed application time determine freshness; the limit is 1,500 ms and a repeated sequence does not reset age. At most eight frames are cached in application RAM, with no raw-preview persistence in `SceneStore` or SQLite. Individual image responses permit 30 seconds of private browser caching.
 
@@ -142,7 +142,7 @@ SQLite commits the state, event append, and command receipt together. Evidence r
 - Wire the dedicated live operation controls through the tablet's complete interaction, retaining clear source and failure states. The existing frontend route geometry is reusable; an autonomous full-mission runner is not implemented.
 - Production map and metric AR registration, contact geometry, physical pushing/turning, robot transport, and independent physical verification. Test-only camera-to-drawing overlays are already available for uploaded frames and an explicitly locked live display.
 
-The model selects drawing-graph routes and judges supplied image evidence. Deterministic gates own simulation transitions; model text never supplies executable robot code or authoritative robot coordinates. Full GX10 application deployment remains separate from the already running camera helper.
+The model selects drawing-graph routes and judges supplied image evidence. Deterministic gates own simulation transitions; model text never supplies executable robot code or authoritative robot coordinates. The verified GX10 application release and independently running camera helper retain separate lifetimes; [deployment verification](../docs/VERIFICATION.md#gx10-application-deployment-october-28) records the installation and startup scope.
 
 ## Validate offline
 

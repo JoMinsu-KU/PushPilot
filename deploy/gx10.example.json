@@ -1,6 +1,6 @@
 {
   "schema_version": "pushpilot.deployment-example.v1",
-  "status": "runtime_selected_not_deployed",
+  "status": "example_configuration_not_installed",
   "host_alias": "gx10",
   "ssh_user": null,
   "host_address": null,
@@ -23,7 +23,7 @@
     "npm_on_path": false
   },
   "runtime": {
-    "status": "selected_host_installation_unverified",
+    "status": "example_requires_host_verification",
     "implementation": "python_asgi_same_origin_static_frontend",
     "python_minimum": "3.12",
     "bind_address": "127.0.0.1",

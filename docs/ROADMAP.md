@@ -96,15 +96,17 @@ Checkboxes describe implementation scope. Automated simulation tests, real provi
 - [x] Publish reproducible local build, startup and hardware-free simulation instructions.
 - [x] Inspect GX10 read-only and select Python 3.12+ serving compiled frontend assets.
 - [x] Provide an explicit launcher and generic isolated-service example.
-- [ ] Verify dependency installation and full application behavior in a dedicated GX10 release.
+- [x] Verify ARM64 dependency installation and compiled frontend/API startup in a dedicated GX10 release.
+- [ ] Exercise the complete live-backed mission on GX10 with reviewed installed-map signal targets.
 - [ ] Provision reviewed target-device HTTPS before claiming microphone support.
-- [ ] Transfer reviewed source and compiled frontend assets from the same commit.
-- [ ] Verify separate shared state, health, deliberate activation, and rollback without history loss.
+- [x] Transfer reviewed source and compiled frontend assets from the same commit.
+- [x] Verify separate fresh shared state, health and deliberate application activation.
+- [ ] Exercise rollback without history loss and startup after boot without login.
 - [ ] Freeze independently labelled held-out image inputs before prompt tuning.
 - [ ] Evaluate matched actions with different outcomes and compare a recorded/shadow baseline.
 - [ ] Complete demonstration records with supported source and execution claims.
 
-**Evidence:** GX10 inspection found ARM64 Ubuntu 24.04.4 and Python 3.12.3, with no Node/npm on the inspected PATH. A separately authorized native camera helper runs there with loopback SSH transport; the full application remains Windows-hosted and has not been installed or activated on GX10. Existing POC services remain outside the release boundary.
+**Evidence:** GX10 inspection found ARM64 Ubuntu 24.04.4 and Python 3.12.3, with no Node/npm on the inspected PATH. The October 28 isolated application release installed the locked ARM64 dependencies and matching source/frontend assets, passed offline checks and started with fresh unapproved state. It connects directly to the independent native camera helper; an SSH forward provides local browser access. A bounded text-only MUSE connectivity smoke passed; no image, action or signal inference was part of deployment. The enabled user service requires a user session; boot without login, rollback and trusted tablet HTTPS remain unverified. See [deployment verification](VERIFICATION.md#gx10-application-deployment-october-28). Existing POC services remain outside the release boundary.
 
 ## 5 · Temporary map and recorded-image inputs
 

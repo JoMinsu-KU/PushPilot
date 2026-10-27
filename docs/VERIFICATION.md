@@ -1,6 +1,6 @@
 # Workspace verification
 
-Verified on **2026-10-27, Asia/Seoul**. This record covers replaceable-map live-image planning, bound native-image action/signal services, finite voice uploads, execution-aware route display, recorded reviews and native preview. Execution remains simulated; this is not a physical mission report.
+Initial software verification on **2026-10-27, Asia/Seoul**; the GX10 deployment follow-up on **2026-10-28** is recorded below. This record covers replaceable-map live-image planning, bound native-image action/signal services, finite voice uploads, execution-aware route display, recorded reviews and native preview. Execution remains simulated; this is not a physical mission report.
 
 | Check | Result | Boundary |
 |---|---|---|
@@ -25,6 +25,26 @@ Verified on **2026-10-27, Asia/Seoul**. This record covers replaceable-map live-
 
 The local verification host used Windows CPython 3.14 and Node 24.19. The GX10 was inspected read-only: Ubuntu 24.04.4, ARM64, Python 3.12.3 and no Node/npm on its command path. The deployment design builds frontend assets locally and serves them from Python on GX10.
 
+## GX10 application deployment, October 28
+
+Source commit `e5637f3` was installed as a separate GX10 release on **2026-10-28, Asia/Seoul**. This follow-up supersedes the earlier helper-only deployment status; the October 27 software and provider checks above retain their original scope.
+
+| Deployment check | Observed result | Boundary |
+|---|---|---|
+| Release payload | All 190 reviewed payload-file hashes matched the transferred release | Matching source and compiled assets; unrelated robot-control work excluded |
+| ARM64 runtime | All 20 locked wheels installed offline; dependency consistency and runtime imports passed | Isolated Python 3.12 environment; no system dependency replacement |
+| Host software checks | `python tools/dev.py check` and `python tools/dev.py test` exited successfully | Offline software tests; no provider or physical mission claim |
+| Frontend/API service | User systemd service active on loopback port 8080 | One Python process; browser access through an SSH forward |
+| Initial mission | `IDLE`, revision 0, `approved: false`, no plan | Fresh shared state; previous mission, approval, signal and pending operations were not restored |
+| Existing camera | Fresh native 1920 × 1080 preview, same helper epoch and process | Helper was not restarted; no measured motion or exposure-to-display latency |
+| Fixed display mapping | Only the latest authentic saved reference receipt was imported; explicit resume passed current marker validation with the exact original homography | Display registration only; no refit, robot coordinates or approval migration |
+| Spatial and font assets | Clean-road private GLB hash matched; Pretendard WOFF2 and Draco WASM returned successfully | Asset delivery verified; no new geometry or browser performance claim |
+| Provider configuration | MUSE configuration present on the backend | Credentials remained server-side and private |
+| Actual MUSE connectivity | Model discovery returned HTTP 200; one `muse-spark-1.3` text completion returned HTTP 200 and the exact requested `PUSHPILOT_API_OK` text; 65 tokens reported | Bounded text-only connectivity smoke; no image/action/signal inference, mission change or robot operation |
+| GX10 browser workspace | Camera and Spatial loaded at 1194 × 834 CSS pixels; Pretendard applied; no console warning/error or vertical scrolling observed | Actual deployed UI check at one viewport; not a full tablet/browser or motion benchmark |
+
+The application user service is enabled for user-session startup. Lingering is disabled (`Linger=no`), so startup after boot without login has not been established. Trusted tablet HTTPS/microphone capture, full live-backed mission operation, final-map signal targets, rollback, physical control and wearable integration remain separate checks. Private deployment receipts, account details, addresses, media, state and credentials remain outside public source.
+
 ## Live backend integration
 
 The software now includes graph-grounded native-image planning, exact selected-route compilation, server-captured BEFORE/new AFTER comparison, post-stop MUSE signal review, finite action/reobserve and signal-wait helpers, background signal watching, immutable selected-frame SQLite evidence and map-validation API/CLI. A configured accepted live STOP can start watching without another approval: default 30 judgments over at most 300 seconds, ending on GREEN, failure, cancellation or budget exhaustion. Finite mono PCM WAV ingestion and the official Meta transcription adapter return editable, revision/map-bound transcript receipts. Browser microphone capture remains disconnected.
@@ -35,7 +55,7 @@ Four actual live-image planning checks are recorded in [Meta evidence](META_API_
 
 The QA browser displayed the actual western route over the live camera. Replay opened its selected original JPEG at **1920 × 1080**, with no display mask or resampling in the provider/evidence path. At **1194 × 834** and **1024 × 768**, inspected workspace and native-evidence dialogs fit the viewport without vertical overflow; image and complete-record tabs remained accessible. Long records use explicit pages. Camera SVG filtering remained `none`.
 
-Current Little Town has no reviewed signal-target regions, so its live signal requests fail closed until configured. A robot adapter, physical stop receipts, car/tool contact and turning, BASE/Z calibration, installed-map qualification, actual voice access and full GX10 application deployment remain outside verified software behavior.
+Current Little Town has no reviewed signal-target regions, so its live signal requests fail closed until configured. A robot adapter, physical stop receipts, car/tool contact and turning, BASE/Z calibration, installed-map qualification, actual voice access remain outside verified software behavior. The GX10 installation and startup scope is recorded in the October 28 deployment follow-up above.
 
 ## Fixed spatial workspace
 
