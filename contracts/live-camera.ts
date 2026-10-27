@@ -17,6 +17,8 @@ export interface LiveCameraSnapshot {
     status: 'unregistered' | 'candidate' | 'locked' | 'locked_partial' | 'locked_occluded' | 'view_changed';
     id: string | null; reference_frame_id: string | null;
     homography: number[][] | null; residual_px: number | null; message: string;
+    /** Missing markers alone retain eligibility; contradictory visible evidence does not. */
+    verification?: 'visible_markers' | 'insufficient_visibility' | 'marker_disagreement';
   };
   freshness_limit_ms: number;
   last_error: string | null;

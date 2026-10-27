@@ -146,7 +146,17 @@ class LiveCamera:
         image = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), cv2.IMREAD_COLOR)
         if image is None or image.shape[:2] != (height, width):
             raise ValueError("Camera JPEG cannot be decoded.")
-        detection = self._detect(image)
+        with self._lock:
+            reference = self._reference
+            # A search hint is not a measurement. Only the current native frame
+            # may supply recovered corners; changed identities never use it.
+            reference_homography = deepcopy(reference["homography"]) if (
+                reference and not self._changed
+                and (reference["epoch"], reference["camera_id"], reference["width"], reference["height"], reference["map"]) ==
+                    (epoch, camera_id, width, height, self._map_identity())
+                and age + (self._clock() - accepted) * 1000 <= FRESHNESS_LIMIT_MS
+            ) else None
+        detection = self._detect(image, reference_homography=reference_homography)
         candidate = self._candidate(detection, width, height)
         frame_id = uuid4().hex
         item = {"data": data, "accepted": accepted, "upstream_age_ms": age,
@@ -202,16 +212,26 @@ class LiveCamera:
             return {**identity, "status": "view_changed", "message": "Camera identity, dimensions, map or verified view changed. Overlay withheld; explicitly register the current view."}
         matrix = np.array(reference["homography"], dtype=np.float64)
         known = self._known_corners()
-        errors, shifts, bad_centers, bad = [], [], [], 0
+        errors, shifts, bad_centers, matching_centers, bad = [], [], [], [], 0
+        seen = set()
+        invalid_evidence = False
         for marker in item["detection"]["markers"]:
-            expected = cv2.perspectiveTransform(known[marker["id"]].reshape(-1, 1, 2), matrix).reshape(4, 2)
+            identifier = marker["id"]
             observed = np.array(marker["corners"], dtype=np.float64)
+            if identifier not in known or identifier in seen or observed.shape != (4, 2) or not np.isfinite(observed).all():
+                bad += 1
+                invalid_evidence = True
+                continue
+            seen.add(identifier)
+            expected = cv2.perspectiveTransform(known[marker["id"]].reshape(-1, 1, 2), matrix).reshape(4, 2)
             distance = np.linalg.norm(expected - observed, axis=1)
             errors.extend(distance.tolist())
             if np.sqrt(np.mean(distance**2)) > 3.0 or max(distance) > 6.0:
                 bad += 1
                 shifts.append(np.mean(observed - expected, axis=0))
                 bad_centers.append(np.mean(known[marker["id"]], axis=0))
+            else:
+                matching_centers.append(np.mean(known[marker["id"]], axis=0))
         coherent = False
         if len(shifts) >= 2:
             average = np.mean(shifts, axis=0)
@@ -225,19 +245,29 @@ class LiveCamera:
         separation = 0.15 * math.hypot(board["width_mm"], board["height_mm"])
         distributed = any(np.linalg.norm(left-right) >= separation
                           for index, left in enumerate(bad_centers) for right in bad_centers[index+1:])
+        verified_coverage = any(np.linalg.norm(left-right) >= separation
+                                for index, left in enumerate(matching_centers) for right in matching_centers[index+1:])
         if observe:
             self._change_checks = self._change_checks + 1 if bad >= 2 and coherent and distributed else 0
         if self._change_checks >= 3:
             self._changed = True
             return {**identity, "status": "view_changed", "message": "Multiple visible print markers confirm a changed camera view. Overlay withheld; no automatic refit was performed."}
         residual = round(float(np.sqrt(np.mean(np.array(errors)**2))), 4) if errors else None
-        if not errors or bad:
+        # A partly covered marker may have noisy corners. Distributed agreeing
+        # observations support continuity despite one isolated doubtful marker.
+        if invalid_evidence or bad and not (bad == 1 and verified_coverage):
             return {**identity, "homography": reference["homography"], "residual_px": residual,
-                    "status": "locked_occluded", "message": "Marker evidence is temporarily hidden or insufficient. The fixed display reference is retained; current alignment is unverified and grants no motion authority."}
-        partial = len(item["detection"]["markers"]) < len(known)
+                    "status": "locked_occluded", "verification": "marker_disagreement",
+                    "message": "Visible marker evidence disagrees with the fixed reference. Live display continues with unverified alignment; new intelligence results are withheld until the view agrees again or is explicitly registered."}
+        if not verified_coverage:
+            return {**identity, "homography": reference["homography"], "residual_px": residual,
+                    "status": "locked_occluded", "verification": "insufficient_visibility",
+                    "message": "Current marker coverage cannot verify alignment. The fixed mapping and fresh native image remain usable under the fixed camera and board assumption; marker occlusion alone does not pause the mission. No physical coordinate accuracy is established."}
+        partial = len(item["detection"]["markers"]) < len(known) or bool(bad)
         return {**identity, "homography": reference["homography"], "residual_px": residual,
                 "status": "locked_partial" if partial else "locked",
-                "message": "Visible markers match the fixed display reference. No refit, camera-to-BASE registration or physical motion authority."}
+                "verification": "visible_markers",
+                "message": "Distributed visible markers support the fixed display reference. No refit, camera-to-BASE registration or physical motion authority."}
 
     def snapshot(self):
         with self._lock:
@@ -274,8 +304,10 @@ class LiveCamera:
             if not self.url or item is None or self._age(item) > FRESHNESS_LIMIT_MS or self._last_error:
                 raise SceneError(409, "A fresh native camera frame is required.", "LIVE_CAPTURE_UNAVAILABLE")
             registration = self._registration(item)
-            if registration["status"] not in {"locked", "locked_partial"}:
-                raise SceneError(409, "A verified locked drawing view is required; no automatic refit was performed.", "LIVE_CAPTURE_REGISTRATION")
+            usable_reference = registration["status"] in {"locked", "locked_partial"} or (
+                registration["status"] == "locked_occluded" and registration.get("verification") == "insufficient_visibility")
+            if not usable_reference:
+                raise SceneError(409, "A fixed drawing reference without contradictory view evidence is required; no automatic refit was performed.", "LIVE_CAPTURE_REGISTRATION")
             if ((after_sequence is not None and item["frame"]["sequence"] <= after_sequence)
                     or (not_before is not None and item["accepted"] - item["upstream_age_ms"] / 1000 <= not_before)):
                 raise SceneError(409, "Wait for a new camera frame after this operation.", "LIVE_CAPTURE_NOT_NEW")

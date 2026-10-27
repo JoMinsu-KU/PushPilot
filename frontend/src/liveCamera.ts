@@ -20,7 +20,17 @@ export function liveDisplaySnapshot(decoded: LiveCameraSnapshot | null, latest: 
   const sameIdentity = decoded.epoch === latest.epoch && decoded.camera_id === latest.camera_id
     && decoded.map_id === latest.map_id && decoded.map_version === latest.map_version && decoded.map_hash === latest.map_hash
     && decoded.frame?.width === latest.frame?.width && decoded.frame?.height === latest.frame?.height;
-  if (sameIdentity && decoded.registration.id === latest.registration.id && latest.registration.status !== 'view_changed') return decoded;
+  if (sameIdentity && decoded.registration.id === latest.registration.id && latest.registration.status !== 'view_changed') {
+    // Withdraw alignment verification before the next JPEG finishes decoding.
+    // Keep corners and pixels paired; recovery waits for a decoded new frame.
+    const quality = (snapshot: LiveCameraSnapshot) => snapshot.registration.status !== 'locked_occluded' ? 0
+      : snapshot.registration.verification === 'insufficient_visibility' ? 1 : 2;
+    if (quality(latest) > quality(decoded)) {
+      return { ...decoded, registration: { ...decoded.registration,
+        status: 'locked_occluded', verification: latest.registration.verification, message: latest.registration.message } };
+    }
+    return decoded;
+  }
   return { ...decoded, registration: { ...latest.registration, homography: null } };
 }
 

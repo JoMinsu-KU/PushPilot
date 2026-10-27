@@ -5,8 +5,8 @@ Verified on **2026-10-27, Asia/Seoul**. This record covers replaceable-map live-
 | Check | Result | Boundary |
 |---|---|---|
 | `python tools/dev.py check` | Passed | Python and JSON source syntax; no credentials loaded |
-| `python tools/dev.py test` | 286 application tests passed | Shared checkout also passed four independent 3D-installer tests: 290 total. Native-frame/graph planning, evidence, voice, map validation, signal watching and fixed-reference recovery are included. |
-| `npm test` in `frontend` | 48 passed | Existing display/review checks plus bound MUSE signal presentation; color alone never advances a route |
+| `python tools/dev.py test` | 324 tests passed | Includes native-frame/graph planning, evidence, voice, signal watching, fixed-reference ROI recovery, expected robot occlusion, and independent city-model import/material tests. |
+| `npm test` in `frontend` | 53 passed | Includes route display and immediate marker-quality withdrawal without mixing image/corner frames; color alone never advances a route |
 | `npm run build` in `frontend` | Passed | TypeScript checking and Vite production bundle |
 | Real Meta application-goal requests | Accepted, `PLAN_READY` | Bakery and Bookstore interpretations; [details](META_API_CHECK.md) |
 | Real Meta image inspection | Accepted, `USABLE` | Four shops, no separate physical car, signal UNKNOWN; recorded frame only |
@@ -113,3 +113,11 @@ Visual review also found and corrected a LAN HTTP fallback that initially produc
 - Full GX10 application activation, trusted tablet HTTPS/microphone testing and physical qualification have not occurred. Only the independent native camera helper runs on GX10.
 
 Earlier public screenshots remain in [`assets/temporary-map-workspace.jpg`](assets/temporary-map-workspace.jpg), showing the self-authored schematic and actual model-result text, and [`assets/workspace-simulation.jpg`](assets/workspace-simulation.jpg), showing the original first slice. Both predate the light-dashboard restyle. Private recorded-camera screenshots remain outside Git. None of these views is a physical-run claim.
+
+## Fixed-reference recovery and expected marker covers
+
+The native ROI recovery path was checked against 50 privately held, unchanged JPEGs from a stationary temporary-board view. The previous path decoded all four markers in 49 images; adding guarded fixed-reference ROI decoding recovered the remaining image. Only one additional failure case was recovered. This is a limited regression corpus, not a general recognition rate, robot-occlusion trial or metric calibration result. Raw media and observation metadata remain outside the repository.
+
+Generated-image and real `LiveCamera` integration tests cover missing/covered markers, exact fixed-transform continuity, camera/map binding, wrong or duplicate IDs, native-pixel preservation, bounded decoding, immediate frontend verification withdrawal and confirmed-view-change latching. MUSE providers are mocked for these admission tests. Zero/one visible marker does not block planning, model-supported action PASS or valid stopped GREEN; vehicle REOBSERVE and signal UNKNOWN retain their own holds. Contradictory distributed evidence and a confirmed view change still reject admission. One isolated doubtful marker does not override two distributed matching observations.
+
+No moving robot, pushed vehicle, real paper-signal recognition or physical stopping was tested by this change. The fixed-reference policy assumes the camera and board remain mechanically fixed while markers are covered.

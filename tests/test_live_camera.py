@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 
 from backend.app import create_app
 from backend.live_camera import LiveCamera, camera_url
+from backend.live_detector import LiveMarkerDetector
 from backend.maps import MapDefinition
 from backend.scene import SceneError, SceneStore
 from backend.settings import Settings
@@ -153,7 +154,8 @@ class LiveCameraTests(unittest.TestCase):
         detection = self.markers()
         detection["markers"][0]["corners"] = [[x+25, y] for x, y in detection["markers"][0]["corners"]]
         state = self.poll(detection=detection)
-        self.assertEqual(state["registration"]["status"], "locked_occluded")
+        self.assertEqual(state["registration"]["status"], "locked_partial")
+        self.assertEqual(state["registration"]["verification"], "visible_markers")
         self.assertIsNotNone(state["registration"]["homography"])
 
     def test_confirmed_view_change_latches_without_automatic_refit(self):
@@ -232,7 +234,8 @@ class LiveCameraTests(unittest.TestCase):
             self.assertTrue(success)
             self.jpeg = encoded.tobytes()
             self.headers_override = {"X-Frame-Width": "1800", "X-Frame-Height": "1200"}
-            self.preview._detect, self.preview._candidate = scene._detect, scene._candidate
+            self.preview._detect = LiveMarkerDetector(self.map, scene._detect, scene._candidate)
+            self.preview._candidate = scene._candidate
             state = self.poll()
             self.assertEqual(state["detection"]["marker_ids"], [10, 11, 12, 13])
             self.assertEqual(state["registration"]["status"], "candidate")

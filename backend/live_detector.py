@@ -20,13 +20,17 @@ class LiveMarkerDetector:
         self.candidate = candidate
         self.dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
 
-    def __call__(self, image):
+    def __call__(self, image, *, reference_homography=None):
         baseline = self.baseline(image)
         expected = {marker["id"] for marker in self.map.data["markers"]}
         if set(baseline["marker_ids"]) == expected:
             # A complete ordinary decode wins, including its geometry rejection.
             return baseline
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        if reference_homography is not None:
+            recovered = self._reference_rois(gray, baseline, expected, reference_homography)
+            if recovered is not None:
+                return recovered
         # Two bounded sampling choices handle blurred foreshortened cells.
         # These are internal bit decoding, never a resized camera/display image.
         pool = {}
@@ -74,6 +78,108 @@ class LiveMarkerDetector:
                 if not self._merge(pool, shifted, ids, expected):
                     return baseline
         return self._complete(pool, expected, image.shape) or baseline
+
+    def _reference_rois(self, gray, baseline, expected, homography):
+        """Search fresh native pixels near missing markers, never infer corners.
+
+        The caller binds the reference to the current camera, map and frame.
+        Current ordinary detections must independently support its geometry
+        before it may select a bounded crop. A missed or covered marker adds
+        no observation, and the existing independent fallback remains intact.
+        """
+        try:
+            matrix = np.asarray(homography, dtype=np.float64)
+            if matrix.shape != (3, 3) or not np.isfinite(matrix).all():
+                return None
+            scale = float(np.max(np.abs(matrix)))
+            if scale == 0:
+                return None
+            matrix = matrix / scale
+            if np.linalg.matrix_rank(matrix) != 3:
+                return None
+            known, projected = {}, {}
+            for marker in self.map.data["markers"]:
+                x, y = marker["center_mm"]
+                half = marker["size_mm"] / 2
+                corners = np.array([[x-half, y-half], [x+half, y-half],
+                                    [x+half, y+half], [x-half, y+half]], dtype=np.float64)
+                homogeneous = np.column_stack((corners, np.ones(4))) @ matrix.T
+                denominator = homogeneous[:, 2]
+                # Reject a horizon through a marker instead of normalizing it.
+                if (not np.isfinite(homogeneous).all() or np.any(np.abs(denominator) < 1e-9)
+                        or not (np.all(denominator > 0) or np.all(denominator < 0))):
+                    return None
+                pixels = homogeneous[:, :2] / denominator[:, None]
+                if not np.isfinite(pixels).all():
+                    return None
+                known[marker["id"]] = corners
+                projected[marker["id"]] = pixels
+            pool, centers = {}, []
+            for marker in baseline["markers"]:
+                identifier = marker["id"]
+                if (identifier not in expected or identifier in pool
+                        or not self._matches_reference(marker["corners"], projected[identifier])):
+                    return None
+                pool[identifier] = deepcopy(marker)
+                centers.append(known[identifier].mean(axis=0))
+            if set(pool) != set(baseline["marker_ids"]) or len(pool) < 2:
+                return None
+            board = self.map.data["board"]
+            separation = 0.15 * np.hypot(board["width_mm"], board["height_mm"])
+            if not any(np.linalg.norm(first-second) >= separation
+                       for index, first in enumerate(centers) for second in centers[index+1:]):
+                return None
+            missing = sorted(expected-set(pool))
+            if not 1 <= len(missing) <= 4:
+                return None
+            crops = {}
+            for identifier in missing:
+                pixels = projected[identifier]
+                if (np.any(pixels < 0) or np.any(pixels[:, 0] >= gray.shape[1])
+                        or np.any(pixels[:, 1] >= gray.shape[0])):
+                    return None
+                x, y, width, height = cv2.boundingRect(pixels.astype(np.float32))
+                if not (12 <= width <= 160 and 12 <= height <= 160):
+                    return None
+                x0, y0 = max(0, x-15), max(0, y-15)
+                crops[identifier] = (x0, y0, gray[y0:min(gray.shape[0], y+height+15),
+                                                 x0:min(gray.shape[1], x+width+15)])
+        except (KeyError, TypeError, ValueError, OverflowError, np.linalg.LinAlgError, cv2.error):
+            return None
+
+        # Each profile starts from the same ordinary same-frame detections.
+        # At most four missing IDs and two profiles mean at most eight decodes.
+        for margin in (0.13, 0.30):
+            recovered_pool = deepcopy(pool)
+            for identifier in missing:
+                x0, y0, roi = crops[identifier]
+                parameters = cv2.aruco.DetectorParameters()
+                parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_APRILTAG
+                parameters.errorCorrectionRate = 1.0
+                parameters.perspectiveRemovePixelPerCell = 12
+                parameters.perspectiveRemoveIgnoredMarginPerCell = margin
+                corners, ids, _ = cv2.aruco.ArucoDetector(self.dictionary, parameters).detectMarkers(roi)
+                targeted = [] if ids is None else [points for value, points in zip(ids.flatten().tolist(), corners)
+                                                   if value == identifier]
+                # Neither an unrelated ID nor a duplicate target can fill a gap.
+                if len(targeted) != 1:
+                    break
+                observed = np.asarray(targeted[0]).reshape(4, 2).astype(float)+[x0, y0]
+                if not self._matches_reference(observed, projected[identifier]):
+                    break
+                recovered_pool[identifier] = {"id": identifier, "corners": observed.tolist()}
+            recovered = self._complete(recovered_pool, expected, gray.shape)
+            if recovered is not None:
+                return recovered
+        return None
+
+    @staticmethod
+    def _matches_reference(observed, projected):
+        observed = np.asarray(observed, dtype=np.float64)
+        if observed.shape != (4, 2) or not np.isfinite(observed).all():
+            return False
+        distances = np.linalg.norm(observed-projected, axis=1)
+        return np.sqrt(np.mean(distances**2)) <= 3.0 and max(distances) <= 6.0
 
     @staticmethod
     def _merge(pool, corners, ids, expected):

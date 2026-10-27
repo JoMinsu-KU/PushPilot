@@ -53,6 +53,27 @@ test('browser request and image decoding delays consume the same frame freshness
   assert.equal(liveFrameFresh(snapshot, requestStartedAt, imageDecodedAt), false);
 });
 
+test('marker verification withdrawal is immediate without mixing newer corners into decoded pixels', () => {
+  const decoded = { ...makeSnapshot(), detection: { marker_ids: [10, 11, 12, 13], markers: [{ id: 10, corners: [[1, 1]] }] } };
+  const latest = { ...makeSnapshot(), frame: { ...decoded.frame, id: 'pending-frame' },
+    detection: { marker_ids: [10], markers: [{ id: 10, corners: [[2, 2]] }] },
+    registration: { ...decoded.registration, status: 'locked_occluded', verification: 'insufficient_visibility', message: 'Alignment unverified.' } };
+  const display = liveDisplaySnapshot(decoded, latest);
+  assert.equal(display.registration.status, 'locked_occluded');
+  assert.equal(display.registration.message, latest.registration.message);
+  assert.equal(display.registration.verification, 'insufficient_visibility');
+  assert.equal(display.frame, decoded.frame);
+  assert.equal(display.detection, decoded.detection);
+  assert.equal(display.registration.homography, decoded.registration.homography);
+  assert.equal(liveOverlayAllowed(display, route, map, true), true, 'fixed preview remains explicitly unverified');
+  assert.equal(liveDisplaySnapshot(display, makeSnapshot()), display, 'do not promote until a verified frame is decoded');
+  const contradiction = { ...latest, registration: { ...latest.registration, verification: 'marker_disagreement', message: 'Markers disagree.' } };
+  const contradicted = liveDisplaySnapshot(display, contradiction);
+  assert.equal(contradicted.registration.verification, 'marker_disagreement');
+  assert.equal(contradicted.detection, decoded.detection);
+  assert.equal(liveDisplaySnapshot(contradicted, latest), contradicted, 'do not clear disagreement before decoding a newer image');
+});
+
 test('freshness advances after status receipt even when subsequent requests stop', () => {
   const snapshot = makeSnapshot();
   assert.equal(liveFrameAge(snapshot, 100, 475), 500);

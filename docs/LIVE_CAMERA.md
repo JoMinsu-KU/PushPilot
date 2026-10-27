@@ -71,7 +71,8 @@ An operator can explicitly request `POST /api/v1/live-camera/registration/resume
 | :--- | :--- |
 | No accepted four-marker lock | Show the camera; withhold the registered route and board-focus mask. A candidate is not a lock. |
 | Visible markers match the lock | Use the fixed homography without fitting it again. Partial matching markers retain the same reference. |
-| Markers are temporarily hidden or evidence is insufficient | `locked_occluded` retains the fixed display reference, explicitly marks current alignment unverified and remains display-only. Occlusion alone does not trigger refitting. |
+| Markers are temporarily hidden or coverage is insufficient | `locked_occluded` / `insufficient_visibility` retains the reference and native live review eligibility, explicitly marks alignment unverified, and does not pause the mission. |
+| Visible markers contradict the reference | `locked_occluded` / `marker_disagreement` retains the display reference but inhibits new intelligence admission; no automatic refit occurs. |
 | Identity, epoch, resolution or map changes | Latch `view_changed`, withhold the old overlay and require another explicit lock. |
 | At least two spatially distributed markers establish a coherent shift across three new accepted frames | Latch `view_changed`; do not automatically refit or silently clear the condition. |
 | Stale live frame | Hide the current route projection; keep the source/age warning visible. |
@@ -79,6 +80,18 @@ An operator can explicitly request `POST /api/v1/live-camera/registration/resume
 These marker checks are display-inhibition heuristics, not a guarantee of detecting every camera displacement or a physical calibration result. An isolated questionable marker is insufficient to declare a confirmed shift. Conversely, retaining a reference under occlusion does not prove alignment. Do not move the map or camera and assume an old lock remains valid.
 
 Camera preserves the original JPEG perspective. **Board focus** only masks the area outside the registered board; **Full frame** remains available. No rectification, detail synthesis, board resampling or global image blur is introduced. Glass panels intentionally soften their own backdrops and may cover part of the scene.
+
+## Native recovery and expected robot occlusion
+
+A matching active fixed reference supplies an optional search hint for a marker that was never proposed as a rejected quadrilateral. At least two distributed ordinary detections in the **current frame** must first agree with the reference. The detector searches only missing markers' bounded native-pixel regions, with at most four missing IDs and two decoding profiles. It accepts actual decoded expected IDs, original pixel offsets, strict full-print geometry and the existing fixed-reference residual limits. Hidden markers remain missing; projected corners never become observations. Camera/epoch/resolution/map changes, stale input and a latched changed view disable this hint. The original JPEG and locked transform remain unchanged.
+
+The user clarified that robot motion will frequently cover the printed markers. **Marker visibility is not a per-action permission switch.** Register the fixed camera and board before the mission, then retain that exact transform throughout expected covers, including covers of all markers. Fresh native images, the fixed AR route and MUSE planning/action/signal review remain available. Do not stop, pause, refit, fabricate detections or request a robot retreat solely because markers disappeared.
+
+`registration.verification` distinguishes `visible_markers` (at least two distributed agreeing observations), `insufficient_visibility` (fixed reference retained, current alignment unverified), and `marker_disagreement` (visible evidence contradicts the reference). A single doubtful marker does not block continuity when at least two other distributed markers agree; its corners are never used to update the transform. Multiple disagreeing markers, a doubtful marker without distributed support, or malformed/duplicate observations remain contradictory evidence. `capture()` accepts the first two verification modes under the existing fixed-camera/board assumption; contradictory evidence, confirmed view/identity changes, stale images and transport failures still inhibit admission. Preview quality downgrades immediately without mixing newer corners into an older decoded image; recovery waits for the newer image to decode. Missing visibility alone never changes mission state.
+
+When markers return, compare them with the same transform. Agreement restores verified status without registration; a coherent distributed shift over three distinct new frames latches `view_changed`. While every marker is hidden, the system **cannot establish that an unseen camera or board movement did not occur**. Fix the camera mount and board mechanically before physical qualification. This application implements test display continuity and simulated admission only, not a measured physical control guarantee.
+
+Car and signal visibility are independent: an obscured car outcome can require `REOBSERVE`, and an unreadable signal remains `UNKNOWN`. Retaining board registration cannot convert either into `PASS` or `GREEN`. Any future observation pose must be a separately qualified bounded robot action, not an automatic retreat triggered by missing board markers.
 
 ## API and capability meaning
 

@@ -69,7 +69,9 @@ function CameraFrame({ scene, route, map, focused, display, live = false, fresh 
     </svg>
     {scene.registration.status === 'view_changed' && <div className="overlay-inhibition"><Icon name="shield" size={17}/>View changed. The previous overlay is hidden.</div>}
     {live && !fresh ? <div className="overlay-inhibition live-warning"><Icon name="clock" size={17}/>STALE · Last decoded image. Route overlay is hidden.</div>
-      : scene.registration.status === 'locked_occluded' ? <div className="overlay-inhibition partial live-warning"><Icon name="eye" size={17}/>Markers obscured · fixed mapping retained; view stability is unconfirmed.</div>
+      : scene.registration.status === 'locked_occluded' ? <div className="overlay-inhibition partial live-warning"><Icon name="eye" size={17}/>{'verification' in scene.registration && scene.registration.verification === 'marker_disagreement'
+        ? 'Visible markers disagree · check camera and map alignment.'
+        : 'Fixed mapping retained · marker visibility limited. Live review remains available.'}</div>
       : scene.registration.status === 'locked_partial' && <div className={`overlay-inhibition partial ${live ? 'live-warning' : ''}`}><Icon name="eye" size={17}/>{scene.detection.marker_ids.filter(id => map?.markers.some(marker => marker.id === id)).length}/{map?.markers.length ?? 4} markers detected · fixed mapping retained.</div>}
     {matchesMap && !overlayAllowed && scene.registration.status !== 'view_changed' && (!live || fresh) && <div className="overlay-note">{candidate ? `Lock the ${live ? 'live' : 'test'} view to project the planned route.` : 'Route overlay requires a valid locked test registration.'}</div>}
   </div>;
@@ -307,7 +309,7 @@ export function MapScene({ workspace, readOnly = false, onSnapshot, onPreviewSou
     && ['candidate', 'view_changed'].includes(liveScene.registration.status) && !active && !readOnly && !lockingLive);
   const resumeAvailable = Boolean(live.status?.saved_reference_available && changedLiveScene?.registration.status === 'unregistered');
   const canResumeLive = Boolean(usingLive && liveScene?.frame && liveFresh && resumeAvailable && !active && !readOnly && !lockingLive);
-  const liveRegistrationLabel = changedLiveScene?.registration.status === 'locked_occluded' ? 'Mapping retained · markers obscured'
+  const liveRegistrationLabel = changedLiveScene?.registration.status === 'locked_occluded' ? 'Mapping retained · alignment unverified'
     : changedLiveScene?.registration.status === 'locked_partial' ? 'Mapping retained · partial markers'
     : changedLiveScene?.registration.status === 'locked' ? 'Fixed test mapping'
     : changedLiveScene?.registration.status === 'view_changed' ? 'View changed · AR hidden' : 'Live view is not locked';
