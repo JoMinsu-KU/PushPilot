@@ -1,4 +1,4 @@
-"""Install the explicitly supplied private city GLB without extracting source or executing scripts."""
+"""Preserve the supplied private city GLB and derive clean roads without executing package scripts."""
 from __future__ import annotations
 
 import argparse
@@ -8,6 +8,11 @@ from pathlib import Path
 import struct
 import tempfile
 import zipfile
+
+if __package__:
+    from .clean_city_roads import install as install_clean_roads
+else:
+    from clean_city_roads import install as install_clean_roads
 
 ROOT = Path(__file__).resolve().parents[1]
 MODEL_ENTRY = "web/PushPilot_city_web.glb"
@@ -53,7 +58,9 @@ def install(package: Path, destination: Path = MODEL_DESTINATION) -> dict:
             temporary_path.replace(destination)
         finally:
             temporary_path.unlink(missing_ok=True)
+    clean_variant = install_clean_roads(destination, destination.with_name(f"{destination.stem}-clean-roads{destination.suffix}"))
     return {"installed": str(destination), "bytes": len(data), "sha256": MODEL_SHA256,
+            "clean_variant": clean_variant,
             "source": "user_supplied_private_artwork", "scripts_executed": False, "motion_authority": False}
 
 

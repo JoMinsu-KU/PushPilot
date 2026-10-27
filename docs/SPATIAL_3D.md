@@ -27,6 +27,7 @@ The user supplied `PushPilot_city_web_package.zip`, containing `web/PushPilot_ci
 - Embedded WebP textures and Draco mesh compression; no external texture URLs are needed for this supplied model.
 - The model includes a 6000-unit background plane. The viewer frames the city board/preset camera rather than fitting the entire ground plane.
 - Baked red/green signal appearances are neutralized in the runtime view so that static artwork cannot suggest a current MUSE signal observation. Original GLB bytes remain unchanged.
+- The user requested new-road appearance on October 27, 2026. Cracks are in the exclusive `asphalt_photo` base-color texture, not geometry. The private derived model replaces only that material's base-color texture with matte charcoal (`#454c50`, roughness 0.95, metalness 0). All six road planes, UVs, nodes, buildings, sidewalks, lane markings, stop lines and crosswalk geometry remain unchanged. The original model is retained alongside the derived file.
 - The archive does not include a complete asset-licensing/provenance record. The user-supplied model stays in ignored private runtime assets, outside Git and public source archives. No public redistribution rights are inferred.
 
 ## Local assets and build
@@ -37,7 +38,9 @@ Install frontend dependencies from the lockfile, then install the private model 
 python tools/install_city_model.py /path/to/PushPilot_city_web_package.zip
 ```
 
-The installer reads only the expected GLB entry, validates its identity and copies it to `frontend/public/models/private/pushpilot-city.glb`. The private model directory is ignored. The frontend preparation script copies pinned Draco decoder assets from the installed Three.js package to ignored `public/vendor/draco/` before build/dev. The built static frontend includes those local files, so the private deployment does not need a model or decoder CDN. Source releases built from committed Git blobs exclude the private model and generated decoders; reinstall them when preparing a private deployment.
+The installer reads only the expected GLB entry, validates its identity and preserves it at `frontend/public/models/private/pushpilot-city.glb`. It also creates `pushpilot-city-clean-roads.glb` in the same ignored private directory; Spatial loads this clean-road variant. The variant changes only the named road material in the GLB JSON chunk and copies all remaining binary chunks byte-for-byte. Embedded source textures remain in the binary but the road material no longer uses the cracked texture. This is a native material edit, with no generated image, mesh conversion or Draco re-encoding.
+
+For an already installed original, generate the same variant independently with `python tools/clean_city_roads.py`. The tool validates the reviewed source hash and refuses symlinks, overwriting the original or replacing an unrelated existing file. The frontend preparation script copies pinned Draco decoder assets from the installed Three.js package to ignored `public/vendor/draco/` before build/dev. The built static frontend includes the private variant and local decoders, so the private deployment does not need a model or decoder CDN. Source releases built from committed Git blobs exclude private models and generated decoders; reinstall them when preparing a private deployment.
 
 The viewer is lazy-loaded only when Spatial is selected. Drag to orbit, pinch/wheel to zoom, and use City, Intersection or Reset for the predefined views. Pixel ratio is capped, shadows use a modest map and repeated planting is instanced; compatible opaque city meshes are batched. Rendering runs in the viewing browser's WebGL context; GX10 serves the static files rather than rendering frames for the tablet. Actual browser/tablet performance still requires measurement. Three.js and Draco notices are copied with the static frontend.
 
@@ -55,7 +58,7 @@ When the final 2D map is ready, replace this approximate display fit with an exp
 
 ## Verification
 
-The frontend build, 52 frontend tests, repository checks and 290 Python tests passed. The focused route-preview tests cover replacement graph fitting, exact Three-camera projection, orbit changes, degenerate input and behind-camera/depth rejection. Four private-model import tests cover fixed-entry reads without script execution, unreviewed bytes, external texture references and duplicate entries.
+The initial route-preview revision passed its frontend build, 52 frontend tests, repository checks and 290 Python tests. The focused route-preview tests cover replacement graph fitting, exact Three-camera projection, orbit changes, degenerate input and behind-camera/depth rejection. Four private-model import tests cover fixed-entry reads without script execution, unreviewed bytes, external texture references and duplicate entries.
 
 Browser verification on the running application confirmed:
 
@@ -65,5 +68,7 @@ Browser verification on the running application confirmed:
 - At 1194 x 834, 1366 x 1024 and 1024 x 768, document/body dimensions equal viewport dimensions: no vertical page scrolling. Existing glass mission/status surfaces remain in place.
 - No browser console errors or warnings were reported during these checks.
 - No mission command, camera lock/refit, service restart or robot operation was performed for this UI change.
+
+The subsequent clean-road revision passed seven focused native GLB tests and the four existing import tests. The full frontend build, 53 frontend tests, repository checks and joint 322-test Python suite passed with the concurrent camera work present. The exported original/clean pair was compared directly: only `asphalt_photo.pbrMetallicRoughness` differs semantically, and every post-JSON binary byte is identical. Actual City and Intersection browser views show smooth matte roads with the same lane/crosswalk geometry, buildings and current route overlay, no console errors, and no document overflow at 1194 x 834. Private screenshots are `clean-roads-city-1194.png` and `clean-roads-intersection-1194.png` in the same local evidence folder; a standalone private derivative is `PushPilot_city_clean_roads.glb`.
 
 Private deployment screenshots remain outside Git under `output/spatial-city-20261027/`: `spatial-route-1194.png`, `spatial-route-1366.png`, `spatial-route-1024.png` and `spatial-route-intersection-1194.jpg`. An available city viewer is not a scan, live digital twin, recognized vehicle pose or robot test.

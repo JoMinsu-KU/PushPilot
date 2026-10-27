@@ -11,7 +11,7 @@ import { RouteOverlay } from './RouteOverlay';
 import type { Point } from './projection';
 import './city-model.css';
 
-const MODEL_URL = '/models/private/pushpilot-city.glb';
+const MODEL_URL = '/models/private/pushpilot-city-clean-roads.glb';
 const MAX_MODEL_BYTES = 32 * 1024 * 1024;
 type Preset = 'city' | 'intersection';
 type ModelStatus = { kind: 'loading' | 'ready' | 'error' | 'lost'; message: string };
@@ -300,14 +300,14 @@ export function CityModelView({ map, display }: { map: TemporaryMap | null; disp
         try {
           const response = await fetch(MODEL_URL, { signal: abort.signal, credentials: 'same-origin' });
           if (!response.ok) throw new Error(response.status === 404
-            ? 'The private city model is missing. Install pushpilot-city.glb, then reload.'
+            ? 'The clean city model is missing. Run the private city installer, then reload.'
             : `The city model request failed (${response.status}). Reload to try again.`);
           const declaredSize = Number(response.headers.get('content-length'));
           if (declaredSize > MAX_MODEL_BYTES) throw new Error('The supplied city model exceeds the supported 32 MB size.');
           const buffer = await response.arrayBuffer();
           if (buffer.byteLength > MAX_MODEL_BYTES) throw new Error('The supplied city model exceeds the supported 32 MB size.');
           if (buffer.byteLength < 20 || new DataView(buffer).getUint32(0, true) !== 0x46546c67) {
-            throw new Error('The private city model is missing or invalid. Install pushpilot-city.glb, then reload.');
+            throw new Error('The clean city model is missing or invalid. Run the private city installer, then reload.');
           }
           if (!loadValid || disposed) return;
           gltf = await loader.parseAsync(buffer, '/models/private/');
