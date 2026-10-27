@@ -1,24 +1,39 @@
 # Documentation artwork
 
-These self-contained SVG illustrations establish the PushPilot repository's visual direction. They use dark navy, electric cyan, simple geometric line work, and system-font fallbacks so the source stays editable and GitHub can display it without a build step.
+**PushPilot's navy/cyan visual language, with readable decisions and explicit status.**
 
-| Asset | Canvas | Purpose |
-| --- | --- | --- |
-| [`hero.svg`](hero.svg) | 1280 × 480 | Repository cover: a shared plan, observable evidence, and a human review surface. |
-| [`workflow.svg`](workflow.svg) | 1280 × 254 | Proposed Observe → Plan → Approve → Act → Verify interaction. |
+[Repository](../../README.md) · [Architecture](../ARCHITECTURE.md) · [Generation prompts](GENERATION_PROMPTS.md)
+
+The repository uses a self-contained SVG cover and generated PNG process diagrams. The PNGs display directly as images, without a diagram renderer or build step. Select a diagram in its document to inspect the full-size asset. Essential technical meaning is also retained as ordinary English text and tables.
+
+## Asset inventory
+
+| Asset | Canvas | Use and origin |
+|---|---|---|
+| [`hero.svg`](hero.svg) | 1280 × 480 | Active repository cover; original code-native vector. |
+| [`interaction-loop.png`](interaction-loop.png) | 1983 × 793 | Main README: Observe → Plan → Approve → Act → Verify; AI-generated. |
+| [`architecture-overview.png`](architecture-overview.png) | 1536 × 1024 | Architecture: operator, MUSE, supervisor, actions, observations and replay; AI-generated. |
+| [`evidence-loop.png`](evidence-loop.png) | 1672 × 941 | Architecture: expected, observed, reviewed and decided; AI-generated. |
+| [`delivery-flow.png`](delivery-flow.png) | 1672 × 941 | Deployment: implemented source tooling and future GX10 delivery; AI-generated. |
+| [`workflow.svg`](workflow.svg) | 1280 × 254 | Retained editable source from the initial documentation design; superseded in the main README. |
 
 ## Provenance
 
-Both assets were authored for this application repository on October 27, 2026 as original, code-native vector illustrations. No third-party photographs, stock illustrations, fonts, vendor logos, or generated raster media are embedded. The abstract robot, car, interface panels, and brand mark are drawn directly with SVG geometry.
+The SVGs were authored for this repository on October 27, 2026 as original geometric vectors. They embed no third-party photographs, stock illustrations, fonts or vendor logos.
 
-The artwork is an illustration of the proposed product experience. It is not a screenshot, a camera observation, a connected device, a model response, a final map, or evidence of physical execution. The hero and workflow include visible concept labels to preserve that distinction when viewed outside this README.
+The four PNGs were generated on October 27, 2026 (Asia/Seoul) with the **built-in image generation tool**. No fallback CLI, API key or external reference image was used. Exact generation prompts are recorded in [GENERATION_PROMPTS.md](GENERATION_PROMPTS.md). The outputs were copied unchanged into this directory and visually reviewed for English spelling, arrows, authority boundaries, status and readability.
 
-## Editing rules
+Every process illustration describes the intended design. It is not a camera observation, provider result, live deployment or evidence of physical execution. Proposed application components, a later qualified robot adapter and the undeployed GX10 runtime remain visibly labelled. The source-release tools are implemented; generating a diagram does not implement the system it depicts.
 
-- Keep the English labels readable at GitHub's normal content width.
-- Preserve the explicit concept and bootstrap status labels.
-- Do not add map coordinates, finalized road geometry, invented performance figures, or simulated results presented as real evidence.
-- Keep SVGs self-contained: no external assets, scripts, remote fonts, or `foreignObject` elements.
-- Update each SVG's accessible `<title>` and `<desc>` when its meaning changes.
+## Updating a diagram
 
-No software or artwork license has been selected for this repository. Original authorship is a provenance statement, not a license grant.
+- Keep the dark navy background, restrained electric cyan, white headings and large English labels.
+- Preserve MUSE's interpretation/review role and the supervisor's deterministic admission authority.
+- Keep approval scoped to the mission; per-action reviews gate continuation.
+- Preserve planned, future and undeployed labels where applicable.
+- Do not introduce map geometry, robot coordinates, invented metrics or fabricated success evidence.
+- Regenerate a PNG with a targeted image-generation edit; review every changed label and connector.
+- Update the exact prompt, alt text, surrounding explanation and provenance with the asset.
+- Keep SVGs self-contained and maintain their accessible title/description.
+
+No software or artwork license has been selected for this repository. Provenance is not a license grant.

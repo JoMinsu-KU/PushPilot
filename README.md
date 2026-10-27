@@ -40,7 +40,9 @@ The first use case is a controlled tabletop mission: push a wheel-less car from 
 ## The interaction loop
 
 <p align="center">
-  <img src="docs/assets/workflow.svg" width="1280" alt="Proposed interaction loop: Observe, Plan, Approve, Act, Verify. Fresh observations and reviewed evidence determine the next bounded action.">
+  <a href="docs/assets/interaction-loop.png">
+  <img src="docs/assets/interaction-loop.png" width="1280" alt="Proposed interaction loop: Observe a source-labelled scene, Plan an interpreted goal, Approve the current task, Act through a bounded execution boundary, then Verify with fresh imagery and MUSE review before continuing.">
+  </a>
 </p>
 
 1. **Observe** — obtain a source-labelled scene and the operator's goal.
@@ -178,7 +180,7 @@ The next milestone is a complete **map-independent software loop**: abstract mis
 
 PushPilot builds on earlier tabletop experiments and an existing robot-transport foundation. Those materials have not been copied into this standalone application scaffold. The workspace, tools and documentation are recorded separately; later imports and implemented features must identify their origin, changes and evidence.
 
-Read the [Roadmap](docs/ROADMAP.md), [Contributing guide](CONTRIBUTING.md), [Contribution record](CONTRIBUTIONS.md) and [Third-party notices](THIRD_PARTY_NOTICES.md). The header and workflow are original repository vectors, not camera captures or working-product screenshots.
+Read the [Roadmap](docs/ROADMAP.md), [Contributing guide](CONTRIBUTING.md), [Contribution record](CONTRIBUTIONS.md) and [Third-party notices](THIRD_PARTY_NOTICES.md). The header is an original repository vector. Generated process illustrations describe the proposed design; they are not camera captures or working-product screenshots.
 
 **License:** a repository license has not yet been selected. Consult [Third-party notices](THIRD_PARTY_NOTICES.md) before reuse or importing material.
 

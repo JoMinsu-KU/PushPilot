@@ -10,7 +10,7 @@ Before adding any dependency or asset, record:
 |---|---|---|---|---|
 | No third-party material bundled | — | — | — | — |
 
-The README cover and workflow are original vector illustrations created for this repository, with provenance in [`docs/assets/README.md`](docs/assets/README.md). They embed no third-party media, fonts or vendor logos. Original authorship does not establish a software or artwork license.
+The README cover and retained editable workflow are original vector illustrations created for this repository. Four conceptual process diagrams were created with the built-in image generation tool, using English prompts and no source photographs or third-party media inputs. See [`docs/assets/README.md`](docs/assets/README.md) for the asset inventory and [`GENERATION_PROMPTS.md`](docs/assets/GENERATION_PROMPTS.md) for exact prompts. The generated diagrams are documentation, not camera captures, model results or working-product screenshots. Asset origin does not establish a software or artwork license.
 
 For inherited PushPilot code, identify the exact original component and version, applicable rights and newly changed portions. Preserve required notices. Existing robot plumbing, map bytes, reference screenshots and earlier success clips are not newly created by copying them here.
 

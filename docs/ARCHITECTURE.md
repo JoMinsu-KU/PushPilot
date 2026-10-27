@@ -14,33 +14,11 @@
 
 ## System shape
 
-```mermaid
-flowchart TB
-    UI[Tablet workspace]
-    Supervisor[Mission supervisor]
-    Goal[Goal interpretation]
-    Review[MUSE image review]
-    Gates[Deterministic admission checks]
-    Evidence[Immutable evidence and replay]
-    Observations[Source-labelled observation adapters]
-    Simulator[Abstract action simulator]
-    Future[Future qualified robot adapter]
+[![Proposed architecture: the tablet supplies a goal and approval to the mission supervisor; source-labelled observations and MUSE interpretation inform deterministic checks; accepted bounded actions use a simulator first, with a qualified robot adapter deferred; evidence and replay explain each decision.](assets/architecture-overview.png)](assets/architecture-overview.png)
 
-    UI -->|Goal and operator approval| Supervisor
-    Supervisor --> Goal
-    Goal -->|Structured interpretation| Supervisor
-    Observations -->|Images, signal and action state| Supervisor
-    Supervisor -->|Expected outcome and fresh imagery| Review
-    Review -->|Judgment and uncertainty| Supervisor
-    Supervisor --> Gates
-    Gates -->|Accepted bounded action| Simulator
-    Gates -.->|Later physical integration| Future
-    Simulator -->|Action result| Observations
-    Future -.->|Measured receipts| Observations
-    Supervisor -->|Observations, reviews and transitions| Evidence
-    Evidence -->|Timeline and decision basis| UI
-    Supervisor -->|Current state and next check| UI
-```
+*Proposed system design. The illustration describes component responsibilities, not a running deployment. Select the image for the full-size view.*
+
+The **tablet workspace** presents the goal, current state and approval. The **mission supervisor** combines source-labelled observations with goal interpretation and fresh-image MUSE review, then applies deterministic admission checks. Accepted bounded actions go to the abstract simulator first; a qualified robot adapter is a later integration. Action results feed new observations, while the evidence store connects the inputs, reviews and transitions back to the operator's timeline.
 
 There are two complementary decisions: the model explains what the scene supports; the supervisor determines whether the complete set of required checks permits a state transition. An image-based judgment cannot manufacture a fresh signal, a verified stop or a hardware receipt.
 
@@ -78,16 +56,18 @@ Every configured approach requires a stop even on green. Once the qualified cros
 
 ## Evidence that explains a decision
 
-The intended evidence chain is:
+[![Proposed evidence chain: an accepted goal defines an expected bounded action; its result and fresh observations support local checks and MUSE review; the supervisor records a decision and continues, waits, reobserves or faults.](assets/evidence-loop.png)](assets/evidence-loop.png)
 
-```text
-Operator goal and accepted interpretation
-  → expected bounded action
-  → action result and fresh observation bundle
-  → local checks and actual model response
-  → supervisor decision with transition cause
-  → next action, waiting state, reobservation or fault
-```
+*Planned evidence flow. Every decision must retain its input sources and transition cause.*
+
+The intended sequence is:
+
+1. Record the operator goal and accepted interpretation.
+2. Define the expected bounded action and its expected outcome.
+3. Collect the action result and a fresh observation bundle.
+4. Run local checks and retain the actual MUSE response and uncertainty.
+5. Record the supervisor decision with its transition cause.
+6. Continue with the next action, wait, request another observation or enter a fault state.
 
 Each link needs stable mission/action/review identifiers. An observation bundle records source identity, capture time, image hash and crop lineage; a review records provider/model, prompt and schema versions, request timing, response and validation outcome. The resulting state transition cites the records that caused it.
 

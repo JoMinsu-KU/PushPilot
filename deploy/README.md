@@ -12,18 +12,11 @@
 
 Develop and test locally, use GitHub for reviewed source/history, and deploy reviewed release snapshots to GX10. GX10 is the intended runtime host, not the primary development folder.
 
-```text
-Local application repository
-          │ checks + tests + reviewed commit
-          ▼
-Source ZIP + release manifest
-          │ transfer + independent verification
-          ▼
-New GX10 release directory
-          │ isolated install + health checks
-          ▼
-Deliberately activated application
-```
+[![Proposed delivery flow: local source checks, tests and review lead to a committed source ZIP and hash manifest; future transfer, verification and isolated GX10 installation precede health checks and deliberate activation.](../docs/assets/delivery-flow.png)](../docs/assets/delivery-flow.png)
+
+*Proposed delivery design. Packaging is implemented; remote transfer, runtime installation and activation are future work. Select the image for the full-size view.*
+
+The sequence is **local checks and reviewed commit → source ZIP and manifest → verified new GX10 release → isolated installation and health checks → deliberate activation**. The source bundle never activates itself.
 
 The current ZIP is a source/bootstrap artifact. Installation and activation become meaningful after the frontend/backend runtime and its locked dependencies are implemented.
 

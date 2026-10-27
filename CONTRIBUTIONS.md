@@ -10,6 +10,7 @@ PushPilot has existing POC robot transport, earlier tabletop experiments, a city
 |---|---|---|
 | Workspace instructions, metadata and development/deployment documentation | Prepared for this application workspace on the actual current date | Repository preparation only |
 | Public README system and documentation artwork | New English documentation and original SVG vectors in `docs/assets/`; no reference screenshots copied | Product design and documentation only |
+| Generated process diagrams | Four AI-generated conceptual PNGs, with exact prompts in `docs/assets/GENERATION_PROMPTS.md`; reviewed against the documented architecture | Documentation illustration only; no runtime or physical result |
 | Local validation and release-packaging tools | New workspace bootstrap; inspect their tests and commit history | Packaging/development support only |
 | Frontend, backend, MUSE reviewer and mission supervisor | Planned; directory readmes define intended ownership | No working application claim |
 | Robot bridge, new-map pushing/turning and signal operation | Not included or demonstrated | No physical mission claim |
