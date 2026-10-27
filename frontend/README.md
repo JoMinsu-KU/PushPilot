@@ -4,7 +4,7 @@
 
 **Look. Ask. Review. A shared plan, with its evidence in view.**
 
-[Design system](../docs/DESIGN_SYSTEM.md) · [Mission](../docs/MISSION.md) · [Architecture](../docs/ARCHITECTURE.md) · [Voice input](../docs/VOICE_INPUT.md) · [Development](../docs/DEVELOPMENT.md)
+[Design system](../docs/DESIGN_SYSTEM.md) · [Route display](../docs/ROUTE_DISPLAY.md) · [Mission](../docs/MISSION.md) · [Architecture](../docs/ARCHITECTURE.md) · [Voice input](../docs/VOICE_INPUT.md) · [Development](../docs/DEVELOPMENT.md)
 
 The runnable workspace uses React, TypeScript and Vite. The current direction follows the user's industrial references through a continuous spatial stage, large rounded translucent overlays, quiet charcoal typography and restrained orange accents. The application fits a viewport without vertical scrolling; detailed tasks use dialogs, tabs and pages. It connects to the Python mission backend through the versioned [workspace contract](../contracts/workspace.ts). Production builds are static files served by that backend; GX10 does not need Node.js to run the built application.
 
@@ -13,11 +13,11 @@ The runnable workspace uses React, TypeScript and Vite. The current direction fo
 | Area | Implemented behavior |
 | :--- | :--- |
 | Goal | Editable typed input in a preparation dialog; explicit demo/MUSE interpreter selection. Provider availability comes from the backend. |
-| Workspace | Fixed spatial stage spanning beneath navigation, header and translucent mission/status overlays. Recorded or uploaded image, detected markers, explicit test-view locking and a projected planned route. Image, car pose, signal and robot sources stay separate. |
+| Workspace | Fixed spatial stage spanning beneath navigation, header and translucent mission/status overlays. Matching camera or schematic routes distinguish completed/current/remaining simulated portions and junction stop/signal/review context. Image, progress, car pose, signal and robot sources stay separate. |
 | Live preview | Optional native JPEG display with Live/Recorded source selection, decode-before-swap, frame age, stale warning and an independent explicit fixed display lock. RAM preview frames do not enter recorded MUSE/action evidence. |
 | Camera board focus | Optional surrounding-background mask, available only with the current matching locked test registration. Camera perspective, original pixels and overlay geometry stay unchanged; Full frame remains available. |
-| Spatial map | A self-authored schematic of the replaceable temporary Little Town geometry. Routes come from the backend graph. |
-| Plan | Paged route dialog for PIZZA to BAKERY, BOOKSTORE or SCHOOL simulation, with bounded surface pushes, a mandatory stop and fresh signal at each junction, then arrival review. |
+| Spatial map | A self-authored schematic of the selected temporary-map geometry. Routes and display segments come from the backend graph; names and destination choices come from map metadata. |
+| Plan | Paged route dialog from the selected map's start to its supported destinations, with bounded surface pushes, a mandatory stop and fresh signal at each junction, then arrival review. The default remains PIZZA to BAKERY, BOOKSTORE or SCHOOL. |
 | Approval | Explicit approval of the displayed plan identifier and revision. |
 | Action review | Explicit real MUSE comparison of two operator-selected recordings, bound to the pending simulated action and current map. Expected versus observed result, verdict, limitations, model, elapsed time and provider-reported token usage remain inspectable. Demo verdict injection stays separate and labelled. |
 | Image inspection | Explicit actual MUSE request against the selected recorded frame and expected outcome; visible places, car visibility, model-reported signal and limitations are shown. Scene inspection cannot advance the mission. |
@@ -63,6 +63,14 @@ The following **Image tools** steps operate on recorded images even while the ma
 A partially obscured locked view retains its test mapping and displays a warning. A changed view hides the previous overlay. A new complete marker view can be explicitly locked during preparation; missing markers never cause an automatic refit. The **Spatial map** remains a drawing preview rather than measured physical execution evidence.
 
 With a valid matching display lock, **Board focus** masks the surrounding desk/floor to a neutral tabletop backdrop. It preserves camera perspective, original image pixels and overlay geometry rather than rectifying or resampling the board. The mask adds no source detail, removes no occlusion and establishes no metric accuracy. **Full frame** remains available. Missing, mismatched or confirmed-changed registration disables the mask and falls back to the complete Camera frame. A retained live occluded reference is labelled unverified. MUSE requests, action-pair selection and evidence use original immutable recorded frames, never automatically selected preview frames.
+
+## Route progress and replacement
+
+New backend plans include optional `route.visualization` with schema `pushpilot.route-display.v1`. PUSH/CROSS steps bind to stable display segment identifiers through `route_segment_id`. The frontend reads those bindings and authoritative workspace state to distinguish completed, current and remaining portions, plus the current junction's mandatory stop, signal wait and review context. It never estimates the car's location from a progress percentage or moves a car icon along a timer.
+
+Stop-line graphics are derived from junction dimensions and clipped to the incoming edge; they remain illustrative drawing geometry. A signal annotation reflects the simulator's scoped state, not color recognition from the live image. Recorded-pair MUSE judgments affect only the existing simulated supervisor, and live preview does not become an automatic model request. Older plans without visualization show planned-only geometry rather than guessed progress.
+
+Map replacement is a backend startup choice through `--map-path` or `PUSHPILOT_MAP_PATH`. The interface follows map labels, start, supported destinations and drawing geometry; goal interpretation also receives map-owned aliases. Changing shops does not require per-shop frontend edits. A replacement requires a reviewed definition/version, a fresh plan and explicit registration of the installed camera view. Routes or registrations from a mismatched map are withheld. See [Temporary map](../docs/TEMPORARY_MAP.md#replace-the-temporary-map) for the workflow and [Route display](../docs/ROUTE_DISPLAY.md) for the source/authority contract. Alternative/via routes, measured car pose and physical control remain outside this slice.
 
 ## Recorded action comparison
 

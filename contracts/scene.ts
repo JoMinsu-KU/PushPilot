@@ -4,8 +4,8 @@ export interface TemporaryMap {
   id: string; version: string; title: string; geometry_hash: string;
   temporary: true; physical_execution_enabled: false;
   board: {width_mm: number; height_mm: number; road_width_mm: number; junction_size_mm: number};
-  start: string; destinations: string[];
-  nodes: {id: string; x_mm: number; y_mm: number; kind: 'junction' | 'destination'}[];
+  start: string; start_heading?: 'east' | 'south' | 'west' | 'north'; destinations: string[];
+  nodes: {id: string; x_mm: number; y_mm: number; kind: 'junction' | 'destination'; label?: string; aliases?: string[]}[];
   edges: {from: string; to: string; length_mm: number; bidirectional: boolean}[];
   markers: {id: number; center_mm: [number,number]; size_mm: number}[];
   building_panels: {id: string; bounds_mm: [number,number,number,number]}[];
@@ -16,6 +16,18 @@ export interface MapRoute {
   temporary: true; physical_execution_enabled: false;
   start: string; destination: string; node_ids: string[];
   points_mm: [number,number][]; distance_mm: number; junction_ids: string[];
+  /** Optional on older stored plans; never synthesize execution progress for them. */
+  visualization?: RouteVisualization;
+}
+export type MapPoint = [number,number];
+/** Drawing-only stop/crossing divisions. These are not calibrated robot targets. */
+export interface RouteVisualization {
+  schema_version: 'pushpilot.route-display.v1'; source: 'drawing_only';
+  segments: {id: string; kind: 'push' | 'crossing'; from_node_id: string; to_node_id: string;
+    junction_id: string | null; points_mm: MapPoint[]; length_mm: number}[];
+  junctions: {node_id: string; label: string; center_mm: MapPoint; stop_point_mm: MapPoint;
+    stop_line_mm: [MapPoint,MapPoint]; exit_point_mm: MapPoint;
+    approach_segment_id: string; crossing_segment_id: string}[];
 }
 export interface SceneSnapshot {
   schema_version: 'pushpilot.scene.v1'; revision: number;

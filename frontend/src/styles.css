@@ -48,6 +48,15 @@
 .dialog-error { display: flex; align-items: flex-start; gap: 9px; flex: none; padding: 11px 14px; border: 1px solid #e7c1b0; border-radius: 15px; background: #fff1ec; color: #9c5740; font-size: 12px; line-height: 1.5; }
 .dialog-error > span { flex: 1; overflow-wrap: anywhere; }
 .dialog-error > button { padding: 0; }
+.goal-choices { min-width: 0; }
+.goal-destinations > button { min-width: 0; }
+.goal-destinations > button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.goal-choice-pager { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 8px; color: #596b77; font-size: 11px; }
+.goal-choice-pager > button { display: grid; place-items: center; padding: 4px; border-radius: 7px; background: #ffffff75; }
+.mission-journey > span, .mission-journey > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.mission-journey > svg { flex: none; }
+.scene-heading > h2, .scene-heading > button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mission-intro > h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (min-width: 901px) {
   .mission-heading > span, .section-caption h3 { font-size: 13px; color: #4d5962; }
   .mission-provider, .mission-journey { font-size: 11px; color: #74818a; }

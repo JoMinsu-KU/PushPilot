@@ -106,6 +106,7 @@ class WorkspaceStore:
     def _snapshot(self, state: dict) -> dict:
         result = deepcopy(state)
         result["next_check"] = self._next_check(state)
+        result["signal"]["freshness_limit_ms"] = self._signal_ttl * 1000
         result["capabilities"] = {"robot": False, "camera": False, "registered_ar": False,
                                   "muse_configured": self._muse_configured, "voice": False,
                                   "image_review": True, "recorded_action_review": True}
@@ -119,7 +120,7 @@ class WorkspaceStore:
 
     def _next_check(self, state: dict) -> str:
         return {
-            "IDLE": "Enter a destination on the temporary map: BAKERY, BOOKSTORE, or SCHOOL.",
+            "IDLE": "Enter a destination on the temporary map: " + ", ".join(self.map_definition.data["destinations"]) + ".",
             "PLAN_READY": "Review and explicitly approve this plan revision.",
             "READY": "Run the next bounded simulated action.",
             "REVIEW_REQUIRED": "Compare an operator-selected recorded image pair with MUSE, or inject an explicit demo verdict. Simulation only.",
@@ -227,12 +228,12 @@ class WorkspaceStore:
                     or not 1 <= len(result["summary"]) <= 500):
                 raise ProviderError("MUSE returned an invalid goal interpretation.")
         else:
-            aliases = {"BAKERY": ("bakery", "빵집", "베이커리"), "BOOKSTORE": ("bookstore", "book store", "bookshop", "서점"), "SCHOOL": ("school", "학교")}
-            choices = [destination for destination, names in aliases.items()
-                       if destination in self.map_definition.data["destinations"] and any(name in text.casefold() for name in names)]
+            places = self.map_definition.goal_context()
+            choices = [place["id"] for place in places["destinations"]
+                       if any(name.casefold() in text.casefold() for name in [place["id"], place["label"], *place["aliases"]])]
             destination = choices[0] if len(choices) == 1 else "UNKNOWN"
             result = {"destination": destination,
-                      "summary": f"Push the wheel-less car from PIZZA to {destination} on the temporary map." if destination != "UNKNOWN" else "Specify exactly one supported destination: BAKERY, BOOKSTORE, or SCHOOL.",
+                      "summary": f"Push the wheel-less car from {places['start']['id']} to {destination} on the temporary map." if destination != "UNKNOWN" else "Specify exactly one supported destination: " + ", ".join(self.map_definition.data["destinations"]) + ".",
                       "requires_clarification": destination == "UNKNOWN"}
         if result["requires_clarification"] or result["destination"] not in self.map_definition.data["destinations"]:
             state.update(state="IDLE", goal=None, plan=None, approved=False, review=None, stopped=False, current_step=0)
@@ -268,12 +269,23 @@ class WorkspaceStore:
     @staticmethod
     def _route_steps(route: dict) -> list[dict]:
         steps = []
+        segments = (route.get("visualization") or {}).get("segments", [])
+        push_segments = iter(segment for segment in segments if segment["kind"] == "push")
+        crossing_segments = iter(segment for segment in segments if segment["kind"] == "crossing")
         def append(kind, node, label, description):
-            steps.append({"id": str(uuid4()), "kind": kind, "node_id": node, "label": label,
-                          "description": description, "status": "pending"})
+            step = {"id": str(uuid4()), "kind": kind, "node_id": node, "label": label,
+                    "description": description, "status": "pending"}
+            if kind in {"PUSH", "CROSS"}:
+                segment = next(push_segments if kind == "PUSH" else crossing_segments, None)
+                if segment is not None:
+                    step["route_segment_id"] = segment["id"]
+            steps.append(step)
         for index, node in enumerate(route["node_ids"][1:], 1):
             previous = route["node_ids"][index - 1]
-            append("PUSH", node, f"Approach {node}", f"Simulate the drawing edge {previous} → {node}. No physical push path is qualified.")
+            description = (f"Simulate the drawing approach {previous} → {node}, ending before the junction at its derived display stop line. No physical push path or stop line is qualified."
+                           if node in route["junction_ids"] else
+                           f"Simulate the remaining drawing approach {previous} → {node}, after any admitted crossing exit. No physical push path is qualified.")
+            append("PUSH", node, f"Approach {node}", description)
             if node in route["junction_ids"]:
                 append("STOP", node, f"Stop at {node}", f"Record a mandatory simulated full stop at {node}, even if its signal is GREEN.")
                 before, current, after = route["points_mm"][index - 1:index + 2]

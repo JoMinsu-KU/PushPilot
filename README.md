@@ -24,7 +24,7 @@ Muse Spark interprets the goal and reviews images; a deterministic supervisor de
 
 Robot endpoint telemetry answers where the tool went. An operator still needs to know whether the object moved, whether the view is sufficient, and why the system is continuing or waiting. PushPilot puts those questions beside the scene instead of leaving them scattered across controller logs and model responses.
 
-The demonstration mission pushes a wheel-less model car from **Pizza** to a named destination. Every controlled intersection requires a stop, a reviewed outcome and a fresh green signal before entry. One fixed spatial stage shows the proposed route, with rounded translucent mission and status panels floating over it. The current action, next check and primary decision remain in view; route history, image tools and detailed evidence use bounded dialogs, tabs and pages instead of a vertically scrolling workspace.
+The demonstration mission pushes a wheel-less model car from **Pizza** to a named destination. Every controlled intersection requires a stop, a reviewed outcome and a fresh green signal before entry. One fixed spatial stage shows the proposed route, with rounded translucent mission and status panels floating over it. Map-derived route portions distinguish completed, current and remaining simulated actions, with junction stop, signal and review context. The current action, next check and primary decision remain in view; route history, image tools and detailed evidence use bounded dialogs, tabs and pages instead of a vertically scrolling workspace.
 
 **Camera** is the default view, with separate **Live** and **Recorded** sources. An explicitly configured live preview is preferred when available; recorded-image tools and MUSE evidence remain separate. Both preserve the source image's perspective and overlay geometry. Optional **Board focus** masks the surrounding desk when the selected source has a valid test lock; **Full frame** restores the complete image. **Spatial map** is a deterministic illustration. The display mask adds no image detail or physical accuracy. [Live preview](docs/LIVE_CAMERA.md) does not automatically save images, call MUSE or grant motion authority.
 
@@ -86,12 +86,12 @@ SQLite events and review records connect the input, response and resulting trans
 | Scene inspection | Actual Muse Spark analysis of a private recorded frame | The single shop/car/signal case above; no action authority. |
 | Action-bound image review | Recorded before/after pair → MUSE result → simulated supervisor decision | Three actual synthetic-input cases above; software checks in [verification](docs/VERIFICATION.md). Real-car task accuracy is unverified. |
 | Mission workflow | Three temporary graph routes, mandatory stops, red/unknown waiting, scoped green admission and replay | Software simulation; action receipts and signals are simulated. Explicit demo verdicts remain available and labelled. |
-| Image presentation and route overlay | Private upload, four-marker test lock, fixed-reference projection, Camera board-focus mask and full-frame display | The mask preserves camera perspective and geometry; raw frames stay unchanged. No robot/BASE registration or metric accuracy claim. |
+| Image presentation and route overlay | Private upload, four-marker test lock, fixed-reference projection, Camera board-focus mask, full-frame display and execution-aware route portions | Progress comes from simulation; stop lines are illustrative. The mask preserves camera perspective and geometry; raw frames stay unchanged. No car tracking, robot/BASE registration or metric accuracy claim. |
 | Live camera preview | Opt-in native MJPEG helper, loopback transport, bounded RAM frames, source/age labels and explicit display-lock path | Preview only; current physical registration results belong in [verification](docs/VERIFICATION.md). No automatic MUSE submission, mission evidence, signal gate or robot observation. |
 | Voice and robot execution | Designed or deferred | Not connected. Physical pushing, turning and paper-signal operation need qualification. |
 | GX10 and glasses | GX10 hosts the standalone camera helper; full application deployment and wearable integration remain separate | Current application runs on Windows. No full GX10 application deployment or wearable connection. |
 
-The temporary print is replaceable. Its geometry does not qualify physical stop lines, vehicle/tool clearance or contact turning. Raw map artwork, camera frames, credentials and operational archives are excluded from public source and release bundles.
+The temporary print is replaceable through a reviewed JSON definition, map version, new plan and fresh camera display registration. Route geometry, English names, destination choices and MUSE destination vocabulary follow the selected map. See [Route display](docs/ROUTE_DISPLAY.md) and the [replacement workflow](docs/TEMPORARY_MAP.md#replace-the-temporary-map). Drawing geometry does not qualify physical stop lines, vehicle/tool clearance or contact turning. Raw map artwork, camera frames, credentials and operational archives are excluded from public source and release bundles.
 
 See [Verification](docs/VERIFICATION.md) for completed checks, [Meta API evidence](docs/META_API_CHECK.md) for real requests, and the [Roadmap](docs/ROADMAP.md) for the next acceptance gates. Reported software tests establish the stated behavior; they do not establish physical task success or a general model-accuracy percentage.
 
@@ -114,6 +114,8 @@ Open `http://127.0.0.1:8080`. Set a Bakery, Bookstore or School goal, inspect **
 
 Live preview is off by default. With an already-running authorized loopback camera service, opt in using `python tools/serve.py --live-camera-url http://127.0.0.1:8895`. This connects to that service; it does not start a camera process. See [Live camera](docs/LIVE_CAMERA.md) for the standalone helper, SSH forward, time semantics and display-only boundary.
 
+To select a reviewed replacement map at startup, use `python tools/serve.py --map-path /private/maps/replacement.json`. This changes drawing/simulation input; it does not configure robot coordinates or reuse the previous camera lock. The bundled Little Town definition remains the default.
+
 ```bash
 python tools/dev.py check
 python tools/dev.py test
@@ -129,7 +131,7 @@ These commands perform offline verification. For Windows/Linux setup, one-worker
 | Model input, uncertainty and recorded-action review | [Meta intelligence](docs/META_INTELLIGENCE.md) · [Action reviews](docs/ACTION_REVIEWS.md) |
 | Authority, components and data contracts | [Architecture](docs/ARCHITECTURE.md) · [Services](docs/SERVICE_COMPOSITION.md) · [Contracts](contracts/README.md) |
 | Operator experience and future voice | [Design system](docs/DESIGN_SYSTEM.md) · [Frontend](frontend/README.md) · [Voice input](docs/VOICE_INPUT.md) |
-| Temporary-map geometry and private inputs | [Temporary map](docs/TEMPORARY_MAP.md) · [Test inputs](docs/TEST_INPUTS.md) |
+| Route progress, map replacement and private inputs | [Route display](docs/ROUTE_DISPLAY.md) · [Temporary map](docs/TEMPORARY_MAP.md) · [Test inputs](docs/TEST_INPUTS.md) |
 | Native live preview and fixed display registration | [Live camera](docs/LIVE_CAMERA.md) |
 | Reproducible checks and isolated delivery | [Tests](tests/README.md) · [Release tools](tools/README.md) · [GX10 deployment](deploy/README.md) |
 | New work, inherited foundations and rights | [Contributions](CONTRIBUTIONS.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) |

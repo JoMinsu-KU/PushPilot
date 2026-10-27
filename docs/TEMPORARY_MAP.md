@@ -2,7 +2,7 @@
 
 **A replaceable drawing, recorded scene and inspectable simulated route.**
 
-[Development](DEVELOPMENT.md) · [Scene inputs](TEST_INPUTS.md) · [Verification](VERIFICATION.md) · [Contracts](../contracts/README.md)
+[Development](DEVELOPMENT.md) · [Route display](ROUTE_DISPLAY.md) · [Scene inputs](TEST_INPUTS.md) · [Verification](VERIFICATION.md) · [Contracts](../contracts/README.md)
 
 The user authorized implementation against the temporary print on 2026-10-27. This releases the earlier map hold for a test adapter and camera-to-board image overlays. It does not establish the final production map, robot BASE coordinates, physical stop lines, pushing contact or turn qualification.
 
@@ -16,9 +16,11 @@ The reviewed data file is `backend/data/little-town-temporary.json`, with map ID
 | BAKERY | PIZZA → C → S → BAKERY | 232 mm | 8 |
 | SCHOOL | PIZZA → C → S → SCHOOL | 232 mm | 8 |
 
-Routing starts at PIZZA facing east and follows enabled cardinal drawing edges. The canonical geometry hash binds the board, graph, markers and destination layout. These lengths describe the drawing; they are not TCP travel distances or qualified vehicle trajectories. Centerline containment does not establish car/tool swept clearance.
+The current drawing starts at PIZZA facing east and follows enabled cardinal drawing edges. Replacement maps can declare their own start, destinations and cardinal `start_heading`; omitted heading preserves the original east-facing behavior. The canonical geometry hash binds the board, graph, markers, destination layout and routing heading, preserving the original hash for the default east heading. Node display labels and aliases are excluded from this geometry hash; assign a reviewed version when replacing their meaning. These lengths describe the drawing; they are not TCP travel distances or qualified vehicle trajectories. Centerline containment does not establish car/tool swept clearance.
 
 Each intermediate junction contributes an approach, mandatory simulated stop and admitted crossing. Crossing descriptions retain the intended turn direction. Every junction needs its own accepted action review and fresh scoped simulated GREEN. A previous junction's GREEN or stop verification cannot authorize the next one. Actual stop-line offsets and physical contact-turn motions remain unqualified.
+
+New plans include optional `pushpilot.route-display.v1` visualization data: map-derived push/cross segments, stable action-to-segment bindings and illustrative incoming stop lines. The frontend uses those bindings for completed/current/remaining line treatment and junction wait/review context. It does not use the live photograph to estimate progress. See [Route display](ROUTE_DISPLAY.md) for compatibility and source boundaries.
 
 ## Recorded scene and test overlay
 
@@ -42,10 +44,40 @@ The strict response reports `USABLE`, `REOBSERVE` or `UNKNOWN`, visible places, 
 
 **Scene inspection does not approve an action, supply the deterministic signal gate or advance the mission.** A separate [action-review endpoint](ACTION_REVIEWS.md) compares a selected recorded before/after pair for the pending simulated action; demo verdicts remain separately labelled. Trusted fresh physical capture and measured local completion remain pending. Scene `USABLE` means the image supports inspection, not successful vehicle arrival.
 
-No live camera connection or robot transport is opened by the application. The first connected frame is a recorded native 1920×1080 GX10 photograph; its source stays `recorded`. The existing camera and robot services are outside this application lifecycle.
+The application can connect to a separately authorized, already-running [live preview](LIVE_CAMERA.md) service when explicitly configured. That preview has its own memory-only frames and fixed display registration. It does not replace recorded MUSE inputs or provide qualified physical observations. The first scene-inspection frame was a recorded native 1920×1080 GX10 photograph; its source stays `recorded`. The application starts no camera or robot process and does not manage existing POC services.
 
 ## Replace the temporary map
 
-Set `PUSHPILOT_MAP_PATH` to a reviewed replacement definition and use a new version/installation record. Set `PUSHPILOT_SCENE_DIR` to a private runtime folder if shared state needs a separate location; by default it is beside the SQLite database. Preserve prior frame and decision evidence.
+Map selection is a startup configuration, not an executing-mission hot swap. Keep old map definitions and evidence rather than editing an active installation in place.
 
-Restart only this application, inspect the replacement identity, prepare a new plan and register its test image explicitly. No prior robot profile, mailbox, TCP pose or camera-to-BASE transform is imported. Final installation and measured physical qualification remain a separate release gate.
+1. Prepare a reviewed JSON definition based on `backend/data/little-town-temporary.json`. Assign an installation-appropriate `id` and a new `version`, keeping `schema_version: "pushpilot.temporary-map.v1"`, `temporary: true` and `physical_execution_enabled: false`.
+2. Update the drawing facts together: board/page dimensions, graph nodes/edges, start, destinations, heading, print markers and building-panel bounds. Edges must have positive cardinal drawing lengths consistent with their endpoints. The image adapter currently supports `DICT_4X4_50` and requires at least four unique markers.
+3. Give nodes English `label` values and optional `aliases` for operator wording. Identifiers remain the route/evidence keys; labels are presentation, not replacement coordinates. MUSE receives the selected map's supported destinations and aliases instead of a fixed shop vocabulary.
+4. Finish or explicitly end an existing simulation and reconcile its state. Start only this application with `python tools/serve.py --map-path /private/maps/replacement.json`, or set `PUSHPILOT_MAP_PATH`. Use a private shared `--state-path` and preserve previous evidence. `PUSHPILOT_SCENE_DIR` optionally selects a separate private image directory; its default is beside SQLite.
+5. Inspect the reported map identity/version/hash and destination choices. Prepare a new plan; never reuse a mismatched historical plan after a definition/version change. Labels and aliases alone do not change the geometry hash, so version them deliberately rather than treating the hash as a complete content hash. Old plans without route-display metadata remain planned-only until replaced.
+6. Check the newly installed physical print and camera view, then explicitly lock a fresh display registration. A live source needs its independent **Lock live view**; a recorded source uses **Lock test view**. Reprinting, scaling, replacing or moving the board can invalidate the prior alignment even if the road artwork looks similar.
+
+The map file is an adapter contract, not an editor: validation rejects unsupported geometry rather than converting it to robot motion. The selected map is shared by deterministic routing, MUSE goal vocabulary, scene matching and frontend labels. No per-shop frontend code or route screenshot must be replaced.
+
+The following metadata fragment illustrates a replacement; it is not a complete map. Keep the board, page, edges, markers, panels, source and limitations from a reviewed full definition, updating them to match the actual print.
+
+```json
+{
+  "id": "reviewed-town-temporary",
+  "version": "reviewed-installation.1",
+  "start": "DEPOT",
+  "start_heading": "south",
+  "destinations": ["CAFE"],
+  "nodes": [
+    {"id": "DEPOT", "label": "Depot", "aliases": ["start"], "kind": "destination", "x_mm": 80, "y_mm": 60},
+    {"id": "J1", "label": "Central junction", "kind": "junction", "x_mm": 80, "y_mm": 120},
+    {"id": "CAFE", "label": "Cafe", "aliases": ["coffee shop"], "kind": "destination", "x_mm": 180, "y_mm": 120}
+  ]
+}
+```
+
+`start_heading` accepts `east`, `south`, `west` or `north` and constrains the first graph edge. Map node labels are nonempty strings of at most 100 characters. A node may have up to 20 aliases, each 1–100 characters. `UNKNOWN` is reserved for unresolved goals and cannot be a destination identifier. The adapter does not send drawing coordinates to MUSE for goal interpretation.
+
+A complete [Harbor replacement fixture](../tests/fixtures/harbor-map.json) is available for offline development. It has a different board size, a north-facing DOCK start, four destinations and different markers. It is an original drawing-only software fixture, not a proposed installation or robot coordinate file.
+
+Display registration relates drawing coordinates to image pixels. It does not recover robot BASE, TCP, work Z, car contact geometry, stopping distance or turn capability. No prior robot profile, mailbox, TCP pose or camera-to-BASE transform is imported. Final installation and measured physical qualification remain a separate release gate.

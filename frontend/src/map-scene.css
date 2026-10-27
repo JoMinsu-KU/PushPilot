@@ -3,6 +3,16 @@
 .map-scene-panel { height: 550px; }
 .map-scene-controls { position: absolute; z-index: 5; top: var(--stage-controls-top, 200px); left: var(--stage-content-left, 108px); display: flex; align-items: center; gap: 8px; }
 .map-scene-panel .map-scene-controls { top: 18px; left: 18px; }
+.route-progress-legend { position: absolute; z-index: 3; top: calc(var(--stage-controls-top, 200px) + 51px); left: var(--stage-content-left, 108px); display: flex; flex-wrap: wrap; align-items: center; gap: 7px 12px; max-width: min(440px, calc(100% - var(--stage-content-left, 108px) - var(--stage-overlay-width, 340px) - 28px)); padding: 9px 12px; border: 1px solid #ffffffad; border-radius: 13px; background: #ffffff78; box-shadow: 0 5px 20px #24302204; backdrop-filter: blur(12px); color: #607178; font-size: 10px; line-height: 1.35; pointer-events: none; }
+.route-progress-legend strong { font-size: 10px; font-weight: 550; color: #44565d; }
+.route-progress-legend > span:not(.route-progress-message) { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.route-progress-legend > span:not(.route-progress-message)::before { content: ''; width: 13px; height: 2px; border-radius: 2px; background: #819aa2; }
+.route-progress-legend .route-legend-done::before { background: #389779; }
+.route-progress-legend .route-legend-current::before { background: #09b8dc; }
+.route-progress-legend .route-legend-next::before { background: repeating-linear-gradient(90deg, #819aa2 0 4px, transparent 4px 6px); }
+.route-progress-legend .route-progress-message { flex-basis: 100%; color: #75858a; font-size: 10px; }
+.map-scene-panel .route-progress-legend { top: 67px; left: 18px; max-width: calc(100% - 36px); }
+.route-junction-status text { font-family: inherit; }
 .scene-view-toggle { display: flex; padding: 4px; gap: 3px; border: 1px solid #ffffffd9; border-radius: 15px; background: #ffffffe0; box-shadow: 0 4px 22px #24302205; backdrop-filter: blur(18px); }
 .scene-view-toggle button { display: flex; align-items: center; justify-content: center; gap: 7px; height: 32px; padding: 0 13px; border-radius: 11px; color: #858b8e; font-size: 12px; white-space: nowrap; }
 .scene-view-toggle button.selected { color: #333638; background: #f0f1f0; }
@@ -130,6 +140,8 @@
   .scene-source-plate > div > span { font-size: 9px; }
   .scene-source-plate > button { height: 24px; width: 20px; margin-left: 2px; }
   .scene-error { left: 16px; right: 16px; top: 164px; font-size: 11px; }
+  .route-progress-legend { top: calc(var(--stage-controls-top, 88px) + 46px); left: 16px; max-width: calc(100% - 32px); gap: 6px 10px; padding: 7px 9px; font-size: 9px; }
+  .route-progress-legend strong, .route-progress-legend .route-progress-message { font-size: 9px; }
   .scene-tools-dialog { padding: 21px 18px; height: min(550px, calc(100dvh - 28px)); width: calc(100vw - 28px); max-width: calc(100vw - 28px); max-height: calc(100dvh - 28px); border-radius: 24px; }
   .scene-dialog-heading h2 { font-size: 21px; }
   .scene-dialog-tabs { gap: 1px; margin-top: 19px; }

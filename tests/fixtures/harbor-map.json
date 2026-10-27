@@ -1,0 +1,39 @@
+{
+  "schema_version": "pushpilot.temporary-map.v1",
+  "id": "harbor-replacement-fixture",
+  "version": "test-1",
+  "title": "Harbor replacement fixture",
+  "temporary": true,
+  "physical_execution_enabled": false,
+  "board": {"width_mm": 600, "height_mm": 300, "road_width_mm": 24, "junction_size_mm": 40},
+  "page": {"width_mm": 620, "height_mm": 320, "board_origin_page_mm": [10, 10]},
+  "start": "DOCK",
+  "start_heading": "north",
+  "destinations": ["MUSEUM", "GARDEN", "MARKET", "CLINIC"],
+  "nodes": [
+    {"id": "DOCK", "kind": "destination", "x_mm": 80, "y_mm": 240, "label": "Dock", "aliases": ["harbor"]},
+    {"id": "J_WEST", "kind": "junction", "x_mm": 80, "y_mm": 140, "label": "West junction"},
+    {"id": "J_EAST", "kind": "junction", "x_mm": 220, "y_mm": 140, "label": "East junction"},
+    {"id": "MUSEUM", "kind": "destination", "x_mm": 220, "y_mm": 40, "label": "City Museum", "aliases": ["gallery"]},
+    {"id": "GARDEN", "kind": "destination", "x_mm": 80, "y_mm": 40, "label": "Garden", "aliases": ["park"]},
+    {"id": "MARKET", "kind": "destination", "x_mm": 360, "y_mm": 140, "label": "Market", "aliases": ["shop"]},
+    {"id": "CLINIC", "kind": "destination", "x_mm": 360, "y_mm": 40, "label": "Clinic", "aliases": ["health center"]}
+  ],
+  "edges": [
+    {"from": "DOCK", "to": "J_WEST", "length_mm": 100, "bidirectional": true},
+    {"from": "J_WEST", "to": "J_EAST", "length_mm": 140, "bidirectional": true},
+    {"from": "J_EAST", "to": "MUSEUM", "length_mm": 100, "bidirectional": true},
+    {"from": "J_WEST", "to": "GARDEN", "length_mm": 100, "bidirectional": true},
+    {"from": "J_EAST", "to": "MARKET", "length_mm": 140, "bidirectional": true},
+    {"from": "MARKET", "to": "CLINIC", "length_mm": 100, "bidirectional": true}
+  ],
+  "marker_dictionary": "DICT_4X4_50",
+  "markers": [
+    {"id": 20, "center_mm": [10, 10], "size_mm": 12},
+    {"id": 21, "center_mm": [590, 10], "size_mm": 12},
+    {"id": 22, "center_mm": [590, 290], "size_mm": 12},
+    {"id": 23, "center_mm": [10, 290], "size_mm": 12}
+  ],
+  "building_panels": [],
+  "limitations": ["Offline drawing-only fixture; no robot targets or actual camera registration."]
+}

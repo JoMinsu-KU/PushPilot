@@ -6,7 +6,7 @@
 
 [Architecture](../docs/ARCHITECTURE.md) · [Backend](../backend/README.md) · [Voice input](../docs/VOICE_INPUT.md) · [Model interaction](../docs/META_INTELLIGENCE.md)
 
-> **Implemented:** [`workspace.ts`](workspace.ts) describes `pushpilot.workspace.v1`; [`scene.ts`](scene.ts) describes temporary map/routes and `pushpilot.scene.v1`; [`action-review.ts`](action-review.ts) describes recorded-action requests and evidence. Pydantic models in `backend/app.py` and `backend/scene_api.py` validate requests. These source interfaces are not a formal standalone JSON Schema catalog. Voice, trusted physical observation bundles and hardware receipts remain future contracts.
+> **Implemented:** [`workspace.ts`](workspace.ts) describes `pushpilot.workspace.v1`; [`scene.ts`](scene.ts) describes temporary map/routes, optional `pushpilot.route-display.v1` geometry and `pushpilot.scene.v1`; [`live-camera.ts`](live-camera.ts) describes the independent ephemeral preview; [`action-review.ts`](action-review.ts) describes recorded-action requests and evidence. Pydantic models in `backend/app.py` and `backend/scene_api.py` validate requests. These source interfaces are not a formal standalone JSON Schema catalog. Voice, trusted physical observation bundles and hardware receipts remain future contracts.
 
 ## Current API
 
@@ -47,6 +47,8 @@ Scene mutations use the **scene revision**, not the mission revision or command-
 
 The snapshot binds a session and revision to state, goal, current plan/step, map/version/geometry-hash route, approval, stopped status, junction-scoped simulated signal, demo action review, capabilities, next check, and ordered events. Plans contain temporary drawing points/distances and node IDs, never robot targets.
 
+Optional `route.visualization` contains drawing-only push/crossing subdivisions and illustrative stop-line geometry. `PlanStep.route_segment_id` binds PUSH/CROSS steps to those subdivisions; it is not a motion command. Older plans without consistent bindings display their complete planned route without inferred progress. Signal snapshots include `freshness_limit_ms` from the configured supervisor TTL for informational display. Colors never admit an action. See [route display](../docs/ROUTE_DISPLAY.md).
+
 Plan and review identifiers prevent approval or judgment from applying to a different revision. Events retain stable IDs, sequence numbers, timestamps, source labels, state, and explanatory text. SQLite also retains exact request digests and idempotent command receipts. Reset does not remove the event history.
 
 Mission capabilities keep `robot`, `camera`, `registered_ar` and `voice` false. `image_review` and `recorded_action_review` indicate that the operator-selected recorded-pair path is implemented; they do not indicate live capture, physical freshness or provider success. `muse_configured` indicates configuration availability, not successful inference. Scene capabilities keep live_camera/robot false. Demo verdicts cannot become Meta evidence by changing a UI label.
@@ -59,7 +61,7 @@ Its source is `meta`, input kind is `operator_selected_recorded_pair`, and scope
 
 ## Provider goal boundary
 
-The Meta adapter's strict `pushpilot_goal_v1` response schema is inline in `backend/meta.py`. It requires `destination: BAKERY\|BOOKSTORE\|SCHOOL\|UNKNOWN`, an English `summary`, and `requires_clarification`, with no additional properties. The adapter validates the result before the supervisor can prepare a deterministic temporary-graph plan.
+The Meta adapter's strict `pushpilot_goal_v1` response schema is inline in `backend/meta.py`. Its destination enum comes from the selected map's allowed destination IDs plus `UNKNOWN`; it also requires an English `summary` and `requires_clarification`, with no additional properties. Start/destination labels and aliases are supplied as symbolic map metadata. The adapter validates the result before the supervisor can prepare a deterministic temporary-graph plan.
 
 The model supplies an interpretation, not plan approval, metric coordinates, road routes, or robot commands. A failed actual-provider request does not fall back to the demo parser.
 

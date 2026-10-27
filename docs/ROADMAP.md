@@ -27,6 +27,7 @@ Checkboxes describe implementation scope. Automated simulation tests, real provi
 - [x] Implement the workspace DTO and validated revisioned API requests.
 - [x] Implement SQLite supervision, source-labelled events and graph-derived abstract action simulation.
 - [x] Bind temporary plans to map/version/geometry hash and scope fresh GREEN/stop evidence to each junction.
+- [x] Derive drawing-only route segments and illustrative stop lines from the selected map, binding simulated motion steps to display segments.
 - [x] Require current-plan approval, per-action demo review and mandatory stopping.
 - [x] Exercise RED/UNKNOWN waiting and fresh-GREEN automatic admission.
 - [x] Implement uncertainty, new review bindings, faults and non-executing restart recovery.
@@ -46,6 +47,8 @@ Checkboxes describe implementation scope. Automated simulation tests, real provi
 - [x] Present current simulation state, next pending check and source-labelled evidence.
 - [x] Provide explicit simulated signal and demo-review controls.
 - [x] Display temporary drawing routes and separate recorded-frame upload, marker-lock overlay and scene-inspection controls.
+- [x] Distinguish completed/current/remaining route portions and junction stop/signal/review context from authoritative simulation state.
+- [x] Read English names and destination choices from map metadata, retaining planned-only display for older plans without segment bindings.
 - [x] Record desktop/tablet/mobile layout and SVG arrow checks in [verification](VERIFICATION.md).
 - [ ] Complete the full keyboard and contrast accessibility review.
 - [ ] Add bounded push-to-talk, backend batch transcription and editable transcript confirmation.
@@ -55,7 +58,7 @@ Checkboxes describe implementation scope. Automated simulation tests, real provi
 - [x] Explicitly lock the installed live view and record fixed-transform observations and limits in [verification](VERIFICATION.md); this is display registration, not robot calibration.
 - [ ] Integrate live capture with receipt-bound fresh physical action evidence, independent of preview.
 
-**Evidence:** the UI must reflect backend snapshots and events, including wait, rejection, uncertainty, and recovery. No scripted success animation substitutes for a state transition. The wearable panel remains a concept. The temporary spatial map is drawing data and a locked recorded-image overlay is test-only; unavailable capability labels stay explicit.
+**Evidence:** the UI must reflect backend snapshots and events, including wait, rejection, uncertainty, and recovery. [Route display](ROUTE_DISPLAY.md) separates drawing geometry and simulated progress from measured car pose. No scripted success animation substitutes for a state transition. The wearable panel remains a concept. The temporary spatial map is drawing data and a locked camera overlay is test-only; unavailable capability labels stay explicit. Actual checks and limits belong in [verification](VERIFICATION.md).
 
 ## 3 · Genuine Meta interaction
 
@@ -93,6 +96,9 @@ Checkboxes describe implementation scope. Automated simulation tests, real provi
 
 - [x] Build a replaceable sanitized Little Town drawing/graph adapter, excluding source artwork and historical robot assumptions.
 - [x] Derive east-facing PIZZA routes to BAKERY, BOOKSTORE, and SCHOOL with independent stop/signal gates at every junction.
+- [x] Select a reviewed map through `--map-path` or `PUSHPILOT_MAP_PATH`, with optional cardinal start heading and map-owned labels/aliases.
+- [x] Supply MUSE goal interpretation with the selected map's allowed destination vocabulary; keep deterministic route construction separate.
+- [x] Require matching map/version/hash for route display and new plan/registration after map replacement.
 - [x] Accept bounded private JPEG/PNG frames with hashes, timestamps and map identity.
 - [x] Detect print markers and require an explicit four-marker lock for a test-only board-to-image overlay.
 - [x] Retain the fixed reference under partial occlusion; withhold changed or unverifiable views without automatic refitting.
@@ -102,12 +108,13 @@ Checkboxes describe implementation scope. Automated simulation tests, real provi
 - [x] Implement native preview transport and an independent memory-only live display lock, without saving preview frames into recorded evidence.
 - [x] Record installed static-view marker coverage, backend frame availability and reported receive ages in [verification](VERIFICATION.md).
 - [ ] Measure browser presentation rate, exposure-to-display latency and moving/occluded scenes; the short backend sample is not an end-to-end motion benchmark.
+- [ ] Add deliberate via-point/alternative-route selection and evaluate obstacle-aware rerouting if required by the final scenario.
 
 ## Next demonstration gate · Same action, different evidence
 
 The next evaluation should show one expected action with independently labelled success, no progress and occlusion. Preserve the actual input, source, response and supervisor consequence for each case. Synthetic fixtures and injected responses are useful pipeline checks; publish them separately from real-car imagery. Measure the rate of incorrect continuation and reobservation, response latency and reported usage once a defined sample exists. Do not infer task accuracy from the software test count.
 
-Follow [Temporary map](TEMPORARY_MAP.md) and [Test inputs](TEST_INPUTS.md). A recorded 1920×1080 frame supported four-marker fitting at 1.4333 px residual; this is fit error, not absolute millimeter accuracy. Temporary drawing routes and recorded overlays are authorized test scope. Production geometry, robot/BASE registration, qualified stop lines, and physical turning remain unresolved.
+Follow [Temporary map](TEMPORARY_MAP.md), [Route display](ROUTE_DISPLAY.md) and [Test inputs](TEST_INPUTS.md). A recorded 1920×1080 frame supported four-marker fitting at 1.4333 px residual; this is fit error, not absolute millimeter accuracy. Temporary drawing routes, simulated progress and recorded/live display overlays are authorized test scope. Production geometry, robot/BASE registration, qualified stop lines, measured car pose and physical turning remain unresolved. Illustrative stop-line graphics do not satisfy those gates.
 
 ## 6 · Final installation and physical qualification
 

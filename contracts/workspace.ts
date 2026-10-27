@@ -12,6 +12,8 @@ export interface PlanStep {
   kind: 'PUSH' | 'STOP' | 'CROSS' | 'VERIFY';
   status: 'pending' | 'current' | 'complete';
   node_id?: string;
+  /** Binds simulated step status to drawing geometry, never to measured car pose. */
+  route_segment_id?: string;
 }
 export interface EvidenceEvent {
   id: string;
@@ -41,7 +43,7 @@ export interface WorkspaceSnapshot {
   current_step: number;
   approved: boolean;
   stopped: boolean;
-  signal: { color: SignalColor; source: 'simulation'; observed_at: string | null; junction_id: string | null };
+  signal: { color: SignalColor; source: 'simulation'; observed_at: string | null; junction_id: string | null; freshness_limit_ms?: number };
   review: null | {
     id: string;
     verdict: ReviewVerdict | 'PENDING';

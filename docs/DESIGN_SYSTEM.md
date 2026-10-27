@@ -66,6 +66,8 @@ The 12 px blur belongs to the glass material, not the camera image. The image el
 
 The route uses one controlled accent and a quiet contrasting casing. Traffic red, green and amber retain their real semantic role and always have a label. Do not use green to imply a connected robot, a fresh signal or a measured pose when those facts are absent.
 
+Route progress uses distinct line treatment for completed, current and remaining portions, supported by direction arrows and a concise text legend. Keep the current junction's mandatory stop, signal wait and review context anchored to map-derived drawing geometry. A highlighted segment means the supervisor selected that simulated action; it is not a live car-position marker or proof of motion. Stop lines are illustrative until independently qualified. Preserve the selected source and simulation labels when live video and simulated progress appear together. See [Route display](ROUTE_DISPLAY.md).
+
 ## Typography, icons and tone
 
 Use **Pretendard Variable v1.3.9** throughout the interface, self-hosted from the application with system sans-serif fallbacks. The unmodified full WOFF2 includes Korean and Latin text support and is preloaded from the same origin; do not add a CDN dependency. Declare the upstream variable weight range of 45–920, while favoring regular or medium weights with short, direct labels. Keep monospace formatting for JSON and other machine-readable evidence. Font provenance and the bundled SIL Open Font License 1.1 are recorded in the [font directory](../frontend/public/fonts/pretendard/README.md).
@@ -98,6 +100,8 @@ On compact tablets, reduce the summary count before reducing legibility. On narr
 ## Scene projection and source truth
 
 Preserve **Observe → Plan → Approve → Act → Verify**. Presentation changes must not change mission admission, revision checks or review behavior.
+
+Place names, destination choices and start labels come from the selected map's metadata. Never position a route from a hardcoded shop name, infer a road edge from its action-list index or reuse a previous map's geometry after replacement. New plans bind steps to backend-supplied display segment identifiers. Older plans without those bindings show a planned route without invented execution progress. The optional `start_heading` supports a replacement drawing without changing frontend code; all supported roads remain cardinal in the current adapter.
 
 Keep the raw recorded image and its camera overlay in the same intrinsic coordinate system. Camera is the default view. Preserve the original perspective, image pixels, aspect ratio and overlay geometry; Full frame displays the complete recorded image. Do not crop, rectify or distort the evidence frame merely to imitate the reference. Draw directional arrows with SVG geometry aligned to individual route segments; a corner marker must not imply a diagonal move. Route, map and registration identities must match. A candidate remains a candidate; a changed view withholds the old projection.
 
@@ -143,6 +147,8 @@ Verify actual rendered screens rather than assuming that CSS tokens match the re
 | Material | The actual scene extends behind the rail, header and mission/status glass. Its colors and structure are perceptible through the overlays, while darker text and controls remain readable. No blank reserved column substitutes for the scene. |
 | Operational hierarchy | State, current action, next check and the one primary action are findable immediately. Secondary tools do not compete with them. |
 | Route visibility | Start, destination, turns, direction arrows and current action are visible and aligned in Camera Board focus, Full frame and the drawing preview. |
+| Progress and waits | Completed/current/remaining route portions and mandatory stop, signal or review context are distinguishable without relying on color alone. Labels state simulation; no moving car pose is invented. |
+| Replaceable map | Names and route geometry follow the selected map; mismatched old plans/registrations are withheld, and legacy plans without segment bindings remain planned-only. |
 | Board-focus integrity | Valid locked registration enables the display mask; missing, changed or mismatched registration produces the full Camera fallback. Camera perspective, overlay geometry and the raw evidence frame remain unchanged. |
 | Camera presentation | The original image URL and SVG coordinates are retained. No global blur, image opacity, canvas recompression or board resampling is introduced by the glass layout. Only overlay backdrops receive the material treatment. |
 | Real states | Preparation, approval, mandatory stop, red/unknown wait, review, fault and completion fit the same frame without lost controls. |

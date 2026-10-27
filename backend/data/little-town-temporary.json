@@ -91,24 +91,32 @@
     },
     {
       "id": "PIZZA",
+      "label": "Pizza",
+      "aliases": ["pizza", "pizzeria", "피자"],
       "x_mm": 126.0,
       "y_mm": 117.0,
       "kind": "destination"
     },
     {
       "id": "BOOKSTORE",
+      "label": "Bookstore",
+      "aliases": ["bookstore", "book store", "bookshop", "서점"],
       "x_mm": 274.0,
       "y_mm": 117.0,
       "kind": "destination"
     },
     {
       "id": "SCHOOL",
+      "label": "School",
+      "aliases": ["school", "학교"],
       "x_mm": 126.0,
       "y_mm": 201.0,
       "kind": "destination"
     },
     {
       "id": "BAKERY",
+      "label": "Bakery",
+      "aliases": ["bakery", "빵집", "베이커리"],
       "x_mm": 274.0,
       "y_mm": 201.0,
       "kind": "destination"

@@ -22,6 +22,7 @@ The current [visual direction](DESIGN_SYSTEM.md) follows the user's industrial r
 |---|---|---|
 | Understand the product | [Mission](MISSION.md) | [Meta intelligence](META_INTELLIGENCE.md) |
 | Design the operator workspace | [Design system](DESIGN_SYSTEM.md) | [Frontend](../frontend/README.md) |
+| Follow route progress or replace the drawing | [Route display](ROUTE_DISPLAY.md) | [Temporary map](TEMPORARY_MAP.md#replace-the-temporary-map) |
 | Understand the system | [Architecture](ARCHITECTURE.md) | [Service composition](SERVICE_COMPOSITION.md) |
 | Review voice goal entry | [Voice input](VOICE_INPUT.md) | [Frontend](../frontend/README.md) and [contracts](../contracts/README.md) |
 | Test Meta authentication and goal interpretation | [API connection check](META_API_CHECK.md) | [Meta intelligence](META_INTELLIGENCE.md) |
@@ -45,7 +46,7 @@ The mission begins at symbolic **PIZZA** and pushes a wheel-less car toward a se
 
 | Directory | Intended ownership | Present state |
 |---|---|---|
-| [`frontend/`](../frontend/README.md) | English tablet workspace, live/recorded camera sources, graph routes, model evidence, approval and replay | React/TypeScript implementation; voice remains planned |
+| [`frontend/`](../frontend/README.md) | English tablet workspace, live/recorded sources, map-derived route progress, junction context, model evidence, approval and replay | React/TypeScript implementation; voice remains planned |
 | [`backend/`](../backend/README.md) | API, live preview RAM cache, temporary graph simulation, recorded-scene/action review, Meta adapters and evidence | FastAPI/Uvicorn, SQLite, OpenCV and NumPy |
 | [`contracts/`](../contracts/README.md) | Workspace/map/scene/live-preview snapshots, capabilities and source-labelled events | TypeScript DTOs; Pydantic request validation in backend |
 | [`prompts/`](../prompts/README.md) | Model instructions and review expectations | Goal/scene instructions plus the action-review contract; complete template catalog remains later work |
@@ -75,6 +76,7 @@ These describe separate parts of a run. For example, a real provider may review 
 - Use MUSE to interpret and review evidence; deterministic checks retain action admission authority.
 - Keep the tablet interface English and follow the industrial light-dashboard [design system](DESIGN_SYSTEM.md). Label future wearable interaction as a concept.
 - Use the replaceable temporary print adapter for simulation and explicitly labelled recorded-image overlays. Defer robot coordinates, production routes/registration, qualified stop lines, and live signal regions until the final installation is available.
+- Keep location labels, destination vocabulary and route geometry in the selected map definition. Replacing it requires a new plan and reviewed display registration; simulated AR progress never supplies measured car pose.
 
 For implementation priorities and the conditions that open later work, read the [roadmap](ROADMAP.md). For inherited work, rights and supported claims, read [contributions](../CONTRIBUTIONS.md) and [third-party notices](../THIRD_PARTY_NOTICES.md).
 

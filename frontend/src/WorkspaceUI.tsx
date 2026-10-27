@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { EvidenceEvent, WorkspaceSnapshot } from '../../contracts/workspace';
+import type { TemporaryMap } from '../../contracts/scene';
 import { Icon } from './Icons';
+import { nodeLabel } from './mapMetadata';
 
 export function ViewportDialog({ open, title, subtitle, onClose, children, className = '' }: {
   open: boolean; title: string; subtitle?: string; onClose: () => void;
@@ -56,7 +58,7 @@ export function TextPages({ text, size = 440 }: { text: string; size?: number })
   return <div className="text-pages"><p>{chunks[index]}</p>{chunks.length > 1 && <Pager page={index} total={chunks.length} onChange={setPage} label="Text"/>}</div>;
 }
 
-export function PlanBrowser({ workspace }: { workspace: WorkspaceSnapshot | null }) {
+export function PlanBrowser({ workspace, map = null }: { workspace: WorkspaceSnapshot | null; map?: TemporaryMap | null }) {
   const compact = useCompact();
   const size = compact ? 2 : 4;
   const [page, setPage] = useState(0);
@@ -65,7 +67,7 @@ export function PlanBrowser({ workspace }: { workspace: WorkspaceSnapshot | null
   const index = Math.min(page, pages - 1);
   useEffect(() => setPage(Math.floor((workspace?.current_step ?? 0) / size)), [workspace?.current_step, size, workspace?.plan?.id]);
   return <div className="plan-browser">
-    <div className="route-facts"><span><small>From</small><strong>{workspace?.plan?.route.start ?? 'PIZZA'}</strong></span><Icon name="arrow" size={24}/><span><small>To</small><strong>{workspace?.goal?.destination ?? '—'}</strong></span><span><small>Drawing distance</small><strong>{workspace?.plan?.route.distance_mm ?? '—'} mm</strong></span><span><small>Junction checks</small><strong>{workspace?.plan?.route.junction_ids.length ?? '—'}</strong></span></div>
+    <div className="route-facts"><span><small>From</small><strong>{nodeLabel(map, workspace?.plan?.route.start ?? map?.start)}</strong></span><Icon name="arrow" size={24}/><span><small>To</small><strong>{nodeLabel(map, workspace?.goal?.destination)}</strong></span><span><small>Drawing distance</small><strong>{workspace?.plan?.route.distance_mm ?? '—'} mm</strong></span><span><small>Junction checks</small><strong>{workspace?.plan?.route.junction_ids.length ?? '—'} </strong></span></div>
     <ol className="route-page" start={index * size + 1} aria-label="Route steps">{steps.slice(index * size, (index + 1) * size).map((step, offset) => <li className={step.status} key={step.id}><span className="route-number">{step.status === 'complete' ? <Icon name="check" size={16}/> : String(index * size + offset + 1).padStart(2, '0')}</span><div><strong>{step.label}</strong><p>{step.description}</p></div><span className="route-kind">{step.kind}</span></li>)}</ol>
     {steps.length === 0 && <p className="empty-copy">Create a goal to inspect its route.</p>}
     <footer className="dialog-bottom"><span>Temporary drawing graph · simulated actions</span><Pager page={index} total={pages} onChange={setPage} label="Route page"/></footer>

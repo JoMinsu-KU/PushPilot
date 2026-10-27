@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { EvidenceEvent, ProviderMode, ReviewVerdict, SignalColor, WorkspaceSnapshot } from '../../contracts/workspace';
-import type { SceneSnapshot } from '../../contracts/scene';
+import type { SceneSnapshot, TemporaryMap } from '../../contracts/scene';
 import type { RecordedActionReviewCommand } from '../../contracts/action-review';
 import { BrandMark, Icon, type IconName } from './Icons';
 import { MapScene } from './MapScene';
 import { createRequestId } from './requestId';
 import { ActionReviewPanel } from './ActionReview';
 import { ViewportDialog, PlanBrowser, EvidenceBrowser } from './WorkspaceUI';
+import { destinationGoal, destinationOptions, destinationPage, nodeLabel } from './mapMetadata';
+import { currentSignalJunction, signalDisplay } from './routeProgress';
 
 type View = 'Workspace' | 'Plan' | 'Replay';
 const terminalStates = new Set(['COMPLETED', 'CANCELLED', 'FAULT', 'RECOVERY_REQUIRED']);
@@ -34,7 +36,9 @@ function timeLabel(at: string) {
 export function App() {
   const [workspace, setWorkspace] = useState<WorkspaceSnapshot | null>(null);
   const [view, setView] = useState<View>('Workspace');
-  const [draft, setDraft] = useState('Push the car from Pizza to the Bakery.');
+  const [draft, setDraft] = useState('');
+  const [mapSnapshot, setMapSnapshot] = useState<TemporaryMap | null>(null);
+  const [goalPage, setGoalPage] = useState(0);
   const [provider, setProvider] = useState<ProviderMode>('demo');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -67,6 +71,11 @@ export function App() {
   }, [applySnapshot]);
   useEffect(() => { void refresh(); const timer = window.setInterval(() => void refresh(), 1500); return () => window.clearInterval(timer); }, [refresh]);
   useEffect(() => { if (workspace?.goal) setDraft(workspace.goal.text); }, [workspace?.goal?.text]);
+  useEffect(() => { if (workspace?.goal) setProvider(workspace.goal.provider); }, [workspace?.goal?.provider]);
+  useEffect(() => {
+    setGoalPage(0);
+    if (mapSnapshot?.destinations.length) setDraft(value => value || destinationGoal(mapSnapshot, mapSnapshot.destinations[0]));
+  }, [mapSnapshot?.id, mapSnapshot?.version, mapSnapshot?.geometry_hash]);
 
   async function command(endpoint: string, data: Record<string, unknown> = {}) {
     const snapshot = current.current;
@@ -115,10 +124,16 @@ export function App() {
   const selected = workspace?.events.find(event => event.id === selectedEvent) ?? workspace?.events.at(-1);
   const signal = workspace?.signal.color ?? 'UNKNOWN';
   const pendingReview = state === 'REVIEW_REQUIRED' && workspace?.review?.verdict === 'PENDING';
-  const destination = workspace?.goal?.destination ?? 'BAKERY';
-  const destinationName = destination[0] + destination.slice(1).toLowerCase();
+  const destination = workspace?.goal?.destination;
+  const destinationName = nodeLabel(mapSnapshot, destination);
+  const startName = nodeLabel(mapSnapshot, workspace?.plan?.route.start ?? mapSnapshot?.start);
+  const goalChoices = destinationPage(destinationOptions(mapSnapshot), goalPage);
   const currentStep = workspace?.plan?.steps[workspace.current_step];
-  const signalJunction = workspace?.signal.junction_id ?? (currentStep?.kind === 'STOP' ? currentStep.node_id : null);
+  const signalJunction = currentSignalJunction(workspace);
+  const signalReading = workspace && signalJunction ? signalDisplay(workspace, signalJunction, Date.now()) : 'unknown';
+  const admittedCrossing = active && currentStep?.kind === 'CROSS';
+  const signalCardLabel = admittedCrossing ? 'Crossing admitted' : signalReading === 'stale' ? 'Signal expired'
+    : signalReading === 'unknown' ? 'Awaiting signal' : signalReading === 'red' ? 'Stop and wait' : 'Green observed';
   const title = state === 'IDLE' ? 'Ready for a goal.' : state === 'WAITING_SIGNAL' ? 'Waiting for green.' : state === 'COMPLETED' ? 'Destination verified.' : state === 'REVIEW_REQUIRED' ? 'Review the result.' : `Route to ${destinationName}`;
   const completedSteps = workspace?.plan?.steps.filter(step => step.status === 'complete').length ?? 0;
   const totalSteps = workspace?.plan?.steps.length ?? 0;
@@ -160,17 +175,17 @@ export function App() {
       <div className="header-status"><span className="backend-status"><i className={online ? 'online' : ''}/>{online ? 'Connected' : 'Offline'}</span><span className="mode-label">Simulation</span><button className="header-concept" aria-label="Glasses companion concept" onClick={() => setModal('companion')}><Icon name="glasses" size={18}/><span>Companion concept</span></button></div>
     </header>
     <main className={`workspace-stage ${mobileMission ? 'mission-visible' : ''}`}>
-      <MapScene presentation="stage" workspace={workspace} onSnapshot={setSceneSnapshot} onPreviewSource={setPreviewSource} readOnly={actionReviewPending} openToolsRequest={imageToolsRequest}/>
-      <div className="scene-heading"><span>Temporary workspace</span><h2>Little Town</h2><button onClick={openGoal} disabled={!canEditGoal}><span>{workspace?.goal ? `Pizza to ${destinationName}` : 'Set a mission goal'}</span><Icon name="arrow" size={16}/></button></div>
+      <MapScene presentation="stage" workspace={workspace} onSnapshot={setSceneSnapshot} onMapSnapshot={setMapSnapshot} onPreviewSource={setPreviewSource} readOnly={actionReviewPending} openToolsRequest={imageToolsRequest}/>
+      <div className="scene-heading"><span>Temporary workspace</span><h2 title={mapSnapshot?.title}>{mapSnapshot?.title ?? 'Loading map…'}</h2><button onClick={openGoal} disabled={!canEditGoal}><span>{workspace?.goal ? `${startName} to ${destinationName}` : 'Set a mission goal'}</span><Icon name="arrow" size={16}/></button></div>
       <button className="mobile-mission-switch glass-surface" onClick={() => setMobileMission(value => !value)} aria-expanded={mobileMission}>{mobileMission ? 'Show scene' : 'Mission'}<Icon name={mobileMission ? 'close' : 'chevron'} size={16}/></button>
       {(error || !online) && <div className={`stage-notice ${error ? 'error' : ''}`} role={error ? 'alert' : 'status'}><Icon name="shield" size={17}/><span>{error || 'Backend unavailable. Refresh before taking action.'}</span><button aria-label={error ? 'Dismiss error' : 'Retry connection'} onClick={() => error ? setError('') : void refresh()}><Icon name={error ? 'close' : 'refresh'} size={16}/></button></div>}
 
       <aside className="floating-mission glass-surface" aria-label="Mission and execution controls">
         <div className="mission-heading"><span><i/>Active mission</span><button className="icon-button" onClick={openGoal} disabled={!canEditGoal} aria-label="Edit mission goal"><Icon name="settings" size={17}/></button></div>
-        <div className="mission-intro"><span className="mission-provider">{workspace?.goal?.provider === 'meta' ? 'MUSE interpretation' : 'Demo interpretation'}</span><h2>{state === 'IDLE' ? 'Where to next?' : `To the ${destinationName}`}</h2><div className="mission-journey"><span>PIZZA</span><Icon name="arrow" size={18}/><strong>{destination}</strong></div></div>
+        <div className="mission-intro"><span className="mission-provider">{workspace?.goal?.provider === 'meta' ? 'MUSE interpretation' : 'Demo interpretation'}</span><h2 title={destinationName}>{state === 'IDLE' ? 'Where to next?' : `To ${destinationName}`}</h2><div className="mission-journey"><span title={startName}>{startName}</span><Icon name="arrow" size={18}/><strong title={destinationName}>{destinationName}</strong></div></div>
         <div className="mission-progress"><div><span>Mission progress</span><strong>{completedSteps}<small> / {totalSteps} actions</small></strong></div><progress aria-label="Completed mission actions" value={completedSteps} max={totalSteps || 1}/></div>
         <section className="mission-context"><div className="section-caption"><h3>Route sequence</h3><button onClick={() => setView('Plan')} aria-label="View full route">View all<Icon name="chevron" size={13}/></button></div>
-          {visibleSteps.length ? <ol className="context-steps" aria-label="Current route context">{visibleSteps.map((step, index) => <li key={step.id} className={`${step.status} ${workspace?.current_step === contextStart + index ? 'focused' : ''}`}><span className="context-number">{step.status === 'complete' ? <Icon name="check" size={12}/> : String(contextStart + index + 1).padStart(2, '0')}</span><div><strong>{step.label}</strong><small>{stepDescriptions[step.kind]}</small></div></li>)}</ol> : <p className="empty-copy">Choose Bakery, Bookstore or School to build a route.</p>}
+          {visibleSteps.length ? <ol className="context-steps" aria-label="Current route context">{visibleSteps.map((step, index) => <li key={step.id} className={`${step.status} ${workspace?.current_step === contextStart + index ? 'focused' : ''}`}><span className="context-number">{step.status === 'complete' ? <Icon name="check" size={12}/> : String(contextStart + index + 1).padStart(2, '0')}</span><div><strong>{step.label}</strong><small>{stepDescriptions[step.kind]}</small></div></li>)}</ol> : <p className="empty-copy">Choose a destination from the selected map to build a route.</p>}
         </section>
         <section className="next-check"><div><Icon name={state === 'WAITING_SIGNAL' ? 'pause' : 'shield'} size={16}/><h3>{stateLabels[state]}</h3></div><p>{workspace?.next_check ?? 'Set a goal and inspect the proposed route.'}</p></section>
         <div className="mission-actions">{renderPrimaryAction()}{state === 'WAITING_SIGNAL' && <button className="secondary-button" onClick={() => setShowDemo(true)}>Signal controls<Icon name="chevron" size={16}/></button>}{state === 'PLAN_READY' && <button className="edit-goal-link" disabled={!canEditGoal} onClick={openGoal}>Edit goal</button>}{pendingReview && <button className="edit-goal-link" onClick={() => setShowDemo(true)}>Demo review inputs</button>}{active && <button className="cancel-button" disabled={busy || !online} onClick={() => void command('cancel')}>End simulation</button>}<span className="execution-source">Simulation only · no robot connected</span></div>
@@ -178,7 +193,7 @@ export function App() {
 
       <div className="status-dock" aria-label="Workspace status">
         <button className="status-card glass-surface" onClick={() => setView('Plan')}><span className="status-card-top"><i className="accent-dot"/>Route overview<Icon name="chevron" size={14}/></span><span className="status-card-value">{route?.distance_mm ?? '—'}<small>drawing mm</small></span><span className="status-card-bottom">{route?.junction_ids.length ?? '—'} junction checks<span>{completedSteps}/{totalSteps} actions</span></span></button>
-        <button className={`status-card glass-surface signal-${signal.toLowerCase()}`} onClick={() => setShowDemo(true)}><span className="status-card-top"><i/>Signal {signalJunction ? `· ${signalJunction}` : ''}<Icon name="chevron" size={14}/></span><span className="status-card-value">{signal === 'UNKNOWN' ? 'Awaiting signal' : signal === 'RED' ? 'Stop and wait' : 'Green observed'}</span><span className="status-card-bottom">{workspace?.stopped ? 'Simulated stop confirmed' : 'Mandatory stop before entry'}<span>Simulation</span></span></button>
+        <button className={`status-card glass-surface signal-${admittedCrossing ? 'green' : signalReading}`} onClick={() => setShowDemo(true)}><span className="status-card-top"><i/>Signal {signalJunction ? `· ${nodeLabel(mapSnapshot, signalJunction)}` : ''}<Icon name="chevron" size={14}/></span><span className="status-card-value">{signalCardLabel}</span><span className="status-card-bottom">{admittedCrossing ? 'Accepted entry · review required' : workspace?.stopped ? 'Simulated stop confirmed' : 'Mandatory stop before entry'}<span>Simulation</span></span></button>
         <button className="status-card glass-surface" onClick={() => workspace?.review ? setModal('review') : openImageTools()}><span className="status-card-top"><i className="model-dot"/>Visual review<Icon name="chevron" size={14}/></span><span className="status-card-value model-value">{modelLabel === 'USABLE' ? 'Scene inspected' : modelLabel}</span><span className="status-card-bottom">{workspace?.review ? workspace.review.source === 'meta' ? 'MUSE · recorded pair' : 'Demo action review' : inspection ? 'MUSE · recorded scene' : 'Awaiting image evidence'}<span>{workspace?.review ? 'Action' : 'Scene'}</span></span></button>
       </div>
       <div className="stage-bottom-line"><span>{previewSource ?? sceneSnapshot?.frame?.source ?? 'No image'} · car pose unmeasured</span><span>{workspace ? `Session revision ${workspace.revision}` : 'Offline'}</span></div>
@@ -186,14 +201,14 @@ export function App() {
 
     <ViewportDialog open={modal === 'goal'} title="Mission goal" subtitle="SET THE INTENT" onClose={() => setModal(null)} className="goal-dialog">
       <form className="goal-form" onSubmit={event => { event.preventDefault(); if (canEditGoal && draft.trim()) { void command('goals', { text: draft, provider, source: 'typed' }); setModal(null); } }}>
-        <div className="goal-destinations">{['Bakery', 'Bookstore', 'School'].map(place => <button type="button" key={place} disabled={!canEditGoal} onClick={() => setDraft(`Push the car from Pizza to the ${place}.`)}>{place}<Icon name="arrow" size={16}/></button>)}</div>
+        <div className="goal-choices"><div className="goal-destinations">{goalChoices.items.map(place => <button type="button" key={place.id} title={`${place.label} · ${place.id}`} disabled={!canEditGoal} onClick={() => mapSnapshot && setDraft(destinationGoal(mapSnapshot, place.id))}><span>{place.label}</span><Icon name="arrow" size={16}/></button>)}</div>{goalChoices.pages > 1 && <nav className="goal-choice-pager" aria-label="Destination pages"><button type="button" disabled={goalChoices.page === 0} onClick={() => setGoalPage(value => value - 1)} aria-label="Previous destinations"><Icon name="chevron" className="reverse" size={14}/></button><span>{goalChoices.page + 1} / {goalChoices.pages}</span><button type="button" disabled={goalChoices.page + 1 >= goalChoices.pages} onClick={() => setGoalPage(value => value + 1)} aria-label="Next destinations"><Icon name="chevron" size={14}/></button></nav>}</div>
         <label htmlFor="goal-input">Your goal<input ref={goalInput} id="goal-input" value={draft} onChange={event => setDraft(event.target.value)} disabled={!canEditGoal} maxLength={500} aria-label="Your mission goal"/></label>
         <label htmlFor="provider-mode">Goal interpreter<select id="provider-mode" value={provider} disabled={!canEditGoal} onChange={event => setProvider(event.target.value as ProviderMode)}><option value="demo">Demo interpreter</option><option value="meta" disabled={!workspace?.capabilities.muse_configured}>MUSE · Meta API{!workspace?.capabilities.muse_configured ? ' (not configured)' : ''}</option></select></label>
         <p className="form-note"><Icon name="mic" size={17}/>Typed input is available. Voice capture is not connected.</p>
         <div className="dialog-bottom"><span>A new plan requires explicit approval.</span><button className="primary-button" type="submit" disabled={!canEditGoal || !draft.trim()}><Icon name="spark" size={17}/>Create a plan<Icon name="arrow" size={17}/></button></div>
       </form>
     </ViewportDialog>
-    <ViewportDialog open={view === 'Plan'} title="Route plan" subtitle="INSPECT THE SEQUENCE" onClose={() => setView('Workspace')}><PlanBrowser workspace={workspace}/></ViewportDialog>
+    <ViewportDialog open={view === 'Plan'} title="Route plan" subtitle="INSPECT THE SEQUENCE" onClose={() => setView('Workspace')}><PlanBrowser workspace={workspace} map={mapSnapshot}/></ViewportDialog>
     <ViewportDialog open={view === 'Replay' && modal !== 'review'} title="Decision replay" subtitle="SOURCE-LABELLED EVIDENCE" onClose={() => setView('Workspace')}><EvidenceBrowser events={workspace?.events ?? []} selected={selected} onSelect={setSelectedEvent} onOpenRecord={() => setModal('review')}/></ViewportDialog>
     <ViewportDialog open={modal === 'review'} title={view === 'Replay' ? 'Recorded evidence' : 'Visual action review'} subtitle={view === 'Replay' ? 'READ-ONLY REPLAY' : 'COMPARE EXPECTED AND OBSERVED'} onClose={() => setModal(null)} className="review-dialog">
       {error && <div className="dialog-error" role="alert"><Icon name="shield" size={17}/><span>{error}</span><button aria-label="Dismiss review error" onClick={() => setError('')}><Icon name="close" size={16}/></button></div>}

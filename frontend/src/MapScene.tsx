@@ -3,7 +3,10 @@ import type { MapRoute, SceneSnapshot, TemporaryMap } from '../../contracts/scen
 import type { LiveCameraSnapshot } from '../../contracts/live-camera';
 import type { WorkspaceSnapshot } from '../../contracts/workspace';
 import { Icon } from './Icons';
-import { directionArrows, projectPoint, type Point } from './projection';
+import { projectPoint, type Point } from './projection';
+import { createRouteDisplay, projectRouteDisplay, type RouteDisplay } from './routeProgress';
+import { RouteLegend, RouteOverlay } from './RouteOverlay';
+import { nodeLabel } from './mapMetadata';
 import { recordedDisplay } from './boardFocus';
 import { createLivePollGate, liveDisplaySnapshot, liveFrameAge, liveFrameFresh, liveOverlayAllowed } from './liveCamera';
 import './map-scene.css';
@@ -27,29 +30,6 @@ function responseMessage(payload: unknown): string {
 function captureLabel(frame: NonNullable<SceneSnapshot['frame']>) {
   if (!frame.captured_at || frame.timestamp_source === 'unknown') return 'Capture time unknown';
   return `Captured ${new Date(frame.captured_at).toLocaleString('en-US')}`;
-}
-
-function RouteStroke({ points, id, scale = 1, candidate = false, drawing = false }: { points: Point[]; id: string; scale?: number; candidate?: boolean; drawing?: boolean }) {
-  if (points.length < 2) return null;
-  const color = drawing ? '#e66b3c' : candidate ? '#ffbf66' : '#13d5ff';
-  return <g className="map-route-layer">
-    <defs>
-      <marker id={id} viewBox="0 0 12 12" markerWidth={10 * scale} markerHeight={10 * scale}
-        refX="9" refY="6" orient="auto" markerUnits="userSpaceOnUse">
-        <path d="m3 2 6 4-6 4" fill="none" stroke={drawing ? '#e66b3c' : candidate ? '#ffe5ba' : '#e3fbff'} strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"/>
-      </marker>
-    </defs>
-    <polyline points={points.map(point => point.join(',')).join(' ')} fill="none" stroke={color}
-      strokeWidth={10 * scale} opacity=".16" strokeLinecap="round" strokeLinejoin="round"/>
-    <polyline points={points.map(point => point.join(',')).join(' ')} fill="none" stroke={color}
-      strokeWidth={3.2 * scale} strokeLinecap="round" strokeLinejoin="round"/>
-    {directionArrows(points).map((arrow, index) => <path key={index}
-      d={`M${arrow.start.join(',')} L${arrow.end.join(',')}`} fill="none" stroke={color}
-      strokeWidth={2.2 * scale} markerEnd={`url(#${id})`}/>) }
-    <circle cx={points[0][0]} cy={points[0][1]} r={4.5 * scale} fill={drawing ? '#fff8f3' : '#092b40'} stroke={color} strokeWidth={2 * scale}/>
-    <circle cx={points.at(-1)![0]} cy={points.at(-1)![1]} r={6.5 * scale} fill={drawing ? '#fff' : '#075443'} stroke={drawing ? '#3a9c79' : '#64ffe0'} strokeWidth={2 * scale}/>
-    <circle cx={points.at(-1)![0]} cy={points.at(-1)![1]} r={2 * scale} fill={drawing ? '#3a9c79' : '#b9fff0'}/>
-  </g>;
 }
 
 // The same affine projection is used for the drawing, route and destination pins.
@@ -93,17 +73,20 @@ function BuildingVolume({ bounds, name, selected, index }: { bounds: [number, nu
   </g>;
 }
 
-function SpatialMap({ map, route }: { map: TemporaryMap; route: MapRoute | null }) {
+function SpatialMap({ map, route, display }: { map: TemporaryMap; route: MapRoute | null; display: RouteDisplay | null }) {
   const id = useId().replace(/:/g, '');
   const byId = new Map(map.nodes.map(node => [node.id, node]));
   const validRoute = route?.map_hash === map.geometry_hash && route.map_id === map.id && route.map_version === map.version ? route : null;
   const width = map.board.width_mm, height = map.board.height_mm;
   const p = architecturalPoint;
-  const routePoints = validRoute?.points_mm.map(([x, y]) => p(x, y)) ?? [];
+  const projectedDisplay = display ? projectRouteDisplay(display, ([x, y]) => p(x, y)) : null;
+  const extent = [p(0, 0), p(width, 0), p(width, height), p(0, height)];
+  const minX = Math.min(...extent.map(point => point[0])) - 45, minY = Math.min(...extent.map(point => point[1])) - 55;
+  const viewBox = [minX, minY, Math.max(...extent.map(point => point[0])) - minX + 45, Math.max(...extent.map(point => point[1])) - minY + 55];
   const destination = validRoute ? byId.get(validRoute.destination) : null;
   const destinationPoint = destination ? p(destination.x_mm, destination.y_mm) : null;
   return <div className="spatial-map-wrap">
-    <svg className="spatial-map" viewBox="25 -10 640 350" preserveAspectRatio="xMidYMid meet" role="img"
+    <svg className="spatial-map" viewBox={viewBox.join(' ')} preserveAspectRatio="xMidYMid meet" role="img"
       aria-label={`Illustrative architectural view of ${map.title}; temporary road geometry${validRoute ? ` with route from ${validRoute.start} to ${validRoute.destination}` : ''}; building volumes are not a physical scan`}>
       <defs><radialGradient id={`${id}-ground-shadow`}><stop stopColor="#a2a99f" stopOpacity=".22"/><stop offset="1" stopColor="#a2a99f" stopOpacity="0"/></radialGradient></defs>
       <ellipse cx="340" cy="218" rx="290" ry="111" fill={`url(#${id}-ground-shadow)`}/>
@@ -124,17 +107,17 @@ function SpatialMap({ map, route }: { map: TemporaryMap; route: MapRoute | null 
         {map.building_panels.map(panel => <rect key={panel.id} x={panel.bounds_mm[0]} y={panel.bounds_mm[1]} width={panel.bounds_mm[2] - panel.bounds_mm[0]} height={panel.bounds_mm[3] - panel.bounds_mm[1]} fill="#e4e9dd" stroke="#c8d0c0" strokeWidth=".6"/>)}
         {map.markers.map(marker => <rect key={marker.id} x={marker.center_mm[0] - 4} y={marker.center_mm[1] - 4} width="8" height="8" fill="#fbfcf8" stroke="#aeb9a7" strokeWidth=".65"/>)}
       </g>
-      {map.building_panels.map((panel, index) => <BuildingVolume key={panel.id} bounds={panel.bounds_mm} name={panel.id} selected={panel.id === validRoute?.destination} index={index}/>)}
+      {map.building_panels.map((panel, index) => <BuildingVolume key={panel.id} bounds={panel.bounds_mm} name={nodeLabel(map, panel.id)} selected={panel.id === validRoute?.destination} index={index}/>)}
       {map.nodes.filter(node => node.kind === 'junction').map(node => {
         const point = p(node.x_mm, node.y_mm);
         return <text key={node.id} x={point[0]} y={point[1] + 2} textAnchor="middle" fill="#9ca696" fontSize="5">{node.id}</text>;
       })}
-      <RouteStroke points={routePoints} id={`${id}-spatial-arrow`} drawing scale={.8}/>
+      <RouteOverlay display={projectedDisplay} scale={.8} boundary={extent}/>
       {destinationPoint && <g className="architectural-destination">
         <path d={`M${destinationPoint[0]} ${destinationPoint[1] - 4}v-17`} stroke="#7b8d75" strokeWidth=".7"/>
         <rect x={destinationPoint[0] - 31} y={destinationPoint[1] - 37} width="62" height="19" rx="7" fill="#ffffffed" stroke="#d0d9ca" strokeWidth=".6"/>
         <circle cx={destinationPoint[0] - 21} cy={destinationPoint[1] - 27.5} r="2" fill="#81a078"/>
-        <text x={destinationPoint[0] + 3} y={destinationPoint[1] - 25.4} textAnchor="middle" fontSize="5.8" fill="#56634e">{validRoute?.destination}</text>
+        <text x={destinationPoint[0] + 3} y={destinationPoint[1] - 25.4} textAnchor="middle" fontSize="5.8" fill="#56634e">{nodeLabel(map, validRoute?.destination)}</text>
       </g>}
       <g stroke="#a9b3a2" strokeWidth=".5"><line x1={p(0, height + 16)[0]} y1={p(0, height + 16)[1]} x2={p(width, height + 16)[0]} y2={p(width, height + 16)[1]}/><line x1={p(0, height + 11)[0]} y1={p(0, height + 11)[1]} x2={p(0, height + 21)[0]} y2={p(0, height + 21)[1]}/><line x1={p(width, height + 11)[0]} y1={p(width, height + 11)[1]} x2={p(width, height + 21)[0]} y2={p(width, height + 21)[1]}/></g>
       <text x={p(width / 2, height + 30)[0]} y={p(width / 2, height + 30)[1]} fontSize="5.8" fill="#9aa592" textAnchor="middle" letterSpacing=".5">{width} mm · drawing coordinates</text>
@@ -142,7 +125,7 @@ function SpatialMap({ map, route }: { map: TemporaryMap; route: MapRoute | null 
   </div>;
 }
 
-function CameraFrame({ scene, route, map, focused, live = false, fresh = true }: { scene: SceneSnapshot | LiveCameraSnapshot; route: MapRoute | null; map: TemporaryMap | null; focused: boolean; live?: boolean; fresh?: boolean }) {
+function CameraFrame({ scene, route, map, focused, display, live = false, fresh = true }: { scene: SceneSnapshot | LiveCameraSnapshot; route: MapRoute | null; map: TemporaryMap | null; focused: boolean; display: RouteDisplay | null; live?: boolean; fresh?: boolean }) {
   const id = useId().replace(/:/g, '');
   const frame = scene.frame!;
   const matrix = scene.registration.homography;
@@ -150,15 +133,17 @@ function CameraFrame({ scene, route, map, focused, live = false, fresh = true }:
     && scene.map_hash === map.geometry_hash && scene.map_id === map.id && scene.map_version === map.version);
   const overlayAllowed = live ? liveOverlayAllowed(scene as LiveCameraSnapshot, route, map, fresh)
     : matchesMap && usableRegistration.has(scene.registration.status) && Boolean(matrix);
-  const projected = overlayAllowed ? route!.points_mm.map(point => projectPoint(point, matrix!)) : [];
-  const points = projected.every((point): point is Point => point !== null) ? projected : [];
+  const projectedDisplay = overlayAllowed && display ? projectRouteDisplay(display, point => projectPoint(point, matrix!)) : null;
+  const boundary = overlayAllowed && map ? ([[0, 0], [map.board.width_mm, 0], [map.board.width_mm, map.board.height_mm], [0, map.board.height_mm]] as Point[])
+    .map(point => projectPoint(point, matrix!)) : [];
+  const routeBoundary = boundary.every((point): point is Point => point !== null) ? boundary : undefined;
   const scale = frame.width / 530;
   const candidate = scene.registration.status === 'candidate';
   const { viewport, quad } = recordedDisplay(scene, map, focused);
   return <div className="recorded-frame-wrap">
     <svg className="recorded-frame" viewBox={viewport.join(' ')} preserveAspectRatio="xMidYMid meet"
       style={{ aspectRatio: `${viewport[2]} / ${viewport[3]}`, maxWidth: `${viewport[2]}px`, maxHeight: `${viewport[3]}px` }} role="img"
-      aria-label={`${live ? 'Live' : 'Recorded'} workspace image${live && !fresh ? ' · stale' : ''}${points.length ? ' with test-only route overlay' : ''}`}>
+      aria-label={`${live ? 'Live' : 'Recorded'} workspace image${live && !fresh ? ' · stale' : ''}${projectedDisplay ? ' with test-only route overlay' : ''}`}>
       {quad && <defs><clipPath id={`${id}-board-mask`}><polygon points={polygon(quad)}/></clipPath></defs>}
       {quad && <polygon className="recorded-board-edge" points={polygon(quad)} fill="#fff" stroke="#fff" strokeWidth={scale * 1.2}/>}
       <g clipPath={quad ? `url(#${id}-board-mask)` : undefined}>
@@ -168,7 +153,7 @@ function CameraFrame({ scene, route, map, focused, live = false, fresh = true }:
         {marker.corners[0] && <text x={marker.corners[0][0]} y={marker.corners[0][1] - 4 * scale}
           fill="#ffe4a5" stroke="#102333" strokeWidth={.35 * scale} paintOrder="stroke" fontSize={7 * scale}>{marker.id}</text>}
       </g>)}
-      <RouteStroke points={points} id={`${id}-photo-arrow`} scale={scale} candidate={candidate}/>
+      <RouteOverlay display={projectedDisplay} scale={scale} boundary={routeBoundary}/>
       </g>
     </svg>
     {scene.registration.status === 'view_changed' && <div className="overlay-inhibition"><Icon name="shield" size={17}/>View changed. The previous overlay is hidden.</div>}
@@ -285,8 +270,8 @@ function ExpectedPrompt({ value, disabled, onChange }: { value: string; disabled
   return <div className="scene-prompt-editor"><label className="scene-field">Expected scene or action outcome<textarea value={pages[currentPage]} maxLength={1000 - (value.length - pages[currentPage].length)} rows={5} disabled={disabled} onChange={event => update(event.target.value)}/></label><div className="scene-pagination"><button disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>Previous</button><span>Prompt {currentPage + 1} / {pages.length} · {value.length}/1000</span><button disabled={currentPage === pages.length - 1} onClick={() => setPage(currentPage + 1)}>Next</button><button disabled={disabled || !pages.at(-1) || value.length >= 1000} onClick={() => { setPages([...pages, '']); setPage(pages.length); }}>Add page</button></div></div>;
 }
 
-export function MapScene({ workspace, readOnly = false, onSnapshot, onPreviewSource, openToolsRequest = 0, presentation = 'panel' }: {
-  workspace: WorkspaceSnapshot | null; readOnly?: boolean; onSnapshot: (snapshot: SceneSnapshot) => void; onPreviewSource?: (label: string) => void; openToolsRequest?: number; presentation?: 'panel' | 'stage';
+export function MapScene({ workspace, readOnly = false, onSnapshot, onPreviewSource, onMapSnapshot, openToolsRequest = 0, presentation = 'panel' }: {
+  workspace: WorkspaceSnapshot | null; readOnly?: boolean; onSnapshot: (snapshot: SceneSnapshot) => void; onPreviewSource?: (label: string) => void; onMapSnapshot?: (map: TemporaryMap) => void; openToolsRequest?: number; presentation?: 'panel' | 'stage';
 }) {
   const [map, setMap] = useState<TemporaryMap | null>(null);
   const [scene, setScene] = useState<SceneSnapshot | null>(null);
@@ -300,7 +285,7 @@ export function MapScene({ workspace, readOnly = false, onSnapshot, onPreviewSou
   const [error, setError] = useState('');
   const [busy, setBusy] = useState<'upload' | 'registration' | 'inspection' | null>(null);
   const [capturedAt, setCapturedAt] = useState('');
-  const [expected, setExpected] = useState('Inspect the temporary Little Town map. Report visible places, car visibility and signal color. Do not infer physical motion.');
+  const [expected, setExpected] = useState('Inspect the selected temporary map. Report visible places, car visibility and signal color. Do not infer physical motion.');
   const fileInput = useRef<HTMLInputElement>(null);
   const toolsDialog = useRef<HTMLDialogElement>(null);
   const current = useRef<SceneSnapshot | null>(null);
@@ -335,6 +320,7 @@ export function MapScene({ workspace, readOnly = false, onSnapshot, onPreviewSou
     const timer = window.setInterval(() => void refresh(), 2000);
     return () => window.clearInterval(timer);
   }, [refresh, refreshMap]);
+  useEffect(() => { if (map) onMapSnapshot?.(map); }, [map, onMapSnapshot]);
   useEffect(() => { if (currentExpectation) setExpected(currentExpectation); }, [currentExpectation]);
   useEffect(() => { if (openToolsRequest > 0) { setToolTab('image'); setExpanded(true); } }, [openToolsRequest]);
   useEffect(() => {
@@ -385,6 +371,7 @@ export function MapScene({ workspace, readOnly = false, onSnapshot, onPreviewSou
   }
 
   const route = workspace?.plan?.route ?? null;
+  const routeDisplay = createRouteDisplay(route, map, workspace);
   const status = scene?.registration.status ?? 'unregistered';
   const markerCount = scene?.detection.marker_ids.filter(id => map?.markers.some(marker => marker.id === id)).length ?? 0;
   const canLock = ['candidate', 'view_changed'].includes(status) && markerCount === 4 && !active && !readOnly && !busy;
@@ -441,9 +428,10 @@ export function MapScene({ workspace, readOnly = false, onSnapshot, onPreviewSou
       {view === 'camera' && cameraScene?.frame && <button className="scene-focus-toggle" disabled={!canBoardFocus} aria-pressed={hasBoardMask} onClick={() => setFocused(value => !value)} title={hasBoardMask ? 'Display mask only. Original camera pixels and the fixed mapping stay unchanged.' : 'Full frame. Board focus requires a valid locked test mapping.'}>{hasBoardMask ? 'Board focus' : 'Full frame'}<Icon name="eye" size={14}/></button>}
       <button className="scene-tools-toggle" aria-label="Image tools" aria-haspopup="dialog" aria-expanded={expanded} onClick={() => openTools('image')}><Icon name="settings" size={16}/><span>Image tools</span></button>
     </div>
+    <RouteLegend display={routeDisplay}/>
     {(error || mismatchedRoute) && <div className="scene-error" role="alert"><Icon name="shield" size={16}/><span>{error || 'Map geometry changed. Create a new plan to display its route.'}</span><button onClick={() => { setError(''); void refresh(true); void refreshMap(); }} aria-label="Refresh scene state"><Icon name="refresh" size={15}/></button></div>}
     <div className="scene-visual">
-      {view === 'spatial' ? map ? <SpatialMap map={map} route={route}/> : <div className="no-recorded-frame"><Icon name="route" size={32}/><h2>Loading temporary geometry…</h2></div> : cameraScene?.frame ? <CameraFrame scene={cameraScene} route={route} map={map} focused={focused} live={usingLive} fresh={liveFresh}/> : <div className="no-recorded-frame"><Icon name="camera" size={32}/><h2>{usingLive ? 'Connecting to the camera…' : 'Bring your workspace into view.'}</h2><p>{usingLive ? live.status?.last_error || 'Waiting for the first decoded live image. Recorded images remain available.' : 'Load a recorded image for marker detection and scene inspection.'}</p><button disabled={readOnly || Boolean(busy)} onClick={() => usingLive ? setCameraSource('recorded') : openTools('image')}><Icon name={usingLive ? 'camera' : 'upload'} size={16}/>{usingLive ? 'View recorded image' : 'Choose a recorded frame'}</button><button className="spatial-preview-link" onClick={() => setView('spatial')}>Explore the illustrative spatial view<Icon name="arrow" size={15}/></button><small>{usingLive ? 'Live preview has no motion authority.' : 'No live camera is connected.'}</small></div>}
+      {view === 'spatial' ? map ? <SpatialMap map={map} route={route} display={routeDisplay}/> : <div className="no-recorded-frame"><Icon name="route" size={32}/><h2>Loading temporary geometry…</h2></div> : cameraScene?.frame ? <CameraFrame scene={cameraScene} route={route} map={map} focused={focused} display={routeDisplay} live={usingLive} fresh={liveFresh}/> : <div className="no-recorded-frame"><Icon name="camera" size={32}/><h2>{usingLive ? 'Connecting to the camera…' : 'Bring your workspace into view.'}</h2><p>{usingLive ? live.status?.last_error || 'Waiting for the first decoded live image. Recorded images remain available.' : 'Load a recorded image for marker detection and scene inspection.'}</p><button disabled={readOnly || Boolean(busy)} onClick={() => usingLive ? setCameraSource('recorded') : openTools('image')}><Icon name={usingLive ? 'camera' : 'upload'} size={16}/>{usingLive ? 'View recorded image' : 'Choose a recorded frame'}</button><button className="spatial-preview-link" onClick={() => setView('spatial')}>Explore the illustrative spatial view<Icon name="arrow" size={15}/></button><small>{usingLive ? 'Live preview has no motion authority.' : 'No live camera is connected.'}</small></div>}
     </div>
     <div className={`scene-source-plate ${usingLive && view === 'camera' ? liveFresh ? 'live-source' : 'stale-source' : ''}`}>
       <span className="scene-source-dot"/>

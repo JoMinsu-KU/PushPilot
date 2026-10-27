@@ -1,12 +1,12 @@
 # Workspace verification
 
-Verified on **2026-10-27, Asia/Seoul**. This record covers the temporary map, light industrial workspace, recorded-pair action reviews and native live preview; it is not a physical mission report.
+Verified on **2026-10-27, Asia/Seoul**. This record covers the replaceable temporary map, execution-aware route display, light industrial workspace, recorded-pair action reviews and native live preview; it is not a physical mission report.
 
 | Check | Result | Boundary |
 |---|---|---|
 | `python tools/dev.py check` | Passed | Python and JSON source syntax; no credentials loaded |
-| `python tools/dev.py test` | 126 passed | Mission/provider/recorded-image checks plus native camera transport, live registration, freshness and decoder recovery |
-| `npm test` in `frontend` | 27 passed | Projection/arrows, UUIDs, recorded-pair readiness, board focus and live freshness/registration-reset checks |
+| `python tools/dev.py test` | 136 passed | Existing mission/camera/provider checks plus drawing segments, action binding, map replacement and map-scoped goal interpretation |
+| `npm test` in `frontend` | 46 passed | Existing display/review checks plus route progress, signal scope, unapproved cancellation, malformed bindings, label bounds and destination metadata |
 | `npm run build` in `frontend` | Passed | TypeScript checking and Vite production bundle |
 | Real Meta application-goal requests | Accepted, `PLAN_READY` | Bakery and Bookstore interpretations; [details](META_API_CHECK.md) |
 | Real Meta image inspection | Accepted, `USABLE` | Four shops, no separate physical car, signal UNKNOWN; recorded frame only |
@@ -14,6 +14,8 @@ Verified on **2026-10-27, Asia/Seoul**. This record covers the temporary map, li
 | Browser MUSE action-review workflow | Passed | Pin BEFORE, upload AFTER, explicit actual-provider request, PASS, one simulated step accepted, persisted comparison and read-only replay |
 | Actual recorded-image test registration | Passed | Four markers in the selected native 1080p frame; 1.4333 px image-fit RMS, no metric accuracy claim |
 | Actual native live preview | Connected and explicitly locked | Native 1080p JPEGs, fixed display mapping and original-perspective Board focus; details below |
+| Execution-aware route display | Passed in isolated simulation | Reviewed/current/upcoming paths, mandatory stops, RED/UNKNOWN wait, admitted crossing, final review; no vehicle motion measured |
+| Replacement-map MUSE plan | Accepted, `PLAN_READY` | Synthetic Harbor map, gallery → MUSEUM, five drawing segments; no artwork, camera registration or physical execution |
 | Combined Python service | Passed | Built UI and API served from one loopback origin |
 | Browser mission flow | Passed | Bakery eight-action simulation: C RED wait, C GREEN admission, S mandatory stop with UNKNOWN after C's signal was cleared, S fresh GREEN, final review/completion |
 | Browser evidence replay | Passed | Source-labelled events and read-only event detail; no execution controls in replay |
@@ -27,7 +29,7 @@ The local verification host used Windows CPython 3.14 and Node 24.19. The GX10 w
 
 The current October 27 revision follows the user's industrial references and the [design system](DESIGN_SYSTEM.md): one continuous camera/map backdrop beneath the rail, header and rounded translucent mission/status overlays. The scene has no reserved right-hand column: real image detail sits behind the glass. Long routes, replay history, image tools and comparison details use bounded dialogs, tabs and explicit pages. Horizontal summary paging is allowed; vertical page/panel scrolling is not the content strategy. The first flat light-dashboard pass was rejected and remains historical.
 
-Static checks, **126 Python tests, 27 frontend tests**, and the TypeScript/Vite build passed for the final live-preview integration. Board-focus tests cover map ID/version/hash binding, locked versus changed/candidate mapping, marker-inclusive bounds, full projective division, unchanged source geometry, viewport bounds and malformed/degenerate/off-image fallback. Board focus masks the surrounding workbench in original camera coordinates. Full frame remains available; no perspective rectification or generated image content is used.
+Static checks, **136 Python tests, 46 frontend tests**, and the TypeScript/Vite build passed for the current route-display integration. Board-focus tests cover map ID/version/hash binding, locked versus changed/candidate mapping, marker-inclusive bounds, full projective division, unchanged source geometry, viewport bounds and malformed/degenerate/off-image fallback. Board focus masks the surrounding workbench in original camera coordinates. Full frame remains available; no perspective rectification or generated image content is used.
 
 Browser verification used a separate loopback preview and a copied private state. Landscape checks covered **1194×834, 1366×1024 and 1024×768 CSS pixels**. Workspace dimensions fit the viewport; route pages, Replay, image-tool tabs and the recorded comparison were checked for lost vertical content. Review-required and RED-wait states retained the primary action, termination control and source label. The isolated simulation exercised approval, push review, mandatory stop, RED waiting, fresh GREEN crossing admission, cancellation, reset and a new unapproved plan. BEFORE selection survived the image-tools round trip. No new model request, camera capture or robot access was used for these presentation checks.
 
@@ -38,6 +40,18 @@ A prefixed-declaration ordering issue that removed the standard backdrop propert
 Pretendard Variable **v1.3.9** is bundled unchanged and served from the same application origin, with its SIL OFL notice. The full WOFF2 is 2,057,688 bytes and supports the variable weight range declared by upstream. No external font CDN or runtime Node.js is required on GX10. Font loading and tablet wrapping were checked in the local browser; real-device performance and a full accessibility/contrast audit remain unverified.
 
 The active README image is [`assets/scene-workspace.jpg`](assets/scene-workspace.jpg), showing the self-authored architectural illustration. Supplied print artwork and raw recorded-camera screenshots stay outside Git. [`assets/light-industrial-workspace.jpg`](assets/light-industrial-workspace.jpg) records the rejected first pass. None is a physical-run or final user-design-approval claim.
+
+## Execution-aware route display and map replacement
+
+An isolated copy of private workspace state was used for a complete Bakery simulation through the browser. The current approach was emphasized; after an abstract action receipt it remained review-pending, and only accepted review changed it to reviewed. At C, the reviewed approach was green while the RED-wait crossing was amber and remaining segments were dashed. Fresh GREEN admitted the crossing. A subsequent RED did not roll back that already admitted crossing or label it a new stop. The next approach moved the signal scope to S and cleared the prior signal; S required a new mandatory stop and fresh GREEN. Final VERIFY review produced completion. These were explicit simulation actions and injected demo verdicts, not live MUSE action reviews or physical movement.
+
+Browser goal changes produced distinct School and Bookstore paths with the same renderer. School's final leg turned left; Bookstore used a straight crossing and three motion segments instead of five. The path, stop line and junction-label anchors share the selected camera source's fixed display projection. A missing legacy visualization draws only the planned route. Tests cover malformed node/step bindings, short adjacent junctions and cancelling a never-approved plan without inventing progress.
+
+The self-authored [Harbor replacement fixture](../tests/fixtures/harbor-map.json) changed the board to **600×300 mm**, used a north-facing DOCK start, different node/marker identifiers, four destinations and display aliases. The browser showed its map title, location labels and a second destination page containing Clinic. Its spatial view bounds adapted to the new dimensions. At **19:39 KST**, an actual browser MUSE request interpreted “gallery” as `MUSEUM`; the resulting unapproved plan followed `DOCK → J_WEST → J_EAST → MUSEUM` and displayed five planned segments. An initial request in a network-restricted test process failed visibly without creating a plan; the successful browser check used the network-enabled test process. No image was sent.
+
+RED-wait layouts were checked at **1194×834, 1366×1024 and 1024×768 CSS pixels**, with document dimensions equal to each viewport and no visible button/input/select outside the bottom or right edge. The replacement-map view was also checked at 1194×834. Long junction labels are bounded inside the projected board, truncated visually and preserved in SVG titles; this is not a full accessibility audit.
+
+The current application was then updated independently of its camera helper and SSH forward. At **19:42 KST**, an actual MUSE Bakery goal created a new unapproved `PLAN_READY` plan with five drawing segments over the native live image. Camera epoch and the existing Little Town geometry hash were unchanged. The live display was explicitly relocked after the application restart. Robot services were not started or moved. Live car tracking, physical stop lines, via-point/alternative-route requests and automatic live-image MUSE reviews remain unimplemented.
 
 ## Native live camera preview
 

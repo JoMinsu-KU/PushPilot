@@ -74,12 +74,13 @@ def create_app(settings: Settings | None = None, *, db_path: str | None = None,
         configured = settings or (Settings(db_path=db_path) if db_path else Settings.from_environment())
         if db_path is not None:
             configured = replace(configured, db_path=db_path)
+        map_definition = MapDefinition(configured.map_path)
         application.state.store = WorkspaceStore(
             configured.db_path,
-            provider=provider or MetaGoalProvider(configured.meta_api_key),
+            provider=provider or MetaGoalProvider(configured.meta_api_key, map_definition),
             muse_configured=bool(configured.meta_api_key),
             signal_ttl_seconds=configured.signal_ttl_seconds,
-            map_definition=MapDefinition(configured.map_path),
+            map_definition=map_definition,
         )
         temporary_scene = TemporaryDirectory() if configured.db_path == ":memory:" and configured.scene_dir is None else None
         scene_dir = configured.scene_dir or (temporary_scene.name if temporary_scene else str(Path(configured.db_path).parent / "scene"))

@@ -41,6 +41,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--host", type=bind_address, default="127.0.0.1", help="Bind IP address (default: 127.0.0.1). LAN access requires an explicit address.")
     parser.add_argument("--port", type=port_number, default=8080, help="Unused TCP port (default: 8080).")
     parser.add_argument("--state-path", type=Path, help="SQLite file outside a release for shared state. Relative paths resolve from the calling directory.")
+    parser.add_argument("--map-path", type=Path, help="Replaceable temporary-map JSON. Selected at startup; does not migrate approvals or camera registrations.")
     parser.add_argument("--api-only", action="store_true", help="Allow startup without frontend/dist/index.html for API development.")
     parser.add_argument("--live-camera-url", help="Opt in to an existing numeric loopback camera preview service (for example http://127.0.0.1:8895). Does not start a camera process.")
     args = parser.parse_args(argv)
@@ -53,6 +54,11 @@ def main(argv: list[str] | None = None) -> int:
         if state_path.is_dir():
             parser.error("--state-path must name a SQLite file, not a directory.")
         os.environ["PUSHPILOT_STATE_PATH"] = str(state_path)
+    if args.map_path is not None:
+        map_path = args.map_path.expanduser().resolve()
+        if not map_path.is_file():
+            parser.error("--map-path must name an existing temporary-map JSON file.")
+        os.environ["PUSHPILOT_MAP_PATH"] = str(map_path)
     try:
         import uvicorn
     except ImportError:
