@@ -1,15 +1,16 @@
-"""ASGI API and same-origin frontend host for the hardware-free workspace."""
+"""ASGI simulation API, frontend host and optional preview-only live camera."""
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from dataclasses import replace
+import os
 from pathlib import Path
 from typing import Literal
 from uuid import UUID
 from tempfile import TemporaryDirectory
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.core import CommandError, WorkspaceStore
@@ -19,6 +20,7 @@ from backend.maps import MapDefinition
 from backend.scene import SceneError, SceneStore
 from backend.scene_api import router as scene_router
 from backend.action_review import ActionReviewProvider, ActionReviewService
+from backend.live_camera import LiveCamera
 
 
 class Command(BaseModel):
@@ -56,9 +58,16 @@ class RecordedActionReviewCommand(Command):
     expected_visual: str = Field(min_length=1, max_length=1000)
 
 
+class LiveRegistrationCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    epoch: str = Field(pattern=r"^[a-f0-9]{32}$")
+    frame_id: str = Field(pattern=r"^[a-f0-9]{32}$")
+
+
 def create_app(settings: Settings | None = None, *, db_path: str | None = None,
                provider: GoalProvider | None = None,
-               action_review_provider: ActionReviewProvider | None = None) -> FastAPI:
+               action_review_provider: ActionReviewProvider | None = None,
+               live_camera_url: str | None = None) -> FastAPI:
     """Create an app without reading credentials or initializing a database yet."""
     @asynccontextmanager
     async def lifespan(application: FastAPI):
@@ -79,9 +88,16 @@ def create_app(settings: Settings | None = None, *, db_path: str | None = None,
         application.state.action_reviews = ActionReviewService(application.state.store, application.state.scene,
                                                                api_key=configured.meta_api_key, provider=action_review_provider)
         application.state.frontend = Path(configured.frontend_dist).resolve()
+        application.state.live_camera = LiveCamera(
+            live_camera_url if live_camera_url is not None else os.environ.get("PUSHPILOT_LIVE_CAMERA_URL", ""),
+            application.state.store.map_definition, application.state.scene._detect,
+            application.state.scene._candidate,
+        )
+        application.state.live_camera.start()
         try:
             yield
         finally:
+            application.state.live_camera.close()
             application.state.scene.close()
             application.state.store.close()
             if temporary_scene:
@@ -103,14 +119,33 @@ def create_app(settings: Settings | None = None, *, db_path: str | None = None,
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "same-origin"
-        if request.url.path.startswith("/api/"):
+        if (request.url.path.startswith("/api/v1/live-camera/frames/")
+                and request.url.path.endswith("/image") and response.status_code == 200):
+            # Unique frame URLs permit decode-before-swap without another fetch.
+            # Private browser caching does not persist frames in SceneStore.
+            response.headers["Cache-Control"] = "private, max-age=30, immutable"
+        elif request.url.path.startswith("/api/"):
             response.headers["Cache-Control"] = "no-store"
         return response
 
     @application.get("/api/health")
-    def health():
+    def health(request: Request):
+        preview = request.app.state.live_camera.snapshot()
         return {"status": "ok", "mode": "simulation", "schema_version": "pushpilot.workspace.v1",
-                "hardware_connected": False}
+                "hardware_connected": False, "robot_connected": False,
+                "camera_preview_connected": preview["state"] == "live"}
+
+    @application.get("/api/v1/live-camera")
+    def live_camera(request: Request):
+        return request.app.state.live_camera.snapshot()
+
+    @application.get("/api/v1/live-camera/frames/{frame_id}/image")
+    def live_camera_image(request: Request, frame_id: str):
+        return Response(request.app.state.live_camera.image(frame_id), media_type="image/jpeg")
+
+    @application.post("/api/v1/live-camera/registration")
+    def live_camera_registration(request: Request, command: LiveRegistrationCommand):
+        return request.app.state.live_camera.register(command.epoch, command.frame_id)
 
     @application.get("/api/v1/state")
     def state(request: Request):

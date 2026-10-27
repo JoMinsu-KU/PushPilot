@@ -103,11 +103,11 @@ Keep the raw recorded image and its camera overlay in the same intrinsic coordin
 
 ### Camera and board focus
 
-The default presentation is the recorded Camera image. Keep its natural perspective and image detail while reducing visual clutter with an optional display mask:
+The default presentation is Camera, with independent Live and Recorded sources. Prefer Live when its opt-in preview service is configured; keep Recorded selectable and explicitly labelled. Keep natural camera perspective and image detail while reducing visual clutter with an optional display mask:
 
 | Mode | Presentation and boundary |
 | :--- | :--- |
-| Camera · Full frame | The complete original recorded frame, with correctly projected test overlays when registration is valid. This remains available for inspecting what the camera actually saw. |
+| Camera · Full frame | The complete selected live or recorded image, with correctly projected test overlays when that source's display registration is valid. Source and age stay visible. |
 | Camera · Board focus | The same camera perspective and geometry, with pixels outside the registered board polygon masked by a neutral tabletop backdrop. The board is not rectified or resampled. |
 | Spatial map | The deterministic drawing preview with its route, independent of camera-image resolution. It is not evidence of actual object position. |
 
@@ -115,13 +115,15 @@ Board focus uses the same valid board-to-image geometry as the overlay, with map
 
 Apply the mask only when the locked registration still matches the selected map and frame. Do not fit a new registration merely to obtain a cleaner presentation. If registration is missing, invalid, mismatched or changed, withhold the mask, fall back to the full Camera frame, and display a concise unavailable reason. The operator must be able to select Full frame whenever Board focus is available.
 
+Live preview has its own explicit display lock and does not reuse a recorded reference. Its source plate exposes live age, stale state and registration uncertainty. A temporarily occluded fixed live reference may be retained as unverified display alignment; a confirmed view/identity change withholds it until an explicit relock. Do not disguise a stale preview as recorded evidence or turn live display into automatic MUSE input. See [Live camera](LIVE_CAMERA.md) for the separate lifecycle and capability contract.
+
 Keep original image bytes, frame identifiers and hashes unchanged for MUSE input, action-pair selection, immutable evidence and replay. Do not substitute the display mask or a screenshot for captured evidence. Board focus cannot establish camera-to-BASE registration, car pose, metric accuracy, signal freshness, action completion or motion authority.
 
 The spatial schematic is a drawing preview. A route over a recorded photograph is a test overlay. Neither is measured robot motion or qualified metric AR. Keep source labels independent and legible without flooding the main stage with caveats:
 
 - Recorded/uploaded image, simulation, demo verdict and actual MUSE call are distinct sources.
 - MUSE scene inspection is distinct from action-bound verification and deterministic signal admission.
-- Robot, live camera and voice availability must reflect implementation reality.
+- Robot, live-preview and voice availability must reflect implementation reality. Preview connection is distinct from a qualified robot-camera observation capability.
 - A recorded-pair action review may affect the simulated mission only through the existing deterministic supervisor. It does not establish fresh physical evidence or motion authority.
 - Exact-plan approval and server-owned state boundaries remain intact.
 - Mandatory stopping, red/unknown waiting, faults and uncertainty remain prominent, with words and icons as well as color.

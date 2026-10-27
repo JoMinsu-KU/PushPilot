@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { MapRoute, SceneSnapshot, TemporaryMap } from '../../contracts/scene';
+import type { LiveCameraSnapshot } from '../../contracts/live-camera';
 import type { WorkspaceSnapshot } from '../../contracts/workspace';
 import { Icon } from './Icons';
 import { directionArrows, projectPoint, type Point } from './projection';
 import { recordedDisplay } from './boardFocus';
+import { createLivePollGate, liveDisplaySnapshot, liveFrameAge, liveFrameFresh, liveOverlayAllowed } from './liveCamera';
 import './map-scene.css';
 
 const MAX_FRAME_BYTES = 8 * 1024 * 1024;
@@ -140,13 +142,14 @@ function SpatialMap({ map, route }: { map: TemporaryMap; route: MapRoute | null 
   </div>;
 }
 
-function RecordedFrame({ scene, route, map, focused }: { scene: SceneSnapshot; route: MapRoute | null; map: TemporaryMap | null; focused: boolean }) {
+function CameraFrame({ scene, route, map, focused, live = false, fresh = true }: { scene: SceneSnapshot | LiveCameraSnapshot; route: MapRoute | null; map: TemporaryMap | null; focused: boolean; live?: boolean; fresh?: boolean }) {
   const id = useId().replace(/:/g, '');
   const frame = scene.frame!;
   const matrix = scene.registration.homography;
   const matchesMap = Boolean(map && route && route.map_hash === map.geometry_hash && route.map_id === map.id && route.map_version === map.version
     && scene.map_hash === map.geometry_hash && scene.map_id === map.id && scene.map_version === map.version);
-  const overlayAllowed = matchesMap && usableRegistration.has(scene.registration.status) && Boolean(matrix);
+  const overlayAllowed = live ? liveOverlayAllowed(scene as LiveCameraSnapshot, route, map, fresh)
+    : matchesMap && usableRegistration.has(scene.registration.status) && Boolean(matrix);
   const projected = overlayAllowed ? route!.points_mm.map(point => projectPoint(point, matrix!)) : [];
   const points = projected.every((point): point is Point => point !== null) ? projected : [];
   const scale = frame.width / 530;
@@ -155,7 +158,7 @@ function RecordedFrame({ scene, route, map, focused }: { scene: SceneSnapshot; r
   return <div className="recorded-frame-wrap">
     <svg className="recorded-frame" viewBox={viewport.join(' ')} preserveAspectRatio="xMidYMid meet"
       style={{ aspectRatio: `${viewport[2]} / ${viewport[3]}`, maxWidth: `${viewport[2]}px`, maxHeight: `${viewport[3]}px` }} role="img"
-      aria-label={`Recorded workspace image${points.length ? ` with ${candidate ? 'candidate' : 'test-only'} route overlay` : ''}`}>
+      aria-label={`${live ? 'Live' : 'Recorded'} workspace image${live && !fresh ? ' · stale' : ''}${points.length ? ' with test-only route overlay' : ''}`}>
       {quad && <defs><clipPath id={`${id}-board-mask`}><polygon points={polygon(quad)}/></clipPath></defs>}
       {quad && <polygon className="recorded-board-edge" points={polygon(quad)} fill="#fff" stroke="#fff" strokeWidth={scale * 1.2}/>}
       <g clipPath={quad ? `url(#${id}-board-mask)` : undefined}>
@@ -169,9 +172,72 @@ function RecordedFrame({ scene, route, map, focused }: { scene: SceneSnapshot; r
       </g>
     </svg>
     {scene.registration.status === 'view_changed' && <div className="overlay-inhibition"><Icon name="shield" size={17}/>View changed. The previous overlay is hidden.</div>}
-    {scene.registration.status === 'locked_partial' && <div className="overlay-inhibition partial"><Icon name="eye" size={17}/>Some markers are obscured. The locked test mapping is retained.</div>}
-    {matchesMap && !overlayAllowed && scene.registration.status !== 'view_changed' && <div className="overlay-note">{candidate ? 'Lock the test view to project the planned route.' : 'Route overlay requires a valid locked test registration.'}</div>}
+    {live && !fresh ? <div className="overlay-inhibition live-warning"><Icon name="clock" size={17}/>STALE · Last decoded image. Route overlay is hidden.</div>
+      : scene.registration.status === 'locked_occluded' ? <div className="overlay-inhibition partial live-warning"><Icon name="eye" size={17}/>Markers obscured · fixed mapping retained; view stability is unconfirmed.</div>
+      : scene.registration.status === 'locked_partial' && <div className={`overlay-inhibition partial ${live ? 'live-warning' : ''}`}><Icon name="eye" size={17}/>Some markers are obscured. The locked test mapping is retained.</div>}
+    {matchesMap && !overlayAllowed && scene.registration.status !== 'view_changed' && (!live || fresh) && <div className="overlay-note">{candidate ? `Lock the ${live ? 'live' : 'test'} view to project the planned route.` : 'Route overlay requires a valid locked test registration.'}</div>}
   </div>;
+}
+
+interface DecodedLiveView { snapshot: LiveCameraSnapshot; receivedAt: number }
+
+/** Decode first, then replace image and geometry together. Recorded evidence is untouched. */
+function useLiveCamera() {
+  const [status, setStatus] = useState<LiveCameraSnapshot | null>(null);
+  const [decoded, setDecoded] = useState<DecodedLiveView | null>(null);
+  const [clock, setClock] = useState(() => performance.now());
+  const displayed = useRef<DecodedLiveView | null>(null);
+  const pollGate = useRef(createLivePollGate());
+  const applyRegistration = useCallback((snapshot: LiveCameraSnapshot) => {
+    pollGate.current.registrationApplied();
+    setStatus(snapshot);
+  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    let timer: number | undefined;
+    const controller = new AbortController();
+    const tick = window.setInterval(() => setClock(performance.now()), 250);
+    const poll = async () => {
+      let delay = 1000;
+      const generation = pollGate.current.begin();
+      const receivedAt = performance.now();
+      try {
+        const response = await fetch('/api/v1/live-camera', { cache: 'no-store', signal: controller.signal });
+        if (!response.ok) throw new Error('Live camera status is unavailable.');
+        const snapshot = await response.json() as LiveCameraSnapshot;
+        if (snapshot.schema_version !== 'pushpilot.live-camera.v1' || cancelled || !pollGate.current.accept(generation, snapshot)) return;
+        setStatus(snapshot);
+        delay = snapshot.enabled ? 125 : 2000;
+        if (snapshot.frame) {
+          const currentView = displayed.current;
+          if (currentView?.snapshot.frame?.id !== snapshot.frame.id || currentView.snapshot.epoch !== snapshot.epoch) {
+            const image = new Image();
+            image.src = snapshot.frame.image_url;
+            let timeout: number | undefined;
+            try {
+              await Promise.race([image.decode(), new Promise<never>((_, reject) => {
+                timeout = window.setTimeout(() => reject(new Error('Live image decode timed out.')), 1250);
+              })]);
+              if (image.naturalWidth !== snapshot.frame.width || image.naturalHeight !== snapshot.frame.height) {
+                throw new Error('Live image dimensions do not match its frame geometry.');
+              }
+            } finally { window.clearTimeout(timeout); }
+          }
+          if (cancelled || !pollGate.current.accept(generation, snapshot)) return;
+          const next = { snapshot, receivedAt };
+          displayed.current = next;
+          setDecoded(next);
+        }
+      } catch {
+        // Keep the previous decoded image; its monotonic age will mark it stale.
+      } finally {
+        if (!cancelled) timer = window.setTimeout(() => void poll(), delay);
+      }
+    };
+    void poll();
+    return () => { cancelled = true; controller.abort(); window.clearTimeout(timer); window.clearInterval(tick); };
+  }, []);
+  return { status, decoded, clock, applyRegistration };
 }
 
 function sceneTextPages(text: string, limit: number, lineLimit = 6): string[] {
@@ -219,12 +285,15 @@ function ExpectedPrompt({ value, disabled, onChange }: { value: string; disabled
   return <div className="scene-prompt-editor"><label className="scene-field">Expected scene or action outcome<textarea value={pages[currentPage]} maxLength={1000 - (value.length - pages[currentPage].length)} rows={5} disabled={disabled} onChange={event => update(event.target.value)}/></label><div className="scene-pagination"><button disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>Previous</button><span>Prompt {currentPage + 1} / {pages.length} · {value.length}/1000</span><button disabled={currentPage === pages.length - 1} onClick={() => setPage(currentPage + 1)}>Next</button><button disabled={disabled || !pages.at(-1) || value.length >= 1000} onClick={() => { setPages([...pages, '']); setPage(pages.length); }}>Add page</button></div></div>;
 }
 
-export function MapScene({ workspace, readOnly = false, onSnapshot, openToolsRequest = 0, presentation = 'panel' }: {
-  workspace: WorkspaceSnapshot | null; readOnly?: boolean; onSnapshot: (snapshot: SceneSnapshot) => void; openToolsRequest?: number; presentation?: 'panel' | 'stage';
+export function MapScene({ workspace, readOnly = false, onSnapshot, onPreviewSource, openToolsRequest = 0, presentation = 'panel' }: {
+  workspace: WorkspaceSnapshot | null; readOnly?: boolean; onSnapshot: (snapshot: SceneSnapshot) => void; onPreviewSource?: (label: string) => void; openToolsRequest?: number; presentation?: 'panel' | 'stage';
 }) {
   const [map, setMap] = useState<TemporaryMap | null>(null);
   const [scene, setScene] = useState<SceneSnapshot | null>(null);
   const [view, setView] = useState<'camera' | 'spatial'>('camera');
+  const [cameraSource, setCameraSource] = useState<'auto' | 'live' | 'recorded'>('auto');
+  const [lockingLive, setLockingLive] = useState(false);
+  const live = useLiveCamera();
   const [expanded, setExpanded] = useState(false);
   const [toolTab, setToolTab] = useState<'image' | 'registration' | 'muse' | 'result' | 'evidence'>('image');
   const [focused, setFocused] = useState(true);
@@ -310,6 +379,7 @@ export function MapScene({ workspace, readOnly = false, onSnapshot, openToolsReq
       if (!response.ok) throw new Error(responseMessage(payload));
       accept(payload as SceneSnapshot);
       setView('camera');
+      setCameraSource('recorded');
     } catch (err) { setError(err instanceof Error ? err.message : 'The image upload failed.'); }
     finally { setBusy(null); if (fileInput.current) fileInput.current.value = ''; }
   }
@@ -323,9 +393,43 @@ export function MapScene({ workspace, readOnly = false, onSnapshot, openToolsReq
 
   const openTools = (tab: typeof toolTab) => { setToolTab(tab); setExpanded(true); };
   const mismatchedRoute = Boolean(route && map && (route.map_hash !== map.geometry_hash || route.map_id !== map.id || route.map_version !== map.version));
-  const canBoardFocus = Boolean(scene?.frame && recordedDisplay(scene, map, true).quad);
-  const hasBoardMask = Boolean(scene?.frame && recordedDisplay(scene, map, focused).quad);
+  const liveAvailable = Boolean(live.status?.enabled || live.decoded);
+  const usingLive = cameraSource === 'live' || (cameraSource === 'auto' && liveAvailable);
+  const liveScene = live.decoded?.snapshot ?? null;
+  // Inhibit withdrawn or changed registration before the next JPEG finishes decoding.
+  const changedLiveScene = liveDisplaySnapshot(liveScene, live.status);
+  const cameraScene = usingLive ? changedLiveScene : scene;
+  const liveAge = liveFrameAge(liveScene, live.decoded?.receivedAt ?? 0, live.clock);
+  const liveFresh = Boolean(live.decoded && liveFrameFresh(liveScene, live.decoded.receivedAt, live.clock)
+    && live.status?.state === 'live' && live.status.epoch === liveScene?.epoch);
+  const canBoardFocus = Boolean(cameraScene?.frame && recordedDisplay(cameraScene, map, true).quad);
+  const hasBoardMask = Boolean(cameraScene?.frame && recordedDisplay(cameraScene, map, focused).quad);
+  const liveMarkerCount = liveScene?.detection.marker_ids.filter(id => map?.markers.some(marker => marker.id === id)).length ?? 0;
+  const canLockLive = Boolean(usingLive && liveScene?.frame && liveFresh && liveMarkerCount === 4
+    && ['candidate', 'view_changed'].includes(liveScene.registration.status) && !active && !readOnly && !lockingLive);
+  const liveRegistrationLabel = changedLiveScene?.registration.status === 'locked_occluded' ? 'Mapping retained · markers obscured'
+    : changedLiveScene?.registration.status === 'locked_partial' ? 'Mapping retained · partial markers'
+    : changedLiveScene?.registration.status === 'locked' ? 'Fixed test mapping'
+    : changedLiveScene?.registration.status === 'view_changed' ? 'View changed · AR hidden' : 'Live view is not locked';
+  const previewSourceLabel = view === 'spatial' ? 'Illustrative spatial view' : usingLive
+    ? liveScene?.frame ? liveFresh ? 'Live camera' : 'Live camera · stale' : 'Live camera · connecting'
+    : scene?.frame ? scene.frame.source === 'recorded' ? 'Recorded image' : 'Uploaded image' : 'No image';
+  useEffect(() => { onPreviewSource?.(previewSourceLabel); }, [onPreviewSource, previewSourceLabel]);
 
+  async function lockLiveView() {
+    if (!canLockLive || !liveScene?.frame) return;
+    setLockingLive(true); setError('');
+    try {
+      const response = await fetch('/api/v1/live-camera/registration', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ epoch: liveScene.epoch, frame_id: liveScene.frame.id }),
+      });
+      const payload: unknown = await response.json();
+      if (!response.ok) throw new Error(responseMessage(payload));
+      live.applyRegistration(payload as LiveCameraSnapshot);
+    } catch (err) { setError(err instanceof Error ? err.message : 'The live view could not be locked.'); }
+    finally { setLockingLive(false); }
+  }
 
   return <div className={`map-scene-component map-scene-${presentation}`}>
     <div className="map-scene-controls">
@@ -333,17 +437,21 @@ export function MapScene({ workspace, readOnly = false, onSnapshot, openToolsReq
         <button className={view === 'camera' ? 'selected' : ''} aria-label="Camera frame" aria-pressed={view === 'camera'} onClick={() => setView('camera')}><Icon name="camera" size={15}/>Camera</button>
         <button className={view === 'spatial' ? 'selected' : ''} aria-label="Spatial map" aria-pressed={view === 'spatial'} onClick={() => setView('spatial')}><Icon name="route" size={15}/>Spatial</button>
       </div>
-      {view === 'camera' && scene?.frame && <button className="scene-focus-toggle" disabled={!canBoardFocus} aria-pressed={hasBoardMask} onClick={() => setFocused(value => !value)} title={hasBoardMask ? 'Display mask only. The recorded image and its test mapping stay unchanged.' : 'Full frame. Board focus requires the current locked test mapping.'}>{hasBoardMask ? 'Board focus' : 'Full frame'}<Icon name="eye" size={14}/></button>}
+      {view === 'camera' && liveAvailable && <div className="scene-view-toggle scene-camera-source" role="group" aria-label="Camera source"><button className={usingLive ? 'selected' : ''} aria-pressed={usingLive} onClick={() => setCameraSource('live')}>Live</button><button className={!usingLive ? 'selected' : ''} aria-pressed={!usingLive} onClick={() => setCameraSource('recorded')}>Recorded</button></div>}
+      {view === 'camera' && cameraScene?.frame && <button className="scene-focus-toggle" disabled={!canBoardFocus} aria-pressed={hasBoardMask} onClick={() => setFocused(value => !value)} title={hasBoardMask ? 'Display mask only. Original camera pixels and the fixed mapping stay unchanged.' : 'Full frame. Board focus requires a valid locked test mapping.'}>{hasBoardMask ? 'Board focus' : 'Full frame'}<Icon name="eye" size={14}/></button>}
       <button className="scene-tools-toggle" aria-label="Image tools" aria-haspopup="dialog" aria-expanded={expanded} onClick={() => openTools('image')}><Icon name="settings" size={16}/><span>Image tools</span></button>
     </div>
     {(error || mismatchedRoute) && <div className="scene-error" role="alert"><Icon name="shield" size={16}/><span>{error || 'Map geometry changed. Create a new plan to display its route.'}</span><button onClick={() => { setError(''); void refresh(true); void refreshMap(); }} aria-label="Refresh scene state"><Icon name="refresh" size={15}/></button></div>}
     <div className="scene-visual">
-      {view === 'spatial' ? map ? <SpatialMap map={map} route={route}/> : <div className="no-recorded-frame"><Icon name="route" size={32}/><h2>Loading temporary geometry…</h2></div> : scene?.frame ? <RecordedFrame scene={scene} route={route} map={map} focused={focused}/> : <div className="no-recorded-frame"><Icon name="camera" size={32}/><h2>Bring your workspace into view.</h2><p>Load a recorded image for marker detection and scene inspection.</p><button disabled={readOnly || Boolean(busy)} onClick={() => openTools('image')}><Icon name="upload" size={16}/>Choose a recorded frame</button><button className="spatial-preview-link" onClick={() => setView('spatial')}>Explore the illustrative spatial view<Icon name="arrow" size={15}/></button><small>No live camera is connected.</small></div>}
+      {view === 'spatial' ? map ? <SpatialMap map={map} route={route}/> : <div className="no-recorded-frame"><Icon name="route" size={32}/><h2>Loading temporary geometry…</h2></div> : cameraScene?.frame ? <CameraFrame scene={cameraScene} route={route} map={map} focused={focused} live={usingLive} fresh={liveFresh}/> : <div className="no-recorded-frame"><Icon name="camera" size={32}/><h2>{usingLive ? 'Connecting to the camera…' : 'Bring your workspace into view.'}</h2><p>{usingLive ? live.status?.last_error || 'Waiting for the first decoded live image. Recorded images remain available.' : 'Load a recorded image for marker detection and scene inspection.'}</p><button disabled={readOnly || Boolean(busy)} onClick={() => usingLive ? setCameraSource('recorded') : openTools('image')}><Icon name={usingLive ? 'camera' : 'upload'} size={16}/>{usingLive ? 'View recorded image' : 'Choose a recorded frame'}</button><button className="spatial-preview-link" onClick={() => setView('spatial')}>Explore the illustrative spatial view<Icon name="arrow" size={15}/></button><small>{usingLive ? 'Live preview has no motion authority.' : 'No live camera is connected.'}</small></div>}
     </div>
-    <div className="scene-source-plate">
+    <div className={`scene-source-plate ${usingLive && view === 'camera' ? liveFresh ? 'live-source' : 'stale-source' : ''}`}>
       <span className="scene-source-dot"/>
-      <div><strong>{view === 'spatial' ? 'Illustrative spatial view' : scene?.frame ? `${scene.frame.source === 'recorded' ? 'Recorded' : 'Uploaded'} camera frame` : 'Camera not connected'}</strong><span>{view === 'spatial' ? 'Temporary geometry · no physical scan' : hasBoardMask ? 'Board focus · background masked' : scene?.frame ? `${scene.frame.width} × ${scene.frame.height} · full frame` : 'Load a recorded image to inspect the scene'}</span></div>
-      <button onClick={() => openTools('registration')} aria-label="View scene registration details"><Icon name="shield" size={15}/></button>
+      <div><strong>{view === 'spatial' ? 'Illustrative spatial view' : usingLive ? liveScene?.frame ? `Live camera${liveFresh ? '' : ' · STALE'} · ${Number.isFinite(liveAge) ? `${(liveAge / 1000).toFixed(1)} s` : 'age unknown'}` : 'Live camera · connecting' : scene?.frame ? `${scene.frame.source === 'recorded' ? 'Recorded' : 'Uploaded'} camera frame` : 'Camera not connected'}</strong><span>{view === 'spatial' ? 'Temporary geometry · no physical scan' : usingLive ? `${hasBoardMask ? 'Board focus' : 'Full frame'} · ${liveRegistrationLabel}` : hasBoardMask ? 'Board focus · background masked' : scene?.frame ? `${scene.frame.width} × ${scene.frame.height} · full frame` : 'Load a recorded image to inspect the scene'}</span></div>
+      {usingLive && view === 'camera' && ['candidate', 'view_changed'].includes(liveScene?.registration.status ?? '')
+        ? <button className="live-lock-button" disabled={!canLockLive} onClick={() => void lockLiveView()} title={active ? 'Lock a live view during mission preparation.' : 'Explicitly lock the current live camera-to-board test mapping.'}><Icon name="check" size={14}/>{lockingLive ? 'Locking…' : 'Lock live view'}</button>
+        : usingLive && view === 'camera' ? <span className="live-motion-note" title="Live preview and its test mapping have no robot motion authority."><Icon name="shield" size={14}/>Preview only</span>
+          : <button onClick={() => openTools('registration')} aria-label="View recorded scene registration details" title="Recorded image registration"><Icon name="shield" size={15}/></button>}
     </div>
     <dialog ref={toolsDialog} className="scene-tools-dialog" aria-label="Recorded image tools" onClose={() => setExpanded(false)} onCancel={() => setExpanded(false)} onClick={event => { const bounds = event.currentTarget.getBoundingClientRect(); if (event.target === event.currentTarget && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) setExpanded(false); }}>
       <input ref={fileInput} type="file" accept="image/jpeg,image/png" className="hidden-file-input" aria-label="Recorded JPEG or PNG frame" disabled={readOnly || Boolean(busy)} onChange={event => void upload(event.target.files?.[0])}/>

@@ -1,4 +1,4 @@
-import type { SceneSnapshot, TemporaryMap } from '../../contracts/scene';
+import type { TemporaryMap } from '../../contracts/scene';
 import { projectPoint, type Point } from './projection.ts';
 
 export interface RecordedDisplay {
@@ -8,8 +8,15 @@ export interface RecordedDisplay {
   quad: Point[] | null;
 }
 
-const usableRegistration = new Set(['locked', 'locked_partial']);
+const usableRegistration = new Set(['locked', 'locked_partial', 'locked_occluded']);
 const PAPER_PADDING_MM = 3;
+
+/** The common display geometry of recorded and live frames; never motion data. */
+export interface BoardDisplayInput {
+  map_id: string; map_version: string; map_hash: string;
+  frame: { width: number; height: number } | null;
+  registration: { status: string; homography: number[][] | null };
+}
 
 export interface BoardBounds { left: number; top: number; width: number; height: number }
 export function boardPresentationBounds(map: TemporaryMap): BoardBounds | null {
@@ -40,7 +47,7 @@ function convexQuad(points: Point[]): boolean {
  * This never changes image bytes, the homography, marker points or route points.
  * A missing/changed/unusable mapping always displays the full original frame.
  */
-export function recordedDisplay(scene: SceneSnapshot, map: TemporaryMap | null, focused: boolean): RecordedDisplay {
+export function recordedDisplay(scene: BoardDisplayInput, map: TemporaryMap | null, focused: boolean): RecordedDisplay {
   const frame = scene.frame;
   if (!frame) return { viewport: [0, 0, 1, 1], quad: null };
   if (![frame.width, frame.height].every(value => Number.isFinite(value) && value > 0)) return { viewport: [0, 0, 1, 1], quad: null };

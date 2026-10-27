@@ -1,18 +1,19 @@
 # Workspace verification
 
-Verified on **2026-10-27, Asia/Seoul**. This record covers the temporary map, light industrial workspace and recorded-pair action-review integration; it is not a physical mission report.
+Verified on **2026-10-27, Asia/Seoul**. This record covers the temporary map, light industrial workspace, recorded-pair action reviews and native live preview; it is not a physical mission report.
 
 | Check | Result | Boundary |
 |---|---|---|
 | `python tools/dev.py check` | Passed | Python and JSON source syntax; no credentials loaded |
-| `python tools/dev.py test` | 96 passed | The previous 81 checks plus 15 recorded-action API/provider, binding, concurrency and failure-path checks |
-| `npm test` in `frontend` | 21 passed | Projection/arrows, UUIDs, recorded-pair readiness and nine board-focus identity/geometry/fallback checks |
+| `python tools/dev.py test` | 126 passed | Mission/provider/recorded-image checks plus native camera transport, live registration, freshness and decoder recovery |
+| `npm test` in `frontend` | 27 passed | Projection/arrows, UUIDs, recorded-pair readiness, board focus and live freshness/registration-reset checks |
 | `npm run build` in `frontend` | Passed | TypeScript checking and Vite production bundle |
 | Real Meta application-goal requests | Accepted, `PLAN_READY` | Bakery and Bookstore interpretations; [details](META_API_CHECK.md) |
 | Real Meta image inspection | Accepted, `USABLE` | Four shops, no separate physical car, signal UNKNOWN; recorded frame only |
 | Actual MUSE action-review requests | Three designed conditions matched | Synthetic success → READY, no progress → FAULT, occlusion → REOBSERVE; one request per condition, no physical accuracy claim |
 | Browser MUSE action-review workflow | Passed | Pin BEFORE, upload AFTER, explicit actual-provider request, PASS, one simulated step accepted, persisted comparison and read-only replay |
 | Actual recorded-image test registration | Passed | Four markers in the selected native 1080p frame; 1.4333 px image-fit RMS, no metric accuracy claim |
+| Actual native live preview | Connected and explicitly locked | Native 1080p JPEGs, fixed display mapping and original-perspective Board focus; details below |
 | Combined Python service | Passed | Built UI and API served from one loopback origin |
 | Browser mission flow | Passed | Bakery eight-action simulation: C RED wait, C GREEN admission, S mandatory stop with UNKNOWN after C's signal was cleared, S fresh GREEN, final review/completion |
 | Browser evidence replay | Passed | Source-labelled events and read-only event detail; no execution controls in replay |
@@ -26,7 +27,7 @@ The local verification host used Windows CPython 3.14 and Node 24.19. The GX10 w
 
 The current October 27 revision follows the user's industrial references and the [design system](DESIGN_SYSTEM.md): one continuous camera/map backdrop beneath the rail, header and rounded translucent mission/status overlays. The scene has no reserved right-hand column: real image detail sits behind the glass. Long routes, replay history, image tools and comparison details use bounded dialogs, tabs and explicit pages. Horizontal summary paging is allowed; vertical page/panel scrolling is not the content strategy. The first flat light-dashboard pass was rejected and remains historical.
 
-Static checks, **96 Python tests, 21 frontend tests**, and the TypeScript/Vite build passed. The new board-focus tests cover map ID/version/hash binding, locked versus changed/candidate mapping, marker-inclusive bounds, full projective division, unchanged source geometry, viewport bounds and malformed/degenerate/off-image fallback. Board focus masks the surrounding workbench in original camera coordinates. Full frame remains available; no perspective rectification or generated image content is used.
+Static checks, **126 Python tests, 27 frontend tests**, and the TypeScript/Vite build passed for the final live-preview integration. Board-focus tests cover map ID/version/hash binding, locked versus changed/candidate mapping, marker-inclusive bounds, full projective division, unchanged source geometry, viewport bounds and malformed/degenerate/off-image fallback. Board focus masks the surrounding workbench in original camera coordinates. Full frame remains available; no perspective rectification or generated image content is used.
 
 Browser verification used a separate loopback preview and a copied private state. Landscape checks covered **1194×834, 1366×1024 and 1024×768 CSS pixels**. Workspace dimensions fit the viewport; route pages, Replay, image-tool tabs and the recorded comparison were checked for lost vertical content. Review-required and RED-wait states retained the primary action, termination control and source label. The isolated simulation exercised approval, push review, mandatory stop, RED waiting, fresh GREEN crossing admission, cancellation, reset and a new unapproved plan. BEFORE selection survived the image-tools round trip. No new model request, camera capture or robot access was used for these presentation checks.
 
@@ -37,6 +38,22 @@ A prefixed-declaration ordering issue that removed the standard backdrop propert
 Pretendard Variable **v1.3.9** is bundled unchanged and served from the same application origin, with its SIL OFL notice. The full WOFF2 is 2,057,688 bytes and supports the variable weight range declared by upstream. No external font CDN or runtime Node.js is required on GX10. Font loading and tablet wrapping were checked in the local browser; real-device performance and a full accessibility/contrast audit remain unverified.
 
 The active README image is [`assets/scene-workspace.jpg`](assets/scene-workspace.jpg), showing the self-authored architectural illustration. Supplied print artwork and raw recorded-camera screenshots stay outside Git. [`assets/light-industrial-workspace.jpg`](assets/light-industrial-workspace.jpg) records the rejected first pass. None is a physical-run or final user-design-approval claim.
+
+## Native live camera preview
+
+The operator authenticated directly in the camera terminal. Only the standalone camera helper was started on GX10; the application remained Windows-hosted behind a dedicated loopback SSH forward. No robot, receiver, historical web service or existing POC camera service was started or restarted. Application-only changes did not restart the native camera process.
+
+The actual installed camera supplied **1920 × 1080 native JPEGs**. Its four printed markers supported an explicit **Lock live view**, after which the browser showed Board focus and the planned route over the live original-perspective image. Twelve successive half-second observations all reported `live` and `locked`, with twelve distinct source sequences, one unchanged registration ID and one unchanged homography. Reported frame age ranged from **91.8 to 230.1 ms**. A fetched image's SHA-256 exactly matched its frame metadata. The mission stayed `PLAN_READY`, unapproved, at revision 46; no MUSE request or robot action occurred.
+
+A separate **4.981-second backend sample** observed 36 distinct preview frames, approximately **7.03 new frames/s**, with reported ages of **73.6–303.9 ms**. Every sample remained `live` and `locked` with the same homography. This measures backend availability on this installed static scene, not browser presentation rate, sensor-exposure latency, a motion benchmark or a guaranteed sustained rate. The source requests 30 fps and application polling targets 125 ms; neither configuration value is an achieved end-to-end rate. Receive time is host dequeue time, not exposure time.
+
+The small foreshortened upper markers needed a live-only, bounded decoder fallback. Seven sampled native frames all passed the existing complete four-marker geometry guard, with image-fit RMS **1.254–1.6851 px** and local offline detector times of **29–55 ms**. Those same development images informed the decoder settings; they are not a held-out accuracy evaluation. The fallback uses the dictionary's supported one-bit correction and small rejected-quad crops with original-pixel offsets. It neither enlarges the displayed image nor changes the locked transform. Fit residual does not establish board-to-BASE or millimeter accuracy.
+
+The live workspace was inspected at **1194×834, 1366×1024 and 1024×768 CSS pixels**. Document dimensions equalled each viewport, with no visible button/input/select extending past its bottom or right edge. The image URL changed as frames arrived while its board-focus SVG viewBox stayed fixed. The camera SVG filter remained `none`; the mission surface retained `blur(12px) saturate(1.05)` backdrop glass. No browser errors or warnings were observed. Robot/car occlusion and physical motion were not exercised; live objects are displayed as captured, with no object removal or generated fill.
+
+The final offline suite covers native JPEG parsing, ownership and cleanup, fixed versus changed registration, partial/total marker occlusion, stale/repeated sequences, cache expiry, unchanged recorded scene/mission, bounded decoder recovery and UI freshness/reset races. Raw live images, device identity, connection details and screenshots remain in the private workspace outside Git. Live preview still does not supply action-bound images to MUSE or authorize motion; see [the source boundary](LIVE_CAMERA.md).
+
+The final browser build was also kept open across an application-only restart while the camera epoch continued unchanged. The UI withdrew the old AR and board mask, showed an unregistered live frame, and required a new explicit lock. A successful pre-restart lock was not silently restored. The native camera and SSH forward remained running throughout.
 
 ## Recorded-pair action review
 
@@ -56,11 +73,11 @@ Visual review also found and corrected a LAN HTTP fallback that initially produc
 
 ## Limits and next validation
 
-- Robot, live camera, measured vehicle pose, production metric AR, fresh physical action-bound image review and voice remain unavailable. Actual MUSE recorded-pair reviews can affect simulated state; demo verdicts remain explicitly labelled and signals/action receipts remain simulated.
+- Native live preview is connected and its temporary display mapping was explicitly locked. Robot control, measured vehicle pose, production metric AR, fresh physical action-bound image review and voice remain unavailable. Actual MUSE recorded-pair reviews can affect simulated state; demo verdicts remain explicitly labelled and signals/action receipts remain simulated.
 - The supplied [temporary print](TEST_INPUTS.md) was photographed separately and the selected recorded frame was inspected by MUSE. No vehicle motion was measured.
 - The MUSE goal adapter currently serializes the store during an upstream request. HTTPX limits individual network operations, not total elapsed request duration. Move remote work outside the store lock and revalidate revisions before integrating live observation/control.
 - Events retain transition causes and source labels; private immutable frames and scene-inspection records bind their image/map/model/expectation identities. Recorded-action events additionally retain the pair, action binding, prompt/schema versions, parsed result, elapsed time and reported token usage. Equivalent complete receipts for older goal/scene paths and held-out real-image evaluation remain future work.
 - The test client emits an upstream Starlette/HTTPX deprecation warning; all current tests pass. This does not affect the production HTTP server path.
-- GX10 activation, trusted tablet HTTPS/microphone testing and physical qualification have not occurred.
+- Full GX10 application activation, trusted tablet HTTPS/microphone testing and physical qualification have not occurred. Only the independent native camera helper runs on GX10.
 
 Earlier public screenshots remain in [`assets/temporary-map-workspace.jpg`](assets/temporary-map-workspace.jpg), showing the self-authored schematic and actual model-result text, and [`assets/workspace-simulation.jpg`](assets/workspace-simulation.jpg), showing the original first slice. Both predate the light-dashboard restyle. Private recorded-camera screenshots remain outside Git. None of these views is a physical-run claim.

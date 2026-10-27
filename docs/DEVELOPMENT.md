@@ -45,7 +45,7 @@ cd ..
 python tools/serve.py
 ```
 
-Open `http://127.0.0.1:8080`. The same Python process serves `frontend/dist` and `/api`; no frontend development server is required. `GET /api/health` identifies the service as simulation with hardware disconnected.
+Open `http://127.0.0.1:8080`. The same Python process serves `frontend/dist` and `/api`; no frontend development server is required. `GET /api/health` identifies simulation with robot/qualified hardware disconnected and separately reports `camera_preview_connected` when an opt-in preview is live.
 
 The launcher defaults to loopback and one worker. It has no reload loop, dependency installer, provider preflight, robot connection, camera ownership, service-manager integration, or GX10 transfer. Set an unused port explicitly when necessary:
 
@@ -56,6 +56,16 @@ python tools/serve.py --host 127.0.0.1 --port 8080
 A missing frontend build fails early. Backend-only work can use `python tools/serve.py --api-only`. Keep `workers=1`: the SQLite supervisor in this first slice is a single-process application.
 
 For frontend development, run the API with `--api-only` in one terminal and `npm run dev` in `frontend` in another. Vite binds to loopback on port 5173 and proxies `/api` to `http://127.0.0.1:8080`. If the backend port changes, update the explicit proxy configuration too. Use `npm run build` to type-check and produce the delivery assets before review.
+
+## Optional live preview
+
+Live preview is disabled by default. After deliberately starting the separate native camera helper and loopback SSH forward, opt in to the already-running service:
+
+```sh
+python tools/serve.py --port 8893 --live-camera-url http://127.0.0.1:8895
+```
+
+This launcher does not start a camera process. [`Live camera`](LIVE_CAMERA.md) documents the explicit Linux helper, numeric-loopback URL restriction, native JPEG transport, eight-frame RAM cache, age semantics and fixed display lock. The current arrangement runs only that helper on GX10 and the application on Windows. It is not full GX10 application deployment or a qualified action-bound observation adapter. Live/Recorded selection does not redirect MUSE requests: Image tools and action review still use immutable recorded frames.
 
 ## Verify the first connected slice
 
@@ -87,7 +97,7 @@ A full four-marker detection produces a registration candidate. Explicitly lock 
 
 With MUSE configured, explicitly submit an expectation for the current frame. Independent inspection can report USABLE/REOBSERVE/UNKNOWN, visible places, whether a separate 3D car is visible and whether a separate paper signal is identifiable. It does not complete a mission step or supply the signal gate.
 
-For a pending simulated action, use **Compare the result.** to pin BEFORE, upload AFTER, describe the expected visual outcome and explicitly choose **Review action with MUSE**. This separate action-bound endpoint can apply PASS/FAIL/REOBSERVE/UNKNOWN through the supervisor. Review its independent source labels and record; selected uploads are not trusted physical capture windows. [Action reviews](ACTION_REVIEWS.md) documents the complete workflow and the optional synthetic provider-evaluation harness. Actual results belong in [verification](VERIFICATION.md).
+For a pending simulated action, open **Visual action review** to pin BEFORE, upload AFTER, describe the expected visual outcome and explicitly choose **Review action with MUSE**. This separate action-bound endpoint can apply PASS/FAIL/REOBSERVE/UNKNOWN through the supervisor. Review its independent source labels and record; selected uploads are not trusted physical capture windows, and preview frames are not automatically selected as evidence. [Action reviews](ACTION_REVIEWS.md) documents the complete workflow and the optional synthetic provider-evaluation harness. Actual results belong in [verification](VERIFICATION.md).
 
 ## Checks and tests
 
@@ -107,6 +117,8 @@ The separate [Meta connection check](META_API_CHECK.md) makes a real provider re
 `.env.example` contains empty placeholders. The backend reads `META_API_KEY` from its process environment or repository-local ignored `.env` when the ASGI application starts. It does not make an automatic provider request at startup. Enter credentials directly into that local file or the host's restricted configuration through the existing direct-input workflow.
 
 `PUSHPILOT_STATE_PATH` selects SQLite; the launcher also exposes `--state-path`. The default is ignored `runtime/workspace.sqlite3`. `PUSHPILOT_SCENE_DIR` optionally selects private frame/registration/inspection storage; by default it is `scene/` beside the SQLite file. `PUSHPILOT_MAP_PATH` selects a validated, explicitly temporary map JSON, defaulting to the bundled sanitized definition. Restart with deliberate state reconciliation after changing map configuration; incompatible plan/registration hashes cannot carry over. `PUSHPILOT_FRONTEND_DIST` is an optional process-environment asset-directory override. Credentials, private frames, configuration and runtime state must not enter browser build variables, Git, source packages, or public screenshots.
+
+`PUSHPILOT_LIVE_CAMERA_URL` is an explicit process-environment opt-in, also accepted through `--live-camera-url`. It names an existing numeric loopback HTTP preview service with a port; it is not a camera device selector or a startup command. Do not put private device identities or connection details in committed configuration. Live display locks and frames remain in memory and disappear on application restart.
 
 ## Repository discipline
 
@@ -140,7 +152,8 @@ The builder refuses an existing output path. The manifest binds committed source
 | Area | Current boundary |
 | :--- | :--- |
 | Map | Replaceable temporary drawing graph and board-to-image test overlays. Production routes, robot/BASE transforms, qualified stop lines, and live signal ROIs remain unresolved. |
-| Hardware | No robot transport, physical execution, profile replay, mailbox restoration, camera ownership, or operating-service restart. |
+| Hardware | No robot transport, physical execution, profile replay, mailbox restoration or existing operating-service restart. The optional explicitly started standalone helper owns only its selected camera and `ffmpeg` child. |
+| Live preview | Ephemeral native JPEG display, source/age labels and explicit fixed display lock. It does not mutate mission/evidence state, call MUSE or qualify robot observations. |
 | Signals | Simulated source only in this slice. Full stop even on GREEN; RED, unknown, stale, and obscured observations must inhibit physical admission later. |
 | Review | Scene-only inspection cannot advance actions. Bound recorded-pair MUSE results can review simulation alongside explicit demo inputs; live receipt-bound capture and physical checks remain future work. |
 | Voice | Planned bounded backend Meta transcription, editable transcript confirmation, common goal interpretation, and explicit plan approval. Capture and normalization are not established by this slice. |

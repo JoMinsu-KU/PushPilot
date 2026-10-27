@@ -4,7 +4,7 @@
 
 **Check the workspace. Package committed source. Verify the result.**
 
-[Development](../docs/DEVELOPMENT.md) · [Tests](../tests/README.md) · [Deployment](../deploy/README.md)
+[Development](../docs/DEVELOPMENT.md) · [Live camera](../docs/LIVE_CAMERA.md) · [Tests](../tests/README.md) · [Deployment](../deploy/README.md)
 
 ## Available commands
 
@@ -16,6 +16,8 @@ Run from the repository root with **Python 3.12+**. Install `requirements.lock` 
 | `python tools/dev.py test` | Runs offline `unittest` discovery in `tests/` with bytecode writing disabled. |
 | `python tools/serve.py` | Serves built `frontend/dist` and the simulation API on loopback port 8080, one worker. |
 | `python tools/serve.py --api-only` | Starts the API without requiring compiled frontend assets. |
+| `python tools/serve.py --live-camera-url http://127.0.0.1:8895` | Explicitly connects the application to an already-running loopback live preview; does not start a camera process. |
+| `python3 tools/camera_preview.py --device /dev/video0 --camera-id '<reviewed-camera-identity>' --port 8084` | Deliberately starts one standalone Linux native MJPEG preview helper on loopback. Requires `ffmpeg` and device permission; owns only its capture child. |
 | `python tools/build_release.py --output <archive.zip>` | Packages allowlisted blobs from a clean committed HEAD and writes a hash manifest. |
 | `python tools/build_release.py --verify <archive.zip>` | Validates ZIP paths, metadata, policy, sizes, and SHA-256 values without extracting. |
 | `python tools/check_muse_api.py` | Opt-in live Meta check: reads the ignored local key, queries models and sends one bounded text completion. |
@@ -29,6 +31,8 @@ The Meta checker explicitly contacts a provider and may consume API credits. It 
 The synthetic action-review evaluator also contacts Meta only with its explicit `--call-meta` flag. Its three cases test expected progress, no progress and occlusion on self-authored diagrams, not photographs or physical robot outcomes. It makes no camera or robot connection, leaves running workspaces untouched and refuses to overwrite its output directory. See [Action reviews](../docs/ACTION_REVIEWS.md) and the [actual result record](../docs/evidence/synthetic-action-reviews-20261027.json).
 
 Build the frontend locally using Node 24 and `npm ci && npm run build` in `frontend/`. GX10 serves those compiled assets using Python without Node. The launcher supports explicit `--host`, `--port`, and `--state-path`, validates them before startup, disables reload, and starts no equipment processes. Locked runtime dependencies include OpenCV and NumPy for temporary-map marker detection. `PUSHPILOT_MAP_PATH` selects temporary geometry; `PUSHPILOT_SCENE_DIR` selects private uploaded-frame/registration/inspection storage. See [Development](../docs/DEVELOPMENT.md).
+
+The camera helper is a separate explicitly invoked tool, not part of `serve.py` startup or a service manager. It copies native 1920 × 1080 MJPEG JPEGs without resizing/re-encoding or server frame files, uses a bounded latest-frame buffer, and marks timestamps as host receive rather than sensor exposure. It neither changes permissions nor terminates an existing camera owner; closing it cleans up its own child. [Live camera](../docs/LIVE_CAMERA.md) gives the reviewed helper → SSH forward → application workflow, optional `PUSHPILOT_LIVE_CAMERA_URL`, source/age semantics and display-only lock. Preview does not call Meta, populate recorded evidence or mutate a mission. Do not restart the helper merely to update frontend code.
 
 ## Build a source release
 

@@ -51,7 +51,9 @@ Checkboxes describe implementation scope. Automated simulation tests, real provi
 - [ ] Add bounded push-to-talk, backend batch transcription and editable transcript confirmation.
 - [x] Implement recorded-image upload and explicit MUSE scene inspection without mission advancement.
 - [x] Add operator-selected before/after recorded-image review tied to the pending simulated action.
-- [ ] Integrate live capture and receipt-bound fresh physical action evidence.
+- [x] Add an opt-in native live camera preview with separate Live/Recorded sources, RAM frames, age labels and fixed display-registration behavior.
+- [x] Explicitly lock the installed live view and record fixed-transform observations and limits in [verification](VERIFICATION.md); this is display registration, not robot calibration.
+- [ ] Integrate live capture with receipt-bound fresh physical action evidence, independent of preview.
 
 **Evidence:** the UI must reflect backend snapshots and events, including wait, rejection, uncertainty, and recovery. No scripted success animation substitutes for a state transition. The wearable panel remains a concept. The temporary spatial map is drawing data and a locked recorded-image overlay is test-only; unavailable capability labels stay explicit.
 
@@ -70,7 +72,7 @@ Checkboxes describe implementation scope. Automated simulation tests, real provi
 - [ ] Persist complete provider receipts, including versions, exact inputs/results, timing and reported usage.
 - [ ] Evaluate held-out real-car success, no-progress and occlusion cases with independent labels.
 
-**Evidence:** [Meta API records](META_API_CHECK.md) establish the stated real text and scene calls. [Action reviews](ACTION_REVIEWS.md) describes the new recorded-pair integration; [verification](VERIFICATION.md) identifies actual versus injected responses. Real-car accuracy, voice, live capture and physical execution remain separate gates.
+**Evidence:** [Meta API records](META_API_CHECK.md) establish the stated real text and scene calls. [Action reviews](ACTION_REVIEWS.md) describes the recorded-pair integration; [verification](VERIFICATION.md) identifies actual versus injected responses. [Live preview](LIVE_CAMERA.md) is a separate source and does not automatically supply model input. Real-car accuracy, voice, trusted action-bound live capture and physical execution remain separate gates.
 
 ## 4 · Evaluation and isolated GX10 delivery
 
@@ -85,7 +87,7 @@ Checkboxes describe implementation scope. Automated simulation tests, real provi
 - [ ] Evaluate matched actions with different outcomes and compare a recorded/shadow baseline.
 - [ ] Complete demonstration records with supported source and execution claims.
 
-**Evidence:** GX10 inspection found ARM64 Ubuntu 24.04.4 and Python 3.12.3, with no Node/npm on the inspected PATH. The application has not been installed or activated there. Existing POC services remain outside the release boundary.
+**Evidence:** GX10 inspection found ARM64 Ubuntu 24.04.4 and Python 3.12.3, with no Node/npm on the inspected PATH. A separately authorized native camera helper runs there with loopback SSH transport; the full application remains Windows-hosted and has not been installed or activated on GX10. Existing POC services remain outside the release boundary.
 
 ## 5 · Temporary map and recorded-image inputs
 
@@ -97,6 +99,9 @@ Checkboxes describe implementation scope. Automated simulation tests, real provi
 - [x] Bind scene inspection to its immutable frame and reject superseded results.
 - [ ] Evaluate real car visibility, separate paper-signal recognition, glare, occlusion, and uncertainty using held-out input.
 - [x] Record the initial actual provider scene outcome without implying a live camera or robot run.
+- [x] Implement native preview transport and an independent memory-only live display lock, without saving preview frames into recorded evidence.
+- [x] Record installed static-view marker coverage, backend frame availability and reported receive ages in [verification](VERIFICATION.md).
+- [ ] Measure browser presentation rate, exposure-to-display latency and moving/occluded scenes; the short backend sample is not an end-to-end motion benchmark.
 
 ## Next demonstration gate · Same action, different evidence
 

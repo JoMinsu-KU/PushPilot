@@ -6,7 +6,7 @@
 
 [Development](../docs/DEVELOPMENT.md) · [Release tools](../tools/README.md) · [Architecture](../docs/ARCHITECTURE.md)
 
-> **Deployment status:** read-only host inspection completed on October 27, 2026. This application has not been installed, activated, or started on GX10. Existing POC services are outside its deployment boundary.
+> **Deployment status:** host inspection completed on October 27, 2026. Only the separately authorized standalone native camera helper currently runs on GX10, forwarded over SSH to the Windows application. The full application has not been installed, activated or started on GX10. Existing POC services are outside its deployment boundary. See [Live camera](../docs/LIVE_CAMERA.md).
 
 ## Verified runtime direction
 
@@ -17,7 +17,7 @@
 | Host JavaScript tools | `node` and `npm` were absent from the inspected `PATH`. |
 | Application runtime | One Python process, FastAPI/Uvicorn, one worker, SQLite; OpenCV/NumPy for uploaded-image marker geometry. |
 | Frontend delivery | Compile locally; copy `frontend/dist` into the matching release. Python serves these static assets. |
-| Hardware integration | Unavailable. No robot, camera, or Rodi startup is included. |
+| Hardware integration | Robot execution and qualified camera observations remain unavailable. A separate opt-in native preview helper is implemented; application deployment does not start it or Rodi. |
 
 Resolve the existing SSH alias **`gx10`** through local SSH configuration. Keep account names, addresses, credentials, and operating profiles out of public source. Recheck occupied ports, disk availability, permissions, and service state immediately before a real deployment; the read-only inspection is a point-in-time observation.
 
@@ -35,9 +35,11 @@ python tools/dev.py test
 python tools/serve.py --host 127.0.0.1 --port 8080
 ```
 
-The last command requires the active Python environment to contain `requirements.lock`. It starts only this application. Visit `http://127.0.0.1:8080` and `http://127.0.0.1:8080/api/health`. The health response identifies simulation mode and disconnected hardware. The launcher does not contact Meta until an explicit provider-backed request is submitted.
+The last command requires the active Python environment to contain `requirements.lock`. It starts only this application. Visit `http://127.0.0.1:8080` and `http://127.0.0.1:8080/api/health`. Health identifies simulation with `robot_connected: false` and `hardware_connected: false`, while `camera_preview_connected` separately reports an optional live preview. The launcher does not contact Meta until an explicit provider-backed request is submitted.
 
 `--api-only` allows backend development before the frontend is built. `--state-path /absolute/path/workspace.sqlite3` selects a persistent SQLite file. The default is ignored `runtime/workspace.sqlite3` inside the application directory; use dedicated shared state for a host installation.
+
+`--live-camera-url http://127.0.0.1:8895` optionally connects to an already-running numeric loopback preview service or SSH forward; `PUSHPILOT_LIVE_CAMERA_URL` is the corresponding process-environment setting. It does not open a device, transfer the helper or start camera processes. The current helper-only GX10 arrangement is separate from this proposed full application deployment. Live preview frames and display locks remain in memory, outside the shared recorded-evidence store; no preview result authorizes robot motion.
 
 ## Source release and compiled assets
 

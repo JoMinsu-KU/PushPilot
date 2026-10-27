@@ -20,6 +20,14 @@
 .scene-source-plate { position: absolute; z-index: 3; bottom: 15px; left: var(--stage-content-left, 108px); display: flex; align-items: center; gap: 9px; padding: 9px 11px; border: 1px solid #ffffffb5; border-radius: 13px; background: #ffffffa8; backdrop-filter: blur(16px); color: #858c91; }
 .map-scene-stage .scene-source-plate { bottom: var(--stage-source-bottom, 146px); }
 .scene-source-dot { width: 5px; height: 5px; border-radius: 50%; background: #97a39b; flex: none; }
+.live-source .scene-source-dot { background: #38835f; box-shadow: 0 0 0 3px #38835f12; }
+.stale-source .scene-source-dot { background: #af7948; }
+.stale-source strong { color: #976237; }
+.scene-source-plate > .live-lock-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: auto; height: 31px; margin-left: 6px; padding: 0 10px; color: #a65c3b; font-size: 11px; border-radius: 9px; background: #ffffff9c; white-space: nowrap; }
+.scene-source-plate > .live-lock-button:disabled { color: #999d9c; }
+.live-motion-note { display: inline-flex; align-items: center; gap: 5px; padding-left: 8px; font-size: 10px; color: #77847e; white-space: nowrap; }
+.scene-camera-source button { padding: 0 10px; font-size: 11px; }
+.scene-camera-source button.selected { background: #ebf0ec; }
 .scene-source-plate strong { display: block; color: #687176; font-size: 11px; font-weight: 500; line-height: 1.4; }
 .scene-source-plate > div > span { display: block; margin-top: 2px; font-size: 10px; line-height: 1.4; color: #8e979b; }
 .scene-source-plate > button { display: grid; place-items: center; width: 25px; height: 28px; padding: 0; margin-left: 9px; color: #8c969b; }
@@ -29,6 +37,7 @@
 .scene-error > button { padding: 0; color: inherit; }
 .overlay-inhibition, .overlay-note { position: absolute; z-index: 2; bottom: 6px; left: 18px; right: 18px; display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 13px; border: 1px solid #e5d3c2; background: #fff9f0eb; color: #a07a52; font-size: 11px; line-height: 1.5; backdrop-filter: blur(16px); }
 .overlay-inhibition.partial { color: #8e8354; border-color: #e6dfc9; }
+.overlay-inhibition.live-warning { left: var(--stage-content-left, 108px); right: calc(var(--stage-overlay-width, 340px) + 24px); top: 170px; bottom: auto; pointer-events: none; }
 .overlay-note { color: #868d7e; border-color: #ffffffa8; background: #ffffffe0; }
 .hidden-file-input { display: none; }
 .no-recorded-frame { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; text-align: center; color: #929b8a; padding: 24px; }
@@ -112,6 +121,9 @@
   .scene-view-toggle button > svg { width: 13px; height: 13px; }
   .scene-focus-toggle { font-size: 10px; padding: 0 8px; height: 33px; }
   .scene-focus-toggle > svg { display: none; }
+  .scene-camera-source button { padding: 0 7px; font-size: 10px; }
+  .scene-source-plate > .live-lock-button { width: auto; padding: 0 7px; margin-left: 4px; font-size: 10px; }
+  .overlay-inhibition.live-warning { left: 16px; right: 16px; top: 104px; }
   .scene-tools-toggle { width: 34px; height: 34px; padding: 0; }
   .scene-source-plate { left: 16px; bottom: 9px; padding: 7px 9px; gap: 7px; }
   .scene-source-plate strong { font-size: 10px; }

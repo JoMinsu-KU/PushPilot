@@ -11,7 +11,7 @@ Muse Spark interprets the goal and reviews images; a deterministic supervisor de
 
 [See the workspace](#the-workspace) · [How Meta is used](#what-meta-adds) · [Evidence and limits](#evidence-and-limits) · [Run it](#quick-start)
 
-<code>Real Meta API</code> &nbsp; <code>Recorded-image analysis</code> &nbsp; <code>Simulated execution</code>
+<code>Real Meta API</code> &nbsp; <code>Live camera preview</code> &nbsp; <code>Recorded-image analysis</code> &nbsp; <code>Simulated execution</code>
 
 </div>
 
@@ -26,13 +26,13 @@ Robot endpoint telemetry answers where the tool went. An operator still needs to
 
 The demonstration mission pushes a wheel-less model car from **Pizza** to a named destination. Every controlled intersection requires a stop, a reviewed outcome and a fresh green signal before entry. One fixed spatial stage shows the proposed route, with rounded translucent mission and status panels floating over it. The current action, next check and primary decision remain in view; route history, image tools and detailed evidence use bounded dialogs, tabs and pages instead of a vertically scrolling workspace.
 
-**Camera** is the default view, preserving the recorded image's perspective, pixels and overlay geometry. Optional **Board focus** masks the surrounding desk with a neutral tabletop backdrop when the current test registration is locked; **Full frame** restores the complete image. **Spatial map** is a separate deterministic illustration. The display mask adds no image detail or physical accuracy. Original frame bytes remain the inputs to MUSE and immutable evidence.
+**Camera** is the default view, with separate **Live** and **Recorded** sources. An explicitly configured live preview is preferred when available; recorded-image tools and MUSE evidence remain separate. Both preserve the source image's perspective and overlay geometry. Optional **Board focus** masks the surrounding desk when the selected source has a valid test lock; **Full frame** restores the complete image. **Spatial map** is a deterministic illustration. The display mask adds no image detail or physical accuracy. [Live preview](docs/LIVE_CAMERA.md) does not automatically save images, call MUSE or grant motion authority.
 
 | Observe | Plan | Approve | Act | Verify |
 |---|---|---|---|---|
 | Inspect a source-labelled scene. | Interpret a goal and display its route. | Approve the current plan. | Run one bounded simulated action. | Review the outcome before continuing. |
 
-The product direction extends this **natural-language spatial interface** beyond the tablet to a future AR-glasses companion: see the workspace, state an intention, and inspect a shared plan. The current experience is a tablet application with recorded-image route overlays. Voice capture, live spatial AR and wearable integration are future work.
+The product direction extends this **natural-language spatial interface** beyond the tablet to a future AR-glasses companion: see the workspace, state an intention, and inspect a shared plan. The current tablet application combines optional native live preview, recorded-image analysis and test-only route overlays. Voice capture, qualified spatial AR and wearable integration are future work.
 
 ## What Meta adds
 
@@ -87,8 +87,9 @@ SQLite events and review records connect the input, response and resulting trans
 | Action-bound image review | Recorded before/after pair → MUSE result → simulated supervisor decision | Three actual synthetic-input cases above; software checks in [verification](docs/VERIFICATION.md). Real-car task accuracy is unverified. |
 | Mission workflow | Three temporary graph routes, mandatory stops, red/unknown waiting, scoped green admission and replay | Software simulation; action receipts and signals are simulated. Explicit demo verdicts remain available and labelled. |
 | Image presentation and route overlay | Private upload, four-marker test lock, fixed-reference projection, Camera board-focus mask and full-frame display | The mask preserves camera perspective and geometry; raw frames stay unchanged. No robot/BASE registration or metric accuracy claim. |
-| Voice, live camera and robot execution | Designed or deferred | Not connected. Physical pushing, turning and paper-signal operation need qualification. |
-| GX10 and glasses | Selected deployment target and future companion concept | Application not deployed to GX10; no wearable connection. |
+| Live camera preview | Opt-in native MJPEG helper, loopback transport, bounded RAM frames, source/age labels and explicit display-lock path | Preview only; current physical registration results belong in [verification](docs/VERIFICATION.md). No automatic MUSE submission, mission evidence, signal gate or robot observation. |
+| Voice and robot execution | Designed or deferred | Not connected. Physical pushing, turning and paper-signal operation need qualification. |
+| GX10 and glasses | GX10 hosts the standalone camera helper; full application deployment and wearable integration remain separate | Current application runs on Windows. No full GX10 application deployment or wearable connection. |
 
 The temporary print is replaceable. Its geometry does not qualify physical stop lines, vehicle/tool clearance or contact turning. Raw map artwork, camera frames, credentials and operational archives are excluded from public source and release bundles.
 
@@ -111,6 +112,8 @@ python tools/serve.py
 
 Open `http://127.0.0.1:8080`. Set a Bakery, Bookstore or School goal, inspect **Spatial map**, and approve the simulation. Open **Simulation inputs** for clearly labelled demo signals and verdicts. **Plan**, **Replay**, image tools and recorded action review open within the fixed viewport. Optional recorded-image upload and actual MUSE requests use the [image-review workflow](docs/ACTION_REVIEWS.md). Save `META_API_KEY` only in the ignored backend `.env`; no provider request runs at startup.
 
+Live preview is off by default. With an already-running authorized loopback camera service, opt in using `python tools/serve.py --live-camera-url http://127.0.0.1:8895`. This connects to that service; it does not start a camera process. See [Live camera](docs/LIVE_CAMERA.md) for the standalone helper, SSH forward, time semantics and display-only boundary.
+
 ```bash
 python tools/dev.py check
 python tools/dev.py test
@@ -127,6 +130,7 @@ These commands perform offline verification. For Windows/Linux setup, one-worker
 | Authority, components and data contracts | [Architecture](docs/ARCHITECTURE.md) · [Services](docs/SERVICE_COMPOSITION.md) · [Contracts](contracts/README.md) |
 | Operator experience and future voice | [Design system](docs/DESIGN_SYSTEM.md) · [Frontend](frontend/README.md) · [Voice input](docs/VOICE_INPUT.md) |
 | Temporary-map geometry and private inputs | [Temporary map](docs/TEMPORARY_MAP.md) · [Test inputs](docs/TEST_INPUTS.md) |
+| Native live preview and fixed display registration | [Live camera](docs/LIVE_CAMERA.md) |
 | Reproducible checks and isolated delivery | [Tests](tests/README.md) · [Release tools](tools/README.md) · [GX10 deployment](deploy/README.md) |
 | New work, inherited foundations and rights | [Contributions](CONTRIBUTIONS.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) |
 

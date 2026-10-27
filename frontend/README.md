@@ -14,6 +14,7 @@ The runnable workspace uses React, TypeScript and Vite. The current direction fo
 | :--- | :--- |
 | Goal | Editable typed input in a preparation dialog; explicit demo/MUSE interpreter selection. Provider availability comes from the backend. |
 | Workspace | Fixed spatial stage spanning beneath navigation, header and translucent mission/status overlays. Recorded or uploaded image, detected markers, explicit test-view locking and a projected planned route. Image, car pose, signal and robot sources stay separate. |
+| Live preview | Optional native JPEG display with Live/Recorded source selection, decode-before-swap, frame age, stale warning and an independent explicit fixed display lock. RAM preview frames do not enter recorded MUSE/action evidence. |
 | Camera board focus | Optional surrounding-background mask, available only with the current matching locked test registration. Camera perspective, original pixels and overlay geometry stay unchanged; Full frame remains available. |
 | Spatial map | A self-authored schematic of the replaceable temporary Little Town geometry. Routes come from the backend graph. |
 | Plan | Paged route dialog for PIZZA to BAKERY, BOOKSTORE or SCHOOL simulation, with bounded surface pushes, a mandatory stop and fresh signal at each junction, then arrival review. |
@@ -24,7 +25,7 @@ The runnable workspace uses React, TypeScript and Vite. The current direction fo
 | Replay | Paged event browser with selected decision details and read-only evidence dialogs. Replay cannot issue mission commands. |
 | Companion | Clearly labelled future AR-glasses concept. |
 
-This build has **no connected robot, live camera, production AR registration or voice capture**. A recorded photograph is labelled as recorded evidence, with its capture timestamp kept unknown unless explicitly supplied. The temporary camera-to-board homography supports test overlays only. Drawing millimeters are not robot coordinates or a qualified car/tool path. Demo action-review buttons do not call MUSE. Actual single-image inspection remains scene-only; the separate recorded-pair action review can update a simulated mission after backend validation. Neither grants hardware motion authority or establishes live capture freshness.
+This build supports an **opt-in live camera preview**, but has **no connected robot, qualified control-camera observation, production AR registration or voice capture**. Preview is ephemeral and independent of recorded-image evidence. A recorded photograph stays labelled recorded, with capture time unknown unless explicitly supplied. Both recorded and live camera-to-board homographies support test display overlays only. Drawing millimeters are not robot coordinates or a qualified car/tool path. Demo action-review buttons do not call MUSE. Actual single-image inspection remains scene-only; the recorded-pair action review can update a simulated mission after backend validation. Preview does not populate those model/evidence paths or grant motion authority.
 
 ## Run locally
 
@@ -48,7 +49,11 @@ The build type-checks the source, then writes `frontend/dist`. Serve that bundle
 
 ## Temporary scene inspection
 
-**Camera frame** is the default view; **Spatial map** is a separate illustration. In Camera mode, the photo and route overlay share the original image's intrinsic pixel view box and aspect ratio. **Full frame** shows the complete recorded image. Projection uses the backend-provided drawing-to-image homography. SVG arrow markers follow individual route segments rather than bisecting corners.
+**Camera** is the default view; **Spatial** is a separate illustration. When preview is explicitly enabled, the initial camera source prefers **Live**, with **Recorded** still selectable. In Camera mode, the image and route share the source image's intrinsic pixel view box and aspect ratio. **Full frame** shows its complete image. Projection uses the selected source's backend-provided drawing-to-image homography. SVG arrow markers follow individual route segments rather than bisecting corners.
+
+Live frames are decoded before display and remain bound to their own metadata. The source plate shows live age, stale state and display registration. A repeated sequence cannot refresh age, and stale preview frames do not admit a current route overlay. **Lock live view** requires a fresh, consistent four-marker view during preparation. Temporary occlusion retains its fixed reference as `locked_occluded`, with an explicit unverified-alignment message; confirmed view/identity changes latch inhibition until manual relocking. See [Live camera](../docs/LIVE_CAMERA.md) for startup, RAM retention, timing and registration conditions. No achieved frame rate or physical registration success is implied by the feature.
+
+The following **Image tools** steps operate on recorded images even while the main camera source is Live:
 
 1. Open **Image tools** and upload a JPEG or PNG of up to 8 MiB and 12 megapixels. Optionally supply its actual capture time in the operator's local time zone.
 2. Inspect the four marker detections and registration message. A candidate fit does not project a route. During mission preparation, select **Lock test view** to accept that frame as a temporary overlay reference.
@@ -57,7 +62,7 @@ The build type-checks the source, then writes `frontend/dist`. Serve that bundle
 
 A partially obscured locked view retains its test mapping and displays a warning. A changed view hides the previous overlay. A new complete marker view can be explicitly locked during preparation; missing markers never cause an automatic refit. The **Spatial map** remains a drawing preview rather than measured physical execution evidence.
 
-With a valid matching lock, **Board focus** masks the surrounding desk/floor to a neutral tabletop backdrop. It preserves camera perspective, original image pixels and overlay geometry rather than rectifying or resampling the board. The mask adds no source detail, removes no occlusion and establishes no metric accuracy. **Full frame** remains available. Missing, mismatched or changed registration disables the mask and falls back to the complete Camera frame. MUSE requests, action-pair selection and evidence retain the original frame bytes, identifiers and hashes.
+With a valid matching display lock, **Board focus** masks the surrounding desk/floor to a neutral tabletop backdrop. It preserves camera perspective, original image pixels and overlay geometry rather than rectifying or resampling the board. The mask adds no source detail, removes no occlusion and establishes no metric accuracy. **Full frame** remains available. Missing, mismatched or confirmed-changed registration disables the mask and falls back to the complete Camera frame. A retained live occluded reference is labelled unverified. MUSE requests, action-pair selection and evidence use original immutable recorded frames, never automatically selected preview frames.
 
 ## Recorded action comparison
 
@@ -82,6 +87,7 @@ Single-frame **Inspect image with MUSE** remains an independent scene inspection
 - Accept goals during preparation only. Keep goal edits disabled throughout action, review and signal waits.
 - Approve an exact plan before advancing its bounded simulation actions. Do not simulate successful reviews with timers.
 - Show every independent source honestly. A successful model interpretation does not imply physical motion or a live observation.
+- Keep `camera_preview_connected` and the Live source distinct from legacy qualified-camera/robot capabilities, recorded MUSE inputs and simulated signal state. Preview must not mutate mission revisions or satisfy pending reviews.
 - Keep recorded-pair provider requests outside the general mission busy state so the operator can cancel the simulation while upstream review is pending. Disable other competing mutation controls and ignore stale returned snapshots.
 - Keep microphone controls disabled until capture, normalization, transcription and target-device HTTPS are implemented and verified.
 

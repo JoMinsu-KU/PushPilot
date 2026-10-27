@@ -42,6 +42,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--port", type=port_number, default=8080, help="Unused TCP port (default: 8080).")
     parser.add_argument("--state-path", type=Path, help="SQLite file outside a release for shared state. Relative paths resolve from the calling directory.")
     parser.add_argument("--api-only", action="store_true", help="Allow startup without frontend/dist/index.html for API development.")
+    parser.add_argument("--live-camera-url", help="Opt in to an existing numeric loopback camera preview service (for example http://127.0.0.1:8895). Does not start a camera process.")
     args = parser.parse_args(argv)
     if sys.version_info < (3, 12):
         parser.error("Python 3.12 or newer is required for the application runtime.")
@@ -58,6 +59,12 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("Runtime dependencies are missing. Install requirements.lock into the active virtual environment.")
     # Keep imports and relative development paths independent of the shell cwd.
     sys.path.insert(0, str(ROOT))
+    if args.live_camera_url is not None:
+        from backend.live_camera import camera_url
+        try:
+            os.environ["PUSHPILOT_LIVE_CAMERA_URL"] = camera_url(args.live_camera_url)
+        except ValueError as error:
+            parser.error(str(error))
     os.chdir(ROOT)
     uvicorn.run("backend.app:app", host=args.host, port=args.port, workers=1,
                 reload=False, access_log=False)

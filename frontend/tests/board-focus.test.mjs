@@ -32,8 +32,10 @@ test('candidate, unlocked and changed views cannot mask the frame; locked partia
     const input = scene(); input.registration.status = status;
     assert.deepEqual(recordedDisplay(input, map, true), full, status);
   }
-  const input = scene(); input.registration.status = 'locked_partial';
-  assert.ok(recordedDisplay(input, map, true).quad);
+  for (const status of ['locked_partial', 'locked_occluded']) {
+    const input = scene(); input.registration.status = status;
+    assert.ok(recordedDisplay(input, map, true).quad);
+  }
 });
 
 test('map identity, version and geometry must all match', () => {

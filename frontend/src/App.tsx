@@ -44,6 +44,7 @@ export function App() {
   const [mobileMission, setMobileMission] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
   const [sceneSnapshot, setSceneSnapshot] = useState<SceneSnapshot | null>(null);
+  const [previewSource, setPreviewSource] = useState<string | null>(null);
   const [actionReviewPending, setActionReviewPending] = useState(false);
   const [imageToolsRequest, setImageToolsRequest] = useState(0);
   const current = useRef<WorkspaceSnapshot | null>(null);
@@ -159,7 +160,7 @@ export function App() {
       <div className="header-status"><span className="backend-status"><i className={online ? 'online' : ''}/>{online ? 'Connected' : 'Offline'}</span><span className="mode-label">Simulation</span><button className="header-concept" aria-label="Glasses companion concept" onClick={() => setModal('companion')}><Icon name="glasses" size={18}/><span>Companion concept</span></button></div>
     </header>
     <main className={`workspace-stage ${mobileMission ? 'mission-visible' : ''}`}>
-      <MapScene presentation="stage" workspace={workspace} onSnapshot={setSceneSnapshot} readOnly={actionReviewPending} openToolsRequest={imageToolsRequest}/>
+      <MapScene presentation="stage" workspace={workspace} onSnapshot={setSceneSnapshot} onPreviewSource={setPreviewSource} readOnly={actionReviewPending} openToolsRequest={imageToolsRequest}/>
       <div className="scene-heading"><span>Temporary workspace</span><h2>Little Town</h2><button onClick={openGoal} disabled={!canEditGoal}><span>{workspace?.goal ? `Pizza to ${destinationName}` : 'Set a mission goal'}</span><Icon name="arrow" size={16}/></button></div>
       <button className="mobile-mission-switch glass-surface" onClick={() => setMobileMission(value => !value)} aria-expanded={mobileMission}>{mobileMission ? 'Show scene' : 'Mission'}<Icon name={mobileMission ? 'close' : 'chevron'} size={16}/></button>
       {(error || !online) && <div className={`stage-notice ${error ? 'error' : ''}`} role={error ? 'alert' : 'status'}><Icon name="shield" size={17}/><span>{error || 'Backend unavailable. Refresh before taking action.'}</span><button aria-label={error ? 'Dismiss error' : 'Retry connection'} onClick={() => error ? setError('') : void refresh()}><Icon name={error ? 'close' : 'refresh'} size={16}/></button></div>}
@@ -180,7 +181,7 @@ export function App() {
         <button className={`status-card glass-surface signal-${signal.toLowerCase()}`} onClick={() => setShowDemo(true)}><span className="status-card-top"><i/>Signal {signalJunction ? `· ${signalJunction}` : ''}<Icon name="chevron" size={14}/></span><span className="status-card-value">{signal === 'UNKNOWN' ? 'Awaiting signal' : signal === 'RED' ? 'Stop and wait' : 'Green observed'}</span><span className="status-card-bottom">{workspace?.stopped ? 'Simulated stop confirmed' : 'Mandatory stop before entry'}<span>Simulation</span></span></button>
         <button className="status-card glass-surface" onClick={() => workspace?.review ? setModal('review') : openImageTools()}><span className="status-card-top"><i className="model-dot"/>Visual review<Icon name="chevron" size={14}/></span><span className="status-card-value model-value">{modelLabel === 'USABLE' ? 'Scene inspected' : modelLabel}</span><span className="status-card-bottom">{workspace?.review ? workspace.review.source === 'meta' ? 'MUSE · recorded pair' : 'Demo action review' : inspection ? 'MUSE · recorded scene' : 'Awaiting image evidence'}<span>{workspace?.review ? 'Action' : 'Scene'}</span></span></button>
       </div>
-      <div className="stage-bottom-line"><span>{sceneSnapshot?.frame?.source ?? 'No image'} · car pose unmeasured</span><span>{workspace ? `Session revision ${workspace.revision}` : 'Offline'}</span></div>
+      <div className="stage-bottom-line"><span>{previewSource ?? sceneSnapshot?.frame?.source ?? 'No image'} · car pose unmeasured</span><span>{workspace ? `Session revision ${workspace.revision}` : 'Offline'}</span></div>
     </main>
 
     <ViewportDialog open={modal === 'goal'} title="Mission goal" subtitle="SET THE INTENT" onClose={() => setModal(null)} className="goal-dialog">
