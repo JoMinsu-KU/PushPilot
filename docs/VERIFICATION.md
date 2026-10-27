@@ -41,6 +41,12 @@ Pretendard Variable **v1.3.9** is bundled unchanged and served from the same app
 
 The active README image is [`assets/scene-workspace.jpg`](assets/scene-workspace.jpg), showing the self-authored architectural illustration. Supplied print artwork and raw recorded-camera screenshots stay outside Git. [`assets/light-industrial-workspace.jpg`](assets/light-industrial-workspace.jpg) records the rejected first pass. None is a physical-run or final user-design-approval claim.
 
+## Visible goal and voice entry
+
+The later goal-entry revision added a visible microphone and the accepted original query in a compact glass bar above camera controls. Browser checks covered opening voice guidance, its disabled capture control, typed fallback and original-query inspection. Editing an unsent draft left the accepted query unchanged; the draft was restored without submitting a new goal. The page remained tied to the existing unapproved plan and live display lock. No microphone permission, audio capture, provider request, camera restart or robot action occurred for this UI change.
+
+Goal-entry and typed-dialog layouts were inspected at **1194×834, 1366×1024 and 1024×768 CSS pixels**. Voice guidance was additionally checked at 1194×834 and 1024×768. Document sizes matched the viewports; visible inputs/actions stayed within their dialog or viewport bounds. The goal bar and camera controls retained a separate gap. A rounded clip was added to the route legend to contain its backdrop blur. The existing **136 Python tests, 46 frontend tests** and production build passed; no new speech capability is established. See [Voice input](VOICE_INPUT.md#visible-goal-and-voice-entry).
+
 ## Execution-aware route display and map replacement
 
 An isolated copy of private workspace state was used for a complete Bakery simulation through the browser. The current approach was emphasized; after an abstract action receipt it remained review-pending, and only accepted review changed it to reviewed. At C, the reviewed approach was green while the RED-wait crossing was amber and remaining segments were dashed. Fresh GREEN admitted the crossing. A subsequent RED did not roll back that already admitted crossing or label it a new stop. The next approach moved the signal scope to S and cleared the prior signal; S required a new mandatory stop and fresh GREEN. Final VERIFY review produced completion. These were explicit simulation actions and injected demo verdicts, not live MUSE action reviews or physical movement.

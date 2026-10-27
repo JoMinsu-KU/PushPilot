@@ -10,7 +10,13 @@
 
 ---
 
-**Status: planned initial demo scope.** Voice goal input is part of the application design. Microphone capture, transcription requests, transcript editing and end-to-end voice interaction have not been implemented or tested. The existing text-only Spark connection check does not establish voice access or transcription quality.
+**Status: visible entry UI implemented; capture and transcription remain planned.** The workspace has a microphone entry beside the accepted original query. It opens voice-input guidance with **Not connected**, a disabled **Hold to speak** control and a typed-input fallback. No microphone permission or transcription request is made. Microphone capture, transcript editing and end-to-end voice interaction have not been implemented or tested. The existing text-only Spark connection check does not establish voice access or transcription quality.
+
+## Visible goal and voice entry
+
+A compact glass **Your goal** bar sits beneath the selected map title, above camera controls. Its text is the current accepted `goal.text`, independently labelled **Typed** or **Voice** from `goal.source`; an unsent editor draft does not replace it. Selecting the text opens the complete original request through bounded pages. The current plan can be inspected during execution while goal editing remains restricted to preparation.
+
+The microphone opens **Voice input**, explaining the future hold → speak → review-text → create-plan sequence. Its capture button remains disabled and explicitly disconnected. **Type a goal** preserves the existing text/MUSE workflow and explicit plan approval. This interface is not a connected speech recognizer or an invented transcript.
 
 ## The first voice experience
 
@@ -18,7 +24,7 @@
 
 *Proposed interaction, not a connected microphone or an executed mission. Select the image for the full-size view.*
 
-The first implementation uses a **finite push-to-talk recording**. The operator records a goal, receives a transcript, corrects it when necessary and chooses **Use goal**. Only that explicit action submits the accepted text for MUSE goal interpretation. The resulting plan still needs explicit tablet approval before the mission supervisor may admit an action.
+The planned capture implementation uses a **finite push-to-talk recording**. The operator records a goal, receives a transcript, corrects it when necessary and chooses **Use goal**. Only that explicit action submits the accepted text for MUSE goal interpretation. The resulting plan still needs explicit tablet approval before the mission supervisor may admit an action.
 
 | Stage | Operator sees | Application responsibility |
 |---|---|---|

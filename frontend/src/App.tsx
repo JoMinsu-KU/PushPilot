@@ -6,7 +6,8 @@ import { BrandMark, Icon, type IconName } from './Icons';
 import { MapScene } from './MapScene';
 import { createRequestId } from './requestId';
 import { ActionReviewPanel } from './ActionReview';
-import { ViewportDialog, PlanBrowser, EvidenceBrowser } from './WorkspaceUI';
+import { ViewportDialog, PlanBrowser, EvidenceBrowser, TextPages } from './WorkspaceUI';
+import { GoalIntentBar, VoiceInputOptions } from './GoalIntent';
 import { destinationGoal, destinationOptions, destinationPage, nodeLabel } from './mapMetadata';
 import { currentSignalJunction, signalDisplay } from './routeProgress';
 
@@ -45,6 +46,7 @@ export function App() {
   const [online, setOnline] = useState(false);
   const [showDemo, setShowDemo] = useState(false);
   const [modal, setModal] = useState<'goal' | 'review' | 'companion' | null>(null);
+  const [goalMode, setGoalMode] = useState<'text' | 'voice' | 'query'>('text');
   const [mobileMission, setMobileMission] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
   const [sceneSnapshot, setSceneSnapshot] = useState<SceneSnapshot | null>(null);
@@ -157,7 +159,9 @@ export function App() {
   const inspection = sceneSnapshot?.inspection;
   const modelLabel = actionReviewPending ? 'Reviewing images' : workspace?.review ? workspace.review.verdict : inspection?.verdict ?? 'No image review';
   const openImageTools = () => { setModal(null); setView('Workspace'); window.setTimeout(() => setImageToolsRequest(value => value + 1), 0); };
-  const openGoal = () => { setView('Workspace'); setModal('goal'); };
+  const openGoal = () => { setGoalMode(canEditGoal ? 'text' : 'query'); setView('Workspace'); setModal('goal'); };
+  const openVoice = () => { setGoalMode('voice'); setView('Workspace'); setModal('goal'); };
+  const openQuery = () => { setGoalMode(workspace?.goal ? 'query' : 'text'); setView('Workspace'); setModal('goal'); };
 
   return <div className="app-shell">
     <aside className="side-rail" aria-label="Workspace tools">
@@ -176,7 +180,7 @@ export function App() {
     </header>
     <main className={`workspace-stage ${mobileMission ? 'mission-visible' : ''}`}>
       <MapScene presentation="stage" workspace={workspace} onSnapshot={setSceneSnapshot} onMapSnapshot={setMapSnapshot} onPreviewSource={setPreviewSource} readOnly={actionReviewPending} openToolsRequest={imageToolsRequest}/>
-      <div className="scene-heading"><span>Temporary workspace</span><h2 title={mapSnapshot?.title}>{mapSnapshot?.title ?? 'Loading map…'}</h2><button onClick={openGoal} disabled={!canEditGoal}><span>{workspace?.goal ? `${startName} to ${destinationName}` : 'Set a mission goal'}</span><Icon name="arrow" size={16}/></button></div>
+      <div className="scene-heading"><div className="scene-context"><span>Temporary workspace</span><h2 title={mapSnapshot?.title}>{mapSnapshot?.title ?? 'Loading map…'}</h2></div><GoalIntentBar query={workspace?.goal?.text ?? null} source={workspace?.goal?.source ?? null} onQuery={openQuery} onVoice={openVoice}/></div>
       <button className="mobile-mission-switch glass-surface" onClick={() => setMobileMission(value => !value)} aria-expanded={mobileMission}>{mobileMission ? 'Show scene' : 'Mission'}<Icon name={mobileMission ? 'close' : 'chevron'} size={16}/></button>
       {(error || !online) && <div className={`stage-notice ${error ? 'error' : ''}`} role={error ? 'alert' : 'status'}><Icon name="shield" size={17}/><span>{error || 'Backend unavailable. Refresh before taking action.'}</span><button aria-label={error ? 'Dismiss error' : 'Retry connection'} onClick={() => error ? setError('') : void refresh()}><Icon name={error ? 'close' : 'refresh'} size={16}/></button></div>}
 
@@ -200,13 +204,18 @@ export function App() {
     </main>
 
     <ViewportDialog open={modal === 'goal'} title="Mission goal" subtitle="SET THE INTENT" onClose={() => setModal(null)} className="goal-dialog">
-      <form className="goal-form" onSubmit={event => { event.preventDefault(); if (canEditGoal && draft.trim()) { void command('goals', { text: draft, provider, source: 'typed' }); setModal(null); } }}>
+      <nav className="goal-modal-tabs" role="tablist" aria-label="Goal input sections"><button role="tab" aria-selected={goalMode === 'text'} disabled={!canEditGoal} onClick={() => setGoalMode('text')}>Type a goal</button><button role="tab" aria-selected={goalMode === 'voice'} onClick={() => setGoalMode('voice')}><Icon name="mic" size={15}/>Voice input</button>{workspace?.goal && <button role="tab" aria-selected={goalMode === 'query'} onClick={() => setGoalMode('query')}>Original query</button>}</nav>
+      <div className="goal-mode-panel" role="tabpanel" aria-label={goalMode === 'voice' ? 'Voice input options' : goalMode === 'query' ? 'Original user query' : 'Typed goal input'}>
+      {goalMode === 'voice' ? <VoiceInputOptions canEdit={canEditGoal} onContinue={() => setGoalMode(canEditGoal ? 'text' : 'query')}/>
+        : goalMode === 'query' ? <section className="original-query-panel"><div className="original-query-source"><Icon name={workspace?.goal?.source === 'voice' ? 'mic' : 'text'} size={16}/><span>{workspace?.goal?.source === 'voice' ? 'Voice input' : 'Typed input'} · original request</span></div><TextPages text={workspace?.goal?.text ?? 'No submitted goal yet.'} size={220}/><footer><span>{canEditGoal ? 'Your original words, saved with this plan.' : 'The active goal is read-only during execution.'}</span>{canEditGoal && <button className="secondary-button" onClick={() => setGoalMode('text')}>Edit goal<Icon name="arrow" size={16}/></button>}</footer></section>
+        : <form className="goal-form" onSubmit={event => { event.preventDefault(); if (canEditGoal && draft.trim()) { void command('goals', { text: draft, provider, source: 'typed' }); setModal(null); } }}>
         <div className="goal-choices"><div className="goal-destinations">{goalChoices.items.map(place => <button type="button" key={place.id} title={`${place.label} · ${place.id}`} disabled={!canEditGoal} onClick={() => mapSnapshot && setDraft(destinationGoal(mapSnapshot, place.id))}><span>{place.label}</span><Icon name="arrow" size={16}/></button>)}</div>{goalChoices.pages > 1 && <nav className="goal-choice-pager" aria-label="Destination pages"><button type="button" disabled={goalChoices.page === 0} onClick={() => setGoalPage(value => value - 1)} aria-label="Previous destinations"><Icon name="chevron" className="reverse" size={14}/></button><span>{goalChoices.page + 1} / {goalChoices.pages}</span><button type="button" disabled={goalChoices.page + 1 >= goalChoices.pages} onClick={() => setGoalPage(value => value + 1)} aria-label="Next destinations"><Icon name="chevron" size={14}/></button></nav>}</div>
         <label htmlFor="goal-input">Your goal<input ref={goalInput} id="goal-input" value={draft} onChange={event => setDraft(event.target.value)} disabled={!canEditGoal} maxLength={500} aria-label="Your mission goal"/></label>
         <label htmlFor="provider-mode">Goal interpreter<select id="provider-mode" value={provider} disabled={!canEditGoal} onChange={event => setProvider(event.target.value as ProviderMode)}><option value="demo">Demo interpreter</option><option value="meta" disabled={!workspace?.capabilities.muse_configured}>MUSE · Meta API{!workspace?.capabilities.muse_configured ? ' (not configured)' : ''}</option></select></label>
-        <p className="form-note"><Icon name="mic" size={17}/>Typed input is available. Voice capture is not connected.</p>
+        <button className="goal-voice-shortcut" type="button" onClick={() => setGoalMode('voice')}><Icon name="mic" size={16}/><span>Voice input</span><small>Not connected</small><Icon name="chevron" size={14}/></button>
         <div className="dialog-bottom"><span>A new plan requires explicit approval.</span><button className="primary-button" type="submit" disabled={!canEditGoal || !draft.trim()}><Icon name="spark" size={17}/>Create a plan<Icon name="arrow" size={17}/></button></div>
-      </form>
+      </form>}
+      </div>
     </ViewportDialog>
     <ViewportDialog open={view === 'Plan'} title="Route plan" subtitle="INSPECT THE SEQUENCE" onClose={() => setView('Workspace')}><PlanBrowser workspace={workspace} map={mapSnapshot}/></ViewportDialog>
     <ViewportDialog open={view === 'Replay' && modal !== 'review'} title="Decision replay" subtitle="SOURCE-LABELLED EVIDENCE" onClose={() => setView('Workspace')}><EvidenceBrowser events={workspace?.events ?? []} selected={selected} onSelect={setSelectedEvent} onOpenRecord={() => setModal('review')}/></ViewportDialog>

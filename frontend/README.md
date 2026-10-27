@@ -12,7 +12,8 @@ The runnable workspace uses React, TypeScript and Vite. The current direction fo
 
 | Area | Implemented behavior |
 | :--- | :--- |
-| Goal | Editable typed input in a preparation dialog; explicit demo/MUSE interpreter selection. Provider availability comes from the backend. |
+| Goal | A glass **Your goal** bar keeps the accepted original request and its Typed/Voice source visible beside a microphone entry. Original query, typed editing and voice guidance use bounded dialog tabs; unsent drafts do not replace the accepted text. Demo/MUSE interpreter selection remains explicit. |
+| Voice entry | The microphone opens **Not connected** guidance, a disabled **Hold to speak** button and a typed fallback. Capture, microphone permissions and transcription remain unimplemented. |
 | Workspace | Fixed spatial stage spanning beneath navigation, header and translucent mission/status overlays. Matching camera or schematic routes distinguish completed/current/remaining simulated portions and junction stop/signal/review context. Image, progress, car pose, signal and robot sources stay separate. |
 | Live preview | Optional native JPEG display with Live/Recorded source selection, decode-before-swap, frame age, stale warning and an independent explicit fixed display lock. RAM preview frames do not enter recorded MUSE/action evidence. |
 | Camera board focus | Optional surrounding-background mask, available only with the current matching locked test registration. Camera perspective, original pixels and overlay geometry stay unchanged; Full frame remains available. |

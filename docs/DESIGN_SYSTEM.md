@@ -161,6 +161,10 @@ These visual and interaction checks have a stated scope in verification. They do
 
 The frontend remains React/TypeScript with a locally built Vite bundle. GX10 serves the compiled frontend with Python. This direction requires no remote font, runtime Node.js, graphics service or device dependency. Use restrained CSS effects and deterministic SVG where suitable. Frontend changes do not require restarting robot, camera or POC services.
 
+## Visible goal entry
+
+The current goal entry is a compact glass bar beneath a small map-context row. A quiet microphone control and **Your goal** label frame the accepted original query, with a separate Typed/Voice source badge. The right mission card continues to show the interpreted destination and plan, so the user's words remain distinct from model interpretation. Selecting the query opens bounded full-text pages. The voice panel clearly states **Not connected**, keeps capture disabled and offers text entry; no decorative waveform or listening animation implies an active microphone. The bar, camera controls and route legend keep separate vertical space without changing source-image geometry.
+
 ## Historical assets
 
 Earlier navy/cyan illustrations and the first flat light-dashboard screenshot remain historical design records. Their captions must identify that stage; they do not establish compliance with this revision. A generated illustration is never a live product screenshot. Keep original print artwork and raw camera photographs outside Git and source packages.

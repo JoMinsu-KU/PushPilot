@@ -1,11 +1,12 @@
 import type { CSSProperties } from 'react';
 
-export type IconName = 'arrow' | 'chevron' | 'eye' | 'mic' | 'home' | 'clock' | 'settings' | 'camera' | 'check' | 'pause' | 'play' | 'refresh' | 'stop' | 'glasses' | 'car' | 'shield' | 'close' | 'spark' | 'route' | 'upload';
+export type IconName = 'arrow' | 'chevron' | 'eye' | 'mic' | 'text' | 'home' | 'clock' | 'settings' | 'camera' | 'check' | 'pause' | 'play' | 'refresh' | 'stop' | 'glasses' | 'car' | 'shield' | 'close' | 'spark' | 'route' | 'upload';
 const paths: Record<IconName, React.ReactNode> = {
   arrow: <><path d="M4 12h15M13 5l7 7-7 7" /></>,
   chevron: <path d="m9 5 7 7-7 7" />,
   eye: <><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></>,
   mic: <><rect x="9" y="2" width="6" height="13" rx="3" /><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8" /></>,
+  text: <path d="M4 5h16M4 12h16M4 19h10" />,
   home: <><path d="m3 10 9-8 9 8v11h-6v-7H9v7H3Z" /></>,
   clock: <><circle cx="12" cy="12" r="9" /><path d="M12 6v6l4 2" /></>,
   settings: <><path d="m9 3 1-1h4l1 3 3 1 3 3-1 3 1 3-3 3-3 1-1 3h-4l-1-3-3-1-3-3 1-3-1-3 3-3Z" /><circle cx="12" cy="12" r="3" /></>,
