@@ -6,6 +6,8 @@
 
 [Source provenance](data/robot-runtime-source.json) · [Control API](../backend/robot_control/api.py) · [Offline tests](../tests/test_robot_control_service.py) · [GX10 delivery](../deploy/ROBOT_CONTROL.md)
 
+> **Deployment checked October 28, 2026, 01:17 KST:** the isolated GX10 API runs from source `6cfe6d2`, on loopback 8897, disarmed and disconnected, with no loaded installation and zero robot commands. The physical listener is not started. Local software tests: 414 passed; GX10 equipment-free subset: 64 passed. Existing web and camera were retained. [Exact verification scope](evidence/robot-control-20261028.json).
+
 ## Service boundaries
 
 | Process | Responsibility | Failure behavior |
