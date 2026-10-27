@@ -6,3 +6,6 @@
 *.webp binary
 *.pdf binary
 *.zip binary
+*.woff2 binary
+# Preserve the verbatim upstream license, including its existing whitespace.
+frontend/public/fonts/pretendard/OFL.txt -whitespace

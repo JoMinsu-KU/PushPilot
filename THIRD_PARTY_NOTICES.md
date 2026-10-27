@@ -1,8 +1,8 @@
 # Third-party and inherited material
 
-Status: application source, adapted PushPilot temporary-map geometry and original documentation/UI artwork. No supplied map artwork, raw camera photograph, model weights, archived operating profile or POC driver is bundled. Runtime and build dependencies are declared below and resolved by lockfiles.
+Status: application source, adapted PushPilot temporary-map geometry, original documentation/UI artwork and an unmodified vendored Pretendard font. No supplied map artwork, raw camera photograph, model weights, archived operating profile or POC driver is bundled. Runtime and build dependencies are declared below and resolved by lockfiles; the font has a separate pinned source and hash record.
 
-Python and Node are external prerequisites; their runtimes are not bundled. Python dependencies are installed separately. The built frontend includes its React dependencies. No software license has been selected for PushPilot itself; dependency licenses do not license this repository's original code or artwork.
+Python and Node are external prerequisites; their runtimes are not bundled. Python dependencies are installed separately. The built frontend includes its React dependencies and the vendored font with their upstream notices. No software license has been selected for PushPilot itself; dependency licenses do not license this repository's original code or artwork.
 
 ## Dependencies
 
@@ -11,6 +11,7 @@ Versions below were resolved on 2026-10-27. Python license identifiers were chec
 | Material | Source/version | Upstream license | Use |
 |---|---|---|---|
 | React and React DOM | npm, 19.3.1 | MIT | Browser runtime |
+| Pretendard Variable | [Official upstream v1.3.9](https://github.com/orioncactus/pretendard/tree/v1.3.9), unmodified full WOFF2 | [SIL Open Font License 1.1](frontend/public/fonts/pretendard/OFL.txt) | Self-hosted product typography; Korean and Latin text |
 | TypeScript | npm, 7.0.2 | Apache-2.0 | Local type checking |
 | Vite | npm, 8.3.5 | MIT | Local build/dev server |
 | React/React DOM type definitions | npm, 19.3.0 | MIT | Local type checking |
@@ -29,6 +30,8 @@ Versions below were resolved on 2026-10-27. Python license identifiers were chec
 | typing_extensions | PyPI, 4.16.0 | PSF-2.0 | Python typing support |
 
 The complete npm build resolution, including platform-specific optional tools, is in `frontend/package-lock.json`. The complete Python resolution is in `requirements.lock`; platform-specific wheel hashes are not pinned. Source archives exclude `node_modules`, `.venv` and `frontend/dist`. The frontend's `public/third-party-licenses.txt` carries the original React runtime notices into each built distribution.
+
+Pretendard is copyright © 2021 Kil Hyung-jin, with Reserved Font Name Pretendard. The unmodified font and official license are bundled in [`frontend/public/fonts/pretendard/`](frontend/public/fonts/pretendard/README.md) and copied to the static build. That record identifies the pinned official WOFF2/CSS/license URLs, 2,057,688-byte size and SHA-256. Preserve the copyright notice and complete `OFL.txt` with redistributed font copies. Font files are served by the application itself; the interface does not depend on a font CDN or a system Pretendard installation. The upstream font is not PushPilot-authored artwork.
 
 Meta is accessed as an external service through its documented HTTPS API; no Meta SDK or model weights are included. Provider access remains subject to the account's applicable service terms. Recorded live checks establish the limited scope in [`docs/META_API_CHECK.md`](docs/META_API_CHECK.md).
 

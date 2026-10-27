@@ -16,15 +16,17 @@ Muse Spark interprets the goal and reviews images; a deterministic supervisor de
 </div>
 
 <p align="center">
-  <a href="docs/assets/light-industrial-workspace.jpg"><img src="docs/assets/light-industrial-workspace.jpg" width="1280" alt="Actual PushPilot application: a light industrial tablet workspace with a temporary Little Town route, a mission panel and source-labelled evidence."></a><br>
-  <sub>Actual local application · original spatial schematic · simulation. Raw camera frames stay private. <a href="docs/VERIFICATION.md">Verification record</a></sub>
+  <a href="docs/assets/scene-workspace.jpg"><img src="docs/assets/scene-workspace.jpg" width="1280" alt="Actual PushPilot application: a continuous spatial workspace with rounded translucent mission and status overlays, a temporary Little Town route and explicit simulation sources."></a><br>
+  <sub>Actual local application · original spatial presentation of inherited drawing geometry · simulation. Recorded-image model findings appear as text; no camera photograph or supplied artwork is shown. <a href="docs/VERIFICATION.md">Verification record</a></sub>
 </p>
 
 ## The workspace
 
 Robot endpoint telemetry answers where the tool went. An operator still needs to know whether the object moved, whether the view is sufficient, and why the system is continuing or waiting. PushPilot puts those questions beside the scene instead of leaving them scattered across controller logs and model responses.
 
-The demonstration mission pushes a wheel-less model car from **Pizza** to a named destination. Every controlled intersection requires a stop, a reviewed outcome and a fresh green signal before entry. A dominant scene viewport shows the proposed route; the mission panel exposes the current action, pending checks and decision history.
+The demonstration mission pushes a wheel-less model car from **Pizza** to a named destination. Every controlled intersection requires a stop, a reviewed outcome and a fresh green signal before entry. One fixed spatial stage shows the proposed route, with rounded translucent mission and status panels floating over it. The current action, next check and primary decision remain in view; route history, image tools and detailed evidence use bounded dialogs, tabs and pages instead of a vertically scrolling workspace.
+
+**Camera** is the default view, preserving the recorded image's perspective, pixels and overlay geometry. Optional **Board focus** masks the surrounding desk with a neutral tabletop backdrop when the current test registration is locked; **Full frame** restores the complete image. **Spatial map** is a separate deterministic illustration. The display mask adds no image detail or physical accuracy. Original frame bytes remain the inputs to MUSE and immutable evidence.
 
 | Observe | Plan | Approve | Act | Verify |
 |---|---|---|---|---|
@@ -67,7 +69,7 @@ These are labelled schematic test inputs, **not real-car photographs or physical
 
 <p align="center">
   <a href="docs/assets/recorded-action-review.jpg"><img src="docs/assets/recorded-action-review.jpg" width="1080" alt="Actual MUSE action-review panel: an original synthetic BEFORE car at PIZZA, AFTER car in the target, an actual PASS response, recorded source labels and expandable provenance."></a><br>
-  <sub>Actual application and Meta response · original synthetic test images · simulation only.</sub>
+  <sub>Provider evidence captured before the fixed-stage layout revision · actual Meta response · original synthetic test images · simulation only.</sub>
 </p>
 
 ### Model judgment + deterministic authority
@@ -84,7 +86,7 @@ SQLite events and review records connect the input, response and resulting trans
 | Scene inspection | Actual Muse Spark analysis of a private recorded frame | The single shop/car/signal case above; no action authority. |
 | Action-bound image review | Recorded before/after pair → MUSE result → simulated supervisor decision | Three actual synthetic-input cases above; software checks in [verification](docs/VERIFICATION.md). Real-car task accuracy is unverified. |
 | Mission workflow | Three temporary graph routes, mandatory stops, red/unknown waiting, scoped green admission and replay | Software simulation; action receipts and signals are simulated. Explicit demo verdicts remain available and labelled. |
-| Image route overlay | Private upload, four-marker test lock and fixed-reference projection | Recorded-camera-to-drawing overlay; no robot/BASE registration or metric accuracy claim. |
+| Image presentation and route overlay | Private upload, four-marker test lock, fixed-reference projection, Camera board-focus mask and full-frame display | The mask preserves camera perspective and geometry; raw frames stay unchanged. No robot/BASE registration or metric accuracy claim. |
 | Voice, live camera and robot execution | Designed or deferred | Not connected. Physical pushing, turning and paper-signal operation need qualification. |
 | GX10 and glasses | Selected deployment target and future companion concept | Application not deployed to GX10; no wearable connection. |
 
@@ -107,7 +109,7 @@ cd ..
 python tools/serve.py
 ```
 
-Open `http://127.0.0.1:8080`. Submit a Bakery, Bookstore or School goal, inspect **Spatial map**, and approve the simulation. Use the clearly labelled **Demo** controls to exercise software transitions. Optional recorded-image upload and actual MUSE requests use the [image-review workflow](docs/ACTION_REVIEWS.md). Save `META_API_KEY` only in the ignored backend `.env`; no provider request runs at startup.
+Open `http://127.0.0.1:8080`. Set a Bakery, Bookstore or School goal, inspect **Spatial map**, and approve the simulation. Open **Simulation inputs** for clearly labelled demo signals and verdicts. **Plan**, **Replay**, image tools and recorded action review open within the fixed viewport. Optional recorded-image upload and actual MUSE requests use the [image-review workflow](docs/ACTION_REVIEWS.md). Save `META_API_KEY` only in the ignored backend `.env`; no provider request runs at startup.
 
 ```bash
 python tools/dev.py check
