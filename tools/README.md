@@ -8,19 +8,23 @@
 
 ## Available commands
 
-Run from the repository root. Tools require **Python 3.11+**; release operations and the current tests also require **Git on `PATH`**. No third-party Python package is required.
+Run from the repository root with **Python 3.12+**. Install `requirements.lock` for application startup and the full test suite. Source syntax checks, source packaging, and the standalone connection checker use the standard library; release operations and release tests also require **Git on `PATH`**.
 
 | Command | What it does |
 | :--- | :--- |
 | `python tools/dev.py check` | Parses Python and JSON source syntax; does not import application modules or initialize services. |
-| `python tools/dev.py test` | Runs `unittest` discovery in `tests/` with bytecode writing disabled. |
+| `python tools/dev.py test` | Runs offline `unittest` discovery in `tests/` with bytecode writing disabled. |
+| `python tools/serve.py` | Serves built `frontend/dist` and the simulation API on loopback port 8080, one worker. |
+| `python tools/serve.py --api-only` | Starts the API without requiring compiled frontend assets. |
 | `python tools/build_release.py --output <archive.zip>` | Packages allowlisted blobs from a clean committed HEAD and writes a hash manifest. |
 | `python tools/build_release.py --verify <archive.zip>` | Validates ZIP paths, metadata, policy, sizes, and SHA-256 values without extracting. |
 | `python tools/check_muse_api.py` | Opt-in live Meta check: reads the ignored local key, queries models and sends one bounded text completion. |
 
 Commands return a nonzero exit code on failure. Successful check/build/verify commands print a compact JSON result. The test runner prints its normal test report.
 
-The Meta checker is the only command above that contacts a provider and may consume API credits. It is never invoked by `dev.py check` or `dev.py test`. See [connection setup and the observed result](../docs/META_API_CHECK.md). It is not a mission provider adapter or an image-review test.
+The Meta checker explicitly contacts a provider and may consume API credits. It is never invoked by `dev.py check` or `dev.py test`. The application launcher makes no automatic provider request; an operator can deliberately select a backend Meta goal request in the running application. See [connection setup and observed results](../docs/META_API_CHECK.md). The standalone checker is separate from `backend/meta.py` and is not an image-review test.
+
+Build the frontend locally using Node 24 and `npm ci && npm run build` in `frontend/`. GX10 serves those compiled assets using Python without Node. The launcher supports explicit `--host`, `--port`, and `--state-path` arguments, validates them before startup, disables reload, and starts no equipment processes.
 
 ## Build a source release
 
@@ -46,7 +50,9 @@ Verification rejects unsafe or colliding paths, unsupported ZIP entries, unexpec
 
 ## A release is not a deployment
 
-This repository currently produces a **source/bootstrap package**. These tools do not implement installation, SSH transfer, service startup, activation, rollback, or robot commands. Follow the [isolated GX10 plan](../deploy/README.md) when a runtime exists.
+The release builder produces a **committed source package**. It excludes ignored compiled `frontend/dist`, dependencies, local configuration, and SQLite state. A runnable frontend delivery additionally needs assets built from the same clean commit.
+
+`serve.py` starts the application locally; it does not install dependencies, transfer files, configure a system service, select an active release, implement rollback, or issue robot commands. Follow [GX10 delivery](../deploy/README.md) for the selected Python/static-frontend arrangement and remaining host checks.
 
 Review contents separately for credentials, private media, attribution, and publication rights. Hash integrity does not authenticate a publisher or replace that review.
 

@@ -12,17 +12,17 @@
 
 ---
 
-**Status: proposed application architecture.** The repository implements bootstrap validation and release tooling. The diagram below describes the application to be built; it is not a diagram of a running deployment.
+**Status: first simulation slice implemented; full image/voice architecture remains a design.** The running software consists of a React/TypeScript browser workspace and one FastAPI/Uvicorn backend with SQLite state, source-labelled events, an abstract simulator, and a strict-schema Meta goal adapter. Voice, image review, camera input, registered AR, and robot control remain unavailable. GX10 has been inspected read-only; this application has not been deployed there.
 
 ## System shape
 
 [![Proposed voice-enabled architecture: the operator workspace exchanges bounded audio and draft transcripts with a backend voice adapter; the operator reviews text and approves a MUSE-interpreted plan; the mission supervisor retains deterministic admission authority, actions use a simulator first and observations feed evidence and replay.](assets/architecture-overview-voice.png)](assets/architecture-overview-voice.png)
 
-*Proposed system design. The illustration describes component responsibilities, not a running deployment. Select the image for the full-size view.*
+*Design illustration created before the first runtime slice. Its voice/image flows and footer describe that earlier design stage; current implementation status is stated above and in the component text below. Select the image for the full-size view.*
 
 The **tablet workspace** presents the goal, current state and approval. The **mission supervisor** combines source-labelled observations with goal interpretation and fresh-image MUSE review, then applies deterministic admission checks. Accepted bounded actions go to the abstract simulator first; a qualified robot adapter is a later integration. Action results feed new observations, while the evidence store connects the inputs, reviews and transitions back to the operator's timeline.
 
-The planned **voice adapter** belongs inside the same backend. The first implementation accepts a finite push-to-talk recording and calls Meta's file transcription endpoint. It returns an editable draft transcript to the workspace. Only after the operator submits the text does it join the shared typed-goal interpretation path; the resulting plan still requires explicit tablet approval. The API key stays on the backend. [Voice input](VOICE_INPUT.md) defines cancellation, language and revision handling; [service composition](SERVICE_COMPOSITION.md) defines module and deployment ownership.
+The planned **voice adapter** belongs inside the same backend. Its planned first implementation will accept a finite push-to-talk recording and call Meta's file transcription endpoint. It returns an editable draft transcript to the workspace. Only after the operator submits the text does it join the shared typed-goal interpretation path; the resulting plan still requires explicit tablet approval. The API key stays on the backend. [Voice input](VOICE_INPUT.md) defines cancellation, language and revision handling; [service composition](SERVICE_COMPOSITION.md) defines module and deployment ownership.
 
 There are two complementary decisions: the model explains what the scene supports; the supervisor determines whether the complete set of required checks permits a state transition. An image-based judgment cannot manufacture a fresh signal, a verified stop or a hardware receipt.
 
@@ -38,13 +38,13 @@ There are two complementary decisions: the model explains what the scene support
 | **Action adapter** | One bounded action and its corresponding result | Successful vehicle displacement merely because a tool reached its target |
 | **Evidence store** | Immutable inputs/results and their causal connection to decisions | A physical claim unsupported by the recorded sources |
 
-The first action adapter will be a hardware-free simulator. Runtime frameworks, endpoints, event schemas and dependency locks will be selected with the implementation rather than implied by this design.
+The implemented action adapter is a hardware-free simulator with four symbolic action kinds: PUSH, STOP, CROSS, and VERIFY. `backend/app.py` validates revisioned commands with Pydantic, `backend/core.py` serializes transitions and records SQLite events, and `backend/meta.py` interprets goals through Meta. [`contracts/workspace.ts`](../contracts/workspace.ts) describes the frontend DTOs. Exact runtime dependencies are locked; [Development](DEVELOPMENT.md) documents startup. These source interfaces are not a full JSON Schema contract for future observations or voice.
 
 Voice is planned initial-demo scope. Start with browser capture and one modular backend containing the voice adapter, MUSE adapter, mission supervisor, simulator and evidence modules. A separate speech server is not required by this design. Realtime transcription and speech playback are later options. No voice provider request or microphone path has been verified; the completed standalone Meta probe covers text only.
 
 ## Execution gates
 
-Before issuing an action, the future supervisor checks the applicable conditions together:
+The implemented simulator requires current-plan approval, review binding, and its simulated stop/signal gates. Reviews are operator-injected demo verdicts; they do not call MUSE. The full future observation-backed supervisor must check the applicable conditions together:
 
 1. The operator has approved the current mission interpretation.
 2. The preceding bounded action has a valid completion result and accepted review.
@@ -76,7 +76,9 @@ The intended sequence is:
 5. Record the supervisor decision with its transition cause.
 6. Continue with the next action, wait, request another observation or enter a fault state.
 
-Each link needs stable mission/action/review identifiers. An observation bundle records source identity, capture time, image hash and crop lineage; a review records provider/model, prompt and schema versions, request timing, response and validation outcome. The resulting state transition cites the records that caused it.
+The current SQLite store retains workspace/plan/step/review identities, ordered source-labelled events, request digests, and original idempotent command receipts. Reusing a request ID with different content or submitting a stale revision is rejected. Reset retains event history. The Meta goal result is represented by its interpreted summary and source; the current store does not preserve a full raw provider receipt with usage, timing, or a prompt version.
+
+The complete image-review design additionally requires source identity, capture time, immutable image hash/crop lineage, exact provider inputs/results, prompt/schema/model versions, timing, and validation outcome. Those media/review records are not implemented yet.
 
 Robot state, image, vehicle pose, signal and model response retain **independent source labels**. Unknown values remain unknown. Unavailable provider cost is not reported as zero. Credentials must never appear in evidence, prompts, logs or release archives.
 
@@ -97,13 +99,13 @@ Old pending actions, old green observations and earlier crossing admission must 
 
 ## Map and physical integration boundary
 
-Symbolic locations and abstract actions allow the supervisor, UI and review interfaces to be built while the map is unresolved. No old map image or route is required by the application bootstrap.
+Symbolic locations and abstract actions let the supervisor and UI run while the map is unresolved. No old map image or route is an application dependency. A user-provided temporary print can support explicitly labelled vision-input testing under [Test inputs](TEST_INPUTS.md); it does not finalize coordinates, signal regions, routes, or registration.
 
 Later integration must establish the final road graph, installed camera/board/robot registration, stop and exit lines, signal regions, vehicle/tool geometry, pushing behavior and contact turning. A fixed gripped-car transform is not a model of surface pushing. Reusing a successful robot endpoint does not prove where an ungripped vehicle ended up.
 
 ## Delivery boundary
 
-Development and testing take place in this repository. A clean committed source tree can be packaged with a commit/hash manifest using the implemented release tools. GX10 is the intended runtime host through an isolated release and shared-state layout; its directories and runtime have not been provisioned by this scaffold.
+Development and testing take place in this repository. A clean committed source tree can be packaged with a commit/hash manifest using the release tools. That ZIP excludes ignored compiled frontend assets. The selected GX10 delivery uses a local frontend build and one Python runtime serving the bundle, with isolated release directories and shared SQLite state. Read-only inspection found ARM64 Ubuntu and Python 3.12.3, with no Node/npm on the inspected PATH; application installation and activation have not occurred.
 
 See [development](DEVELOPMENT.md) for actual commands and [deployment](../deploy/README.md) for the proposed host separation. Packaging does not transfer files, start services or connect a robot.
 

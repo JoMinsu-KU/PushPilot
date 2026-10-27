@@ -12,7 +12,7 @@
 
 PushPilot is being developed as a tablet workspace for an image-grounded tabletop robot mission. An operator states or types a goal, confirms the chosen text, reviews and approves the proposed task, and follows the evidence behind each decision to proceed, wait or observe again. A future glasses companion extends the interaction concept.
 
-**The repository currently contains the application bootstrap and design documentation.** The mission runtime, frontend, voice capture/transcription, application Meta integration and physical robot connection are planned. A standalone text connection checker exists; it does not implement the application services. Final map geometry and installation are unresolved, so implementation begins with symbolic locations and explicitly simulated actions.
+**The first map-independent application slice is implemented.** It contains a React/TypeScript workspace, a FastAPI/Uvicorn backend, a SQLite mission supervisor, explicitly simulated actions/signals/reviews, evidence history, and a backend Meta goal interpreter. Typed goals can prepare a symbolic BAKERY plan; explicit approval remains separate. Voice, image review, camera input, registered AR, and physical robot control are not implemented. Final map geometry and installation remain unresolved.
 
 ## Choose a reading path
 
@@ -21,9 +21,11 @@ PushPilot is being developed as a tablet workspace for an image-grounded tableto
 | Understand the product | [Mission](MISSION.md) | [Meta intelligence](META_INTELLIGENCE.md) |
 | Understand the system | [Architecture](ARCHITECTURE.md) | [Service composition](SERVICE_COMPOSITION.md) |
 | Review voice goal entry | [Voice input](VOICE_INPUT.md) | [Frontend](../frontend/README.md) and [contracts](../contracts/README.md) |
-| Test Meta authentication and text inference | [API connection check](META_API_CHECK.md) | [Meta intelligence](META_INTELLIGENCE.md) |
+| Test Meta authentication and goal interpretation | [API connection check](META_API_CHECK.md) | [Meta intelligence](META_INTELLIGENCE.md) |
+| Prepare a temporary printed vision input | [Test inputs](TEST_INPUTS.md) | [Map boundary](ARCHITECTURE.md#map-and-physical-integration-boundary) |
 | Work on the repository | [Development workflow](DEVELOPMENT.md) | [Roadmap](ROADMAP.md) |
 | Review a demonstration claim | [Evidence model](ARCHITECTURE.md#evidence-that-explains-a-decision) | [Contribution record](../CONTRIBUTIONS.md) |
+| Inspect completed software checks | [Verification](VERIFICATION.md) | [Actual workspace screenshot](assets/workspace-simulation.jpg) |
 | Prepare a release | [Development workflow](DEVELOPMENT.md) | [GX10 delivery plan](../deploy/README.md) |
 
 ## The interaction in one line
@@ -38,15 +40,15 @@ The current mission begins at symbolic **PIZZA** and pushes a wheel-less car tow
 
 | Directory | Intended ownership | Present state |
 |---|---|---|
-| [`frontend/`](../frontend/README.md) | English tablet workspace, push-to-talk/typed goal entry, transcript review and replay | Boundary documentation |
-| [`backend/`](../backend/README.md) | Mission supervisor, backend voice transcription adapter, observations, MUSE adapter and evidence | Boundary documentation |
-| [`contracts/`](../contracts/README.md) | Versioned requests, results and source-labelled events | Boundary documentation |
-| [`prompts/`](../prompts/README.md) | Versioned English model prompts and review expectations | Boundary documentation |
-| [`tools/`](../tools/) | Equipment-free source checks and release packaging | Implemented bootstrap tools |
-| [`tests/`](../tests/) | Bootstrap checks; later application behavior tests | Bootstrap tests |
-| [`deploy/`](../deploy/README.md) | Separate GX10 releases and shared runtime state | Proposal and examples |
+| [`frontend/`](../frontend/README.md) | English tablet workspace, typed goals, approval, simulation state and replay | React/TypeScript implementation; voice remains planned |
+| [`backend/`](../backend/README.md) | API, supervisor, symbolic simulation, Meta goal interpretation and evidence | FastAPI/Uvicorn and SQLite implementation |
+| [`contracts/`](../contracts/README.md) | Requests, snapshots, capabilities and source-labelled events | TypeScript DTOs; Pydantic request validation in backend |
+| [`prompts/`](../prompts/README.md) | Model instructions and review expectations | Goal prompt inline in backend; versioned review templates planned |
+| [`tools/`](../tools/) | Source checks, source packaging and local application startup | Implemented |
+| [`tests/`](../tests/) | Release, provider-boundary, mission and API behavior | Offline automated suite |
+| [`deploy/`](../deploy/README.md) | Separate GX10 releases and shared runtime state | Host inspected read-only; application not deployed |
 
-Frameworks, application startup commands and executable API contracts will be documented when their implementations are added. The repository is self-contained; parent planning files, old maps and historical operating archives are not build dependencies.
+Run `python tools/serve.py` after installing `requirements.lock` and building `frontend/dist`; see [Development](DEVELOPMENT.md). Python 3.12+ serves both API and compiled frontend. Node 24 is required only for frontend development/build. The repository is self-contained; parent planning files, old maps and historical operating archives are not build dependencies.
 
 ## Keep these distinctions visible
 

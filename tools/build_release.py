@@ -29,7 +29,7 @@ ALLOWED_DIRECTORIES = frozenset({
 })
 ALLOWED_ROOT_FILES = frozenset({
     "README.md", "AGENTS.md", "CONTRIBUTING.md", "CONTRIBUTIONS.md", "THIRD_PARTY_NOTICES.md",
-    ".gitignore", ".gitattributes", ".env.example", "pyproject.toml",
+    ".gitignore", ".gitattributes", ".env.example", "pyproject.toml", "requirements.lock",
 })
 FORBIDDEN_PARTS = frozenset({
     ".git", ".venv", "venv", "__pycache__", "node_modules", ".pytest_cache",

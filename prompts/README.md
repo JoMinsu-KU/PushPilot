@@ -2,45 +2,47 @@
 
 # Prompts with a traceable consequence
 
-**A review matters when its evidence changes the mission's next step.**
+**An interpretation or review matters when it changes the next permitted step.**
 
 [Meta intelligence](../docs/META_INTELLIGENCE.md) · [Contracts](../contracts/README.md) · [Mission](../docs/MISSION.md)
 
-> **Status: planned.** No executable prompt template, provider adapter, or live model call is included here yet. Historical prompts have not been imported.
+> **Current implementation:** the English goal instruction and strict `pushpilot_goal_v1` response schema are inline in [`backend/meta.py`](../backend/meta.py). The application has made a real backend goal request. This directory does not yet contain a versioned template catalog. Historical prompts have not been imported; image-review and voice prompts remain future work.
 
-## Planned interaction roles
+## Interaction roles
 
-| Role | Expected reasoning | Boundary |
+| Role | Current status | Boundary |
 | :--- | :--- | :--- |
-| Goal understanding | Ground the request in the available symbolic task and identify ambiguity. | Do not invent unavailable destinations or capabilities. |
-| Scene understanding | Describe visible task evidence and occlusion. | Do not infer an unseen car position or signal color as fact. |
-| Action review | Compare expected and observed outcomes using action-bound images. | A commanded motion is not proof of successful car movement. |
-| Uncertainty review | Explain insufficient or contradictory evidence and request another observation. | Uncertainty does not authorize movement. |
+| Goal understanding | Implemented through `muse-spark-1.3`; BAKERY or UNKNOWN with clarification and an English summary. | No unavailable destination, route, coordinates, robot commands or approval. |
+| Scene understanding | Planned. | Do not infer an unseen vehicle position or signal color as fact. |
+| Action review | Planned; current simulator uses explicit operator-injected demo verdicts. | A commanded tool motion is not proof of vehicle movement. |
+| Uncertainty review | Planned image-grounded explanation and constrained next check. | Uncertainty does not authorize movement. |
 
-The expected action-review outcomes are **PASS**, **FAIL**, **REOBSERVE**, and **UNKNOWN**. These names describe the intended interface; the executable schema will arrive with the provider adapter. The supervisor combines a validated review with deterministic local gates before continuing.
+The current demo-review vocabulary is **PASS**, **FAIL**, **REOBSERVE**, and **UNKNOWN**. These are simulator API values, not proof that a MUSE image request occurred. Future image review requires its own executable schema and media binding.
 
-## Every review needs a receipt
+## Receipt work still needed
 
-Preserve the exact prompt version and response-schema version, selected model, request timing, actual response, validation result, and supervisor consequence. Bind the review to immutable image hashes and lineage, the mission/action identifiers, and the expected outcome.
+The SQLite event history records goal summaries, provider/demo source labels, transitions, and command idempotency. It does not yet preserve the complete provider response, usage, latency, immutable image content/hash lineage, or an explicit prompt-version receipt.
 
-A provider call using a recorded image is actual provider evidence and recorded-image evidence. It is not a live-camera or physical-motion test. Mock responses remain explicitly mocked in records and in the operator UI.
+The full review integration must preserve exact prompt/schema/model versions, inputs, timing, response, validation, and supervisor consequence. Bind a review to its mission/action/observation identities and expected outcome. A real provider call on a recorded image remains recorded-image provider evidence, not live-camera or physical-motion proof.
 
 ## Authoring conventions
 
 - Write templates and model-facing instructions in English.
-- Give each template an explicit version and matching response-schema reference.
-- Separate task instructions from observed image content and operator-supplied text.
-- Require visible evidence and an uncertainty explanation rather than unsupported confidence alone.
-- Return structured interpretation and review, never robot scripts or authoritative metric coordinates.
-- Keep credentials out of templates, examples, request logs, and committed evidence.
+- Give extracted templates explicit versions and matching schema references.
+- Separate task instructions from observed content and operator-supplied text.
+- Require visible evidence and uncertainty, rather than an unsupported confidence number.
+- Return structured interpretation/review, never robot scripts or authoritative metric coordinates.
+- Keep credentials out of templates, examples, logs, and evidence.
 
-After a bounded action, the future adapter supplies newly captured imagery, task context, and the expected result. Invalid, stale, contradictory, or uncertain responses lead to waiting or reobservation. Model latency is not the fast signal-inhibition path.
+The existing goal adapter rejects invalid responses and sanitizes provider failures. It does not fall back to demo interpretation after an actual-provider failure. Later image-review integration must likewise preserve rejection and uncertainty rather than replacing them with scripted acceptance.
 
-## Before reusing a historical prompt
+Model latency is not the fast paper-signal inhibition path. The future observation-backed supervisor must combine a valid review with independent local checks before continuation.
 
-Record its origin and exact changes in [contributions](../CONTRIBUTIONS.md) and [third-party notices](../THIRD_PARTY_NOTICES.md). Review assumptions against the current **wheel-less pushing** mission, mandatory stop-before-signal behavior, independent source labels, and active map hold.
+## Before reusing historical work
 
-Do not copy old grid coordinates, rigid-grasp assumptions, or a prompt that treats a model answer as direct motion authority.
+Record origin and exact changes in [contributions](../CONTRIBUTIONS.md) and [third-party notices](../THIRD_PARTY_NOTICES.md). Review assumptions against wheel-less surface pushing, mandatory stop-before-signal behavior, independent source labels, and the production-map hold.
+
+Do not copy old grid coordinates, rigid-grasp assumptions, or instructions treating model output as motion authority. Label temporary user-supplied inputs under [Test inputs](../docs/TEST_INPUTS.md).
 
 ---
 

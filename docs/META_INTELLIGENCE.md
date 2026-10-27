@@ -12,11 +12,11 @@
 
 PushPilot is designed to make MUSE's image-grounded understanding visible in the operator workflow: interpret the goal, compare expected and observed outcomes, surface uncertainty and determine what needs to be checked next.
 
-**The provider adapter, prompts and review schemas are not implemented in this bootstrap.** “MUSE” names the intended project integration. The exact provider model identifier, supported API features and pinned request contract must be verified and recorded when integration is built.
+**Goal interpretation is implemented; image review remains planned.** The backend `MetaGoalProvider` uses `muse-spark-1.3` at the fixed Meta chat-completions endpoint, with a strict JSON response schema and server-only credentials. The supported symbolic destination is BAKERY; unsupported, pickup, or ambiguous requests require clarification. The deterministic supervisor creates the fixed abstract plan after validation; the model does not supply a road route or robot command.
 
-A standalone [connection check](META_API_CHECK.md) has verified authenticated model discovery and one real `muse-spark-1.3` text completion. It does not implement image review or the mission provider adapter.
+A real backend goal request on October 27, 2026 at 14:07 KST returned HTTP 200 in 3,880 ms and produced PLAN_READY. This verifies the stated text-goal path, separately from the earlier standalone [connection check](META_API_CHECK.md). It does not verify image judgment, voice, a live camera, or physical execution. Explicit plan approval is still required.
 
-Planned [voice input](VOICE_INPUT.md) uses **Muse Voice Transcribe** for speech-to-text before the shared goal-understanding path. Transcription returns editable input; Muse Spark interprets the submitted goal and reviews images. Neither an audio recording nor a transcript is mission approval. These adapters are separate modules within the proposed [single backend](SERVICE_COMPOSITION.md).
+Planned [voice input](VOICE_INPUT.md) uses **Muse Voice Transcribe** for speech-to-text before the shared goal-understanding path. Transcription returns editable input; Muse Spark interprets the submitted goal and reviews images. Neither an audio recording nor a transcript is mission approval. The Spark goal adapter exists inside the [single backend](SERVICE_COMPOSITION.md); the Voice adapter remains planned.
 
 ## Where the model adds value
 
@@ -29,7 +29,9 @@ Planned [voice input](VOICE_INPUT.md) uses **Muse Voice Transcribe** for speech-
 
 The model is not a decorative narrator over a predetermined success sequence. Two observations of the same intended action should be able to produce different next states when one supports success and the other does not.
 
-## Review lifecycle
+## Planned image-review lifecycle
+
+The current simulator accepts operator-injected demo verdicts PASS, FAIL, REOBSERVE, and UNKNOWN. Those records are explicitly demo-sourced; no image is sent to MUSE by that path. The intended image-review integration follows:
 
 1. The supervisor receives the result of a bounded action and establishes the observation window.
 2. Observation adapters provide fresh source-labelled imagery and available local measurements.
@@ -53,7 +55,7 @@ The future executable schema should distinguish these concerns rather than colla
 | **Judgment** | Accepted, rejected, needs reobservation or unknown under the defined contract |
 | **Next check** | A constrained information request, not an executable robot command |
 
-These are design requirements, not an existing wire schema. Implemented versions belong in [`contracts/`](../contracts/README.md), paired with versioned English templates in [`prompts/`](../prompts/README.md) and meaningful validation tests.
+These image-review requirements are not an existing provider wire schema. [`contracts/workspace.ts`](../contracts/workspace.ts) currently describes workspace state and demo-review DTOs. The goal provider schema and English instruction are inline in `backend/meta.py`; a versioned prompt catalog and full image-review schema remain to be implemented. Pair later versions with explicit templates and meaningful validation tests.
 
 MUSE must not return authoritative robot coordinates, scripts or unrestricted recovery actions. A later recovery proposal interface would need its own constrained contract, validation and qualification.
 
@@ -77,9 +79,11 @@ The main workspace should answer five questions without requiring raw JSON:
 | **MUSE decision** | What did the actual model conclude, including uncertainty? |
 | **Next check** | Why are we proceeding, waiting or observing again? |
 
-Request IDs, hashes, raw responses, timing, prompt/schema/model versions and provider-reported usage belong in expandable evidence and replay. Unreported cost remains unknown.
+Current events retain interpreted summaries, sources, state changes, and command idempotency bindings. Full raw provider responses, usage, timing, prompt/schema/model versions, image hashes, and crop lineage are future receipt work; they are not implied by the current event timeline. Unreported cost remains unknown.
 
-## Honest evaluation
+## Failure handling and honest evaluation
+
+The implemented goal adapter uses bounded request timeouts, disables credential-bearing redirects, validates the returned structure, and sanitizes provider failures. An actual-provider failure creates no demo fallback plan and invalidates an older pending plan. Offline tests inject malformed responses, HTTP failures, and timeouts; they do not use the operator's real key. The synchronous adapter serializes the current simulator command path. Future physical signal inhibition must remain independent of that latency.
 
 Evaluation should measure whether image grounding changes decisions correctly, using independent labels rather than the model's own answer as ground truth.
 

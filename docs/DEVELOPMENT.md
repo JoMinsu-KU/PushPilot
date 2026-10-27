@@ -1,67 +1,119 @@
 <sub>[PushPilot](../README.md) / [Documentation](README.md) / Development</sub>
 
-# A reproducible development path
+# Run the map-independent workspace
 
-**Build the map-independent application first. Preserve the boundary to hardware.**
+**Build the operator interface, run one Python service, and verify each simulated decision.**
 
 [Architecture](ARCHITECTURE.md) · [Services](SERVICE_COMPOSITION.md) · [Voice input](VOICE_INPUT.md) · [Roadmap](ROADMAP.md) · [Deployment](../deploy/README.md)
 
-## Start here
+## Runtime and dependency setup
 
-This is the independent application repository. It must build and package without private planning material, handoff archives, historical previews, map assets, or operating evidence.
-
-The current implementation is a bootstrap: standard-library checks, source-release packaging, and release tests. It does not contain an application runtime. Frontend/backend frameworks, provider dependencies, application startup commands, and lockfiles have not been selected.
+This is the independent application repository. It must run without private planning material, handoff archives, historical previews, map assets, or operating evidence.
 
 | Requirement | Purpose |
 | :--- | :--- |
-| Python 3.11+ | Bootstrap checks and release tooling. |
-| Git on `PATH` | Release identity and isolated Git-based tests. |
-| No third-party Python dependencies | Current tools use the standard library. |
+| Python 3.12+ | FastAPI/Uvicorn API, SQLite mission state, tooling, and offline tests. GX10 has Python 3.12.3. |
+| Node 24 and npm | Build or develop the React/TypeScript frontend locally. GX10 serves compiled assets without Node. |
+| Git on `PATH` | Reviewed source identity, source packaging, and isolated release tests. |
+| `requirements.lock` and `frontend/package-lock.json` | Exact Python and frontend dependency versions. |
 
-From the repository root:
+Create an isolated Python environment from the repository root.
+
+On Windows PowerShell:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.lock
+```
+
+On Linux or macOS:
+
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.lock
+```
+
+Activate the environment using your shell's normal mechanism, or substitute its Python executable in subsequent commands. Installing from the lockfile requires package-registry access; normal offline tests do not call providers.
+
+## Build and run one origin
+
+```sh
+cd frontend
+npm ci
+npm run build
+cd ..
+python tools/serve.py
+```
+
+Open `http://127.0.0.1:8080`. The same Python process serves `frontend/dist` and `/api`; no frontend development server is required. `GET /api/health` identifies the service as simulation with hardware disconnected.
+
+The launcher defaults to loopback and one worker. It has no reload loop, dependency installer, provider preflight, robot connection, camera ownership, service-manager integration, or GX10 transfer. Set an unused port explicitly when necessary:
+
+```sh
+python tools/serve.py --host 127.0.0.1 --port 8080
+```
+
+A missing frontend build fails early. Backend-only work can use `python tools/serve.py --api-only`. Keep `workers=1`: the SQLite supervisor in this first slice is a single-process application.
+
+For frontend development, run the API with `--api-only` in one terminal and `npm run dev` in `frontend` in another. Vite binds to loopback on port 5173 and proxies `/api` to `http://127.0.0.1:8080`. If the backend port changes, update the explicit proxy configuration too. Use `npm run build` to type-check and produce the delivery assets before review.
+
+## Verify the first connected slice
+
+The initial workspace connects a typed goal, symbolic plan, explicit approval, simulated bounded actions, mandatory stop, signal waiting, review decisions, and immutable evidence. Simulated signals and manually injected demo reviews are labelled as such. A backend Meta goal request is a distinct opt-in provider operation, with server-held credentials; it does not establish image review or physical execution.
+
+Use a separate test database when exploring restart and fault behavior:
+
+```sh
+python tools/serve.py --state-path ../pushpilot-test-state/workspace.sqlite3
+```
+
+The path is resolved relative to the calling directory. It is never part of a source release. No real credential is required to use the demo simulator.
+
+1. Submit a Bakery goal in demo mode and inspect the resulting plan.
+2. Approve the exact current plan, then advance one simulated action.
+3. Observe the required review and explicitly supply a labelled demo verdict.
+4. Complete the mandatory stop and its review. RED or UNKNOWN must retain the wait.
+5. Supply fresh simulated GREEN. An accepted stopped review permits automatic crossing; no repeated approval is required.
+6. Review the crossing and final verification. Inspect the evidence history for the source and cause of each decision.
+7. Restart during an active mission using the same test state. Recovery must require reconciliation and must not resume old work automatically.
+
+These checks establish the software simulation flow. They do not qualify pushing, turning, signal perception, map registration, or actual robot stopping. The UI and capability response must keep those unavailable capabilities explicit.
+
+## Checks and tests
 
 ```sh
 python tools/dev.py check
 python tools/dev.py test
+cd frontend
+npm run build
 ```
 
-`check` parses Python and JSON syntax. `test` runs 13 release-boundary tests and four offline connection-tool tests, without provider calls. Passing these commands establishes tooling behavior only, not image review, signal perception, AR or robot control. The separate [opt-in Meta connection check](META_API_CHECK.md) makes a real provider request.
+`check` parses Python and JSON source without loading credentials. `test` runs offline release-boundary, connection-tool, mission, and API tests with isolated test state. Provider behavior is injected in tests; the suite must not read the operator's real `.env` or contact equipment. Frontend build validation checks TypeScript and bundle generation. Visual review at desktop and tablet widths remains necessary for spacing, arrows, and readable state labels.
 
-## Implementation sequence
+The separate [Meta connection check](META_API_CHECK.md) makes a real provider request only when deliberately invoked. A successful connection check establishes endpoint access, not model judgment quality.
 
-1. **Contracts and supervision:** versioned boundaries, explicit transitions, confirmed goal revisions, voice-source provenance, and a source-labelled abstract simulator.
-2. **Operator workspace:** bounded push-to-talk and typed input, editable transcript review, plus actual supervisor state including approval, waiting, uncertainty, faults, and replay.
-3. **Meta interaction:** backend batch transcription adapter, MUSE interpretation/review adapter, versioned prompts, validated responses, and immutable request/result evidence.
-4. **Integrated hardware-free flow:** voice or typed input, explicit text confirmation and mission approval, a symbolic mission, RED wait, accepted GREEN, review rejection, reobservation, and restart.
-5. **GX10 delivery:** runtime selection, host inspection, and an isolated release/activation path.
-6. **Later physical integration:** map-specific work only after the map hold is released and the final installation is available.
+## Credentials and configuration
 
-The first voice path uses bounded recording upload and batch file transcription inside the application backend; a standalone speech server, streaming and text-to-speech are later options. Add meaningful acceptance checks for permission denial, empty/failed transcription, cancellation, late responses and newer input. No transcript result may create mission approval, and typed entry must remain usable. Actual Korean or English transcript content is input data; UI controls, errors and source documentation remain English. See [voice input](VOICE_INPUT.md).
+`.env.example` contains empty placeholders. The backend reads `META_API_KEY` from its process environment or repository-local ignored `.env` when the ASGI application starts. It does not make an automatic provider request at startup. Enter credentials directly into that local file or the host's restricted configuration through the existing direct-input workflow.
 
-When selecting dependencies, add manifests and lockfiles with reproducible installation and verification commands. Do not install a framework merely to populate an empty component directory.
+`PUSHPILOT_STATE_PATH` selects the SQLite file; the launcher also exposes `--state-path`. The default is ignored `runtime/workspace.sqlite3`. Credentials, configuration files, and state must not enter browser build variables, Git, source packages, or screenshots.
 
 ## Repository discipline
 
-Source, identifiers, comments, logs, prompts, UI copy, accessibility text, errors, and development documentation are English. User discussion may remain Korean.
+Source, identifiers, comments, logs, prompts, UI copy, accessibility text, errors, and development documentation are English. Original-language transcripts and goal text are user data. User discussion may remain Korean.
 
-Commit source, contracts, versioned prompts, meaningful tests, and reviewed examples. Keep credentials, private images, runtime logs, operating profiles, mailboxes, and raw archives outside Git and release packages.
+Commit source, contracts, versioned prompts, lockfiles, meaningful tests, and reviewed examples. Keep credentials, private images, generated dependencies, compiled assets, runtime logs, operating profiles, mailboxes, and raw archives outside Git and source releases.
 
-`.env.example` contains empty placeholders. The standalone Meta connection checker reads `META_API_KEY` from the repository-local ignored `.env`; ordinary checks/tests do not read real credentials. The future application runtime does not yet load configuration. Enter credentials directly in the local file rather than chat.
-
-### Git and authorship
-
-Inspect current repository status and remotes before preparing a source snapshot:
+Inspect current status and remotes before preparing a snapshot:
 
 ```sh
 git status --short --branch
 git remote -v
 ```
 
-Use the user's actual Git identity. Review the intended file list before committing; the snapshot records its real date. Do not invent an author or backdate history. Repository creation, publication, visibility, and software license are separate user choices.
+Use the user's actual Git identity and the real contribution date. Record reused work and exact changes in [contributions](../CONTRIBUTIONS.md) and [third-party notices](../THIRD_PARTY_NOTICES.md). An import does not automatically acquire publication rights or become newly authored.
 
-Record reused work and exact changes in [contributions](../CONTRIBUTIONS.md) and [third-party notices](../THIRD_PARTY_NOTICES.md). An imported file does not automatically have publication rights or become newly authored by entering this repository.
-
-## Prepare a reviewed source release
+## Prepare a source release
 
 Review and commit intended source first. The builder requires a clean committed HEAD, including no staged or nonignored untracked work. Create the output directory outside the repository:
 
@@ -71,28 +123,28 @@ python tools/build_release.py --output ../release-bundles/pushpilot-source-v0.1.
 python tools/build_release.py --verify ../release-bundles/pushpilot-source-v0.1.0.zip
 ```
 
-The builder refuses an existing output path. The manifest binds committed source and hashes; verification checks integrity and path policy without extraction. Neither step transfers files, starts a service, authenticates a publisher, or establishes publication rights.
+The builder refuses an existing output path. The manifest binds committed source and hashes; verification checks integrity and path policy without extraction. Neither step transfers files, starts a service, authenticates a publisher, or establishes publication rights. Ignored `frontend/dist` is absent: a future GX10 release needs compiled assets built from that same clean commit in addition to source. See [GX10 deployment](../deploy/README.md).
 
-See [release tooling](../tools/README.md) for exact scope and [GX10 deployment](../deploy/README.md) for later delivery gates.
+## Boundaries and next implementation work
 
-## Boundaries that remain in force
-
-| Area | Current rule |
+| Area | Current boundary |
 | :--- | :--- |
-| Map | Final geometry/installation unknown; defer graphs, routes, coordinates, registration, stop/exit lines, signal ROIs, and registered AR. |
-| Mission | Symbolic locations and abstract actions; wheel-less surface pushing is the intended physical scenario. |
-| Signals | Full stop even on GREEN; RED/unknown/stale/obscured observations inhibit entry. |
-| Voice | Planned backend-only Meta batch transcription; confirmed text enters the common goal path, followed by explicit mission approval. |
-| Models | Validated interpretation/review; no generated robot scripts or authoritative coordinates. |
-| Evidence | Robot, image, car-pose, signal, and model sources independently labelled. |
-| Hardware | No robot contact, profile replay, mailbox restoration, camera ownership, or service restart by default. |
-| Stops | UI HOLD and process exit do not imply immediate in-flight stopping. |
+| Map | Symbolic locations and abstract actions. Final routes, metric coordinates, registration, stop lines, and signal ROIs remain deferred. User-provided images may be labelled temporary vision fixtures. |
+| Hardware | No robot transport, physical execution, profile replay, mailbox restoration, camera ownership, or operating-service restart. |
+| Signals | Simulated source only in this slice. Full stop even on GREEN; RED, unknown, stale, and obscured observations must inhibit physical admission later. |
+| Review | Demo verdicts are manually injected. Live-image MUSE review and independent local perception need separate implementation and validation. |
+| Voice | Planned bounded backend Meta transcription, editable transcript confirmation, common goal interpretation, and explicit plan approval. Capture and normalization are not established by this slice. |
+| Models | Validated goal interpretation; no generated robot scripts or authoritative coordinates. |
+| Evidence | Source-labelled event history. A provider call is not evidence of physical execution. |
+| Stops | UI HOLD and process exit do not imply immediate in-flight robot stopping. |
 
-## State, evidence, and restart
+Push-to-talk will require trusted target-device HTTPS, secure-context and permission checks, bounded recordings normalized to Meta's supported mono 16-bit PCM WAV, cancellation, and late-result rejection. New goals remain restricted to non-executing preparation. Streaming and speech output remain later options.
 
-Future local runtime files belong in ignored `runtime/`; GX10 uses dedicated shared storage. Keep immutable evidence references, causal identifiers, exact provider inputs/results, source labels, and transition causes. Scrub credentials from logs and receipts.
+## State and restart
 
-After restart, reconstruct history in a non-executing review state. Pending commands, admitted crossings, and old GREEN observations do not automatically regain authority. Code rollback must preserve the evidence history.
+Runtime state belongs in ignored `runtime/` locally or dedicated shared storage on GX10. The SQLite database contains mission state and append-only evidence events. Preserve it across a code update, restrict access, and back it up deliberately. A rollback must not overwrite newer history.
+
+After restart, an active mission enters non-executing recovery. Pending work, admitted crossings, previous approval, and old GREEN observations do not automatically regain authority. Reconcile or terminate the prior simulation explicitly before starting another.
 
 ---
 

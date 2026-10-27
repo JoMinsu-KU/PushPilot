@@ -1,6 +1,6 @@
 {
   "schema_version": "pushpilot.deployment-example.v1",
-  "status": "proposed_unverified",
+  "status": "runtime_selected_not_deployed",
   "host_alias": "gx10",
   "ssh_user": null,
   "host_address": null,
@@ -10,16 +10,31 @@
   "shared_directories": {
     "config": "<deploy-root>/shared/config",
     "secrets": "<deploy-root>/shared/secrets",
-    "evidence": "<deploy-root>/shared/evidence",
+    "state": "<deploy-root>/shared/state",
     "logs": "<deploy-root>/shared/logs"
   },
-  "runtime": {
-    "status": "not_selected",
-    "bind_address": null,
-    "port": null,
-    "service_manager": null,
-    "startup_command": null
+  "host_inspection": {
+    "observed_on": "2026-10-27",
+    "operation": "read_only",
+    "architecture": "aarch64",
+    "operating_system": "Ubuntu 24.04.4 LTS",
+    "python": "3.12.3",
+    "node_on_path": false,
+    "npm_on_path": false
   },
+  "runtime": {
+    "status": "selected_host_installation_unverified",
+    "implementation": "python_asgi_same_origin_static_frontend",
+    "python_minimum": "3.12",
+    "bind_address": "127.0.0.1",
+    "port": 8080,
+    "port_verified_available_for_activation": false,
+    "workers": 1,
+    "node_required_on_host": false,
+    "service_manager": null,
+    "startup_command": ".venv/bin/python tools/serve.py --host 127.0.0.1 --port 8080 --state-path <deploy-root>/shared/state/workspace.sqlite3"
+  },
+  "source_bundle_includes_frontend_build": false,
   "robot_transport_included": false,
   "physical_execution_implemented": false,
   "requires_read_only_host_inspection_before_deployment": true

@@ -1,0 +1,25 @@
+# Example only. Review and install manually after isolated application checks.
+# Replace every <...> value before use. No service is installed by this file.
+[Unit]
+Description=PushPilot simulation workspace
+After=network.target
+
+[Service]
+Type=simple
+User=<application-user>
+WorkingDirectory=<deploy-root>/current
+EnvironmentFile=<deploy-root>/shared/secrets/application.env
+Environment=PUSHPILOT_STATE_PATH=<deploy-root>/shared/state/workspace.sqlite3
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=<deploy-root>/current/.venv/bin/python tools/serve.py --host 127.0.0.1 --port 8080
+# A restart requires reconciliation. Do not silently re-enter an active mission.
+Restart=no
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=<deploy-root>/shared/state
+
+[Install]
+WantedBy=multi-user.target

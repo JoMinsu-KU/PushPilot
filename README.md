@@ -16,8 +16,8 @@
 </p>
 
 <p align="center">
-  <code>Stage: repository foundation</code> &nbsp;
-  <code>Tooling: Python 3.11+</code> &nbsp;
+  <code>Stage: connected simulation workspace</code> &nbsp;
+  <code>Runtime: Python 3.12+</code> &nbsp;
   <code>Deployment target: GX10</code>
 </p>
 
@@ -37,7 +37,12 @@ The initial demo design includes **text and push-to-talk goals**. A backend voic
 
 The first use case is a controlled tabletop mission: push a wheel-less car from a named starting station to a destination, stop at controlled intersections, wait on red and enter on qualified green. It is a compact testbed for an inspectable operator workflow. A future AR-glasses companion extends the product idea beyond the tablet.
 
-**The current repository contains the development and release foundation.** The mission application and model/device integrations are planned; the illustrations describe the intended experience.
+**The first connected workspace implements typed goals, plan approval, bounded simulation, mandatory-stop signal gating and evidence replay.** An opt-in backend adapter interprets goals with Muse Spark. Voice, image review, metric AR and physical execution remain future integration work. The documentation artwork describes the broader intended experience.
+
+<p align="center">
+  <a href="docs/assets/workspace-simulation.jpg"><img src="docs/assets/workspace-simulation.jpg" width="1280" alt="Actual PushPilot simulation workspace: English goal entry, an illustrative wheel-less car scene, symbolic plan, approval control and explicit disconnected hardware labels."></a><br>
+  <sub>Actual software screenshot · illustrated scene · simulation only. <a href="docs/VERIFICATION.md">Verification scope</a></sub>
+</p>
 
 ## The interaction loop
 
@@ -84,38 +89,55 @@ The planned evidence model records source identity independently for the robot, 
 | Area | Status | What is available now |
 |---|---|---|
 | Repository structure and component ownership | **Ready** | Standalone workspace with component guides and development rules. |
-| Equipment-free checks | **Ready** | Python source/example-JSON checks, 13 release tests and four offline connection-tool tests. |
+| Equipment-free checks | **Ready** | Source checks, release tests, mocked provider/API tests and mission transition scenarios. |
 | Source-release tooling | **Ready** | Clean-commit packaging, file hashes and archive verification. |
 | Meta API connectivity | **Verified: text only** | Authenticated model discovery and a real Muse Spark completion; [scope and command](docs/META_API_CHECK.md). |
-| Mission backend and abstract simulator | **Planned** | Responsibilities and interaction boundaries are documented. |
-| Operator frontend and evidence replay | **Planned** | English product flow and visual direction are specified. |
-| Live MUSE/provider integration | **Planned** | Goal/outcome roles and review requirements are documented. |
+| Mission backend and abstract simulator | **Implemented** | SQLite state/evidence, approval, bounded actions, stop/review/signal gate and restart recovery. |
+| Operator frontend and evidence replay | **Implemented** | Responsive English React workspace connected to revisioned backend state and event history. |
+| MUSE goal interpretation | **Verified: text only** | Backend-only strict-schema Muse Spark adapter; explicit opt-in and no scripted fallback. |
+| Fresh-image MUSE outcome review | **Planned** | Current outcome verdicts are explicitly operator-injected demo inputs. |
 | Voice goal input | **Planned: initial demo** | Push-to-talk, backend transcription, editable text and explicit plan approval are designed; no voice API call has been verified. |
 | Final map, metric AR and robot integration | **Deferred** | Awaiting the final installed map and physical qualification. |
 | AR-glasses companion | **Concept** | Future experience; no wearable integration is claimed. |
 
-**Current verification: 13 release-boundary tests and four offline connection-tool tests.** These are not mission, model-accuracy or physical-robot results. The separate opt-in [Meta check](docs/META_API_CHECK.md) establishes authentication and one text completion. There is no application server startup command yet.
+**Verification covers software simulation and request boundaries.** Mission tests exercise mandatory stopping, red/unknown/stale inhibition, automatic green admission, uncertainty, faults, idempotency and restart recovery. A real structured [MUSE goal check](docs/META_API_CHECK.md) also reached `PLAN_READY`. These checks do not establish image accuracy or physical-robot results.
 
-Final road geometry and physical placement are unresolved. Current development uses symbolic locations, abstract actions and explicitly labelled test inputs. Map-specific routes, calibration, stop lines, signal regions and spatial AR remain deferred. Existing map examples are not embedded as a production dependency.
+Final road geometry and physical placement are unresolved. Current development uses symbolic locations, abstract actions and explicitly labelled test inputs. Map-specific routes, calibration, stop lines, signal regions and spatial AR remain deferred. The [temporary print candidate](docs/TEST_INPUTS.md) is documented separately and its artwork is not embedded as a production dependency.
 
 ## Quick start
 
 ### Prerequisites
 
-- **Python 3.11 or newer**.
+- **Python 3.12 or newer** and the packages in `requirements.lock`.
+- **Node 24 and npm** to build the frontend locally; GX10 serves the built assets without Node.
 - **Git** available on your command path. Release tests create isolated local Git fixtures.
-- No third-party packages, model credentials or robot connection are required for the offline checks below.
+- Model credentials and robot connections are not required for simulation or offline tests.
 
 From the repository root:
+
+```bash
+python -m venv .venv
+# Activate the environment, then:
+python -m pip install -r requirements.lock
+cd frontend
+npm ci
+npm run build
+cd ..
+python tools/serve.py
+```
+
+Open `http://127.0.0.1:8080`. Submit a Bakery goal with **Demo interpreter**, approve the plan and advance the symbolic actions. Open **Demo** for labelled review verdicts and signal observations. Accepted stopping plus fresh GREEN admits the crossing automatically.
+
+Run offline verification separately:
 
 ```bash
 python tools/dev.py check
 python tools/dev.py test
 ```
 
-These commands work from PowerShell or a shell with the prerequisites available. They validate repository tooling without starting an application, contacting a model or operating equipment.
+The checks do not start an application, contact a model or operate equipment. The workspace defaults to loopback and makes no provider request at startup. Save `META_API_KEY` only in the ignored server-side `.env` to enable the explicit MUSE goal option.
 
-For the full workflow and future runtime setup, read [Development](docs/DEVELOPMENT.md).
+For Windows/Linux commands, exact state behavior and GX10 delivery, read [Development](docs/DEVELOPMENT.md).
 
 ### Create a source release
 
@@ -157,7 +179,7 @@ This creates a **source bundle**, not a deployed service. Read [Release tooling]
 └── pyproject.toml        Current tooling requirements
 ```
 
-Component directories define ownership before their application implementations are added. Future internal layouts are documented as planned, not presented as existing modules.
+Component readmes distinguish implemented runtime files from the remaining voice, image-review and physical adapters. The versioned workspace interface lives in [`contracts/workspace.ts`](contracts/workspace.ts).
 
 | Start here if you want to… | Read |
 |---|---|

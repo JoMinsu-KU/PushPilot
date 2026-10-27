@@ -1,11 +1,16 @@
 [project]
 name = "pushpilot-main-app"
 version = "0.1.0"
-description = "Repository bootstrap for the PushPilot mission application"
-requires-python = ">=3.11"
-dependencies = []
+description = "A reviewable tablet workspace for bounded tabletop missions"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi==0.162.0",
+    "uvicorn==0.54.0",
+    "httpx==0.28.1",
+    "python-multipart==0.0.32",
+]
 
 [tool.pushpilot]
-workspace_status = "bootstrap"
-runtime_implemented = false
+workspace_status = "simulation_workspace"
+runtime_implemented = true
 physical_execution_implemented = false

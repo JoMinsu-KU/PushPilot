@@ -2,7 +2,7 @@
 
 [Documentation](README.md) · [Meta intelligence](META_INTELLIGENCE.md) · [Tools](../tools/README.md)
 
-**Verified scope: authentication, enabled-model discovery and one text completion.** This is an opt-in provider check, not the mission provider adapter or an application server.
+**Verified scope: authentication, enabled-model discovery, a text completion and one structured application-goal request.** Image review and voice remain unverified.
 
 ## Verified request
 
@@ -33,14 +33,24 @@ The script uses the Python standard library. It reads the fixed local file, cont
 
 Output is a credential-redacted JSON summary. The key is never part of the prompt, response report or committed configuration. Importing the module and running the ordinary test suite make no provider calls. Local network access must be available; failure to reach the host does not establish that the key is invalid.
 
+## Application goal adapter
+
+On **October 27, 2026 at 14:07 KST**, an explicit request through the application's `/api/v1/goals` boundary used the server-held key and `muse-spark-1.3`. The input was:
+
+> Push the car from Pizza to the bakery. Stop at the intersection and wait for green.
+
+The strict `json_schema` response was accepted, returning HTTP 200 and a `PLAN_READY` snapshot in simulation. The adapter interpreted destination `BAKERY` and returned the English summary: “Push the car from PIZZA to the bakery, stopping at the intersection for green.” End-to-end elapsed time was 3,880 ms for this single check, including the local test harness. This is not a latency benchmark.
+
+The check used an isolated temporary SQLite database, did not approve or execute the plan, and sent no image, audio or robot data. No hardware was contacted. The public record omits credentials and provider identifiers. Offline tests inject provider responses, including malformed output, upstream rejection and timeout.
+
 ## Remaining integration work
 
 - Image input and structured review output have not been tested by this check.
-- Goal interpretation, mission decisions, evidence/replay and frontend integration remain planned.
+- The application now implements typed-goal interpretation, simulation decisions and event replay. Complete provider request/response provenance, usage and latency records remain additional work.
 - No camera, paper-signal detector, map registration or robot was contacted.
 - The API check grants no motion authority.
 
-The provider adapter must add strict request/observation binding, schema validation, source labels, timeouts and decision evidence with its implementation.
+The goal adapter uses validated structured output, explicit source labels and HTTP timeouts. An image-review adapter still needs fresh observation/action binding, its own validated schema, disagreement handling and complete model evidence. Goal interpretation never grants motion authority.
 
 ## Official references
 

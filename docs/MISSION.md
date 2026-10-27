@@ -68,7 +68,7 @@ The final map will determine which intersections have signals, how approaches ar
 | Checks accept the stopped state and fresh green | Continue automatically through the admitted crossing |
 | Application restarts while waiting or crossing | Return to review; do not restore permission from old observations |
 
-Normal red-to-green continuation is designed to avoid per-goal pendant script changes or repeated PLAY. That is a future integration behavior, not a capability supplied by this bootstrap.
+The simulator automatically admits one crossing after an accepted mandatory-stop review and fresh simulated GREEN, without another approval. The corresponding physical red-to-green continuation still requires a qualified robot adapter; no pendant or robot operation is supplied by this application.
 
 The scenario concerns **stop-line admission**. Changing a card during an admitted crossing is not specified as an immediate interruption request. Any later in-flight stop requirement would need a separate controller-supported design and qualification.
 
