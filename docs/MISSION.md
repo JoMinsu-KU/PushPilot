@@ -47,9 +47,9 @@ Voice recording or typed request
   → verify outcome
   → approach an intersection
   → stop before its stop line
-  → verify stopping and observe the signal
-      RED / UNKNOWN → remain stopped and observe again
-      fresh GREEN + accepted checks → admit crossing
+  → verify stopping and send a new image to MUSE for signal judgment
+      MUSE RED / UNKNOWN → remain stopped and observe again
+      valid current MUSE GREEN + accepted binding checks → admit crossing
   → execute and review the qualified crossing actions
   → continue toward the destination
   → verify the destination outcome
@@ -61,14 +61,16 @@ The temporary adapter starts east-facing at PIZZA. Its default shortest drawing 
 
 | Situation at the approach | Required behavior |
 |---|---|
-| Green before arrival | Stop first; then evaluate the signal |
-| Red after verified stopping | Wait without beginning the crossing |
+| Green before arrival | Stop first; then ask MUSE to judge a new image |
+| MUSE reports RED after verified stopping | Wait without beginning the crossing |
 | Card absent, obscured, ambiguous or stale | Treat entry as inhibited |
-| Green becomes visible while waiting | Obtain fresh observations and accepted checks before entry |
-| Checks accept the stopped state and fresh green | Continue automatically through the admitted crossing |
+| Signal changes while waiting | Capture a new image and obtain another MUSE judgment |
+| MUSE reports current GREEN and stop/request checks pass | Continue automatically through the admitted crossing |
 | Application restarts while waiting or crossing | Return to review; do not restore permission from old observations |
 
 The simulator automatically admits one crossing after an accepted mandatory-stop review and fresh simulated GREEN bound to that same junction, without another approval. It clears stop/signal authority before the next approach, which requires its own stop and review. The corresponding physical red-to-green continuation still requires a qualified robot adapter; no pendant or robot operation is supplied by this application.
+
+For the intended live scenario, **MUSE judges RED/GREEN from the image while the robot is already stopped**. A separate local color classifier is not mandatory. Local checks validate the stop receipt, current junction/approach and plan, frame provenance/freshness and exact model-request binding. The dedicated live signal-review integration is not yet implemented; the current simulation signal controls and recorded-review APIs keep their existing meaning. See [MUSE signal gate](MUSE_SIGNAL_GATE.md).
 
 The scenario concerns **stop-line admission**. Changing a card during an admitted crossing is not specified as an immediate interruption request. Any later in-flight stop requirement would need a separate controller-supported design and qualification.
 
@@ -87,7 +89,7 @@ The simulator advances through its simulated action receipt and a review accepte
 The future physical supervisor still needs three kinds of independently supported evidence:
 
 1. **Action evidence:** the action adapter reports the result for the correct request/session.
-2. **Local evidence:** applicable freshness, signal and outcome checks support the expected state.
+2. **Local evidence:** stop/action receipts, capture provenance, freshness and current plan/junction/request bindings support accepting the applicable MUSE judgment; this does not require independent local color classification.
 3. **Model evidence:** MUSE reviews fresh imagery and supports the expected-versus-observed outcome.
 
 A successful robot movement cannot substitute for evidence that the car moved as intended. A confident model answer cannot substitute for a required local check. If the scene is hidden or the evidence conflicts, the next step is waiting, reobservation or a visible fault.

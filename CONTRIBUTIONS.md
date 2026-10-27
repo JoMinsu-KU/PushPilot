@@ -16,6 +16,7 @@ PushPilot has existing POC robot transport, earlier tabletop experiments, a city
 | Voice input and service composition | New first-demo design for browser push-to-talk, backend Meta transcription, editable text and explicit plan approval | Design only; no microphone capture, voice API call or deployed service verified |
 | Mission supervisor, abstract simulator and API | New Python implementation in `backend/`, versioned workspace DTO and isolated offline tests, 2026-10-27 KST | Software simulation only: approval, bounded actions, mandatory stop, signal admission, review and restart recovery |
 | Operator frontend and replay | New React/TypeScript implementation and original code-native SVG scene, 2026-10-27 KST | Connected software workspace; illustration is not camera imagery or registered AR |
+| Visible goal and microphone entry | New glass intent bar, original-query inspection, goal-dialog tabs and disconnected voice guidance, 2026-10-27 KST | UI only; accepted request remains separate from editor draft and model interpretation. No microphone capture, transcription or voice-provider claim |
 | Meta goal adapter | New strict-schema server-side adapter; one real structured goal request on 2026-10-27 at 14:07 KST; see `docs/META_API_CHECK.md` | Live text interpretation only; no image/voice inference or physical result |
 | Action-bound MUSE outcome reviewer | New `backend/action_review.py`, shared DTO and UI for operator-selected recorded pairs, 2026-10-27 KST | Strict actual-provider result can change the simulated mission through local gates; no fresh physical evidence or robot authority |
 | Recorded-review evaluation harness | New original synthetic schematic fixtures and opt-in three-case provider harness, 2026-10-27 KST; actual run results belong in `docs/META_API_CHECK.md` | Pipeline/state evidence on explicitly synthetic input, not real-car accuracy or physical motion |
@@ -33,6 +34,8 @@ PushPilot has existing POC robot transport, earlier tabletop experiments, a city
 The first Git commit, when created, is a truthful snapshot after this work. Do not backdate commits or present it as a reconstructed start-of-event snapshot.
 
 ## Record each implemented feature
+
+The signal scenario was clarified by the user on 2026-10-27: MUSE judges signal color from a new image after verified stopping. Documentation now distinguishes that intended color judgment from local stop/provenance/freshness/request validation, without requiring a second local color classifier. This is a design correction only; it does not implement live signal capture, a MUSE signal endpoint or physical stop/continuation. See [the planned boundary](docs/MUSE_SIGNAL_GATE.md).
 
 - Feature and affected paths; contributor(s); actual work interval with timezone.
 - Baseline/import source and version/hash; exact change or commit evidence.

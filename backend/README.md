@@ -122,7 +122,7 @@ SQLite commits the state, event append, and command receipt together. Evidence r
 
 - Bounded push-to-talk upload, format validation, and Meta voice transcription, following the [voice design](../docs/VOICE_INPUT.md).
 - Connect fresh physical post-action capture and independent measurements. Recorded-pair action review already affects simulation; its selected uploads do not prove capture chronology or hardware completion.
-- Qualified local signal observation/inhibition, separate from model latency.
+- A dedicated [stopped-live MUSE signal-review path](../docs/MUSE_SIGNAL_GATE.md): verify stopping, capture a fresh current-approach image, let MUSE judge RED/GREEN/UNKNOWN, then validate stop, plan/junction/approach, frame/freshness and response bindings before wait or entry. A second local color classifier is not required. The robot remains stopped while awaiting MUSE or when the result is unknown, stale or failed. Existing simulated signals and recorded reviews are unchanged.
 - Production map and metric AR registration, contact geometry, physical pushing/turning, robot transport, and independent physical verification. Test-only camera-to-drawing overlays are already available for uploaded frames and an explicitly locked live display.
 
 The model interprets intent and reviews supplied recorded evidence. Deterministic gates own state transitions; model text never supplies executable robot code or authoritative metric coordinates.

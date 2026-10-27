@@ -24,7 +24,7 @@ The **tablet workspace** presents the goal, current state and approval. The **mi
 
 The planned **voice adapter** belongs inside the same backend. Its planned first implementation will accept a finite push-to-talk recording and call Meta's file transcription endpoint. It returns an editable draft transcript to the workspace. Only after the operator submits the text does it join the shared typed-goal interpretation path; the resulting plan still requires explicit tablet approval. The API key stays on the backend. [Voice input](VOICE_INPUT.md) defines cancellation, language and revision handling; [service composition](SERVICE_COMPOSITION.md) defines module and deployment ownership.
 
-There are two complementary decisions: the model explains what the scene supports; the supervisor determines whether the complete set of required checks permits a state transition. An image-based judgment cannot manufacture a fresh signal, a verified stop or a hardware receipt.
+There are two complementary decisions: the model explains what the scene supports, including the intended at-stop signal-color judgment; the supervisor validates whether the current response and required execution conditions permit a state transition. An image answer cannot manufacture frame freshness, verified stopping or a hardware receipt. A second local color classifier is not required by the user-confirmed scenario.
 
 ## Responsibilities
 
@@ -34,7 +34,7 @@ There are two complementary decisions: the model explains what the scene support
 | **Mission supervisor** | State transitions, action sequencing, waits, faults and admission | Physical motion capability without a qualified adapter |
 | **Meta provider adapter** | Actual request/result handling, versions, timeouts and structured output validation | Authoritative robot coordinates or immediate stopping |
 | **Voice adapter** | Bounded audio intake, server-side transcription, editable draft text and capture/session binding | Mission approval, raw robot commands or physical stopping |
-| **Observation adapters** | Timestamped images, local signal observations and source identity | Metric accuracy without calibration and evaluation |
+| **Observation adapters** | Timestamped images, signal-target identity and capture provenance for MUSE review | Metric accuracy without calibration and evaluation |
 | **Live preview adapter** | Ephemeral native JPEG frames, source/age metadata and an explicitly locked display transform | Persisted evidence, model review, local signal verification or mission authority |
 | **Action adapter** | One bounded action and its corresponding result | Successful vehicle displacement merely because a tool reached its target |
 | **Evidence store** | Immutable inputs/results and their causal connection to decisions | A physical claim unsupported by the recorded sources |
@@ -60,15 +60,17 @@ The simulator requires current-plan approval, exact review binding and its simul
 1. The operator has approved the current mission interpretation.
 2. The preceding bounded action has a valid completion result and accepted review.
 3. Required observations belong to the current action/session and meet freshness requirements.
-4. Local checks and the MUSE review agree that continuation is supported.
-5. At an intersection, stopping is verified and a fresh green observation permits admission.
+4. MUSE supplies the visual judgment; local checks validate stop receipts, provenance, freshness, response schema and current request/action bindings.
+5. At an intersection, stopping is verified and a valid current MUSE GREEN judgment for the applicable approach permits admission.
 6. The requested action belongs to the capabilities qualified for the selected action adapter.
 
 Exact tolerances, freshness windows and physical action sizes are configuration and qualification work. They are not established by illustrative simulation settings.
 
-### Signal handling has its own observation path
+### MUSE judges the signal while the robot is stopped
 
-An operator changes a red/green paper signal. A local observation path must identify the relevant signal, retain timestamps and inhibit entry when it is red, absent, obscured or stale. MUSE receives scene context and reviews the stopped state; cloud response timing is not used as an immediate robot-stop mechanism.
+The confirmed scenario is mandatory stop, verified stopping, a new image sent to MUSE, then wait or proceed according to MUSE's signal-color judgment. RED keeps the robot stopped and starts another observation cycle. GREEN can admit the current crossing after local binding and freshness checks. UNKNOWN, an obscured target, timeout, malformed output or a superseded request keeps the robot stopped. MUSE is the visual color judge; local supervision does not require another color opinion.
+
+The request identifies the current junction, approach direction and intended signal region, with the original frame and capture provenance. The supervisor checks the stop receipt and current plan/step/request before accepting the result. It holds the robot while MUSE is pending. This dedicated stopped-live signal-review path is planned, not supplied by the existing independent recorded-scene endpoint or live preview. See [MUSE signal gate](MUSE_SIGNAL_GATE.md).
 
 Every configured approach requires a stop even on green. Once the qualified crossing has been admitted, it completes under its defined policy before the next approach. **Interrupting a moving robot when the paper changes color is outside the current scenario.** A web `HOLD` or server shutdown must never be presented as a physical emergency stop.
 

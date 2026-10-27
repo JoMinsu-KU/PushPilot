@@ -44,6 +44,8 @@ The strict response reports `USABLE`, `REOBSERVE` or `UNKNOWN`, visible places, 
 
 **Scene inspection does not approve an action, supply the deterministic signal gate or advance the mission.** A separate [action-review endpoint](ACTION_REVIEWS.md) compares a selected recorded before/after pair for the pending simulated action; demo verdicts remain separately labelled. Trusted fresh physical capture and measured local completion remain pending. Scene `USABLE` means the image supports inspection, not successful vehicle arrival.
 
+The intended at-stop signal scenario uses MUSE to judge a new image of the applicable signal, then waits on RED or admits a valid current GREEN after stop/context checks. A second local color classifier is not mandatory. This dedicated live path remains planned; it does not change the current independent inspection endpoint. See [MUSE signal gate](MUSE_SIGNAL_GATE.md).
+
 The application can connect to a separately authorized, already-running [live preview](LIVE_CAMERA.md) service when explicitly configured. That preview has its own memory-only frames and fixed display registration. It does not replace recorded MUSE inputs or provide qualified physical observations. The first scene-inspection frame was a recorded native 1920×1080 GX10 photograph; its source stays `recorded`. The application starts no camera or robot process and does not manage existing POC services.
 
 ## Replace the temporary map

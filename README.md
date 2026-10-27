@@ -74,7 +74,9 @@ These are labelled schematic test inputs, **not real-car photographs or physical
 
 ### Model judgment + deterministic authority
 
-**Muse Spark** interprets intent and compares the supplied visual evidence. **The supervisor** enforces current-plan approval, request/review identity, map binding, stop policy and junction-scoped signal admission. A positive model answer cannot create a green signal or bypass a mandatory stop. A failed provider request never silently becomes a demo PASS.
+**Muse Spark** interprets intent and compares the supplied visual evidence. **The supervisor** enforces current-plan approval, request/review identity, map binding, stop policy and junction-scoped signal admission. A recorded-action PASS cannot supply the separate simulated GREEN or bypass a mandatory stop. A failed provider request never silently becomes a demo PASS.
+
+The planned [stopped-live signal path](docs/MUSE_SIGNAL_GATE.md) makes MUSE the color judge: verify stopping, submit a fresh image of the current approach, wait on RED or uncertainty, and admit GREEN only after the supervisor validates stop, plan/junction/approach, frame/freshness and response bindings. No second local color classifier is required. The robot remains stopped during the request. This live signal integration is not implemented; existing recorded-scene inspection and recorded-action PASS keep their current limits.
 
 SQLite events and review records connect the input, response and resulting transition for replay. Recorded imagery, actual provider responses and simulated execution retain separate source labels.
 
@@ -88,6 +90,7 @@ SQLite events and review records connect the input, response and resulting trans
 | Mission workflow | Three temporary graph routes, mandatory stops, red/unknown waiting, scoped green admission and replay | Software simulation; action receipts and signals are simulated. Explicit demo verdicts remain available and labelled. |
 | Image presentation and route overlay | Private upload, four-marker test lock, fixed-reference projection, Camera board-focus mask, full-frame display and execution-aware route portions | Progress comes from simulation; stop lines are illustrative. The mask preserves camera perspective and geometry; raw frames stay unchanged. No car tracking, robot/BASE registration or metric accuracy claim. |
 | Live camera preview | Opt-in native MJPEG helper, loopback transport, bounded RAM frames, source/age labels and explicit display-lock path | Preview only; current physical registration results belong in [verification](docs/VERIFICATION.md). No automatic MUSE submission, mission evidence, signal gate or robot observation. |
+| Stopped-live signal judgment | Designed: MUSE judges color after verified stopping; deterministic checks control admission | Not implemented. Current signal input is simulated; recorded-scene signal findings do not supply its GREEN. |
 | Voice and robot execution | Designed or deferred | Not connected. Physical pushing, turning and paper-signal operation need qualification. |
 | GX10 and glasses | GX10 hosts the standalone camera helper; full application deployment and wearable integration remain separate | Current application runs on Windows. No full GX10 application deployment or wearable connection. |
 

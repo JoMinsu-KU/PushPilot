@@ -21,6 +21,7 @@ The current [visual direction](DESIGN_SYSTEM.md) follows the user's industrial r
 | Your goal | Start here | Continue with |
 |---|---|---|
 | Understand the product | [Mission](MISSION.md) | [Meta intelligence](META_INTELLIGENCE.md) |
+| Confirm the intersection scenario | [MUSE signal gate](MUSE_SIGNAL_GATE.md) | Planned stopped-live color judgment; current simulation remains separate |
 | Design the operator workspace | [Design system](DESIGN_SYSTEM.md) | [Frontend](../frontend/README.md) |
 | Follow route progress or replace the drawing | [Route display](ROUTE_DISPLAY.md) | [Temporary map](TEMPORARY_MAP.md#replace-the-temporary-map) |
 | Understand the system | [Architecture](ARCHITECTURE.md) | [Service composition](SERVICE_COMPOSITION.md) |

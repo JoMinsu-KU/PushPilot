@@ -15,6 +15,7 @@
 | Goal understanding | Implemented through `muse-spark-1.3`; BAKERY/BOOKSTORE/SCHOOL or UNKNOWN with clarification and an English summary. | No unavailable destination, route, coordinates, robot commands or approval. |
 | Recorded-scene inspection | Implemented separate USABLE/REOBSERVE/UNKNOWN schema, visible places, car visibility, paper signal and limitations. | Printed cars/start footprints and tiny decorative traffic lights are not physical car/card evidence; no motion authority. |
 | Action review | Implemented recorded before/after comparison for the pending simulated action; PASS/FAIL/REOBSERVE/UNKNOWN with observed evidence and limitations. | Neither operator-selected recordings nor a model PASS establish physical freshness, a robot receipt or clearance. |
+| Stopped-live signal review | Planned; after a verified stop, a fresh current-approach image goes to MUSE for RED/GREEN/UNKNOWN. | MUSE judges color; the supervisor checks stop, plan/junction/approach, frame/freshness and response bindings before wait or entry. No mandatory second color classifier. [Design](../docs/MUSE_SIGNAL_GATE.md) |
 | Uncertainty review | Recorded-action REOBSERVE/UNKNOWN changes the simulator to reobservation without replaying movement. | Uncertainty does not authorize movement; physical observation remains separate work. |
 
 The action-review vocabulary is **PASS**, **FAIL**, **REOBSERVE** and **UNKNOWN**. Demo inputs and actual MUSE recorded-pair results keep independent source labels. The separate scene vocabulary is **USABLE**, **REOBSERVE** and **UNKNOWN**. Scene USABLE means usable visual evidence; it cannot complete an action, override RED or grant a crossing. Recorded-action MUSE results bind the exact pending review and pass through independent local gates.
@@ -42,7 +43,7 @@ The full review integration must preserve exact prompt/schema/model versions, in
 
 Goal, scene and action-review adapters reject invalid responses and sanitize provider failures. No actual-provider failure silently falls back to demo interpretation or a scripted PASS. An explicit manual demo verdict remains a separate operator action and source.
 
-Model latency is not the fast paper-signal inhibition path. The future observation-backed supervisor must combine a valid review with independent local checks before continuation.
+The planned signal prompt judges the relevant current-approach signal only after a verified stop. MUSE RED means remain stopped and observe again; GREEN can support crossing admission only when deterministic stop, plan/junction/approach, frame/freshness and response checks pass. Unknown, obscured, stale, malformed, failed or timed-out results keep the robot stopped. Local checks validate provenance and applicability rather than reclassifying color; no separate fast color detector is required. Interrupting an already admitted crossing when a signal changes is outside this scenario. The dedicated live signal prompt, contract and integration remain unimplemented; existing recorded-scene and recorded-action prompts retain their current authority limits.
 
 ## Before reusing historical work
 

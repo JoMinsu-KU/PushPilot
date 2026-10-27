@@ -23,7 +23,7 @@ These actual calls are documented in [Meta API evidence](META_API_CHECK.md). The
 
 An additional actual-provider run compared three original **synthetic schematic** before/after pairs for the same expected approach: depicted movement returned PASS → READY, no progress returned FAIL → FAULT, and occlusion returned REOBSERVE → REOBSERVE. There was one call per condition. This demonstrates the model-to-supervisor consequence on designed inputs, not real-car image accuracy. The [API record](META_API_CHECK.md) retains per-call timing and reported tokens.
 
-## Three distinct model boundaries
+## Implemented model boundaries
 
 | Boundary | Input | Output | Authority |
 |---|---|---|---|
@@ -32,6 +32,8 @@ An additional actual-provider run compared three original **synthetic schematic*
 | **Action review** | Current bounded action, expected outcome and an operator-selected before/after frame pair | PASS, FAIL, REOBSERVE or UNKNOWN with an expected/observed explanation | May satisfy or reject the pending simulated review through the supervisor; never bypasses local gates or proves physical freshness. |
 
 A scene being USABLE does not mean an action passed. A recorded action PASS is not an actual robot receipt. Each response retains its own source and binding.
+
+A separate **stopped-live signal review** is planned: after the robot is verified stopped at the current approach, MUSE judges RED, GREEN or UNKNOWN from a fresh original signal image. RED means wait and observe again; GREEN may admit the crossing after the supervisor validates stop, plan/junction/approach, frame/freshness and response bindings. MUSE is the signal-color judge; a second local color classifier is not required. The robot remains stopped while awaiting the response. This path is not implemented and does not promote the existing recorded-scene signal field or recorded-action PASS into crossing authority. See [MUSE signal gate](MUSE_SIGNAL_GATE.md).
 
 ## Action-bound review
 
@@ -61,11 +63,11 @@ Two outcomes of the same intended action should lead to different decisions when
 
 - Explicit approval of the current plan and matching map identity.
 - A valid action result and the exact pending review binding.
-- Independent stop and junction-scoped signal gates.
+- A verified stop receipt and a signal result bound to the current junction and approach; current simulated GREEN remains separate from the planned live MUSE signal result.
 - A supported adapter and non-executing recovery after restart.
 - Rejection of stale/superseded requests and changed-payload request-ID reuse.
 
-Model responses cannot contain executable robot scripts, authoritative coordinates or unrestricted recovery commands. Cloud response timing cannot promise immediate stopping. The future local paper-signal inhibition path must operate independently of semantic-review latency.
+Model responses cannot contain executable robot scripts, authoritative coordinates or unrestricted recovery commands. In the planned signal path, MUSE owns color judgment; local checks validate the stop receipt, current plan/junction/approach, frame identity and freshness, and response schema/request binding. They do not supply a second color opinion. The robot remains stopped during provider latency, timeout or uncertainty. Changing a signal during an already admitted crossing is outside the current stop-line-admission scenario.
 
 A provider timeout, malformed output or failure is exposed rather than replaced with a scripted acceptance. The separate Demo controls deliberately inject operator-sourced verdicts; their labels and evidence remain different from actual Meta responses.
 

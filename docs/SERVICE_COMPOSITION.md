@@ -21,10 +21,10 @@ The application uses a browser frontend and **one backend process containing sep
 | **Tablet browser** | English workspace, typed goals, graph route, recorded-frame upload/overlay, opt-in live preview, scene inspection and replay | React/TypeScript; microphone/transcript flow planned |
 | **Application backend** | Revisioned mission/scene APIs, graph routing, goal interpretation, abstract actions, private frame inspection and a separate transient preview API | FastAPI/Uvicorn, one worker; OpenCV/NumPy |
 | **Standalone camera helper** | Explicit Linux camera ownership, native 1920 × 1080 MJPEG bytes and host-receive metadata over loopback | Independently started on GX10; no application deployment, persisted evidence or robot control |
-| **Meta Spark API** | Goal interpretation, independent scene inspection and bound recorded-action comparison | Actual goal/scene cases and three synthetic action-review cases recorded in [Meta evidence](META_API_CHECK.md) |
+| **Meta Spark API** | Goal interpretation, independent scene inspection and bound recorded-action comparison; stopped-live signal judgment planned | Actual goal/scene cases and three synthetic action-review cases recorded in [Meta evidence](META_API_CHECK.md) |
 | **Meta Voice Transcribe API** | Recorded speech → original-language transcript | Planned; access and quality untested |
 | **Application state storage** | Workspace, ordered events and idempotent receipts; separately private frames, hashes, locked views and inspections | SQLite plus private scene files; full provider envelope receipts planned |
-| **Qualified equipment adapters** | Action-bound camera observations, local signal inhibition and measured robot action receipts | Deferred physical integration; live preview does not implement these |
+| **Qualified equipment adapters** | Action-bound camera observations and measured robot action/stop receipts | Deferred physical integration; live preview does not implement these |
 
 The backend serves compiled `frontend/dist` on the same origin as `/api`. Install `requirements.lock`, build locally using Node 24 and `npm ci && npm run build`, then run `python tools/serve.py`. GX10 needs Python 3.12+ for serving and no Node process. The browser receives application responses; it never receives the Meta credential.
 
@@ -47,11 +47,11 @@ Live registration is an explicit fresh-frame display lock requiring all four con
 | **Mission supervisor** | Approved-plan state, sequencing, stop/wait/reobserve/fault transitions and admission | Sole application authority for action transitions |
 | **Observation adapters** | Source-labelled images, signal state, action state and timestamps | Preserve unknown/stale/occluded status |
 | **Live preview adapter** | Existing loopback helper polling, bounded RAM cache, preview age and fixed display registration | No recorded-store persistence, provider call, mission mutation or physical admission |
-| **MUSE review adapter** | Expected-versus-observed image review, prompt/schema versions and validated results | Advisory evidence subject to deterministic checks |
+| **MUSE review adapter** | Expected-versus-observed image review; planned RED/GREEN/UNKNOWN judgment of a fresh signal image after verified stopping | Supervisor validates the result and its bindings; no separate local color classifier is required |
 | **Action adapter** | Hardware-free bounded action simulation and corresponding result | Later physical implementation requires separate qualification |
 | **Evidence and replay** | Immutable records and causal links among inputs, revisions, checks and decisions | Replaying evidence grants no execution authority |
 
-The table includes implemented and future responsibilities. API validation, temporary graph routing, goal interpretation, supervision, simulation, SQLite evidence, test image registration, scene inspection, action-bound recorded review and opt-in live preview exist. Speech/audio normalization, action-bound live capture, local signal perception, qualified physical observation and complete unified provider receipts remain later work. The synchronous goal adapter serializes simulator commands. Scene inspection and action review await providers outside store locks, then reject superseded bindings. No provider path is latency-sensitive physical signal inhibition.
+The table includes implemented and future responsibilities. API validation, temporary graph routing, goal interpretation, supervision, simulation, SQLite evidence, test image registration, scene inspection, action-bound recorded review and opt-in live preview exist. Speech/audio normalization, action-bound live capture, the dedicated stopped-live MUSE signal-review path, qualified physical observation and complete unified provider receipts remain later work. The synchronous goal adapter serializes simulator commands. Scene inspection and action review await providers outside store locks, then reject superseded bindings. During the planned signal request, the robot remains stopped; provider delay cannot grant entry. An immediate color-change interruption during an admitted crossing is outside this scenario.
 
 The speech and Spark adapters may share a server-side configuration boundary and the same Meta API key. They have different request formats, validation and acceptance tests. Success in one adapter does not establish the other's availability.
 
@@ -80,7 +80,7 @@ The current mission uses graph-based simulated actions/signals. Its pending acti
 6. Source-labelled results and fresh test imagery feed local checks and MUSE review. Real model calls remain labelled independently from simulated actions or recorded imagery.
 7. The supervisor records why it continues, waits, reobserves or faults. The browser renders that state and its causal evidence.
 
-At every configured intersection, the intended physical scenario requires a verified full stop even on GREEN. RED, UNKNOWN, stale or obscured signal observations inhibit entry. The eventual local signal path and physical action qualification remain separate from cloud transcription and MUSE response latency.
+At every configured intersection, the intended physical scenario requires a verified full stop even on GREEN. A dedicated future path then sends a fresh original image of the current approach signal to MUSE, which judges RED, GREEN or UNKNOWN. RED means remain stopped and observe again; GREEN may admit the crossing after deterministic checks of the stop receipt, current plan/junction/approach, frame binding and freshness, and response schema/request identity. Unknown, obscured, stale or failed results keep the robot stopped. These checks do not independently classify color, and a second local color classifier is not required. See [MUSE signal gate](MUSE_SIGNAL_GATE.md). This live signal path remains unimplemented; current manual simulated signals and recorded-image review retain their existing boundaries.
 
 ## Secrets, transport and evidence
 
@@ -118,6 +118,7 @@ Final production geometry, robot coordinates, camera-to-BASE registration, quali
 | **Inspect recorded scenes — implemented** | Explicit frame-bound MUSE request returns USABLE/REOBSERVE/UNKNOWN, visible places, car visibility and paper-signal evidence without motion authority; actual results are recorded separately in [verification](VERIFICATION.md) |
 | **Connect recorded action review — implemented** | Bound MUSE before/after result changes simulation with local gates preserved; [workflow and receipts](ACTION_REVIEWS.md) |
 | **Connect live display preview — implemented, opt-in** | Standalone helper, loopback forwarding and an ephemeral display API are separate from mission evidence; physical calibration and preview performance remain unqualified |
+| **Connect stopped-live MUSE signal review — pending** | Verified stop → fresh approach-bound image → MUSE RED/GREEN/UNKNOWN → validated wait/admission decision; no mandatory second color classifier. [Design](MUSE_SIGNAL_GATE.md) |
 | **Connect fresh physical evidence — pending** | Trusted capture, action receipts and qualified local findings support the physical outcome; selected uploads do not establish this |
 | **Verify simulation — offline tested** | RED wait, accepted GREEN, review rejection/uncertainty, provider failure and restart have offline tests; actual calls and physical quality use separate records |
 | **Prepare isolated delivery — partial** | Read-only host inspection and runtime selection completed; host installation, TLS, activation and rollback checks remain |
