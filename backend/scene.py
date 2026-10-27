@@ -235,7 +235,7 @@ class SceneStore:
         with self._lock:
             return deepcopy({
                 "schema_version": "pushpilot.scene.v1", "revision": self._state["revision"],
-                "map_id": self._state["map_id"], "map_hash": self._state["map_hash"],
+                "map_id": self._state["map_id"], "map_version": self._state["map_version"], "map_hash": self._state["map_hash"],
                 "frame": self._state["frame"], "detection": self._state["detection"],
                 "registration": self._registration(), "inspection": self._state["inspection"],
                 "capabilities": {"live_camera": False, "robot": False, "muse_configured": bool(self._api_key or self._review_provider)},
@@ -260,10 +260,16 @@ class SceneStore:
             "id": frame_id, "image_url": f"/api/v1/scene/frames/{frame_id}/image", "width": width, "height": height,
             "source": source, "captured_at": captured_at, "received_at": _now(),
             "timestamp_source": "operator_provided" if captured_at else "unknown", "sha256": hashlib.sha256(data).hexdigest(),
+            "map_id": self.map_definition.id, "map_version": self.map_definition.version,
+            "map_hash": self.map_definition.geometry_hash,
         }
         with self._lock:
+            if (self._state["map_id"], self._state["map_version"], self._state["map_hash"]) != (
+                self.map_definition.id, self.map_definition.version, self.map_definition.geometry_hash
+            ):
+                raise SceneError(409, "The configured map changed. Restart and explicitly upload images for the new print.", "MAP_CHANGED")
             (self.directory / "frames" / f"{frame_id}.{extension}").write_bytes(data)
-            _write_json(self.directory / "frames" / f"{frame_id}.json", {**frame, "extension": extension, "map_id": self._state["map_id"], "map_hash": self._state["map_hash"]})
+            _write_json(self.directory / "frames" / f"{frame_id}.json", {**frame, "extension": extension})
             self._state.update({"revision": self._state["revision"] + 1, "frame": frame, "detection": detection, "candidate": candidate, "inspection": None})
             self._persist()
             return self.snapshot()
@@ -306,6 +312,38 @@ class SceneStore:
             return path, "image/jpeg" if extension == "jpg" else "image/png"
         except (OSError, ValueError, KeyError, TypeError):
             raise SceneError(404, "Recorded frame was not found.", "FRAME_NOT_FOUND") from None
+
+    def recorded_pair(self, expected_revision: int, before_id: str, after_id: str) -> dict:
+        """Read immutable, map-bound recordings. Neither timestamp implies live freshness."""
+        with self._lock:
+            self._check_binding(expected_revision, after_id)
+            if before_id == after_id:
+                raise SceneError(422, "Choose two distinct recorded frames.", "PAIR_IDENTICAL")
+            identity = (self.map_definition.id, self.map_definition.version, self.map_definition.geometry_hash)
+            if (self._state["map_id"], self._state["map_version"], self._state["map_hash"]) != identity:
+                raise SceneError(409, "Recorded scene belongs to a different map.", "MAP_CHANGED")
+            result = {}
+            for role, frame_id in (("before", before_id), ("after", after_id)):
+                path, mime = self.frame_file(frame_id)
+                try:
+                    metadata = json.loads(path.with_suffix(".json").read_text(encoding="utf-8"))
+                    data = path.read_bytes()
+                    if (metadata.get("map_id"), metadata.get("map_version"), metadata.get("map_hash")) != identity:
+                        raise SceneError(409, "Each recording must match the current map ID, version and geometry. Upload older images again explicitly.", "FRAME_MAP")
+                    if (metadata.get("id") != frame_id or metadata.get("sha256") != hashlib.sha256(data).hexdigest()
+                            or metadata.get("source") not in {"uploaded", "recorded"}
+                            or metadata.get("timestamp_source") not in {"operator_provided", "unknown"}):
+                        raise SceneError(409, "Recorded frame no longer matches its immutable identity.", "FRAME_INTEGRITY")
+                    # Never leak the internal storage extension or infer a capture time.
+                    public = {key: metadata[key] for key in ("id", "image_url", "width", "height", "source", "captured_at", "received_at", "timestamp_source", "sha256", "map_id", "map_version", "map_hash")}
+                except (OSError, ValueError, KeyError, TypeError):
+                    raise SceneError(409, "Recorded frame metadata is unavailable or invalid.", "FRAME_INTEGRITY") from None
+                result[role] = {"metadata": public, "data": data, "mime": mime}
+            if result["before"]["metadata"]["sha256"] == result["after"]["metadata"]["sha256"]:
+                raise SceneError(422, "The selected frames contain identical image bytes. Choose a distinct after image.", "PAIR_IDENTICAL")
+            if result["after"]["metadata"] != self._state["frame"]:
+                raise SceneError(409, "Current frame metadata no longer matches its immutable record.", "FRAME_INTEGRITY")
+            return result
 
     def _schema(self) -> dict:
         return {

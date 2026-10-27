@@ -251,7 +251,8 @@ class MissionCoreTests(unittest.TestCase):
         self.assertEqual([e["sequence"] for e in state["events"]], list(range(1, len(state["events"]) + 1)))
         self.assertTrue(any(e["source"] == "demo" for e in state["events"]))
         self.assertFalse(state["capabilities"]["robot"])
-        self.assertFalse(state["capabilities"]["image_review"])
+        self.assertTrue(state["capabilities"]["recorded_action_review"])
+        self.assertTrue(state["capabilities"]["image_review"])
 
 
 if __name__ == "__main__":

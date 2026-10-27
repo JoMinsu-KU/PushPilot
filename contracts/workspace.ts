@@ -1,4 +1,5 @@
 import type { MapRoute } from './scene';
+import type { RecordedActionEvidence } from './action-review';
 /** Versioned boundary for the hardware-free temporary-map workspace. */
 export type MissionState = 'IDLE' | 'PLAN_READY' | 'READY' | 'REVIEW_REQUIRED' | 'WAITING_SIGNAL' | 'REOBSERVE' | 'COMPLETED' | 'CANCELLED' | 'FAULT' | 'RECOVERY_REQUIRED';
 export type ProviderMode = 'demo' | 'meta';
@@ -21,6 +22,7 @@ export interface EvidenceEvent {
   detail: string;
   source: string;
   state: MissionState;
+  record?: RecordedActionEvidence;
 }
 export interface WorkspaceSnapshot {
   schema_version: 'pushpilot.workspace.v1';
@@ -47,6 +49,7 @@ export interface WorkspaceSnapshot {
     expected: string;
     observed: string;
     summary: string;
+    evidence?: RecordedActionEvidence;
   };
   next_check: string;
   capabilities: {
@@ -56,6 +59,7 @@ export interface WorkspaceSnapshot {
     muse_configured: boolean;
     voice: boolean;
     image_review: boolean;
+    recorded_action_review: boolean;
   };
   events: EvidenceEvent[];
 }
@@ -68,6 +72,7 @@ export interface CommandBase { request_id: string; expected_revision: number }
  * POST /api/v1/advance: CommandBase
  * POST /api/v1/signal: CommandBase & {color:SignalColor,junction_id?:string}
  * POST /api/v1/reviews: CommandBase & {review_id, verdict:ReviewVerdict}
+ * POST /api/v1/action-reviews: RecordedActionReviewCommand (see action-review.ts)
  * POST /api/v1/reobserve, /cancel, /reset: CommandBase
  * All successful mutations return WorkspaceSnapshot. HTTP409 rejects stale state.
  * Simulation review injection is explicitly demo-sourced; no hardware receipts.

@@ -96,16 +96,19 @@ class WorkspaceStore:
     def _save(self, state: dict) -> None:
         self._db.execute("INSERT INTO workspace(id,value) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value", (json.dumps(state),))
 
-    def _event(self, state: dict, kind: str, title: str, detail: str, source: str) -> None:
+    def _event(self, state: dict, kind: str, title: str, detail: str, source: str, record: dict | None = None) -> None:
         event = {"id": str(uuid4()), "at": self._at(), "kind": kind, "title": title,
                  "detail": detail, "source": source, "state": state["state"]}
+        if record is not None:
+            event["record"] = deepcopy(record)
         self._db.execute("INSERT INTO events(value) VALUES(?)", (json.dumps(event),))
 
     def _snapshot(self, state: dict) -> dict:
         result = deepcopy(state)
         result["next_check"] = self._next_check(state)
         result["capabilities"] = {"robot": False, "camera": False, "registered_ar": False,
-                                  "muse_configured": self._muse_configured, "voice": False, "image_review": False}
+                                  "muse_configured": self._muse_configured, "voice": False,
+                                  "image_review": True, "recorded_action_review": True}
         result["events"] = [{**json.loads(row["value"]), "sequence": row["sequence"]}
                             for row in self._db.execute("SELECT sequence,value FROM events ORDER BY sequence")]
         return result
@@ -119,7 +122,7 @@ class WorkspaceStore:
             "IDLE": "Enter a destination on the temporary map: BAKERY, BOOKSTORE, or SCHOOL.",
             "PLAN_READY": "Review and explicitly approve this plan revision.",
             "READY": "Run the next bounded simulated action.",
-            "REVIEW_REQUIRED": "Submit an explicitly demo-sourced verdict for this observation.",
+            "REVIEW_REQUIRED": "Compare an operator-selected recorded image pair with MUSE, or inject an explicit demo verdict. Simulation only.",
             "WAITING_SIGNAL": "Wait for a fresh simulated GREEN. An accepted stop review is already recorded.",
             "REOBSERVE": "Create a new simulated observation and review; no motion will run.",
             "COMPLETED": "Mission complete in simulation. Reset before a new goal.",
@@ -301,7 +304,7 @@ class WorkspaceStore:
         state["review"] = {"id": str(uuid4()), "verdict": "PENDING", "source": "demo",
                            "expected": f"Confirm the simulated {kind.lower()} outcome at {node}.",
                            "observed": "Symbolic simulation result; no image or hardware receipt was captured.",
-                           "summary": "Awaiting an explicitly demo-sourced verdict."}
+                           "summary": "Awaiting a recorded-image MUSE comparison or an explicitly demo-sourced verdict."}
 
     def _run_step(self, state: dict) -> None:
         kind = self._kind(state)
@@ -317,6 +320,25 @@ class WorkspaceStore:
             raise CommandError("The review does not match the current pending observation.")
         verdict = payload["verdict"]
         state["review"].update(verdict=verdict, summary=f"Operator-injected demo verdict: {verdict}. No MUSE image review was called.")
+        self._finish_review(state, verdict)
+        # current_step may already point to the next PUSH; retain the reviewed outcome.
+        self._event(state, "DEMO_REVIEW_RECORDED", f"Demo review: {verdict}", f"{state['review']['expected']} {state['review']['summary']}", "demo")
+        if state["state"] == "WAITING_SIGNAL":
+            self._maybe_cross(state)
+
+    def _recorded_review(self, state: dict, evidence: dict) -> None:
+        """Apply validated recorded evidence through the existing simulation gates."""
+        verdict = evidence["verdict"]
+        state["review"].update(verdict=verdict, source="meta", observed=evidence["observed"],
+                               summary=evidence["summary"], evidence=deepcopy(evidence))
+        self._finish_review(state, verdict)
+        self._event(state, "RECORDED_ACTION_REVIEW", f"MUSE recorded review: {verdict}",
+                    f"{evidence['summary']} Operator-selected recordings; simulation state only. No physical stop or arrival is proved.",
+                    "meta", record=evidence)
+        if state["state"] == "WAITING_SIGNAL":
+            self._maybe_cross(state)
+
+    def _finish_review(self, state: dict, verdict: str) -> None:
         if verdict == "FAIL":
             state.update(state="FAULT", approved=False)
         elif verdict in {"UNKNOWN", "REOBSERVE"}:
@@ -335,10 +357,6 @@ class WorkspaceStore:
                 state["current_step"] += 1
                 state["plan"]["steps"][state["current_step"]]["status"] = "current"
                 state["state"] = "READY"
-        # current_step may already point to the next PUSH; bind wording to the review's expected outcome.
-        self._event(state, "DEMO_REVIEW_RECORDED", f"Demo review: {verdict}", f"{state['review']['expected']} {state['review']['summary']}", "demo")
-        if state["state"] == "WAITING_SIGNAL":
-            self._maybe_cross(state)
 
     def _maybe_cross(self, state: dict) -> None:
         review = state["review"]

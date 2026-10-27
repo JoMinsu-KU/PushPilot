@@ -1,0 +1,131 @@
+{
+  "schema_version": "pushpilot.public-synthetic-evaluation.v1",
+  "evaluated_on": "2026-10-27",
+  "timezone": "Asia/Seoul",
+  "input_kind": "original_synthetic_schematic",
+  "physical_execution": false,
+  "actual_provider_requests": 3,
+  "cases_per_condition": 1,
+  "expected_visual": "For the simulated approach to junction C, the same white car should move right from PIZZA into the orange C APPROACH TARGET. Compare the depicted positions in BEFORE and AFTER. If it has not progressed, reject the expected outcome; if it cannot be located because of an occluder, request another observation. These are synthetic schematic evaluation inputs, not photographs or physical motion evidence.",
+  "fixture_generator": "tools/action_review_fixtures.py",
+  "fixture_sha256": {
+    "before": "b0072a52c74e4fe8a2a817866443e425b24c4e7013fd82dab9f07543df521c71",
+    "success": "e562e0b34fc1d623d42f14ee8df47309487ebf7c209a19dbe15e7cb39ab4c012",
+    "no_progress": "7a451f0cfff5dab89d95a0310e300b72b7f51eb628d3039e25160ab919a43624",
+    "occluded": "96eae8edb2130ad211d1abfb2890318d7e3ca84ce7195d10726fa46262ae40b9"
+  },
+  "limits": [
+    "One designed case per condition, not a held-out accuracy evaluation.",
+    "No photographs, measured motion, signal detection or physical success are tested.",
+    "Token usage is provider-reported; prices and cost are not inferred."
+  ],
+  "cases": [
+    {
+      "condition": "success",
+      "expected_verdicts": [
+        "PASS"
+      ],
+      "actual_verdict": "PASS",
+      "actual_state": "READY",
+      "reviewed_at": "2026-10-27T08:04:08.591566+00:00",
+      "model": "muse-spark-1.3",
+      "prompt_version": "pushpilot.recorded-action.prompt.v1",
+      "result_schema_version": "pushpilot.recorded-action.result.v1",
+      "map_id": "little-town-temporary",
+      "map_version": "2026-10-27.1",
+      "map_hash": "731a6b31f524daf1226781e4cf96b56ef0c1ee7141e2817ed709f94db5399161",
+      "elapsed_ms": 3795,
+      "provider_reported_usage": {
+        "prompt_tokens": 2391,
+        "completion_tokens": 268,
+        "total_tokens": 2659
+      },
+      "validated_result": {
+        "limitations": [
+          "Synthetic schematic evaluation inputs, not photographs or physical motion evidence",
+          "Uploaded recordings with unknown capture times; no live freshness",
+          "Still-image pair cannot prove physical motion, stop, speed, or arrival; no physical motion authority"
+        ],
+        "observed": "BEFORE shows synthetic white CAR icon inside left PIZZA / START rectangle, with empty orange C APPROACH TARGET on right. AFTER shows PIZZA / START rectangle empty and the same synthetic white CAR icon now inside the orange C APPROACH TARGET on right.",
+        "summary": "Synthetic fixture shows the expected rightward progression from PIZZA to C APPROACH TARGET. No physical car movement implied.",
+        "verdict": "PASS"
+      },
+      "motion_authority": false,
+      "before_sha256": "b0072a52c74e4fe8a2a817866443e425b24c4e7013fd82dab9f07543df521c71",
+      "after_sha256": "e562e0b34fc1d623d42f14ee8df47309487ebf7c209a19dbe15e7cb39ab4c012",
+      "capture_time_source": "unknown"
+    },
+    {
+      "condition": "no_progress",
+      "expected_verdicts": [
+        "FAIL"
+      ],
+      "actual_verdict": "FAIL",
+      "actual_state": "FAULT",
+      "reviewed_at": "2026-10-27T08:04:13.395765+00:00",
+      "model": "muse-spark-1.3",
+      "prompt_version": "pushpilot.recorded-action.prompt.v1",
+      "result_schema_version": "pushpilot.recorded-action.result.v1",
+      "map_id": "little-town-temporary",
+      "map_version": "2026-10-27.1",
+      "map_hash": "731a6b31f524daf1226781e4cf96b56ef0c1ee7141e2817ed709f94db5399161",
+      "elapsed_ms": 4713,
+      "provider_reported_usage": {
+        "prompt_tokens": 2399,
+        "completion_tokens": 272,
+        "total_tokens": 2671
+      },
+      "validated_result": {
+        "limitations": [
+          "Synthetic schematic evaluation inputs, not photographs or physical motion evidence.",
+          "Uploaded recordings with unknown capture times; cannot establish live freshness.",
+          "Still-image pair cannot prove physical motion, stop, speed, or arrival; assessment is of depicted positions only."
+        ],
+        "observed": "BEFORE shows synthetic white CAR icon inside left PIZZA / START rectangle, orange C APPROACH TARGET rectangle on right empty. AFTER shows identical depiction: same CAR icon remains inside PIZZA / START, C APPROACH TARGET remains empty. No rightward progression depicted.",
+        "summary": "Synthetic fixture for simulated Approach C: expected movement from PIZZA into C APPROACH TARGET is not supported; depicted position is unchanged.",
+        "verdict": "FAIL"
+      },
+      "motion_authority": false,
+      "before_sha256": "b0072a52c74e4fe8a2a817866443e425b24c4e7013fd82dab9f07543df521c71",
+      "after_sha256": "7a451f0cfff5dab89d95a0310e300b72b7f51eb628d3039e25160ab919a43624",
+      "capture_time_source": "unknown"
+    },
+    {
+      "condition": "occluded",
+      "expected_verdicts": [
+        "REOBSERVE",
+        "UNKNOWN"
+      ],
+      "actual_verdict": "REOBSERVE",
+      "actual_state": "REOBSERVE",
+      "reviewed_at": "2026-10-27T08:04:19.589727+00:00",
+      "model": "muse-spark-1.3",
+      "prompt_version": "pushpilot.recorded-action.prompt.v1",
+      "result_schema_version": "pushpilot.recorded-action.result.v1",
+      "map_id": "little-town-temporary",
+      "map_version": "2026-10-27.1",
+      "map_hash": "731a6b31f524daf1226781e4cf96b56ef0c1ee7141e2817ed709f94db5399161",
+      "elapsed_ms": 6100,
+      "provider_reported_usage": {
+        "prompt_tokens": 2392,
+        "completion_tokens": 269,
+        "total_tokens": 2661
+      },
+      "validated_result": {
+        "limitations": [
+          "Synthetic schematic evaluation inputs, not photographs or physical motion evidence",
+          "AFTER image dominated by labeled FOREGROUND OCCLUDER covering road area",
+          "Uploaded recordings with unknown capture times; cannot establish live freshness",
+          "Still-image pair cannot prove physical motion, stop, or arrival"
+        ],
+        "observed": "BEFORE shows synthetic white CAR icon inside PIZZA / START on left, C APPROACH TARGET orange box empty on right. AFTER shows synthetic road covered by large FOREGROUND OCCLUDER; CAR icon and target box not visible, so depicted car position cannot be compared.",
+        "summary": "Expected movement of same white car from PIZZA to C APPROACH TARGET cannot be verified because AFTER is occluded. Synthetic fixture only, no physical evidence. Requires another observation without occluder.",
+        "verdict": "REOBSERVE"
+      },
+      "motion_authority": false,
+      "before_sha256": "b0072a52c74e4fe8a2a817866443e425b24c4e7013fd82dab9f07543df521c71",
+      "after_sha256": "96eae8edb2130ad211d1abfb2890318d7e3ca84ce7195d10726fa46262ae40b9",
+      "capture_time_source": "unknown"
+    }
+  ]
+}

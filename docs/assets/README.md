@@ -4,7 +4,7 @@
 
 [Repository](../../README.md) · [Current design system](../DESIGN_SYSTEM.md) · [Architecture](../ARCHITECTURE.md) · [Generation prompts](GENERATION_PROMPTS.md) · [Voice revision prompts](VOICE_GENERATION_PROMPTS.md)
 
-The repository uses a self-contained SVG cover and generated PNG process diagrams. The PNGs display directly as images, without a diagram renderer or build step. Select a diagram in its document to inspect the full-size asset. Essential technical meaning is also retained as ordinary English text and tables.
+The main README leads with an actual application screenshot. A self-contained SVG concept cover and generated PNG process diagrams remain available as supporting design material. The PNGs display directly as images, without a diagram renderer or build step. Select a diagram in its document to inspect the full-size asset. Essential technical meaning is also retained as ordinary English text and tables.
 
 The user selected an industrial light-dashboard direction on October 27, 2026. The [design system](../DESIGN_SYSTEM.md) is the current interface specification. Earlier navy/cyan artwork and its exact generation prompts are retained records from before that change; they do not prescribe the current application colors.
 
@@ -12,11 +12,12 @@ The user selected an industrial light-dashboard direction on October 27, 2026. T
 
 | Asset | Canvas | Use and origin |
 |---|---|---|
-| [`hero.svg`](hero.svg) | 1280 × 480 | Active repository cover; original code-native vector. |
+| [`hero.svg`](hero.svg) | 1280 × 480 | Retained concept cover; original code-native vector. Its footer now acknowledges actual Meta text/image integration and pending hardware. |
 | [`light-industrial-workspace.jpg`](light-industrial-workspace.jpg) | Browser screenshot | Active README workspace image: light industrial dashboard and self-authored temporary spatial schematic, with explicit software/evidence sources. No supplied artwork or raw camera frame is visible. |
+| [`recorded-action-review.jpg`](recorded-action-review.jpg) | 957 × 623 browser region | Actual MUSE action-review panel captured October 27, 2026 at the 17:09 KST browser check. Visible BEFORE/AFTER inputs are original code-drawn synthetic schematics, with an actual provider PASS and explicit simulation/source labels. No physical car photograph or supplied artwork is included. |
 | [`temporary-map-workspace.jpg`](temporary-map-workspace.jpg) | Browser screenshot | Retained temporary-map workspace before the light-dashboard restyle: original spatial schematic, Bakery route, source-labelled MUSE inspection and simulation controls. |
 | [`workspace-simulation.jpg`](workspace-simulation.jpg) | Browser screenshot | Retained first-slice workspace before temporary-map integration; original illustrative scene and simulation labels. |
-| [`interaction-loop.png`](interaction-loop.png) | 1983 × 793 | Main README: Observe → Plan → Approve → Act → Verify; AI-generated. |
+| [`interaction-loop.png`](interaction-loop.png) | 1983 × 793 | Retained Observe → Plan → Approve → Act → Verify design illustration; AI-generated. |
 | [`architecture-overview-voice.png`](architecture-overview-voice.png) | 1536 × 1024 | Active architecture: adds backend voice transcription, transcript review and credentials boundary; AI-generated edit. |
 | [`voice-input-flow.png`](voice-input-flow.png) | 1774 × 887 | Voice: push-to-talk, transcription, editable text, MUSE interpretation and tablet approval; AI-generated. |
 | [`architecture-overview.png`](architecture-overview.png) | 1536 × 1024 | Retained previous architecture, before voice became initial-demo scope; superseded in the architecture document. |
@@ -27,6 +28,8 @@ The user selected an industrial light-dashboard direction on October 27, 2026. T
 ## Provenance
 
 The SVGs were authored for this repository on October 27, 2026 as original geometric vectors. They embed no third-party photographs, stock illustrations, fonts or vendor logos. The workspace screenshots are local application records; their corresponding checks and limits belong in [verification](../VERIFICATION.md). The first scene's robot, wheel-less car and glasses are original SVG illustrations; the spatial schematic draws adapted map geometry with original presentation code. The earlier temporary-map screenshot includes an actual recorded-image MUSE result as text. Raw camera media and supplied map artwork remain outside the public repository. These are software/provider records, not physical-execution evidence.
+
+The `hero.svg` footer was corrected on the same date to remove the outdated statement that all model integration was future work. The vector remains a concept illustration, not an inference result or a screenshot. The active light-workspace screenshot supersedes it as the first-page product evidence.
 
 The original four PNGs were generated on October 27, 2026 (Asia/Seoul) with the **built-in image generation tool**; their exact inputs remain in [GENERATION_PROMPTS.md](GENERATION_PROMPTS.md). A voice-enabled architecture revision and voice flow were added on the same date, with exact inputs in [VOICE_GENERATION_PROMPTS.md](VOICE_GENERATION_PROMPTS.md). The architecture revision uses the earlier repository-generated image as its sole edit target. No fallback CLI, API key or external reference image was used. Selected outputs were copied unchanged into this directory and visually reviewed for English spelling, arrows, authority boundaries, status and readability.
 

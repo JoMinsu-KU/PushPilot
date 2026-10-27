@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { EvidenceEvent, ProviderMode, ReviewVerdict, SignalColor, WorkspaceSnapshot } from '../../contracts/workspace';
 import type { SceneSnapshot } from '../../contracts/scene';
+import type { RecordedActionReviewCommand } from '../../contracts/action-review';
 import { BrandMark, Icon, type IconName } from './Icons';
 import { GlassesArt } from './Scene';
 import { MapScene } from './MapScene';
 import { createRequestId } from './requestId';
+import { ActionReviewPanel } from './ActionReview';
 
 type View = 'Workspace' | 'Plan' | 'Replay';
 const terminalStates = new Set(['COMPLETED', 'CANCELLED', 'FAULT', 'RECOVERY_REQUIRED']);
@@ -105,6 +107,8 @@ export function App() {
   const [showDemo, setShowDemo] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
   const [sceneSnapshot, setSceneSnapshot] = useState<SceneSnapshot | null>(null);
+  const [actionReviewPending, setActionReviewPending] = useState(false);
+  const [imageToolsRequest, setImageToolsRequest] = useState(0);
   const current = useRef<WorkspaceSnapshot | null>(null);
   const goalInput = useRef<HTMLInputElement>(null);
   const applySnapshot = useCallback((snapshot: WorkspaceSnapshot) => {
@@ -131,7 +135,7 @@ export function App() {
 
   async function command(endpoint: string, data: Record<string, unknown> = {}) {
     const snapshot = current.current;
-    if (!snapshot || busy || view === 'Replay') return;
+    if (!snapshot || busy || view === 'Replay' || (actionReviewPending && endpoint !== 'cancel')) return;
     setBusy(true); setError('');
     try {
       const response = await fetch(`/api/v1/${endpoint}`, {
@@ -148,8 +152,30 @@ export function App() {
     } catch (err) { setError(err instanceof Error ? err.message : 'Connection interrupted. Refresh the workspace before continuing.'); }
     finally { setBusy(false); }
   }
+  async function reviewRecordedAction(data: Omit<RecordedActionReviewCommand, 'request_id' | 'expected_revision'>) {
+    const snapshot = current.current;
+    if (!snapshot || busy || actionReviewPending || view === 'Replay') return;
+    setActionReviewPending(true); setError('');
+    try {
+      const response = await fetch('/api/v1/action-reviews', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ request_id: createRequestId(), expected_revision: snapshot.revision, ...data }),
+      });
+      const payload: unknown = await response.json();
+      if (!response.ok) {
+        if (response.status === 409) {
+          await refresh();
+          throw new Error('The mission or recorded pair changed. The result was not applied. Check the current action and select its recordings again.');
+        }
+        const detail = payload && typeof payload === 'object' && 'detail' in payload ? payload.detail : payload;
+        throw new Error(readableError(detail));
+      }
+      applySnapshot(payload as WorkspaceSnapshot);
+    } catch (err) { setError(err instanceof Error ? err.message : 'MUSE action review could not be completed. No demo verdict was substituted.'); }
+    finally { setActionReviewPending(false); }
+  }
   const state = workspace?.state ?? 'IDLE';
-  const canEditGoal = Boolean(workspace && ['IDLE', 'PLAN_READY'].includes(state) && online && !busy);
+  const canEditGoal = Boolean(workspace && ['IDLE', 'PLAN_READY'].includes(state) && online && !busy && !actionReviewPending);
   const active = Boolean(workspace?.approved && !terminalStates.has(state));
   const selected = workspace?.events.find(event => event.id === selectedEvent) ?? workspace?.events.at(-1);
   const signal = workspace?.signal.color ?? 'UNKNOWN';
@@ -165,10 +191,10 @@ export function App() {
   function renderPrimaryAction() {
     if (!workspace) return <button className="primary-button" disabled>Connecting to workspace…</button>;
     if (state === 'IDLE') return <button className="primary-button" disabled={!canEditGoal || !draft.trim()} onClick={() => void command('goals', { text: draft, provider, source: 'typed' })}><Icon name="spark"/>Create a plan<Icon name="arrow"/></button>;
-    if (state === 'PLAN_READY') return <button className="primary-button" disabled={busy || !online} onClick={() => void command('approve', { plan_id: workspace.plan!.id, plan_revision: workspace.plan!.revision })}>Approve simulation<Icon name="arrow"/></button>;
-    if (state === 'READY') return <button className="primary-button" disabled={busy || !online} onClick={() => void command('advance')}><Icon name="play"/>Run next simulated action<Icon name="arrow"/></button>;
-    if (state === 'REOBSERVE') return <button className="primary-button" disabled={busy || !online} onClick={() => void command('reobserve')}><Icon name="refresh"/>Request new demo observation</button>;
-    if (terminalStates.has(state)) return <button className="primary-button" disabled={busy || !online} onClick={() => void command('reset')}><Icon name="refresh"/>Start a new simulation</button>;
+    if (state === 'PLAN_READY') return <button className="primary-button" disabled={busy || actionReviewPending || !online} onClick={() => void command('approve', { plan_id: workspace.plan!.id, plan_revision: workspace.plan!.revision })}>Approve simulation<Icon name="arrow"/></button>;
+    if (state === 'READY') return <button className="primary-button" disabled={busy || actionReviewPending || !online} onClick={() => void command('advance')}><Icon name="play"/>Run next simulated action<Icon name="arrow"/></button>;
+    if (state === 'REOBSERVE') return <button className="primary-button" disabled={busy || actionReviewPending || !online} onClick={() => void command('reobserve')}><Icon name="refresh"/>Open a new observation review</button>;
+    if (terminalStates.has(state)) return <button className="primary-button" disabled={busy || actionReviewPending || !online} onClick={() => void command('reset')}><Icon name="refresh"/>Start a new simulation</button>;
     if (state === 'WAITING_SIGNAL') return <div className="waiting-message"><Icon name="pause" size={22}/><span>Waiting for a fresh green signal.<small>Accepted checks allow automatic entry.</small></span></div>;
     return <button className="primary-button" disabled><Icon name="eye"/>Review the action result</button>;
   }
@@ -203,15 +229,17 @@ export function App() {
 
           <section className={`scene-panel panel ${view !== 'Workspace' ? 'alternate-view' : ''}`} aria-label={view === 'Workspace' ? 'Scene preview' : view === 'Plan' ? 'Mission plan' : 'Evidence replay'}>
             <div className="scene-toolbar"><div className="scene-toolbar-label"><Icon name={view === 'Workspace' ? 'camera' : view === 'Plan' ? 'route' : 'clock'} size={19}/><h2>{view === 'Workspace' ? 'Scene workspace' : view === 'Plan' ? 'Mission plan' : 'Evidence replay'}</h2></div><span className="scene-preview-label">{view === 'Workspace' ? 'Temporary print' : view === 'Plan' ? 'Temporary road graph' : 'Recorded decisions'}</span><span className="ar-status"><span/>{sceneSnapshot?.registration.status === 'locked' || sceneSnapshot?.registration.status === 'locked_partial' ? 'Test overlay locked' : 'Test overlay only'}</span></div>
-            {view === 'Workspace' && <MapScene workspace={workspace} onSnapshot={setSceneSnapshot}/>}
+            {view === 'Workspace' && <MapScene workspace={workspace} onSnapshot={setSceneSnapshot} readOnly={actionReviewPending} openToolsRequest={imageToolsRequest}/>}
             {view === 'Plan' && <div className="plan-canvas"><span className="eyebrow">ONE ACTION. ONE CHECK.</span><h2>A plan you can inspect.</h2><p>Push on the surface, stop at every planned intersection, check its signal, then verify arrival. Temporary drawing geometry defines the simulation route; robot coordinates remain unqualified.</p><PlanList workspace={workspace} expanded/><div className="plan-note"><Icon name="shield" size={20}/><span>Every intersection requires its own verified stop and fresh green. Unknown or stale signals inhibit entry.</span></div></div>}
             {view === 'Replay' && <EvidenceTimeline events={workspace?.events ?? []} selected={selectedEvent} onSelect={setSelectedEvent}/>}
             <div className="source-strip"><SourcePill>Robot · disconnected</SourcePill><SourcePill>Image · {sceneSnapshot?.frame?.source ?? 'none'}</SourcePill><SourcePill>Car pose · unmeasured</SourcePill><SourcePill status="amber">Signal · simulation</SourcePill></div>
           </section>
 
+          <ActionReviewPanel workspace={workspace} scene={sceneSnapshot} online={online} pending={actionReviewPending} busy={busy} readOnly={view === 'Replay'} replayEvidence={selected?.record} onReview={reviewRecordedAction} onOpenTools={() => { setView('Workspace'); setImageToolsRequest(value => value + 1); }}/>
+
           <div className="bottom-cards"><RouteSummary workspace={workspace}/><ActionLoop workspace={workspace}/><section className="panel companion-card"><div className="card-heading"><span className="card-status-dot muted"/><h2>Glasses companion</h2><span className="concept-tag">Concept</span></div><div className="companion-body"><div><h3>Beyond<br/>the tablet.</h3><p>See it. Say it. Review it.</p></div><GlassesArt/></div><span className="companion-note">Future experience · hardware not connected</span></section></div>
 
-          {showDemo && view !== 'Replay' && <section className="panel demo-controls" id="simulation-controls"><div className="demo-heading"><span className="eyebrow">SIMULATION INPUTS</span><span>No live camera or physical robot</span><button aria-label="Close simulation controls" onClick={() => setShowDemo(false)}><Icon name="close" size={18}/></button></div><div className="demo-grid"><div><h3>Paper signal stand-in {signalJunction ? `· ${signalJunction}` : ''}</h3><p>{signalJunction ? `A fresh observation applies only to junction ${signalJunction}.` : 'The backend binds an observation to the current junction.'}</p><div className="signal-buttons">{(['RED', 'GREEN', 'UNKNOWN'] as SignalColor[]).map(color => <button key={color} className={`signal-option ${color.toLowerCase()} ${signal === color ? 'selected' : ''}`} disabled={busy || !online || !workspace} onClick={() => void command('signal', { color })}><span/>{color[0] + color.slice(1).toLowerCase()}</button>)}</div></div><div><h3>Action review stand-in</h3><p>Demo decisions are never labelled as MUSE.</p><div className="review-buttons">{(['PASS', 'REOBSERVE', 'UNKNOWN', 'FAIL'] as ReviewVerdict[]).map(verdict => <button key={verdict} disabled={!pendingReview || busy || !online} className={verdict === 'FAIL' ? 'danger-text' : ''} onClick={() => void command('reviews', { review_id: workspace!.review!.id, verdict })}>{verdict === 'REOBSERVE' ? 'Re-observe' : verdict[0] + verdict.slice(1).toLowerCase()}</button>)}</div></div></div></section>}
+          {showDemo && view !== 'Replay' && <section className="panel demo-controls" id="simulation-controls"><div className="demo-heading"><span className="eyebrow">SIMULATION INPUTS</span><span>No live camera or physical robot</span><button aria-label="Close simulation controls" onClick={() => setShowDemo(false)}><Icon name="close" size={18}/></button></div><div className="demo-grid"><div><h3>Paper signal stand-in {signalJunction ? `· ${signalJunction}` : ''}</h3><p>{signalJunction ? `A fresh observation applies only to junction ${signalJunction}.` : 'The backend binds an observation to the current junction.'}</p><div className="signal-buttons">{(['RED', 'GREEN', 'UNKNOWN'] as SignalColor[]).map(color => <button key={color} className={`signal-option ${color.toLowerCase()} ${signal === color ? 'selected' : ''}`} disabled={busy || actionReviewPending || !online || !workspace} onClick={() => void command('signal', { color })}><span/>{color[0] + color.slice(1).toLowerCase()}</button>)}</div></div><div><h3>Action review stand-in</h3><p>Demo decisions are never labelled as MUSE.</p><div className="review-buttons">{(['PASS', 'REOBSERVE', 'UNKNOWN', 'FAIL'] as ReviewVerdict[]).map(verdict => <button key={verdict} disabled={!pendingReview || busy || actionReviewPending || !online} className={verdict === 'FAIL' ? 'danger-text' : ''} onClick={() => void command('reviews', { review_id: workspace!.review!.id, verdict })}>{verdict === 'REOBSERVE' ? 'Re-observe' : verdict[0] + verdict.slice(1).toLowerCase()}</button>)}</div></div></div></section>}
         </section>
 
         <aside className="plan-panel panel" aria-label="AI plan and mission controls">
@@ -222,9 +250,9 @@ export function App() {
             <div className="journey-summary"><div className="journey-from"><span className="destination-icon"><Icon name="car" size={31}/></span><span><strong>{workspace?.plan?.route.start ?? 'PIZZA'}</strong><small>Start</small></span></div><Icon name="arrow" className="journey-arrow" size={30}/><div className="journey-to"><span className="destination-icon"><Icon name="route" size={29}/></span><span><strong>{destination}</strong><small>Destination</small></span></div></div>
             <div className="mission-progress"><div><span>Completed actions</span><strong>{completedSteps}<span> / {totalSteps}</span></strong></div><progress aria-label="Completed mission actions" value={completedSteps} max={totalSteps || 1}/></div>
             <div className="section-label"><h3>Route plan</h3><span>{workspace?.plan?.route ? `${Math.min(workspace.current_step + 1, workspace.plan.steps.length)}/${workspace.plan.steps.length} · ${workspace.plan.route.junction_ids.length} junction ${workspace.plan.route.junction_ids.length === 1 ? 'check' : 'checks'}` : 'Temporary road graph'}</span></div><PlanList workspace={workspace}/>
-            {workspace?.review && <section className="review-card" aria-label="Current action review"><div className="review-card-heading"><Icon name="eye" size={17}/><strong>{workspace.review.source === 'meta' ? 'MUSE REVIEW' : 'DEMO REVIEW'}</strong><span className={`verdict ${workspace.review.verdict.toLowerCase()}`}>{workspace.review.verdict}</span></div><dl><div><dt>Expected</dt><dd>{workspace.review.expected}</dd></div><div><dt>Observed</dt><dd>{workspace.review.observed || 'Awaiting a source-labelled observation.'}</dd></div></dl>{workspace.review.summary && <p>{workspace.review.summary}</p>}</section>}
+            {workspace?.review && <section className="review-card" aria-label="Current action review"><div className="review-card-heading"><Icon name="eye" size={17}/><strong>{workspace.review.source === 'meta' || actionReviewPending ? 'MUSE REVIEW' : 'DEMO REVIEW'}</strong><span className={`verdict ${workspace.review.verdict.toLowerCase()}`}>{workspace.review.verdict}</span></div><p className="review-brief">{actionReviewPending ? 'MUSE is comparing the selected recordings.' : workspace.review.summary ? workspace.review.summary.length > 160 ? `${workspace.review.summary.slice(0, 157)}…` : workspace.review.summary : 'Awaiting a source-labelled observation.'}</p><details className="review-card-details" key={workspace.review.id}><summary>Expected and observed</summary><dl><div><dt>Expected</dt><dd>{workspace.review.expected}</dd></div><div><dt>Observed</dt><dd>{workspace.review.observed || 'Awaiting a source-labelled observation.'}</dd></div>{workspace.review.summary && <div><dt>Full review summary</dt><dd>{workspace.review.summary}</dd></div>}</dl></details></section>}
             <div className="execution-check"><div><Icon name="shield" size={17}/><h3>NEXT CHECK</h3></div><p>{workspace?.next_check ?? 'Connect to the backend, enter a goal and review the proposed plan.'}</p></div>
-            <div className="mission-action"><div className="action-status"><span className={`status-dot ${state.toLowerCase()}`}/><strong>{stateLabels[state]}</strong></div>{renderPrimaryAction()}{state === 'PLAN_READY' && <button className="secondary-button" disabled={!canEditGoal} onClick={() => { setView('Workspace'); goalInput.current?.focus(); }}>Edit goal</button>}{pendingReview && <button className="secondary-button" onClick={() => setShowDemo(true)}><Icon name="settings" size={17}/>Open demo review controls</button>}{state === 'WAITING_SIGNAL' && <button className="secondary-button" onClick={() => setShowDemo(true)}><span className={`small-signal ${signal.toLowerCase()}`}/>Signal: {signal.toLowerCase()}<Icon name="chevron" size={16}/></button>}{active && <button className="cancel-button" disabled={busy || !online} onClick={() => void command('cancel')}>End simulation</button>}<small className="action-footnote">{busy ? 'Updating the mission…' : 'Simulation only · no physical execution'}</small></div>
+            <div className="mission-action"><div className="action-status"><span className={`status-dot ${state.toLowerCase()}`}/><strong>{stateLabels[state]}</strong></div>{renderPrimaryAction()}{state === 'PLAN_READY' && <button className="secondary-button" disabled={!canEditGoal} onClick={() => { setView('Workspace'); goalInput.current?.focus(); }}>Edit goal</button>}{pendingReview && <button className="secondary-button" onClick={() => document.getElementById('recorded-action-review')?.scrollIntoView({ block: 'start', behavior: 'instant' })}><Icon name="spark" size={17}/>Review recorded images</button>}{pendingReview && <button className="secondary-button" onClick={() => setShowDemo(true)}><Icon name="settings" size={17}/>Open demo review controls</button>}{state === 'WAITING_SIGNAL' && <button className="secondary-button" onClick={() => setShowDemo(true)}><span className={`small-signal ${signal.toLowerCase()}`}/>Signal: {signal.toLowerCase()}<Icon name="chevron" size={16}/></button>}{active && <button className="cancel-button" disabled={busy || !online} onClick={() => void command('cancel')}>End simulation</button>}<small className="action-footnote">{actionReviewPending ? 'MUSE is reviewing recorded images…' : busy ? 'Updating the mission…' : 'Simulation only · no physical execution'}</small></div>
             <div className="provider-control"><label htmlFor="provider-mode">Goal interpreter</label><select id="provider-mode" value={provider} disabled={!canEditGoal} onChange={event => setProvider(event.target.value as ProviderMode)}><option value="demo">Demo interpreter</option><option value="meta" disabled={!workspace?.capabilities.muse_configured}>MUSE · Meta API{!workspace?.capabilities.muse_configured ? ' (not configured)' : ''}</option></select></div>
           </>}
         </aside>

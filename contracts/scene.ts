@@ -19,7 +19,7 @@ export interface MapRoute {
 }
 export interface SceneSnapshot {
   schema_version: 'pushpilot.scene.v1'; revision: number;
-  map_id: string; map_hash: string;
+  map_id: string; map_version: string; map_hash: string;
   frame: null | {id: string; image_url: string; width: number; height: number;
     source: 'uploaded' | 'recorded'; captured_at: string | null; received_at: string;
     timestamp_source: 'operator_provided' | 'unknown'; sha256: string};

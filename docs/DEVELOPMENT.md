@@ -59,7 +59,7 @@ For frontend development, run the API with `--api-only` in one terminal and `npm
 
 ## Verify the first connected slice
 
-The workspace connects a typed destination to a deterministic temporary-map route, explicit approval, simulated actions, per-junction mandatory stops and signal waits, demo action reviews, and evidence. Supported destinations are BAKERY, BOOKSTORE, and SCHOOL from east-facing PIZZA. Simulated signals and operator-injected demo verdicts remain labelled. A Meta goal request and a recorded-scene inspection are distinct opt-in provider operations; neither grants physical execution authority.
+The workspace connects a typed destination to a deterministic temporary-map route, explicit approval, simulated actions, per-junction mandatory stops and signal waits, action reviews and evidence. Supported destinations are BAKERY, BOOKSTORE and SCHOOL from east-facing PIZZA. Simulated signals and operator-injected demo verdicts remain labelled. Actual Meta requests support goals, independent scene inspection and recorded before/after action review. Only the action-bound path can satisfy a pending simulated review; none grants physical execution authority.
 
 Use a separate test database when exploring restart and fault behavior:
 
@@ -85,7 +85,9 @@ Use [Temporary map](TEMPORARY_MAP.md) and [Test inputs](TEST_INPUTS.md) for prin
 
 A full four-marker detection produces a registration candidate. Explicitly lock that recorded view before displaying a projected route. Later partial visibility retains the reference without refitting; inconsistent/missing reference evidence withholds the overlay. This is drawing-board-to-image projection, never a robot/BASE transform.
 
-With MUSE configured, explicitly submit an expectation for the current frame. The independent inspection can report USABLE/REOBSERVE/UNKNOWN, visible places, whether a separate 3D car is visible, and whether a separate paper signal is identifiable. It does not complete any mission step or replace PASS/FAIL demo action reviews. Actual provider observations belong in [verification](VERIFICATION.md).
+With MUSE configured, explicitly submit an expectation for the current frame. Independent inspection can report USABLE/REOBSERVE/UNKNOWN, visible places, whether a separate 3D car is visible and whether a separate paper signal is identifiable. It does not complete a mission step or supply the signal gate.
+
+For a pending simulated action, use **Compare the result.** to pin BEFORE, upload AFTER, describe the expected visual outcome and explicitly choose **Review action with MUSE**. This separate action-bound endpoint can apply PASS/FAIL/REOBSERVE/UNKNOWN through the supervisor. Review its independent source labels and record; selected uploads are not trusted physical capture windows. [Action reviews](ACTION_REVIEWS.md) documents the complete workflow and the optional synthetic provider-evaluation harness. Actual results belong in [verification](VERIFICATION.md).
 
 ## Checks and tests
 
@@ -140,7 +142,7 @@ The builder refuses an existing output path. The manifest binds committed source
 | Map | Replaceable temporary drawing graph and board-to-image test overlays. Production routes, robot/BASE transforms, qualified stop lines, and live signal ROIs remain unresolved. |
 | Hardware | No robot transport, physical execution, profile replay, mailbox restoration, camera ownership, or operating-service restart. |
 | Signals | Simulated source only in this slice. Full stop even on GREEN; RED, unknown, stale, and obscured observations must inhibit physical admission later. |
-| Review | Scene-only MUSE inspection is frame-bound and cannot advance actions. Mission action reviews remain manually injected demo verdicts; actual action-image review and local physical checks remain future work. |
+| Review | Scene-only inspection cannot advance actions. Bound recorded-pair MUSE results can review simulation alongside explicit demo inputs; live receipt-bound capture and physical checks remain future work. |
 | Voice | Planned bounded backend Meta transcription, editable transcript confirmation, common goal interpretation, and explicit plan approval. Capture and normalization are not established by this slice. |
 | Models | Validated goal interpretation; no generated robot scripts or authoritative coordinates. |
 | Evidence | Source-labelled event history. A provider call is not evidence of physical execution. |

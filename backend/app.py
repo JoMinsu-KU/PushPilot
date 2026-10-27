@@ -16,8 +16,9 @@ from backend.core import CommandError, WorkspaceStore
 from backend.meta import GoalProvider, MetaGoalProvider
 from backend.settings import Settings
 from backend.maps import MapDefinition
-from backend.scene import SceneStore
+from backend.scene import SceneError, SceneStore
 from backend.scene_api import router as scene_router
+from backend.action_review import ActionReviewProvider, ActionReviewService
 
 
 class Command(BaseModel):
@@ -47,8 +48,17 @@ class ReviewCommand(Command):
     verdict: Literal["PASS", "FAIL", "REOBSERVE", "UNKNOWN"]
 
 
+class RecordedActionReviewCommand(Command):
+    review_id: UUID
+    expected_scene_revision: int = Field(ge=0, strict=True)
+    before_frame_id: str = Field(pattern=r"^[a-f0-9]{32}$")
+    after_frame_id: str = Field(pattern=r"^[a-f0-9]{32}$")
+    expected_visual: str = Field(min_length=1, max_length=1000)
+
+
 def create_app(settings: Settings | None = None, *, db_path: str | None = None,
-               provider: GoalProvider | None = None) -> FastAPI:
+               provider: GoalProvider | None = None,
+               action_review_provider: ActionReviewProvider | None = None) -> FastAPI:
     """Create an app without reading credentials or initializing a database yet."""
     @asynccontextmanager
     async def lifespan(application: FastAPI):
@@ -66,6 +76,8 @@ def create_app(settings: Settings | None = None, *, db_path: str | None = None,
         scene_dir = configured.scene_dir or (temporary_scene.name if temporary_scene else str(Path(configured.db_path).parent / "scene"))
         application.state.scene = SceneStore(scene_dir, map_definition=application.state.store.map_definition,
                                            meta_api_key=configured.meta_api_key)
+        application.state.action_reviews = ActionReviewService(application.state.store, application.state.scene,
+                                                               api_key=configured.meta_api_key, provider=action_review_provider)
         application.state.frontend = Path(configured.frontend_dist).resolve()
         try:
             yield
@@ -81,6 +93,10 @@ def create_app(settings: Settings | None = None, *, db_path: str | None = None,
     @application.exception_handler(CommandError)
     async def command_error(_request: Request, error: CommandError):
         return JSONResponse({"detail": error.message}, status_code=error.status)
+
+    @application.exception_handler(SceneError)
+    async def recorded_error(_request: Request, error: SceneError):
+        return JSONResponse({"detail": {"code": error.code, "message": str(error)}}, status_code=error.status_code)
 
     @application.middleware("http")
     async def response_headers(request: Request, call_next):
@@ -119,6 +135,11 @@ def create_app(settings: Settings | None = None, *, db_path: str | None = None,
     @application.post("/api/v1/reviews")
     def review(request: Request, command: ReviewCommand):
         return dispatch(request, "reviews", command)
+
+    @application.post("/api/v1/action-reviews")
+    async def action_review(request: Request, command: RecordedActionReviewCommand):
+        payload, status = await request.app.state.action_reviews.review(command.model_dump(mode="json"))
+        return JSONResponse(payload, status_code=status)
 
     @application.post("/api/v1/advance")
     def advance(request: Request, command: Command):

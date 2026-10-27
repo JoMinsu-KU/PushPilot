@@ -17,13 +17,13 @@ The runnable workspace uses React, TypeScript and Vite. The current visual direc
 | Spatial map | A self-authored schematic of the replaceable temporary Little Town geometry. Routes come from the backend graph. |
 | Plan | PIZZA to BAKERY, BOOKSTORE or SCHOOL simulation, with bounded surface pushes, a mandatory stop and fresh signal at each junction, then arrival review. |
 | Approval | Explicit approval of the displayed plan identifier and revision. |
-| Review | Expected and observed results, verdict, source and next required check. Demo verdict injection is visibly labelled. |
+| Action review | Explicit real MUSE comparison of two operator-selected recordings, bound to the pending simulated action and current map. Expected versus observed result, verdict, limitations, model, elapsed time and provider-reported token usage remain inspectable. Demo verdict injection stays separate and labelled. |
 | Image inspection | Explicit actual MUSE request against the selected recorded frame and expected outcome; visible places, car visibility, model-reported signal and limitations are shown. Scene inspection cannot advance the mission. |
 | Signal | RED, GREEN and UNKNOWN simulation inputs. The backend owns freshness, waiting and automatic crossing admission. |
 | Replay | Inspectable event timeline and decision details. Replay cannot issue mission commands. |
 | Companion | Clearly labelled future AR-glasses concept. |
 
-This build has **no connected robot, live camera, production AR registration or voice capture**. A recorded photograph is labelled as recorded evidence, with its capture timestamp kept unknown unless explicitly supplied. The temporary camera-to-board homography supports test overlays only. Drawing millimeters are not robot coordinates or a qualified car/tool path. Demo action-review buttons do not call MUSE; actual MUSE image inspection is a separate explicit operation and never grants motion authority.
+This build has **no connected robot, live camera, production AR registration or voice capture**. A recorded photograph is labelled as recorded evidence, with its capture timestamp kept unknown unless explicitly supplied. The temporary camera-to-board homography supports test overlays only. Drawing millimeters are not robot coordinates or a qualified car/tool path. Demo action-review buttons do not call MUSE. Actual single-image inspection remains scene-only; the separate recorded-pair action review can update a simulated mission after backend validation. Neither grants hardware motion authority or establishes live capture freshness.
 
 ## Run locally
 
@@ -43,7 +43,7 @@ npm run build
 
 The build type-checks the source, then writes `frontend/dist`. Serve that bundle and the API from the same Python origin in production. There are no third-party fonts, image downloads or frontend provider credentials.
 
-`npm test` verifies projective coordinates, direction arrows, invalid homography rejection and the request-identifier contract, including browsers on LAN HTTP where native `crypto.randomUUID` is unavailable. Distributed React, React DOM and Scheduler license texts are preserved in [`public/third-party-licenses.txt`](public/third-party-licenses.txt), which Vite copies into the production bundle.
+`npm test` verifies projective coordinates, direction arrows, invalid homography rejection, recorded-pair eligibility and the request-identifier contract, including browsers on LAN HTTP where native `crypto.randomUUID` is unavailable. Pair checks cover duplicated image bytes, map replacement, missing recordings, pending provider requests and capture-time uncertainty. Distributed React, React DOM and Scheduler license texts are preserved in [`public/third-party-licenses.txt`](public/third-party-licenses.txt), which Vite copies into the production bundle.
 
 ## Temporary scene inspection
 
@@ -56,6 +56,22 @@ Choose **Camera frame** or **Spatial map**. The photo and route overlay share th
 
 A partially obscured locked view retains its test mapping and displays a warning. A changed view hides the previous overlay. A new complete marker view can be explicitly locked during preparation; missing markers never cause an automatic refit. The **Spatial map** remains a drawing preview rather than measured physical execution evidence.
 
+## Recorded action comparison
+
+The **Compare the result.** panel sits below the main scene. Its **Prepare a recorded pair** setup stays collapsed during preparation and opens automatically for a pending action review. It sends an explicit real provider request rather than a manual demo verdict.
+
+1. Load a recording and select **Use current frame as BEFORE**. This image selection may happen during preparation or while an action review is pending.
+2. Select **Upload AFTER in Image tools**, then **Upload recorded frame**. The new current frame becomes the selected AFTER image. Distinct frame identifiers and distinct image bytes are required.
+3. Create and approve a plan, then run one simulated action if a review is not already pending. Read its server-supplied action and edit **Expected visual outcome** to describe the observable result.
+4. Select **Review action with MUSE**. The request binds the current mission revision, pending review identifier, scene revision and both immutable frame identifiers. The backend validates the pair, compares it through MUSE and rechecks the bindings before applying any result.
+5. Read the verdict and compare the visible before/after pair. **Expected, observed and provenance** expands the full expectation, observation, limitations, image hashes, map identity, plan/action/review identifiers, model, elapsed time and token usage when reported.
+
+The labels BEFORE and AFTER are operator-selected roles. They do not verify capture order, connection to a physical execution or fresh live observation. A map identity or version mismatch blocks submission, and an identical image uploaded twice is rejected. Recorded evidence remains explicitly limited to simulation.
+
+While MUSE is pending, the UI disables competing review and scene mutations but keeps **End simulation** available. A late result from changed mission or scene state is not applied. Provider failures display an error without substituting a demo decision. The last accepted review remains below the selection panel; **Replay** shows evidence attached to the selected historical event without mutation controls.
+
+Single-frame **Inspect image with MUSE** remains an independent scene inspection. It cannot resolve the pending action review. Signal stand-ins and manual demo action verdicts remain under **Simulation inputs**, and deterministic stop and signal admission remain backend-owned.
+
 ## State and interaction boundaries
 
 - Poll `/api/v1/state` for the authoritative snapshot. Ignore older revisions from the same session.
@@ -63,6 +79,7 @@ A partially obscured locked view retains its test mapping and displays a warning
 - Accept goals during preparation only. Keep goal edits disabled throughout action, review and signal waits.
 - Approve an exact plan before advancing its bounded simulation actions. Do not simulate successful reviews with timers.
 - Show every independent source honestly. A successful model interpretation does not imply physical motion or a live observation.
+- Keep recorded-pair provider requests outside the general mission busy state so the operator can cancel the simulation while upstream review is pending. Disable other competing mutation controls and ignore stale returned snapshots.
 - Keep microphone controls disabled until capture, normalization, transcription and target-device HTTPS are implemented and verified.
 
 ## Visual system

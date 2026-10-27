@@ -29,6 +29,7 @@ The Python suite uses temporary Git/ZIP/configuration fixtures, isolated SQLite 
 | [`test_workspace_api.py`](test_workspace_api.py) | Pydantic validation, HTTP conflicts, simulation capabilities, no voice claim, routing/traversal protection, no import-time I/O, strict-schema Meta goal requests and sanitized failures. |
 | [`test_temporary_map.py`](test_temporary_map.py) | Drawing validation/hash identity, east-facing shortest routes, junction action expansion, fresh per-junction GREEN/stop binding, map replacement and legacy-plan invalidation. |
 | [`test_scene.py`](test_scene.py) | Four-marker candidates/explicit locks, partial visibility without refit, changed-view inhibition, image bounds/headers, immutable frame paths, scene-revision binding, late-result rejection, schema validation and private Meta request handling. |
+| [`test_action_review.py`](test_action_review.py) | Bound recorded-pair PASS/FAIL/uncertainty consequences, scene/map/frame integrity, superseded response rejection, provider failure and timeout, durable duplicate prevention, idempotent receipts and restart non-replay. |
 
 GREEN/stop authority from an earlier junction cannot authorize the next junction. A later RED observation does not revoke the already admitted simulated crossing. Clock rollback cannot make a future-dated signal observation fresh. Reobservation creates a new review binding without rerunning movement. Provider failure invalidates a pending plan and never substitutes a scripted success.
 
@@ -43,6 +44,7 @@ GREEN/stop authority from an earlier junction cannot authorize the next junction
 | Real text provider request | Endpoint access and the specific goal interpretation/result. |
 | UI visual/browser check | Layout and interaction behavior at recorded viewport sizes and states. |
 | Recorded-image evaluation | Model behavior on identified, previously captured input media. |
+| Synthetic-image provider evaluation | Actual provider/state behavior on explicitly labelled original schematics; no real-car accuracy or physical claim. |
 | Future physical qualification | Actual pushing, turning, stopping and completion under measured conditions. |
 
 Real provider tests are opt-in and outside the offline suite. See [Meta checks](../docs/META_API_CHECK.md). No image-review or voice inference claim follows from a successful text-goal request.
@@ -50,13 +52,15 @@ Real provider tests are opt-in and outside the offline suite. See [Meta checks](
 ## Remaining acceptance work
 
 - Actual provider quality on held-out recorded scenes, plus complete provider receipts.
-- Integrated per-action MUSE review and independent local/model disagreement handling; scene-only inspection never substitutes for these gates.
+- Trusted fresh physical action imagery, qualified local findings and local/model disagreement handling. Recorded-pair MUSE integration exists; scene-only inspection never substitutes for its binding or the local gates.
 - Voice permission denial, bounded upload/normalization, cancellation, empty recognition, edited text confirmation and late/superseded results.
 - Held-out vehicle/signal image evaluation with independent labels.
 - Tablet-origin HTTPS and actual microphone capture.
 - Independently measured final robot/camera/board registration and every physical pushing/stopping capability. Temporary four-marker fit residual is not absolute physical accuracy.
 
 Visual acceptance must inspect readable source labels, wait/review/fault/recovery states, keyboard focus, responsive panel layouts, arrow alignment, and evidence replay driven by backend state. Replay must not dispatch movement.
+
+The opt-in [three-case action-review harness](../docs/ACTION_REVIEWS.md#reproduce-the-synthetic-pipeline-cases) is separate from the offline suite. It uses original synthetic schematics, isolated databases and actual Meta calls only when `--call-meta` is explicit. Its designed cases do not measure held-out real-car accuracy.
 
 Package verification establishes archive integrity and policy. It does not establish publication rights, absence of sensitive prose, or publisher authenticity. Keep private media and credentials outside fixtures.
 

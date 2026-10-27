@@ -125,8 +125,8 @@ function RecordedFrame({ scene, route, map }: { scene: SceneSnapshot; route: Map
   </div>;
 }
 
-export function MapScene({ workspace, readOnly = false, onSnapshot }: {
-  workspace: WorkspaceSnapshot | null; readOnly?: boolean; onSnapshot: (snapshot: SceneSnapshot) => void;
+export function MapScene({ workspace, readOnly = false, onSnapshot, openToolsRequest = 0 }: {
+  workspace: WorkspaceSnapshot | null; readOnly?: boolean; onSnapshot: (snapshot: SceneSnapshot) => void; openToolsRequest?: number;
 }) {
   const [map, setMap] = useState<TemporaryMap | null>(null);
   const [scene, setScene] = useState<SceneSnapshot | null>(null);
@@ -137,6 +137,7 @@ export function MapScene({ workspace, readOnly = false, onSnapshot }: {
   const [capturedAt, setCapturedAt] = useState('');
   const [expected, setExpected] = useState('Inspect the temporary Little Town map. Report visible places, car visibility and signal color. Do not infer physical motion.');
   const fileInput = useRef<HTMLInputElement>(null);
+  const toolsPanel = useRef<HTMLDivElement>(null);
   const current = useRef<SceneSnapshot | null>(null);
   const currentExpectation = workspace?.plan?.steps[workspace.current_step]?.description;
   const active = Boolean(workspace?.approved && !['COMPLETED', 'CANCELLED', 'FAULT', 'RECOVERY_REQUIRED'].includes(workspace.state));
@@ -170,6 +171,10 @@ export function MapScene({ workspace, readOnly = false, onSnapshot }: {
     return () => window.clearInterval(timer);
   }, [refresh, refreshMap]);
   useEffect(() => { if (currentExpectation) setExpected(currentExpectation); }, [currentExpectation]);
+  useEffect(() => { if (openToolsRequest > 0) setExpanded(true); }, [openToolsRequest]);
+  useEffect(() => {
+    if (expanded && openToolsRequest > 0) toolsPanel.current?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+  }, [expanded, openToolsRequest]);
 
   async function sceneCommand(kind: 'registration' | 'inspection') {
     const snapshot = current.current;
@@ -240,7 +245,7 @@ export function MapScene({ workspace, readOnly = false, onSnapshot }: {
     {route && map && route.map_hash !== map.geometry_hash && <div className="scene-error"><Icon name="shield" size={16}/><span>The stored plan belongs to different map geometry. Its route is hidden. Reset the simulation and create a new plan.</span></div>}
 
     <input ref={fileInput} type="file" accept="image/jpeg,image/png" className="hidden-file-input" aria-label="Recorded JPEG or PNG frame" disabled={readOnly || Boolean(busy)} onChange={event => void upload(event.target.files?.[0])}/>
-    {expanded && <div className="image-tools-panel">
+    {expanded && <div ref={toolsPanel} className="image-tools-panel">
       <div className="image-tools-heading"><span className="eyebrow">RECORDED IMAGE TOOLS</span><span>Independent scene evidence</span></div>
       <div className="image-upload-row"><button className="image-upload-button" disabled={readOnly || Boolean(busy)} onClick={() => fileInput.current?.click()}><Icon name="upload" size={16}/>{busy === 'upload' ? 'Uploading…' : 'Upload recorded frame'}</button><label>Capture time <span>(optional · local time)</span><input type="datetime-local" value={capturedAt} disabled={readOnly || Boolean(busy)} onChange={event => setCapturedAt(event.target.value)}/></label></div>
       <p className="image-input-note">JPEG or PNG · up to 8 MiB / 12 megapixels. An omitted capture time stays unknown.</p>

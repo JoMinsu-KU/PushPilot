@@ -19,10 +19,14 @@ Run from the repository root with **Python 3.12+**. Install `requirements.lock` 
 | `python tools/build_release.py --output <archive.zip>` | Packages allowlisted blobs from a clean committed HEAD and writes a hash manifest. |
 | `python tools/build_release.py --verify <archive.zip>` | Validates ZIP paths, metadata, policy, sizes, and SHA-256 values without extracting. |
 | `python tools/check_muse_api.py` | Opt-in live Meta check: reads the ignored local key, queries models and sends one bounded text completion. |
+| `python tools/evaluate_action_reviews.py --output <new-directory>` | Generates original labelled synthetic image fixtures and a manifest outside the repository; no provider request. |
+| `python tools/evaluate_action_reviews.py --output <new-directory> --call-meta` | Sends three synthetic before/after pairs through isolated application action-review sessions; records actual verdicts, supervisor states, elapsed time and reported tokens. |
 
 Commands return a nonzero exit code on failure. Successful check/build/verify commands print a compact JSON result. The test runner prints its normal test report.
 
 The Meta checker explicitly contacts a provider and may consume API credits. It is never invoked by `dev.py check` or `dev.py test`. The application launcher makes no automatic provider request; an operator can deliberately select a backend Meta goal request or a frame-bound recorded-scene inspection. See [connection setup and observed results](../docs/META_API_CHECK.md). The standalone checker is separate from `backend/meta.py` and is not an image-review test.
+
+The synthetic action-review evaluator also contacts Meta only with its explicit `--call-meta` flag. Its three cases test expected progress, no progress and occlusion on self-authored diagrams, not photographs or physical robot outcomes. It makes no camera or robot connection, leaves running workspaces untouched and refuses to overwrite its output directory. See [Action reviews](../docs/ACTION_REVIEWS.md) and the [actual result record](../docs/evidence/synthetic-action-reviews-20261027.json).
 
 Build the frontend locally using Node 24 and `npm ci && npm run build` in `frontend/`. GX10 serves those compiled assets using Python without Node. The launcher supports explicit `--host`, `--port`, and `--state-path`, validates them before startup, disables reload, and starts no equipment processes. Locked runtime dependencies include OpenCV and NumPy for temporary-map marker detection. `PUSHPILOT_MAP_PATH` selects temporary geometry; `PUSHPILOT_SCENE_DIR` selects private uploaded-frame/registration/inspection storage. See [Development](../docs/DEVELOPMENT.md).
 

@@ -6,7 +6,7 @@
 
 [Architecture](../docs/ARCHITECTURE.md) · [Backend](../backend/README.md) · [Voice input](../docs/VOICE_INPUT.md) · [Model interaction](../docs/META_INTELLIGENCE.md)
 
-> **Implemented:** [`workspace.ts`](workspace.ts) describes `pushpilot.workspace.v1`; [`scene.ts`](scene.ts) describes temporary map/routes and `pushpilot.scene.v1`. Pydantic models in `backend/app.py` and `backend/scene_api.py` validate requests. These source interfaces are not a formal standalone JSON Schema catalog. Voice, complete action-observation bundles, and physical receipts remain future contracts.
+> **Implemented:** [`workspace.ts`](workspace.ts) describes `pushpilot.workspace.v1`; [`scene.ts`](scene.ts) describes temporary map/routes and `pushpilot.scene.v1`; [`action-review.ts`](action-review.ts) describes recorded-action requests and evidence. Pydantic models in `backend/app.py` and `backend/scene_api.py` validate requests. These source interfaces are not a formal standalone JSON Schema catalog. Voice, trusted physical observation bundles and hardware receipts remain future contracts.
 
 ## Current API
 
@@ -19,6 +19,7 @@
 | `POST /api/v1/advance` | None | Admit the next eligible abstract action. Crossing uses its own gate. |
 | `POST /api/v1/signal` | `color: RED\|GREEN\|UNKNOWN`, optional `junction_id` | Inject a simulated observation bound to the applicable junction. |
 | `POST /api/v1/reviews` | `review_id`, `verdict: PASS\|FAIL\|REOBSERVE\|UNKNOWN` | Inject an explicitly demo-sourced verdict for the pending review. |
+| `POST /api/v1/action-reviews` | `review_id`, `expected_scene_revision`, `before_frame_id`, `after_frame_id`, `expected_visual` | Bind an actual recorded-image MUSE result to the pending simulated action; return its supervisor consequence. |
 | `POST /api/v1/reobserve` | None | Bind a new simulated review without replaying movement. |
 | `POST /api/v1/cancel` | None | Terminate the simulation; no hardware-stop guarantee. |
 | `POST /api/v1/reset` | None | Clear non-active state while retaining evidence history. |
@@ -48,7 +49,13 @@ The snapshot binds a session and revision to state, goal, current plan/step, map
 
 Plan and review identifiers prevent approval or judgment from applying to a different revision. Events retain stable IDs, sequence numbers, timestamps, source labels, state, and explanatory text. SQLite also retains exact request digests and idempotent command receipts. Reset does not remove the event history.
 
-The mission capability response reports `robot`, `camera`, `registered_ar`, `voice`, and `image_review` as false; here image_review means integrated per-action mission review. The independent scene API can inspect recorded images without changing those capabilities. Scene capabilities report live_camera/robot false. `muse_configured` indicates configuration availability, not successful inference. Demo action reviews cannot become Meta evidence by changing a UI label.
+Mission capabilities keep `robot`, `camera`, `registered_ar` and `voice` false. `image_review` and `recorded_action_review` indicate that the operator-selected recorded-pair path is implemented; they do not indicate live capture, physical freshness or provider success. `muse_configured` indicates configuration availability, not successful inference. Scene capabilities keep live_camera/robot false. Demo verdicts cannot become Meta evidence by changing a UI label.
+
+## Recorded-action evidence
+
+The [action-review DTO](action-review.ts) binds the before/after image IDs and SHA-256 values, map identity, session/plan/action/review, input workspace/scene revisions, expected visual text and server-bound action. It records a validated PASS/FAIL/REOBSERVE/UNKNOWN result, explanation, limitations, prompt/schema/model versions, elapsed time and provider-reported token counts or null.
+
+Its source is `meta`, input kind is `operator_selected_recorded_pair`, and scope is `simulated_action_review` with `simulation_only: true` and `motion_authority: false`. The operator-provided expected text does not replace the server's action binding. The after frame must be current, both frames must belong to the map, and stale/superseded results cannot satisfy another review. Exact requests are durably reserved to avoid duplicate provider dispatch. [Action reviews](../docs/ACTION_REVIEWS.md) documents the full lifecycle and error contract.
 
 ## Provider goal boundary
 
@@ -69,7 +76,7 @@ The model supplies an interpretation, not plan approval, metric coordinates, roa
 
 Define separate records for capture, transcription, edited transcript revision, confirmed goal, and mission approval. Bind finite batch transcription to its capture/session/request and initiating input revision. Cancellation or supersession invalidates late results. Preserve original provider text and actual provenance without inventing ASR confidence. Original Korean or English text is user data.
 
-Recorded-scene files already bind original frame bytes/SHA-256, source, receive time, optional operator-provided capture time, map identity, registration reference, and validated scene inspection. Full per-action records still need action binding, crop lineage, local findings, exact provider envelope/usage/timing, and prompt/schema versions. The mission event timeline does not yet implement that complete receipt.
+Recorded-scene files bind original frame bytes/SHA-256, source, receive time, optional operator-provided capture time, map identity, registration reference and validated inspection. Recorded-action evidence adds its own pending-action binding, validated result, versions, elapsed time and reported usage; accepted events retain that record. Trusted physical capture/receipt linkage, crop lineage, qualified local findings and complete raw provider envelopes remain future work.
 
 ## Deliberately absent
 

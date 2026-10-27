@@ -111,6 +111,6 @@
     <rect x="1004" y="366" width="208" height="23" rx="5" fill="#073e58" stroke="#1680a1"/>
     <text x="1108" y="382" fill="#91e9ff" font-size="10" font-weight="600" text-anchor="middle">HUMAN APPROVAL BEFORE ACTION</text>
     <path d="M664 430h30" stroke="#2fd3ff" stroke-width="2"/>
-    <text x="706" y="434" fill="#7d9fb8" font-size="11">Design direction · Hardware and model integration are future work</text>
+    <text x="706" y="434" fill="#7d9fb8" font-size="11">Concept illustration · Real Meta text/image integration · Hardware pending</text>
   </g>
 </svg>

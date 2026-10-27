@@ -18,7 +18,7 @@ The reviewed data file is `backend/data/little-town-temporary.json`, with map ID
 
 Routing starts at PIZZA facing east and follows enabled cardinal drawing edges. The canonical geometry hash binds the board, graph, markers and destination layout. These lengths describe the drawing; they are not TCP travel distances or qualified vehicle trajectories. Centerline containment does not establish car/tool swept clearance.
 
-Each intermediate junction contributes an approach, mandatory simulated stop and admitted crossing. Crossing descriptions retain the intended turn direction. Every junction needs its own accepted demo stop review and fresh scoped GREEN. A previous junction's GREEN or stop verification cannot authorize the next one. Actual stop-line offsets and physical contact-turn motions remain unqualified.
+Each intermediate junction contributes an approach, mandatory simulated stop and admitted crossing. Crossing descriptions retain the intended turn direction. Every junction needs its own accepted action review and fresh scoped simulated GREEN. A previous junction's GREEN or stop verification cannot authorize the next one. Actual stop-line offsets and physical contact-turn motions remain unqualified.
 
 ## Recorded scene and test overlay
 
@@ -40,7 +40,7 @@ The implementation uses a 3 px RMS / 6 px maximum residual check for this test o
 
 The strict response reports `USABLE`, `REOBSERVE` or `UNKNOWN`, visible places, physical-car visibility, a model-reported paper-signal color and limitations. A printed START rectangle or vehicle footprint is not a physical car. Tiny printed traffic-light artwork is not the separate operator paper signal.
 
-**Scene inspection does not approve an action, supply the deterministic signal gate or advance the mission.** Per-action demo reviews remain separately labelled. The complete action-bound fresh-image review and measured local completion integration is still pending. `USABLE` means the image supports scene inspection, not successful vehicle arrival.
+**Scene inspection does not approve an action, supply the deterministic signal gate or advance the mission.** A separate [action-review endpoint](ACTION_REVIEWS.md) compares a selected recorded before/after pair for the pending simulated action; demo verdicts remain separately labelled. Trusted fresh physical capture and measured local completion remain pending. Scene `USABLE` means the image supports inspection, not successful vehicle arrival.
 
 No live camera connection or robot transport is opened by the application. The first connected frame is a recorded native 1920×1080 GX10 photograph; its source stays `recorded`. The existing camera and robot services are outside this application lifecycle.
 

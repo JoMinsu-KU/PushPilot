@@ -10,7 +10,7 @@
 
 ---
 
-**Status: temporary-map simulation and recorded-scene inspection are implemented.** One FastAPI/Uvicorn process serves the React/TypeScript bundle and API. SQLite stores mission state/events; private runtime files store frames, marker registrations, and MUSE scene inspections. A replaceable temporary graph supplies simulation routes. Scene inspection does not advance actions or replace demo action reviews. Voice, live camera capture, robot registration, and physical control remain unavailable.
+**Status: temporary-map simulation and recorded-image review are implemented.** One FastAPI/Uvicorn process serves the React/TypeScript bundle and API. SQLite stores mission state/events and action-review receipts; private runtime files store images, marker registrations and independent scene inspections. A replaceable graph supplies simulation routes. Action-bound recorded pairs can change the simulated mission through local gates; scene-only inspection cannot. Voice, live capture, robot registration and physical control remain unavailable.
 
 ## Initial deployment units
 
@@ -20,7 +20,7 @@ The application uses a browser frontend and **one backend process containing sep
 |---|---|---|
 | **Tablet browser** | English workspace, typed goals, graph route, recorded-frame upload/overlay, scene inspection and replay | React/TypeScript; microphone/transcript flow planned |
 | **Application backend** | Revisioned mission/scene APIs, graph routing, goal interpretation, abstract actions and private frame inspection | FastAPI/Uvicorn, one worker; OpenCV/NumPy |
-| **Meta Spark API** | Goal interpretation and independent recorded-scene inspection | Goal request verified; scene adapter implemented; integrated per-action image review remains unimplemented |
+| **Meta Spark API** | Goal interpretation, independent scene inspection and bound recorded-action comparison | Actual goal/scene cases and three synthetic action-review cases recorded in [Meta evidence](META_API_CHECK.md) |
 | **Meta Voice Transcribe API** | Recorded speech → original-language transcript | Planned; access and quality untested |
 | **Application state storage** | Workspace, ordered events and idempotent receipts; separately private frames, hashes, locked views and inspections | SQLite plus private scene files; full provider envelope receipts planned |
 | **Qualified equipment adapters** | Camera observations, local signal inhibition and measured robot action receipts | Deferred physical integration |
@@ -41,7 +41,7 @@ The backend serves compiled `frontend/dist` on the same origin as `/api`. Instal
 | **Action adapter** | Hardware-free bounded action simulation and corresponding result | Later physical implementation requires separate qualification |
 | **Evidence and replay** | Immutable records and causal links among inputs, revisions, checks and decisions | Replaying evidence grants no execution authority |
 
-The table describes implemented and future responsibilities. Mission/scene API validation, temporary graph routing, goal interpretation, supervision, simulated actions, SQLite events, recorded-frame marker registration, and MUSE scene inspection exist. Speech/audio normalization, live camera/local signal perception, per-action image review, and complete provider receipts remain future work. The synchronous goal adapter serializes simulator commands. Scene inspection awaits the provider outside its store lock and rejects a result if its frame/revision was superseded. Neither path is latency-sensitive physical signal inhibition.
+The table includes implemented and future responsibilities. API validation, temporary graph routing, goal interpretation, supervision, simulation, SQLite evidence, test image registration, scene inspection and action-bound recorded review exist. Speech/audio normalization, live capture/local signal perception, physical observation and complete unified provider receipts remain later work. The synchronous goal adapter serializes simulator commands. Scene inspection and action review await providers outside store locks, then reject superseded bindings. No provider path is latency-sensitive physical signal inhibition.
 
 The speech and Spark adapters may share a server-side configuration boundary and the same Meta API key. They have different request formats, validation and acceptance tests. Success in one adapter does not establish the other's availability.
 
@@ -60,7 +60,7 @@ The first speech implementation uses a finite recording. Live streaming is a lat
 
 ## Intended voice and image service behavior
 
-The current mission uses graph-based simulated actions/signals and manually injected demo action reviews. A separate recorded-image inspection path is implemented, but it does not participate in those action gates. The following complete mission flow includes voice and per-action image services that remain future work:
+The current mission uses graph-based simulated actions/signals. Its pending action can accept either a labelled demo verdict or a validated actual MUSE comparison of operator-selected recorded images. Independent scene inspection does not participate in those action gates. The complete future flow below also includes voice and fresh physical imagery that remain unimplemented:
 
 1. The browser captures an utterance or accepts typed text. Voice audio goes only to the application backend.
 2. The speech adapter obtains a transcript. The operator checks or edits it and explicitly accepts one revision.
@@ -101,12 +101,13 @@ Final production geometry, robot coordinates, camera-to-BASE registration, quali
 | Milestone | Complete when |
 |---|---|
 | **Select runtime — implemented** | React/Vite frontend, Python 3.12+ FastAPI/Uvicorn backend, locks and local launcher exist; host installation remains unverified |
-| **Establish contracts — partial** | Revisioned goal/plan/action/demo-review DTOs and Pydantic request validation exist; voice/image bundle contracts remain planned |
+| **Establish contracts — partial** | Revisioned workspace/scene/recorded-action DTOs and Pydantic validation exist; voice and physical receipt/observation contracts remain planned |
 | **Connect typed flow — implemented** | An approved symbolic mission runs through simulation and source-labelled SQLite events without hardware |
 | **Add voice** | Real finite transcription plus editing, cancellation, text fallback and latest-revision approval passes the [voice acceptance gates](VOICE_INPUT.md#acceptance-gates-before-claiming-voice-support) |
 | **Inspect recorded scenes — implemented** | Explicit frame-bound MUSE request returns USABLE/REOBSERVE/UNKNOWN, visible places, car visibility and paper-signal evidence without motion authority; actual results are recorded separately in [verification](VERIFICATION.md) |
-| **Connect action image review — pending** | Fresh action-bound MUSE review and independent local findings replace neither one another nor the required physical receipts |
-| **Verify simulation — offline tested** | RED wait, accepted GREEN, rejected demo review, reobservation, provider failure and restart have meaningful offline tests; actual image/voice integration is separate |
+| **Connect recorded action review — implemented** | Bound MUSE before/after result changes simulation with local gates preserved; [workflow and receipts](ACTION_REVIEWS.md) |
+| **Connect fresh physical evidence — pending** | Trusted capture, action receipts and qualified local findings support the physical outcome; selected uploads do not establish this |
+| **Verify simulation — offline tested** | RED wait, accepted GREEN, review rejection/uncertainty, provider failure and restart have offline tests; actual calls and physical quality use separate records |
 | **Prepare isolated delivery — partial** | Read-only host inspection and runtime selection completed; host installation, TLS, activation and rollback checks remain |
 
 Physical qualification opens only after the map and installation are finalized. It is not implied by completing these software milestones.

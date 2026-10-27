@@ -14,7 +14,7 @@ PushPilot is being developed as a tablet workspace for an image-grounded tableto
 
 The current [visual direction](DESIGN_SYSTEM.md) follows the user's industrial light-dashboard references: off-white surfaces, white panels, charcoal typography, a slim icon rail and restrained orange accents. Earlier navy/cyan screenshots and generated diagrams document their original design stage and do not define the current interface palette.
 
-**The temporary Little Town application is implemented for simulation and recorded-image inspection.** React/TypeScript and a FastAPI/Uvicorn backend provide graph-based plans, SQLite supervision, simulated actions/signals, demo action reviews, and Meta goal interpretation. Uploaded frames support marker detection, an explicitly locked test overlay, and a separate MUSE scene-inspection request. Scene inspection never advances the mission. Voice, live camera capture, robot registration, and physical control remain unavailable; final production geometry is unresolved.
+**The temporary Little Town application connects simulation and recorded-image review.** React/TypeScript and a FastAPI/Uvicorn backend provide graph-based plans, SQLite supervision, simulated actions/signals, explicit demo verdicts and actual Meta goal interpretation. Uploaded frames support marker detection, a locked test overlay and independent MUSE scene inspection. A separate action-bound before/after review can change the simulated mission through the supervisor. Neither path establishes physical freshness or robot capability. Voice, live camera capture, robot registration and physical control remain unavailable.
 
 ## Choose a reading path
 
@@ -25,10 +25,11 @@ The current [visual direction](DESIGN_SYSTEM.md) follows the user's industrial l
 | Understand the system | [Architecture](ARCHITECTURE.md) | [Service composition](SERVICE_COMPOSITION.md) |
 | Review voice goal entry | [Voice input](VOICE_INPUT.md) | [Frontend](../frontend/README.md) and [contracts](../contracts/README.md) |
 | Test Meta authentication and goal interpretation | [API connection check](META_API_CHECK.md) | [Meta intelligence](META_INTELLIGENCE.md) |
+| Connect image judgment to a simulated action | [Action reviews](ACTION_REVIEWS.md) | [Contracts](../contracts/README.md) and [verification](VERIFICATION.md) |
 | Test the temporary printed map | [Temporary map](TEMPORARY_MAP.md) | [Test inputs](TEST_INPUTS.md) and [verification](VERIFICATION.md) |
 | Work on the repository | [Development workflow](DEVELOPMENT.md) | [Roadmap](ROADMAP.md) |
 | Review a demonstration claim | [Evidence model](ARCHITECTURE.md#evidence-that-explains-a-decision) | [Contribution record](../CONTRIBUTIONS.md) |
-| Inspect completed software checks | [Verification](VERIFICATION.md) | [Earlier workspace screenshot](assets/workspace-simulation.jpg) |
+| Inspect completed software checks | [Verification](VERIFICATION.md) | [Current workspace screenshot](assets/light-industrial-workspace.jpg) |
 | Prepare a release | [Development workflow](DEVELOPMENT.md) | [GX10 delivery plan](../deploy/README.md) |
 
 ## The interaction in one line
@@ -37,16 +38,16 @@ The current [visual direction](DESIGN_SYSTEM.md) follows the user's industrial l
 >
 > Fresh observations and accepted checks determine the next action. Uncertainty stays visible and changes the workflow.
 
-The current mission begins at symbolic **PIZZA** and pushes a wheel-less car toward a selected destination. At every configured intersection, the car stops before the stop line, even when the signal is already green. Red, unclear or stale signal observations mean wait. Fresh green and accepted checks permit entry. The physical design requires image-grounded review after every bounded action. Current mission steps use explicit demo verdicts; recorded-scene MUSE inspection is a separate, non-authoritative path.
+The mission begins at symbolic **PIZZA** and pushes a wheel-less car toward a selected destination. Every configured intersection requires a stop, even when its signal is already green. Red, unclear or stale signal observations mean wait. In the simulator, explicit demo verdicts or bound recorded-image MUSE results can review an action; fresh simulated GREEN and accepted stop checks still gate entry. Independent scene inspection cannot supply either review or signal authority. Fresh post-action physical imagery remains future integration work.
 
 ## Component boundaries
 
 | Directory | Intended ownership | Present state |
 |---|---|---|
-| [`frontend/`](../frontend/README.md) | English tablet workspace, graph routes, recorded frames, inspection, approval and replay | React/TypeScript implementation; voice remains planned |
-| [`backend/`](../backend/README.md) | API, temporary map graph, simulation, recorded-frame inspection, Meta adapters and evidence | FastAPI/Uvicorn, SQLite, OpenCV and NumPy |
+| [`frontend/`](../frontend/README.md) | English tablet workspace, graph routes, recorded frames, inspection, action-review input, approval and replay | React/TypeScript implementation; voice remains planned |
+| [`backend/`](../backend/README.md) | API, temporary map graph, simulation, recorded-scene/action review, Meta adapters and evidence | FastAPI/Uvicorn, SQLite, OpenCV and NumPy |
 | [`contracts/`](../contracts/README.md) | Workspace/map/scene snapshots, capabilities and source-labelled events | TypeScript DTOs; Pydantic request validation in backend |
-| [`prompts/`](../prompts/README.md) | Model instructions and review expectations | Goal/recorded-scene prompts inline; versioned catalog and action-image review planned |
+| [`prompts/`](../prompts/README.md) | Model instructions and review expectations | Goal/scene instructions plus the action-review contract; complete template catalog remains later work |
 | [`tools/`](../tools/) | Source checks, source packaging and local application startup | Implemented |
 | [`tests/`](../tests/) | Release, provider-boundary, mission and API behavior | Offline automated suite |
 | [`deploy/`](../deploy/README.md) | Separate GX10 releases and shared runtime state | Host inspected read-only; application not deployed |

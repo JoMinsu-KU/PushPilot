@@ -6,21 +6,22 @@
 
 [Architecture](../docs/ARCHITECTURE.md) · [Services](../docs/SERVICE_COMPOSITION.md) · [Contracts](../contracts/workspace.ts) · [Deployment](../deploy/README.md)
 
-> **Implemented: temporary-map simulation and recorded-image inspection.** FastAPI serves a revisioned operator API and the built frontend from one origin. SQLite preserves state, decisions, and command receipts. Every mission action and signal result is explicitly simulated. Separate recorded-image inspection can call MUSE but grants no motion authority; voice capture remains unimplemented.
+> **Implemented: temporary-map simulation and recorded-image review.** FastAPI serves a revisioned operator API and the built frontend from one origin. SQLite preserves state, decisions and command receipts. Every action receipt and signal remains simulated. Bound MUSE before/after review can affect the simulated supervisor; separate scene inspection cannot. Neither grants physical motion authority. Voice capture remains unimplemented.
 
 ## What runs today
 
 | Component | Current behavior |
 | :--- | :--- |
 | Mission supervisor | Replaceable Little Town graph; east-facing PIZZA start to BAKERY, BOOKSTORE, or SCHOOL, with route-specific PUSH, STOP, CROSS, and VERIFY actions. |
-| Admission gate | A mandatory simulated full stop, accepted demo stop review, and fresh simulated GREEN admit one crossing. |
-| Review | The operator injects PASS, FAIL, UNKNOWN, or REOBSERVE with an exact observation binding. This is labelled `demo`, never MUSE image evidence. |
+| Admission gate | A mandatory simulated full stop, accepted action review and fresh junction-scoped simulated GREEN admit one crossing. |
+| Demo review | The operator injects PASS, FAIL, UNKNOWN or REOBSERVE with an exact observation binding. This is labelled `demo`, never MUSE image evidence. |
+| MUSE action review | `backend/action_review.py` compares an operator-selected recorded before/after pair, binds it to the pending action and applies a validated result through supervisor gates. |
 | MUSE goal adapter | Explicit `provider: meta` goal requests call Muse Spark 1.3. No provider request runs at startup; failures do not fall back to demo interpretation. |
 | Temporary map | Validated drawing facts and canonical geometry hash; deterministic shortest paths and turn descriptions. No robot coordinate transform. |
 | Scene inspection | Uploaded/recorded images, ArUco detection, explicit test registration, and opt-in MUSE inspection in a separate non-authoritative store. |
 | Evidence store | Chronological, append-only events plus exact request-ID/payload receipts. Reset retains the timeline. |
 | Same-origin host | Serves `frontend/dist` when built. Unknown `/api` routes return JSON 404 rather than an HTML application page. |
-| Unavailable capabilities | Robot, live camera, production registered AR, voice, and automatic mission image review are unavailable. Recorded-image scene inspection is separate. |
+| Unavailable capabilities | Robot, live camera, production registered AR, voice and fresh physical action review are unavailable. Recorded-image review is explicitly operator selected. |
 
 The temporary graph describes drawing centerlines. Its route is a simulation plan, not an installed robot trajectory, measured vehicle pose, or physical reachability result. Production geometry, physical stop lines, contact turning, and camera-to-BASE registration remain unqualified.
 
@@ -84,10 +85,11 @@ The definitive DTO and command contract is [workspace.ts](../contracts/workspace
 | `POST /api/v1/advance` | Run the next permitted bounded simulated action. |
 | `POST /api/v1/signal` | Inject a clearly simulated RED/GREEN/UNKNOWN observation. |
 | `POST /api/v1/reviews` | Inject a demo verdict for the exact pending review ID. |
+| `POST /api/v1/action-reviews` | Compare an immutable recorded pair with MUSE for the pending simulated review; [exact workflow and receipt](../docs/ACTION_REVIEWS.md). |
 | `POST /api/v1/reobserve` | Replace an uncertain observation binding without movement. |
 | `POST /api/v1/cancel` / `reset` | Explicit termination and reconciliation. |
 
-Each mutation includes a UUID `request_id` and current `expected_revision`. Stale commands and request-ID reuse with changed payloads return HTTP 409. Exact retries return their original receipt, which may contain an older snapshot; fetch state to reconcile after an interrupted connection. Typed/voice goals cannot replace an active or waiting mission. Provider failures return a sanitized HTTP 502 and preserve failure evidence.
+Each mission mutation includes a UUID `request_id` and current `expected_revision`. Stale commands and request-ID reuse with changed payloads return HTTP 409. Exact retries return their original receipt, which may contain an older snapshot; fetch state to reconcile after an interrupted connection. Typed/voice goals cannot replace an active or waiting mission. Provider failures return sanitized errors without a demo fallback. Action-image review additionally reserves the request durably, sends provider work outside store locks, then rechecks mission/scene/map/frame identity. Scene mutations have their own revision contract.
 
 ## Restart behavior
 
@@ -98,11 +100,11 @@ SQLite commits the state, event append, and command receipt together. Evidence r
 ## Still to implement
 
 - Bounded push-to-talk upload, format validation, and Meta voice transcription, following the [voice design](../docs/VOICE_INPUT.md).
-- Bind actual fresh-image MUSE review to each mission action. Current scene inspection is intentionally separate and cannot authorize simulated or physical continuation.
+- Connect fresh physical post-action capture and independent measurements. Recorded-pair action review already affects simulation; its selected uploads do not prove capture chronology or hardware completion.
 - Qualified local signal observation/inhibition, separate from model latency.
 - Production map and metric AR registration, contact geometry, physical pushing/turning, robot transport, and independent physical verification. Test-only camera-to-drawing overlays are already available for uploaded frames.
 
-The model interprets intent and eventually reviews scene evidence. Deterministic gates own state transitions; model text never supplies executable robot code or authoritative metric coordinates.
+The model interprets intent and reviews supplied recorded evidence. Deterministic gates own state transitions; model text never supplies executable robot code or authoritative metric coordinates.
 
 ## Validate offline
 

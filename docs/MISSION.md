@@ -24,7 +24,7 @@ The intended demonstration begins at **PIZZA**. The operator states or types a d
 | **Act** | The current bounded action and progress | The selected adapter's action result |
 | **Verify** | Expected/observed comparison and MUSE decision | Fresh imagery, accepted local checks and model review |
 
-Each bounded action returns to verification. The workspace must make a rejected or uncertain review visibly change what happens next.
+Each bounded action returns to verification. The current simulator accepts either an explicitly demo-sourced verdict or an action-bound MUSE review of operator-selected recorded images. Rejection and uncertainty change the next state. Recorded pairs are not fresh physical post-action evidence; see [Action reviews](ACTION_REVIEWS.md).
 
 ## Goal entry and approval
 
@@ -55,7 +55,7 @@ Voice recording or typed request
   → verify the destination outcome
 ```
 
-The temporary adapter starts east-facing at PIZZA. Its default shortest drawing routes are PIZZA → C → S → BAKERY (232 mm, eight abstract steps), PIZZA → C → BOOKSTORE (148 mm, five steps), and PIZZA → C → S → SCHOOL (232 mm, eight steps). Each traversed junction receives PUSH approach, mandatory STOP, accepted demo review, and separately scoped fresh GREEN before CROSS. These drawing lengths and centerlines do not qualify the car/tool swept path or physical stop lines. The final production installation may change all of these details; see [Temporary map](TEMPORARY_MAP.md).
+The temporary adapter starts east-facing at PIZZA. Its default shortest drawing routes are PIZZA → C → S → BAKERY (232 mm, eight abstract steps), PIZZA → C → BOOKSTORE (148 mm, five steps), and PIZZA → C → S → SCHOOL (232 mm, eight steps). Each traversed junction receives PUSH approach, mandatory STOP, accepted action review, and separately scoped fresh simulated GREEN before CROSS. These drawing lengths and centerlines do not qualify the car/tool swept path or physical stop lines. The final production installation may change all of these details; see [Temporary map](TEMPORARY_MAP.md).
 
 ## Intersection policy
 
@@ -82,7 +82,9 @@ Tool clearance, observation poses, friction, slip, contact heights and usable tu
 
 ## What completes an action?
 
-The simulator currently advances only through its simulated action receipt and explicit demo verdict. Separate recorded-scene MUSE inspection cannot complete a step or supply its GREEN. The future physical supervisor needs three kinds of evidence:
+The simulator advances through its simulated action receipt and a review accepted by the supervisor. That review is either an operator-injected demo verdict or a validated MUSE result bound to a selected recorded before/after pair and the exact pending action. PASS can satisfy the review gate, FAIL faults the simulation, and REOBSERVE/UNKNOWN requires a new observation binding without replaying the action. A model PASS cannot bypass RED/UNKNOWN/stale signal inhibition. Separate recorded-scene inspection cannot complete a step or supply its GREEN.
+
+The future physical supervisor still needs three kinds of independently supported evidence:
 
 1. **Action evidence:** the action adapter reports the result for the correct request/session.
 2. **Local evidence:** applicable freshness, signal and outcome checks support the expected state.
@@ -102,7 +104,7 @@ The primary surface is an **English tablet workspace** following the industrial 
 
 | View | Content |
 |---|---|
-| **Workspace** | Push-to-talk or typed goal, editable transcript, scene placeholder, current action, expected/observed comparison, MUSE decision and next check |
+| **Workspace** | Typed goal, scene/map, current action, recorded-image review, expected/observed comparison, MUSE decision and next check; voice/transcript entry remains planned |
 | **Plan** | Current symbolic interpretation, approval state and action sequence |
 | **Replay** | Source-aware timeline with images, actual review responses and transition causes |
 

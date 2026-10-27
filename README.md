@@ -1,123 +1,100 @@
-<p align="center">
-  <img src="docs/assets/hero.svg" width="1280" alt="PushPilot — From sight to action. A shared plan. A checked outcome. Concept illustration of a robot, scene evidence and an operator review.">
-</p>
+<div align="center">
+
+# PushPilot
+
+### A robot can finish a motion without finishing the task.
+
+**See the scene. State the goal. Review the plan. Check the outcome.**
+
+PushPilot connects an operator's intent, a spatial plan and visual evidence in one tablet workspace.<br>
+Muse Spark interprets the goal and reviews images; a deterministic supervisor decides what can happen next.
+
+[See the workspace](#the-workspace) · [How Meta is used](#what-meta-adds) · [Evidence and limits](#evidence-and-limits) · [Run it](#quick-start)
+
+<code>Real Meta API</code> &nbsp; <code>Recorded-image analysis</code> &nbsp; <code>Simulated execution</code>
+
+</div>
 
 <p align="center">
-  <strong>An operator workspace for reviewable, visually grounded robot tasks.</strong><br>
-  Understand the goal. Inspect the outcome. Know why the next step happens.
+  <a href="docs/assets/light-industrial-workspace.jpg"><img src="docs/assets/light-industrial-workspace.jpg" width="1280" alt="Actual PushPilot application: a light industrial tablet workspace with a temporary Little Town route, a mission panel and source-labelled evidence."></a><br>
+  <sub>Actual local application · original spatial schematic · simulation. Raw camera frames stay private. <a href="docs/VERIFICATION.md">Verification record</a></sub>
 </p>
 
-<p align="center">
-  <a href="#why-pushpilot">Why PushPilot</a> &nbsp;·&nbsp;
-  <a href="#the-interaction-loop">The workflow</a> &nbsp;·&nbsp;
-  <a href="#build-status">Build status</a> &nbsp;·&nbsp;
-  <a href="#quick-start">Quick start</a> &nbsp;·&nbsp;
-  <a href="docs/README.md">Documentation</a>
-</p>
+## The workspace
 
-<p align="center">
-  <code>Stage: temporary-map workspace</code> &nbsp;
-  <code>Runtime: Python 3.12+</code> &nbsp;
-  <code>Deployment target: GX10</code>
-</p>
+Robot endpoint telemetry answers where the tool went. An operator still needs to know whether the object moved, whether the view is sufficient, and why the system is continuing or waiting. PushPilot puts those questions beside the scene instead of leaving them scattered across controller logs and model responses.
 
----
+The demonstration mission pushes a wheel-less model car from **Pizza** to a named destination. Every controlled intersection requires a stop, a reviewed outcome and a fresh green signal before entry. A dominant scene viewport shows the proposed route; the mission panel exposes the current action, pending checks and decision history.
 
-## Why PushPilot
+| Observe | Plan | Approve | Act | Verify |
+|---|---|---|---|---|
+| Inspect a source-labelled scene. | Interpret a goal and display its route. | Approve the current plan. | Run one bounded simulated action. | Review the outcome before continuing. |
 
-A robot reaching a commanded point does not tell an operator whether the object reached its goal. PushPilot is being built around that missing connection: **the intended task, the scene evidence and the decision to continue belong together.**
+The product direction extends this **natural-language spatial interface** beyond the tablet to a future AR-glasses companion: see the workspace, state an intention, and inspect a shared plan. The current experience is a tablet application with recorded-image route overlays. Voice capture, live spatial AR and wearable integration are future work.
 
-The proposed experience connects an operator's goal to a shared plan, bounded actions and fresh visual reviews through the planned Meta-model integration, MUSE. The operator can inspect what was expected, what was observed and why the application continues, waits or asks for another observation.
+## What Meta adds
 
-The initial demo design includes **text and push-to-talk goals**. A backend voice adapter transcribes a bounded recording with Meta Muse Voice Transcribe. The operator reviews or edits the original transcript, submits the goal to MUSE and explicitly approves the resulting plan. Read [voice input](docs/VOICE_INPUT.md) and [service composition](docs/SERVICE_COMPOSITION.md). Voice capture and transcription remain unimplemented and unverified.
+### Real input. Inspectable output.
 
-| Understand the task | Check the outcome | Explain the next step |
+Actual goal and single-image scene requests have been exercised through the application. The [Meta API record](docs/META_API_CHECK.md) provides their conditions and scope; action-bound comparisons are shown below.
+
+| Input | Actual result | Consequence |
 |---|---|---|
-| Ground the goal in the supplied scene and task context. | Compare the intended action with new evidence after it stops. | Keep the model result, local checks and resulting state change connected. |
+| `Push the car from Pizza to the Bookstore.` | Muse Spark interpreted **BOOKSTORE**. The supervisor derived a five-action temporary-map plan. | `PLAN_READY`, awaiting explicit approval. |
+| A recorded 1920 × 1080 photograph of the printed Little Town map | Four printed shops identified; **no separate physical car**; paper signal **UNKNOWN**. | Stored scene evidence, without advancing the mission. |
 
-The first use case is a controlled tabletop mission: push a wheel-less car from a named starting station to a destination, stop at controlled intersections, wait on red and enter on qualified green. It is a compact testbed for an inspectable operator workflow. A future AR-glasses companion extends the product idea beyond the tablet.
+The second case matters because printed car footprints and traffic-light decorations must not become evidence of a real car or an operator's paper signal. It is **one recorded example**, not a general image-accuracy result.
 
-**The connected workspace now uses a replaceable Little Town test map.** It plans three destinations, projects the planned route onto a registered recorded image, and supports actual Muse Spark scene inspection. Approval, bounded simulation, mandatory stops, scoped signals and evidence replay remain visible. Live camera capture, action-bound image reviews, voice and physical execution remain separate integration work. Read the [temporary-map guide](docs/TEMPORARY_MAP.md).
+### Make the image review affect the next step
 
-The current [interface direction](docs/DESIGN_SYSTEM.md) follows the user's industrial light-dashboard references: off-white canvas, white panels, charcoal text, a slim icon rail, a dominant scene viewport and restrained orange accents. Earlier navy/cyan illustrations and retained screenshots document their original design stage.
+The action-review path sends an operator-selected **before/after recorded-image pair**, the current action and its expected outcome to Muse Spark. A validated result is bound to that exact mission, action, pending review and map. The supervisor then applies it to the simulated mission alongside the existing local gates.
+
+| Review result | Supervisor behavior |
+|---|---|
+| **PASS** — the supplied evidence supports the expected outcome | Accept the review; continuation still requires the applicable approval, action and signal gates. |
+| **FAIL** — the supplied evidence contradicts the expected outcome | Enter a visible fault. |
+| **REOBSERVE / UNKNOWN** — the result cannot be established | Hold for another observation; do not replay the action. |
+
+**Three actual MUSE calls changed the simulated next state on three original synthetic image pairs:**
+
+| Same expected approach, different synthetic evidence | Actual MUSE result | Actual supervisor state |
+|---|---|---|
+| Depicted car moved into the target | PASS | READY |
+| Depicted car stayed at the start | FAIL | FAULT |
+| Foreground occluder hid the depicted car | REOBSERVE | REOBSERVE |
+
+These are labelled schematic test inputs, **not real-car photographs or physical motion**. One call per case demonstrates the provider-to-state connection; it is not a held-out accuracy benchmark. Read the [actual API results](docs/META_API_CHECK.md) and [reproduction workflow](docs/ACTION_REVIEWS.md).
 
 <p align="center">
-  <a href="docs/assets/light-industrial-workspace.jpg"><img src="docs/assets/light-industrial-workspace.jpg" width="1280" alt="PushPilot light industrial workspace: white panels, compact navigation, a self-authored Little Town schematic and source-labelled mission information."></a><br>
-  <sub>Light industrial workspace · self-authored spatial schematic · simulation only. <a href="docs/VERIFICATION.md">Verification scope</a></sub>
+  <a href="docs/assets/recorded-action-review.jpg"><img src="docs/assets/recorded-action-review.jpg" width="1080" alt="Actual MUSE action-review panel: an original synthetic BEFORE car at PIZZA, AFTER car in the target, an actual PASS response, recorded source labels and expandable provenance."></a><br>
+  <sub>Actual application and Meta response · original synthetic test images · simulation only.</sub>
 </p>
 
-## The interaction loop
+### Model judgment + deterministic authority
 
-<p align="center">
-  <a href="docs/assets/interaction-loop.png">
-  <img src="docs/assets/interaction-loop.png" width="1280" alt="Proposed interaction loop: Observe a source-labelled scene, Plan an interpreted goal, Approve the current task, Act through a bounded execution boundary, then Verify with fresh imagery and MUSE review before continuing.">
-  </a>
-</p>
+**Muse Spark** interprets intent and compares the supplied visual evidence. **The supervisor** enforces current-plan approval, request/review identity, map binding, stop policy and junction-scoped signal admission. A positive model answer cannot create a green signal or bypass a mandatory stop. A failed provider request never silently becomes a demo PASS.
 
-1. **Observe** — obtain a source-labelled scene and the operator's goal.
-2. **Plan** — interpret the task and prepare an explanation the operator can review.
-3. **Approve** — bind the reviewed task to the current context.
-4. **Act** — perform one bounded, qualified action through the execution boundary.
-5. **Verify** — compare fresh observations with the expected outcome, then continue, wait or reobserve.
+SQLite events and review records connect the input, response and resulting transition for replay. Recorded imagery, actual provider responses and simulated execution retain separate source labels.
 
-MUSE provides semantic interpretation and outcome review in the proposed integration. The supervisor enforces deterministic state, freshness, traffic and qualification checks. A model result does not directly issue robot scripts or authoritative coordinates.
+## Evidence and limits
 
-### A mission with visible decisions
-
-| Moment | Operator experience | Decision rule |
+| Area | Available today | Evidence boundary |
 |---|---|---|
-| State a goal | `Push the car to the bakery.` | Ground the request in supplied task context. |
-| Review the plan | A shared task and its expected outcomes. | Approval applies to the current task/context. |
-| Finish an action | `Expected / Observed` with a new image and model result. | Accept the reviewed outcome and required local checks before continuing. |
-| Reach a controlled approach | `Stopped at stop line` | Always stop first, including on green arrival. |
-| Observe red or an unclear signal | `Waiting for green` or `Signal unclear · Waiting` | Remain stopped; card exchange or occlusion cannot imply green. |
-| Confirm green | `Crossing intersection` | Fresh green and accepted entry checks permit automatic entry. |
-| Reach the destination | A final outcome and its evidence. | Measured completion and the required review establish success. |
+| Goal understanding | Actual strict-schema Muse Spark interpretation | Real text requests reached `PLAN_READY`; approval remains separate. |
+| Scene inspection | Actual Muse Spark analysis of a private recorded frame | The single shop/car/signal case above; no action authority. |
+| Action-bound image review | Recorded before/after pair → MUSE result → simulated supervisor decision | Three actual synthetic-input cases above; software checks in [verification](docs/VERIFICATION.md). Real-car task accuracy is unverified. |
+| Mission workflow | Three temporary graph routes, mandatory stops, red/unknown waiting, scoped green admission and replay | Software simulation; action receipts and signals are simulated. Explicit demo verdicts remain available and labelled. |
+| Image route overlay | Private upload, four-marker test lock and fixed-reference projection | Recorded-camera-to-drawing overlay; no robot/BASE registration or metric accuracy claim. |
+| Voice, live camera and robot execution | Designed or deferred | Not connected. Physical pushing, turning and paper-signal operation need qualification. |
+| GX10 and glasses | Selected deployment target and future companion concept | Application not deployed to GX10; no wearable connection. |
 
-The signal source is operator-switched red/green paper. Each bounded contact action requires a fresh-image MUSE review in the planned integration. Ordinary waiting and execution faults are separate states. Read the [mission specification](docs/MISSION.md).
+The temporary print is replaceable. Its geometry does not qualify physical stop lines, vehicle/tool clearance or contact turning. Raw map artwork, camera frames, credentials and operational archives are excluded from public source and release bundles.
 
-## What makes the model useful
-
-The product is designed to show five concise pieces of information together:
-
-> **Goal understood** → **Scene evidence** → **Expected / Observed** → **MUSE decision** → **Next check**
-
-A useful review can identify no progress, an unexpected outcome or insufficient visibility and change what happens next. Evidence is retained so that the operator can inspect the decision. A successful-looking caption over predetermined motion is not the intended integration.
-
-The planned evidence model records source identity independently for the robot, image, object pose, signal and model result. An actual Meta response over a recorded image is a real provider test; it does not turn simulated motion into physical execution. Read [Meta intelligence and evidence](docs/META_INTELLIGENCE.md).
-
-## Build status
-
-| Area | Status | What is available now |
-|---|---|---|
-| Repository structure and component ownership | **Ready** | Standalone workspace with component guides and development rules. |
-| Equipment-free checks | **Ready** | Source checks, release tests, mocked provider/API tests and mission transition scenarios. |
-| Source-release tooling | **Ready** | Clean-commit packaging, file hashes and archive verification. |
-| Meta API connectivity | **Verified: text only** | Authenticated model discovery and a real Muse Spark completion; [scope and command](docs/META_API_CHECK.md). |
-| Mission backend and abstract simulator | **Implemented** | Three graph routes, per-junction stop/fresh-signal gates, SQLite evidence, approval and restart recovery. |
-| Operator frontend and evidence replay | **Implemented** | Responsive English React workspace connected to revisioned backend state and event history. |
-| MUSE goal interpretation | **Verified: text only** | Backend-only strict-schema Muse Spark adapter; explicit opt-in and no scripted fallback. |
-| Recorded-image MUSE scene inspection | **Verified** | Four printed shops identified; physical car absent and paper signal unknown in the tested frame. Scene inspection grants no action authority. |
-| Temporary image overlay | **Implemented** | Private image upload, four-marker test registration, fixed-reference checks and uncropped projective SVG route. |
-| Action-bound fresh-image outcome review | **Planned** | Current action verdicts are explicitly operator-injected demo inputs. |
-| Voice goal input | **Planned: initial demo** | Push-to-talk, backend transcription, editable text and explicit plan approval are designed; no voice API call has been verified. |
-| Final map, metric AR and robot integration | **Deferred** | Awaiting the final installed map and physical qualification. |
-| AR-glasses companion | **Concept** | Future experience; no wearable integration is claimed. |
-
-**Verification covers software simulation and request boundaries.** Mission tests exercise mandatory stopping, red/unknown/stale inhibition, automatic green admission, uncertainty, faults, idempotency and restart recovery. A real structured [MUSE goal check](docs/META_API_CHECK.md) also reached `PLAN_READY`. These checks do not establish image accuracy or physical-robot results.
-
-Final production geometry and physical qualification are unresolved. The user-authorized [temporary map](docs/TEMPORARY_MAP.md) provides replaceable drawing routes and test-only image overlays. Actual stop lines, signal regions, vehicle/tool clearance and robot registration remain unqualified. Sanitized drawing facts are included; the original print artwork and raw camera photographs remain outside public source.
+See [Verification](docs/VERIFICATION.md) for completed checks, [Meta API evidence](docs/META_API_CHECK.md) for real requests, and the [Roadmap](docs/ROADMAP.md) for the next acceptance gates. Reported software tests establish the stated behavior; they do not establish physical task success or a general model-accuracy percentage.
 
 ## Quick start
 
-### Prerequisites
-
-- **Python 3.12 or newer** and the packages in `requirements.lock`.
-- **Node 24 and npm** to build the frontend locally; GX10 serves the built assets without Node.
-- **Git** available on your command path. Release tests create isolated local Git fixtures.
-- Model credentials and robot connections are not required for simulation or offline tests.
-
-From the repository root:
+Use **Python 3.12+**, **Node 24 with npm** for the local frontend build, and Git for release tests. Model credentials and robot connections are unnecessary for simulation and offline tests.
 
 ```bash
 python -m venv .venv
@@ -130,94 +107,31 @@ cd ..
 python tools/serve.py
 ```
 
-Open `http://127.0.0.1:8080`. Submit a Bakery, Bookstore or School goal and inspect **Spatial map**. In **Image tools**, optionally upload a recorded print photograph and lock a complete four-marker test view to inspect the projected route. Approve simulation and open **Demo** for labelled action verdicts and junction-scoped signal observations. Each accepted stop plus fresh GREEN admits only its own crossing. **Inspect image with MUSE** is a separate opt-in provider request and does not advance the mission.
-
-Run offline verification separately:
+Open `http://127.0.0.1:8080`. Submit a Bakery, Bookstore or School goal, inspect **Spatial map**, and approve the simulation. Use the clearly labelled **Demo** controls to exercise software transitions. Optional recorded-image upload and actual MUSE requests use the [image-review workflow](docs/ACTION_REVIEWS.md). Save `META_API_KEY` only in the ignored backend `.env`; no provider request runs at startup.
 
 ```bash
 python tools/dev.py check
 python tools/dev.py test
 ```
 
-The checks do not start an application, contact a model or operate equipment. The workspace defaults to loopback and makes no provider request at startup. Save `META_API_KEY` only in the ignored server-side `.env` to enable the explicit MUSE goal option.
+These commands perform offline verification. For Windows/Linux setup, one-worker serving and build details, read [Development](docs/DEVELOPMENT.md). GX10 serves prebuilt frontend assets with Python; it does not need Node at runtime.
 
-For Windows/Linux commands, exact state behavior and GX10 delivery, read [Development](docs/DEVELOPMENT.md).
+## Explore the project
 
-### Create a source release
-
-After committing the reviewed source, keep the working tree clean and choose a new output path outside the repository:
-
-```bash
-python -c "from pathlib import Path; Path('../release-bundles').mkdir(exist_ok=True)"
-python tools/build_release.py --output ../release-bundles/pushpilot-source.zip
-python tools/build_release.py --verify ../release-bundles/pushpilot-source.zip
-```
-
-The builder uses committed, allowlisted source and writes a Git-bound SHA-256 manifest. It rejects dirty source, private paths and unsupported file types. Verification does not extract files or authenticate a publisher. Use a new filename for each release; existing output is not overwritten.
-
-This creates a **source bundle**, not a deployed service. Read [Release tooling](tools/README.md) and [GX10 deployment](deploy/README.md) for the exact boundaries.
-
-## Repository structure
-
-```text
-.
-├── frontend/             Operator workspace and presentation boundary
-├── backend/              Mission, model/provider and evidence boundary
-├── contracts/            Versioned cross-component interfaces
-├── prompts/              Versioned English model instructions
-├── tests/                Bootstrap and future application verification
-├── tools/                Equipment-free checks and source-release tools
-├── deploy/               Isolated GX10 release plan and example config
-├── docs/
-│   ├── README.md         Documentation hub
-│   ├── ARCHITECTURE.md   Components, authority and source boundaries
-│   ├── MISSION.md        Behavior and signal-entry rules
-│   ├── META_INTELLIGENCE.md
-│   ├── DEVELOPMENT.md    Local workflow and release preparation
-│   ├── ROADMAP.md        Milestones and acceptance gates
-│   └── assets/           Original repository illustrations
-├── CONTRIBUTING.md       Development and review guide
-├── CONTRIBUTIONS.md      Origin, status and new-work disclosure
-├── THIRD_PARTY_NOTICES.md
-├── AGENTS.md             Development instructions
-└── pyproject.toml        Current tooling requirements
-```
-
-Component readmes distinguish implemented runtime files from the remaining voice, image-review and physical adapters. The versioned workspace interface lives in [`contracts/workspace.ts`](contracts/workspace.ts).
-
-| Start here if you want to… | Read |
+| Read for… | Guide |
 |---|---|
-| Understand the system and authority boundaries | [Architecture](docs/ARCHITECTURE.md) |
-| Inspect service boundaries or voice goal input | [Service composition](docs/SERVICE_COMPOSITION.md) · [Voice input](docs/VOICE_INPUT.md) |
-| Inspect pushing, waiting and verification behavior | [Mission](docs/MISSION.md) |
-| Understand MUSE's role and evidence requirements | [Meta intelligence](docs/META_INTELLIGENCE.md) |
-| Work on the operator interface | [Design system](docs/DESIGN_SYSTEM.md) · [Frontend](frontend/README.md) |
-| Work on task and provider services | [Backend](backend/README.md) |
-| Review schemas or model instructions | [Contracts](contracts/README.md) · [Prompts](prompts/README.md) |
-| Run checks or prepare a source bundle | [Tests](tests/README.md) · [Tools](tools/README.md) |
-| Understand the delivery sequence | [Roadmap](docs/ROADMAP.md) · [Deployment](deploy/README.md) |
+| Product behavior and intersection rules | [Mission](docs/MISSION.md) |
+| Model input, uncertainty and recorded-action review | [Meta intelligence](docs/META_INTELLIGENCE.md) · [Action reviews](docs/ACTION_REVIEWS.md) |
+| Authority, components and data contracts | [Architecture](docs/ARCHITECTURE.md) · [Services](docs/SERVICE_COMPOSITION.md) · [Contracts](contracts/README.md) |
+| Operator experience and future voice | [Design system](docs/DESIGN_SYSTEM.md) · [Frontend](frontend/README.md) · [Voice input](docs/VOICE_INPUT.md) |
+| Temporary-map geometry and private inputs | [Temporary map](docs/TEMPORARY_MAP.md) · [Test inputs](docs/TEST_INPUTS.md) |
+| Reproducible checks and isolated delivery | [Tests](tests/README.md) · [Release tools](tools/README.md) · [GX10 deployment](deploy/README.md) |
+| New work, inherited foundations and rights | [Contributions](CONTRIBUTIONS.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) |
 
-## Local development → GitHub → GX10
+The self-contained repository separates `frontend/`, `backend/`, `contracts/`, `prompts/`, `tests/`, `tools/`, `deploy/` and `docs/`. Start at the [documentation hub](docs/README.md) for component ownership and developer reading paths.
 
-The local repository is the development source. GitHub records reviewed source and history. GX10 is the deployment target for a specific verified release.
-
-The proposed target separates immutable `releases/` from runtime configuration, credentials, evidence and logs in `shared/`, with a `current` pointer to the active version. The scaffold does not transfer files, create remote directories or start services. Existing camera and robot environments retain their ownership.
-
-Deployment requires an actual runtime, a verified target environment and a release activation procedure. Read [Deployment](deploy/README.md); example configuration is a proposal, not a record of a configured host.
-
-## Roadmap and contribution history
-
-The next milestone is a complete **map-independent software loop**: text and push-to-talk goals, abstract mission events, genuine Meta interaction, visible decisions and source-labelled replay. Final map and robot acceptance follow the physical setup gate. Streaming speech, spoken status, extra destinations, segmentation and wearable hardware are later options.
-
-PushPilot builds on earlier tabletop experiments and an existing robot-transport foundation. Those materials have not been copied into this standalone application scaffold. The workspace, tools and documentation are recorded separately; later imports and implemented features must identify their origin, changes and evidence.
-
-Read the [Roadmap](docs/ROADMAP.md), [Contributing guide](CONTRIBUTING.md), [Contribution record](CONTRIBUTIONS.md) and [Third-party notices](THIRD_PARTY_NOTICES.md). The header is an original repository vector. Generated process illustrations describe the proposed design; they are not camera captures or working-product screenshots.
-
-**License:** a repository license has not yet been selected. Consult [Third-party notices](THIRD_PARTY_NOTICES.md) before reuse or importing material.
+PushPilot builds on earlier tabletop experiments, existing robot transport and inherited drawing facts. This repository adds its own workspace, simulation supervisor, Meta adapters and evidence workflow; earlier physical POC results are historical context. A repository license has not yet been selected.
 
 ---
 
-<p align="center">
-  <strong>PushPilot · From sight to action</strong><br>
-  <sub>A shared plan. A checked outcome. An understandable next step.</sub>
-</p>
+<p align="center"><strong>PushPilot · From sight to action</strong><br><sub>A shared plan. A checked outcome. An understandable next step.</sub></p>

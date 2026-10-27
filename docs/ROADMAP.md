@@ -33,9 +33,10 @@ Checkboxes describe implementation scope. Automated simulation tests, real provi
 - [x] Reject stale revisions and changed-payload request-ID reuse; retain original command receipts.
 - [x] Reject goal replacement during active simulation, including signal/review waits.
 - [x] Define temporary map/route and recorded-scene DTOs with validated API inputs.
-- [ ] Define complete voice capture/transcript and per-action observation contracts.
+- [x] Bind operator-selected recorded before/after images to a mission/action/review/map context.
+- [ ] Define complete voice capture/transcript and fresh physical observation contracts.
 
-**Evidence:** offline tests cover nominal and failure transitions with isolated state and injected providers. Mission actions/signals are simulated and action reviews are manually demo-sourced. The separate recorded-scene inspection has its own source and no motion authority.
+**Evidence:** offline tests cover nominal and failure transitions with isolated state and injected providers. Mission actions/signals remain simulated. Reviews distinguish operator-injected demo verdicts from actual MUSE recorded-pair results. Independent recorded-scene inspection cannot advance a mission. Completed runs and their sources belong in [verification](VERIFICATION.md).
 
 ## 2 · Operator workspace
 
@@ -49,7 +50,8 @@ Checkboxes describe implementation scope. Automated simulation tests, real provi
 - [ ] Complete the full keyboard and contrast accessibility review.
 - [ ] Add bounded push-to-talk, backend batch transcription and editable transcript confirmation.
 - [x] Implement recorded-image upload and explicit MUSE scene inspection without mission advancement.
-- [ ] Integrate a live camera and actual per-action expected-versus-observed judgment.
+- [x] Add operator-selected before/after recorded-image review tied to the pending simulated action.
+- [ ] Integrate live capture and receipt-bound fresh physical action evidence.
 
 **Evidence:** the UI must reflect backend snapshots and events, including wait, rejection, uncertainty, and recovery. No scripted success animation substitutes for a state transition. The wearable panel remains a concept. The temporary spatial map is drawing data and a locked recorded-image overlay is test-only; unavailable capability labels stay explicit.
 
@@ -63,11 +65,12 @@ Checkboxes describe implementation scope. Automated simulation tests, real provi
 - [ ] Integrate Meta Voice Transcribe with bounded backend audio normalization.
 - [ ] Preserve original/edited transcript revisions and reject cancelled or stale results.
 - [x] Implement a strict-schema, frame/hash-bound recorded-scene MUSE adapter with late-result rejection.
-- [ ] Complete actual-provider scene evaluation and report its input, outcome and limitations independently of simulation.
+- [x] Record the actual-provider shop/car/signal scene case independently of simulation.
+- [x] Connect strict-schema MUSE recorded-action judgment to the supervisor with late/superseded-result rejection.
 - [ ] Persist complete provider receipts, including versions, exact inputs/results, timing and reported usage.
-- [ ] Evaluate actual image review changing continuation, reobservation, or rejection.
+- [ ] Evaluate held-out real-car success, no-progress and occlusion cases with independent labels.
 
-**Evidence:** [Meta connection and goal records](META_API_CHECK.md) establish the stated text paths. Voice, per-action image review, scene judgment quality, and physical execution remain separate unverified gates. The recorded-scene adapter exists; actual observations belong in [verification](VERIFICATION.md).
+**Evidence:** [Meta API records](META_API_CHECK.md) establish the stated real text and scene calls. [Action reviews](ACTION_REVIEWS.md) describes the new recorded-pair integration; [verification](VERIFICATION.md) identifies actual versus injected responses. Real-car accuracy, voice, live capture and physical execution remain separate gates.
 
 ## 4 · Evaluation and isolated GX10 delivery
 
@@ -93,7 +96,11 @@ Checkboxes describe implementation scope. Automated simulation tests, real provi
 - [x] Retain the fixed reference under partial occlusion; withhold changed or unverifiable views without automatic refitting.
 - [x] Bind scene inspection to its immutable frame and reject superseded results.
 - [ ] Evaluate real car visibility, separate paper-signal recognition, glare, occlusion, and uncertainty using held-out input.
-- [ ] Record actual provider outcomes without implying a live camera or robot run.
+- [x] Record the initial actual provider scene outcome without implying a live camera or robot run.
+
+## Next demonstration gate · Same action, different evidence
+
+The next evaluation should show one expected action with independently labelled success, no progress and occlusion. Preserve the actual input, source, response and supervisor consequence for each case. Synthetic fixtures and injected responses are useful pipeline checks; publish them separately from real-car imagery. Measure the rate of incorrect continuation and reobservation, response latency and reported usage once a defined sample exists. Do not infer task accuracy from the software test count.
 
 Follow [Temporary map](TEMPORARY_MAP.md) and [Test inputs](TEST_INPUTS.md). A recorded 1920×1080 frame supported four-marker fitting at 1.4333 px residual; this is fit error, not absolute millimeter accuracy. Temporary drawing routes and recorded overlays are authorized test scope. Production geometry, robot/BASE registration, qualified stop lines, and physical turning remain unresolved.
 
