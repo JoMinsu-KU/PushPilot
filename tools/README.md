@@ -22,9 +22,9 @@ Run from the repository root with **Python 3.12+**. Install `requirements.lock` 
 
 Commands return a nonzero exit code on failure. Successful check/build/verify commands print a compact JSON result. The test runner prints its normal test report.
 
-The Meta checker explicitly contacts a provider and may consume API credits. It is never invoked by `dev.py check` or `dev.py test`. The application launcher makes no automatic provider request; an operator can deliberately select a backend Meta goal request in the running application. See [connection setup and observed results](../docs/META_API_CHECK.md). The standalone checker is separate from `backend/meta.py` and is not an image-review test.
+The Meta checker explicitly contacts a provider and may consume API credits. It is never invoked by `dev.py check` or `dev.py test`. The application launcher makes no automatic provider request; an operator can deliberately select a backend Meta goal request or a frame-bound recorded-scene inspection. See [connection setup and observed results](../docs/META_API_CHECK.md). The standalone checker is separate from `backend/meta.py` and is not an image-review test.
 
-Build the frontend locally using Node 24 and `npm ci && npm run build` in `frontend/`. GX10 serves those compiled assets using Python without Node. The launcher supports explicit `--host`, `--port`, and `--state-path` arguments, validates them before startup, disables reload, and starts no equipment processes.
+Build the frontend locally using Node 24 and `npm ci && npm run build` in `frontend/`. GX10 serves those compiled assets using Python without Node. The launcher supports explicit `--host`, `--port`, and `--state-path`, validates them before startup, disables reload, and starts no equipment processes. Locked runtime dependencies include OpenCV and NumPy for temporary-map marker detection. `PUSHPILOT_MAP_PATH` selects temporary geometry; `PUSHPILOT_SCENE_DIR` selects private uploaded-frame/registration/inspection storage. See [Development](../docs/DEVELOPMENT.md).
 
 ## Build a source release
 

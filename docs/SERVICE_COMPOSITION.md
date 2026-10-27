@@ -10,7 +10,7 @@
 
 ---
 
-**Status: the first simulation application is implemented.** React/TypeScript builds a static operator workspace. One FastAPI/Uvicorn process serves that bundle and the revisioned mission API, using SQLite state/events and a backend Meta goal adapter. Voice, image review, camera input, registered AR, and robot control are not implemented. The full composition below retains those future boundaries explicitly.
+**Status: temporary-map simulation and recorded-scene inspection are implemented.** One FastAPI/Uvicorn process serves the React/TypeScript bundle and API. SQLite stores mission state/events; private runtime files store frames, marker registrations, and MUSE scene inspections. A replaceable temporary graph supplies simulation routes. Scene inspection does not advance actions or replace demo action reviews. Voice, live camera capture, robot registration, and physical control remain unavailable.
 
 ## Initial deployment units
 
@@ -18,11 +18,11 @@ The application uses a browser frontend and **one backend process containing sep
 
 | Unit | Responsibility | Initial scope |
 |---|---|---|
-| **Tablet browser** | English operator interface, typed goals, plan approval, simulation state and evidence replay | React/TypeScript; microphone/transcript flow planned |
-| **Application backend** | Revisioned API, goal interpretation, supervisor, abstract actions and events | FastAPI/Uvicorn, one worker |
-| **Meta Spark API** | Goal understanding now; intended image review after each bounded action | Real strict-schema goal request verified; image review planned |
+| **Tablet browser** | English workspace, typed goals, graph route, recorded-frame upload/overlay, scene inspection and replay | React/TypeScript; microphone/transcript flow planned |
+| **Application backend** | Revisioned mission/scene APIs, graph routing, goal interpretation, abstract actions and private frame inspection | FastAPI/Uvicorn, one worker; OpenCV/NumPy |
+| **Meta Spark API** | Goal interpretation and independent recorded-scene inspection | Goal request verified; scene adapter implemented; integrated per-action image review remains unimplemented |
 | **Meta Voice Transcribe API** | Recorded speech → original-language transcript | Planned; access and quality untested |
-| **Application state storage** | Workspace state, ordered events and idempotent command receipts | SQLite; image/media receipt records planned |
+| **Application state storage** | Workspace, ordered events and idempotent receipts; separately private frames, hashes, locked views and inspections | SQLite plus private scene files; full provider envelope receipts planned |
 | **Qualified equipment adapters** | Camera observations, local signal inhibition and measured robot action receipts | Deferred physical integration |
 
 The backend serves compiled `frontend/dist` on the same origin as `/api`. Install `requirements.lock`, build locally using Node 24 and `npm ci && npm run build`, then run `python tools/serve.py`. GX10 needs Python 3.12+ for serving and no Node process. The browser receives application responses; it never receives the Meta credential.
@@ -41,7 +41,7 @@ The backend serves compiled `frontend/dist` on the same origin as `/api`. Instal
 | **Action adapter** | Hardware-free bounded action simulation and corresponding result | Later physical implementation requires separate qualification |
 | **Evidence and replay** | Immutable records and causal links among inputs, revisions, checks and decisions | Replaying evidence grants no execution authority |
 
-The table describes both implemented and future responsibilities. API validation, goal interpretation, the supervisor, abstract simulator, and SQLite event history exist. Speech/audio normalization, camera/local perception, image-review requests, and full media/provider receipts remain future work. The current synchronous goal adapter runs inside the serialized simulator command path; it is not an architecture for latency-sensitive physical signal inhibition.
+The table describes implemented and future responsibilities. Mission/scene API validation, temporary graph routing, goal interpretation, supervision, simulated actions, SQLite events, recorded-frame marker registration, and MUSE scene inspection exist. Speech/audio normalization, live camera/local signal perception, per-action image review, and complete provider receipts remain future work. The synchronous goal adapter serializes simulator commands. Scene inspection awaits the provider outside its store lock and rejects a result if its frame/revision was superseded. Neither path is latency-sensitive physical signal inhibition.
 
 The speech and Spark adapters may share a server-side configuration boundary and the same Meta API key. They have different request formats, validation and acceptance tests. Success in one adapter does not establish the other's availability.
 
@@ -60,7 +60,7 @@ The first speech implementation uses a finite recording. Live streaming is a lat
 
 ## Intended voice and image service behavior
 
-The current typed slice uses simulated actions/signals and manually injected demo reviews. The following complete flow includes voice and image services that are not yet implemented:
+The current mission uses graph-based simulated actions/signals and manually injected demo action reviews. A separate recorded-image inspection path is implemented, but it does not participate in those action gates. The following complete mission flow includes voice and per-action image services that remain future work:
 
 1. The browser captures an utterance or accepts typed text. Voice audio goes only to the application backend.
 2. The speech adapter obtains a transcript. The operator checks or edits it and explicitly accepts one revision.
@@ -94,7 +94,7 @@ Read-only GX10 inspection on October 27, 2026 found ARM64 Ubuntu 24.04.4 and Pyt
 
 Choose HTTPS termination and a certificate trusted by the actual tablet with runtime deployment. Browser microphone capture must be tested at the actual deployed origin. TLS serving, codec dependencies and device capture are implementation gates, not configured capabilities today.
 
-Final road geometry, installed coordinates, camera registration, stop lines, signal ROIs and spatial AR are on hold. The initial application must run with symbolic locations, test imagery and a visibly simulated action adapter. A future glasses companion remains a labelled concept rather than a deployed client.
+Final production geometry, robot coordinates, camera-to-BASE registration, qualified stop lines, live signal ROIs, and metric AR remain unqualified. The user-authorized temporary adapter supplies drawing routes and recorded-image board overlays only. It loads `PUSHPILOT_MAP_PATH`; geometry-hash changes invalidate incompatible plans/references. See [Temporary map](TEMPORARY_MAP.md). The glasses companion remains a labelled concept.
 
 ## Implementation gates
 
@@ -104,7 +104,8 @@ Final road geometry, installed coordinates, camera registration, stop lines, sig
 | **Establish contracts — partial** | Revisioned goal/plan/action/demo-review DTOs and Pydantic request validation exist; voice/image bundle contracts remain planned |
 | **Connect typed flow — implemented** | An approved symbolic mission runs through simulation and source-labelled SQLite events without hardware |
 | **Add voice** | Real finite transcription plus editing, cancellation, text fallback and latest-revision approval passes the [voice acceptance gates](VOICE_INPUT.md#acceptance-gates-before-claiming-voice-support) |
-| **Connect image review** | Real MUSE review uses stated test imagery and validates structured responses, timeouts and uncertainty |
+| **Inspect recorded scenes — implemented** | Explicit frame-bound MUSE request returns USABLE/REOBSERVE/UNKNOWN, visible places, car visibility and paper-signal evidence without motion authority; actual results are recorded separately in [verification](VERIFICATION.md) |
+| **Connect action image review — pending** | Fresh action-bound MUSE review and independent local findings replace neither one another nor the required physical receipts |
 | **Verify simulation — offline tested** | RED wait, accepted GREEN, rejected demo review, reobservation, provider failure and restart have meaningful offline tests; actual image/voice integration is separate |
 | **Prepare isolated delivery — partial** | Read-only host inspection and runtime selection completed; host installation, TLS, activation and rollback checks remain |
 

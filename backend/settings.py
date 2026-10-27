@@ -14,6 +14,8 @@ class Settings:
     meta_api_key: str = field(default="", repr=False)
     signal_ttl_seconds: float = 30.0
     frontend_dist: str = str(ROOT / "frontend" / "dist")
+    map_path: str = str(ROOT / "backend" / "data" / "little-town-temporary.json")
+    scene_dir: str | None = None
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -23,10 +25,12 @@ class Settings:
         if env_path.is_file():
             for line in env_path.read_text(encoding="utf-8-sig").splitlines():
                 key, separator, value = line.strip().partition("=")
-                if separator and key in {"META_API_KEY", "PUSHPILOT_STATE_PATH"}:
+                if separator and key in {"META_API_KEY", "PUSHPILOT_STATE_PATH", "PUSHPILOT_MAP_PATH", "PUSHPILOT_SCENE_DIR"}:
                     values[key] = value.strip().strip("\"'")
         return cls(
             db_path=os.environ.get("PUSHPILOT_STATE_PATH", values.get("PUSHPILOT_STATE_PATH", cls.db_path)),
             meta_api_key=os.environ.get("META_API_KEY", values.get("META_API_KEY", "")),
             frontend_dist=os.environ.get("PUSHPILOT_FRONTEND_DIST", cls.frontend_dist),
+            map_path=os.environ.get("PUSHPILOT_MAP_PATH", values.get("PUSHPILOT_MAP_PATH", cls.map_path)),
+            scene_dir=os.environ.get("PUSHPILOT_SCENE_DIR", values.get("PUSHPILOT_SCENE_DIR")),
         )

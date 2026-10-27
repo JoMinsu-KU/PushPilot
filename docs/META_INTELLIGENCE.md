@@ -12,7 +12,7 @@
 
 PushPilot is designed to make MUSE's image-grounded understanding visible in the operator workflow: interpret the goal, compare expected and observed outcomes, surface uncertainty and determine what needs to be checked next.
 
-**Goal interpretation is implemented; image review remains planned.** The backend `MetaGoalProvider` uses `muse-spark-1.3` at the fixed Meta chat-completions endpoint, with a strict JSON response schema and server-only credentials. The supported symbolic destination is BAKERY; unsupported, pickup, or ambiguous requests require clarification. The deterministic supervisor creates the fixed abstract plan after validation; the model does not supply a road route or robot command.
+**Goal interpretation and independent recorded-scene inspection are implemented.** Both use `muse-spark-1.3` at the fixed Meta chat-completions endpoint with strict response schemas and server-only credentials. Goal interpretation supports BAKERY, BOOKSTORE, or SCHOOL; unsupported, pickup, or ambiguous requests require clarification. The supervisor derives a temporary drawing route and abstract steps after validation. The model supplies neither coordinates, routes, robot commands, nor approval.
 
 A real backend goal request on October 27, 2026 at 14:07 KST returned HTTP 200 in 3,880 ms and produced PLAN_READY. This verifies the stated text-goal path, separately from the earlier standalone [connection check](META_API_CHECK.md). It does not verify image judgment, voice, a live camera, or physical execution. Explicit plan approval is still required.
 
@@ -29,9 +29,15 @@ Planned [voice input](VOICE_INPUT.md) uses **Muse Voice Transcribe** for speech-
 
 The model is not a decorative narrator over a predetermined success sequence. Two observations of the same intended action should be able to produce different next states when one supports success and the other does not.
 
-## Planned image-review lifecycle
+## Recorded-scene inspection now
 
-The current simulator accepts operator-injected demo verdicts PASS, FAIL, REOBSERVE, and UNKNOWN. Those records are explicitly demo-sourced; no image is sent to MUSE by that path. The intended image-review integration follows:
+Upload a bounded JPEG/PNG, then explicitly request inspection with its scene revision, frame ID, and an expectation. The backend sends that immutable frame to MUSE and validates a separate scene result: **USABLE**, **REOBSERVE**, or **UNKNOWN**, a summary, visible places, `car_visible`, paper-signal color, and limitations. The prompt distinguishes a separate three-dimensional wheel-less car from a printed start/footprint, and an operator-placed signal card from tiny printed traffic-light decorations.
+
+The stored result binds frame hash, map identity, and scene revision. A superseded frame or modified file cannot acquire a result. USABLE means the image supports scene inspection; it does not mean task completion, a fresh physical signal, accepted action review, or permission to move. This endpoint never advances the mission. See [verification](VERIFICATION.md) for actual provider observations rather than inferring success from adapter availability.
+
+## Planned per-action image-review lifecycle
+
+The mission still accepts operator-injected demo verdicts PASS, FAIL, REOBSERVE, and UNKNOWN. No image is sent to MUSE by that action-review path. Integrating actual action-bound imagery remains separate work:
 
 1. The supervisor receives the result of a bounded action and establishes the observation window.
 2. Observation adapters provide fresh source-labelled imagery and available local measurements.
@@ -55,7 +61,7 @@ The future executable schema should distinguish these concerns rather than colla
 | **Judgment** | Accepted, rejected, needs reobservation or unknown under the defined contract |
 | **Next check** | A constrained information request, not an executable robot command |
 
-These image-review requirements are not an existing provider wire schema. [`contracts/workspace.ts`](../contracts/workspace.ts) currently describes workspace state and demo-review DTOs. The goal provider schema and English instruction are inline in `backend/meta.py`; a versioned prompt catalog and full image-review schema remain to be implemented. Pair later versions with explicit templates and meaningful validation tests.
+These image-review requirements are not an existing provider wire schema. [`contracts/workspace.ts`](../contracts/workspace.ts) currently describes workspace state and demo-review DTOs. The goal provider schema/instruction are inline in `backend/meta.py`; recorded-scene schema/instruction are inline in `backend/scene.py`. A versioned prompt catalog and full action-image-review contract remain future work. Pair later versions with explicit templates and meaningful validation tests.
 
 MUSE must not return authoritative robot coordinates, scripts or unrestricted recovery actions. A later recovery proposal interface would need its own constrained contract, validation and qualification.
 
@@ -79,7 +85,7 @@ The main workspace should answer five questions without requiring raw JSON:
 | **MUSE decision** | What did the actual model conclude, including uncertainty? |
 | **Next check** | Why are we proceeding, waiting or observing again? |
 
-Current events retain interpreted summaries, sources, state changes, and command idempotency bindings. Full raw provider responses, usage, timing, prompt/schema/model versions, image hashes, and crop lineage are future receipt work; they are not implied by the current event timeline. Unreported cost remains unknown.
+Mission events retain interpreted summaries, sources, state changes, and command idempotency. Separate scene files retain original images, SHA-256, source, timestamps, map bindings, locked registration, and validated inspection fields/model. Complete provider envelopes, usage, timing, prompt/schema version receipts, and crop lineage remain future work. Unreported cost stays unknown.
 
 ## Failure handling and honest evaluation
 

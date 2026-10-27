@@ -1,0 +1,294 @@
+{
+  "schema_version": "pushpilot.temporary-map.v1",
+  "id": "little-town-temporary",
+  "version": "2026-10-27.1",
+  "title": "Little Town",
+  "temporary": true,
+  "physical_execution_enabled": false,
+  "source": {
+    "filename": "production-v11/map-definition.json",
+    "map_version": "pushpilot-city-production-v11",
+    "sha256": "dea6c955e01f2bc91333d8e47246a960d926831772603245e89183340b52481a",
+    "adaptation": "Only printed geometry, graph and marker facts are retained. Original artwork, historical POC transforms and obsolete grasp assumptions are excluded."
+  },
+  "board": {
+    "width_mm": 400,
+    "height_mm": 250,
+    "road_width_mm": 30,
+    "junction_size_mm": 38,
+    "origin": "upper_left_of_working_area",
+    "x_axis": "right",
+    "y_axis": "down"
+  },
+  "page": {
+    "width_mm": 420,
+    "height_mm": 297,
+    "board_origin_page_mm": [
+      10,
+      23.5
+    ]
+  },
+  "start": "PIZZA",
+  "destinations": [
+    "BAKERY",
+    "BOOKSTORE",
+    "SCHOOL"
+  ],
+  "nodes": [
+    {
+      "id": "NW",
+      "x_mm": 52.0,
+      "y_mm": 33.0,
+      "kind": "junction"
+    },
+    {
+      "id": "N",
+      "x_mm": 200.0,
+      "y_mm": 33.0,
+      "kind": "junction"
+    },
+    {
+      "id": "NE",
+      "x_mm": 348.0,
+      "y_mm": 33.0,
+      "kind": "junction"
+    },
+    {
+      "id": "W",
+      "x_mm": 52.0,
+      "y_mm": 117.0,
+      "kind": "junction"
+    },
+    {
+      "id": "C",
+      "x_mm": 200.0,
+      "y_mm": 117.0,
+      "kind": "junction"
+    },
+    {
+      "id": "E",
+      "x_mm": 348.0,
+      "y_mm": 117.0,
+      "kind": "junction"
+    },
+    {
+      "id": "SW",
+      "x_mm": 52.0,
+      "y_mm": 201.0,
+      "kind": "junction"
+    },
+    {
+      "id": "S",
+      "x_mm": 200.0,
+      "y_mm": 201.0,
+      "kind": "junction"
+    },
+    {
+      "id": "SE",
+      "x_mm": 348.0,
+      "y_mm": 201.0,
+      "kind": "junction"
+    },
+    {
+      "id": "PIZZA",
+      "x_mm": 126.0,
+      "y_mm": 117.0,
+      "kind": "destination"
+    },
+    {
+      "id": "BOOKSTORE",
+      "x_mm": 274.0,
+      "y_mm": 117.0,
+      "kind": "destination"
+    },
+    {
+      "id": "SCHOOL",
+      "x_mm": 126.0,
+      "y_mm": 201.0,
+      "kind": "destination"
+    },
+    {
+      "id": "BAKERY",
+      "x_mm": 274.0,
+      "y_mm": 201.0,
+      "kind": "destination"
+    }
+  ],
+  "edges": [
+    {
+      "from": "NW",
+      "to": "N",
+      "length_mm": 148.0,
+      "bidirectional": true
+    },
+    {
+      "from": "NW",
+      "to": "W",
+      "length_mm": 84.0,
+      "bidirectional": true
+    },
+    {
+      "from": "N",
+      "to": "NE",
+      "length_mm": 148.0,
+      "bidirectional": true
+    },
+    {
+      "from": "N",
+      "to": "C",
+      "length_mm": 84.0,
+      "bidirectional": true
+    },
+    {
+      "from": "NE",
+      "to": "E",
+      "length_mm": 84.0,
+      "bidirectional": true
+    },
+    {
+      "from": "W",
+      "to": "PIZZA",
+      "length_mm": 74.0,
+      "bidirectional": true
+    },
+    {
+      "from": "PIZZA",
+      "to": "C",
+      "length_mm": 74.0,
+      "bidirectional": true
+    },
+    {
+      "from": "W",
+      "to": "SW",
+      "length_mm": 84.0,
+      "bidirectional": true
+    },
+    {
+      "from": "C",
+      "to": "BOOKSTORE",
+      "length_mm": 74.0,
+      "bidirectional": true
+    },
+    {
+      "from": "BOOKSTORE",
+      "to": "E",
+      "length_mm": 74.0,
+      "bidirectional": true
+    },
+    {
+      "from": "C",
+      "to": "S",
+      "length_mm": 84.0,
+      "bidirectional": true
+    },
+    {
+      "from": "E",
+      "to": "SE",
+      "length_mm": 84.0,
+      "bidirectional": true
+    },
+    {
+      "from": "SW",
+      "to": "SCHOOL",
+      "length_mm": 74.0,
+      "bidirectional": true
+    },
+    {
+      "from": "SCHOOL",
+      "to": "S",
+      "length_mm": 74.0,
+      "bidirectional": true
+    },
+    {
+      "from": "S",
+      "to": "BAKERY",
+      "length_mm": 74.0,
+      "bidirectional": true
+    },
+    {
+      "from": "BAKERY",
+      "to": "SE",
+      "length_mm": 74.0,
+      "bidirectional": true
+    }
+  ],
+  "markers": [
+    {
+      "id": 10,
+      "center_mm": [
+        8.0,
+        -10.0
+      ],
+      "size_mm": 12.0
+    },
+    {
+      "id": 11,
+      "center_mm": [
+        392.0,
+        -10.0
+      ],
+      "size_mm": 12.0
+    },
+    {
+      "id": 12,
+      "center_mm": [
+        392.0,
+        260.0
+      ],
+      "size_mm": 12.0
+    },
+    {
+      "id": 13,
+      "center_mm": [
+        8.0,
+        260.0
+      ],
+      "size_mm": 12.0
+    }
+  ],
+  "marker_dictionary": "DICT_4X4_50",
+  "building_panels": [
+    {
+      "id": "PIZZA",
+      "bounds_mm": [
+        67.0,
+        48.0,
+        185.0,
+        102.0
+      ]
+    },
+    {
+      "id": "BOOKSTORE",
+      "bounds_mm": [
+        215.0,
+        48.0,
+        333.0,
+        102.0
+      ]
+    },
+    {
+      "id": "SCHOOL",
+      "bounds_mm": [
+        67.0,
+        132.0,
+        185.0,
+        186.0
+      ]
+    },
+    {
+      "id": "BAKERY",
+      "bounds_mm": [
+        215.0,
+        132.0,
+        333.0,
+        186.0
+      ]
+    }
+  ],
+  "limitations": [
+    "Board coordinates describe the drawing, not robot targets.",
+    "Road centerlines do not qualify the swept car/tool footprint.",
+    "Junction controls are simulation semantics; actual stop lines and signal regions are unqualified.",
+    "No physical car pose, work height or push/turn model is established."
+  ]
+}

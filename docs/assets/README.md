@@ -11,7 +11,8 @@ The repository uses a self-contained SVG cover and generated PNG process diagram
 | Asset | Canvas | Use and origin |
 |---|---|---|
 | [`hero.svg`](hero.svg) | 1280 × 480 | Active repository cover; original code-native vector. |
-| [`workspace-simulation.jpg`](workspace-simulation.jpg) | Browser screenshot | Actual connected software workspace, captured 2026-10-27; original illustrative scene, symbolic plan and explicit simulation labels. |
+| [`temporary-map-workspace.jpg`](temporary-map-workspace.jpg) | Browser screenshot | Current application: original spatial schematic, temporary Bakery route, source-labelled MUSE inspection and simulation controls; no supplied artwork or raw camera frame is visible. |
+| [`workspace-simulation.jpg`](workspace-simulation.jpg) | Browser screenshot | Retained first-slice workspace before temporary-map integration; original illustrative scene and simulation labels. |
 | [`interaction-loop.png`](interaction-loop.png) | 1983 × 793 | Main README: Observe → Plan → Approve → Act → Verify; AI-generated. |
 | [`architecture-overview-voice.png`](architecture-overview-voice.png) | 1536 × 1024 | Active architecture: adds backend voice transcription, transcript review and credentials boundary; AI-generated edit. |
 | [`voice-input-flow.png`](voice-input-flow.png) | 1774 × 887 | Voice: push-to-talk, transcription, editable text, MUSE interpretation and tablet approval; AI-generated. |
@@ -22,7 +23,7 @@ The repository uses a self-contained SVG cover and generated PNG process diagram
 
 ## Provenance
 
-The SVGs were authored for this repository on October 27, 2026 as original geometric vectors. They embed no third-party photographs, stock illustrations, fonts or vendor logos. The workspace screenshot was captured from the running local application on the same date after browser verification; its robot, wheel-less car and glasses are original frontend SVG illustrations. It is software evidence, not camera or physical-execution evidence.
+The SVGs were authored for this repository on October 27, 2026 as original geometric vectors. They embed no third-party photographs, stock illustrations, fonts or vendor logos. The workspace screenshots were captured from the running local application on the same date after browser verification. The first scene's robot, wheel-less car and glasses are original SVG illustrations; the current spatial schematic draws adapted map geometry with original presentation code. The current screenshot also shows an actual recorded-image MUSE result as text. Raw camera media and supplied map artwork remain outside the public repository. These are software/provider records, not physical-execution evidence.
 
 The original four PNGs were generated on October 27, 2026 (Asia/Seoul) with the **built-in image generation tool**; their exact inputs remain in [GENERATION_PROMPTS.md](GENERATION_PROMPTS.md). A voice-enabled architecture revision and voice flow were added on the same date, with exact inputs in [VOICE_GENERATION_PROMPTS.md](VOICE_GENERATION_PROMPTS.md). The architecture revision uses the earlier repository-generated image as its sole edit target. No fallback CLI, API key or external reference image was used. Selected outputs were copied unchanged into this directory and visually reviewed for English spelling, arrows, authority boundaries, status and readability.
 

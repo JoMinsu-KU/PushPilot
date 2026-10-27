@@ -27,8 +27,16 @@ For a later observation, retain the input version, installation identity, image 
 - Whether a real red/green paper signal is distinguishable in the chosen lighting and viewpoint.
 - Whether a model can compare a requested outcome with the supplied image and report insufficient visibility.
 
-The first software workspace does not yet ingest images. Its scene is an original illustration and its signal/review controls inject explicitly labelled simulation observations. Printing alone does not connect a camera.
+The temporary-map workspace now ingests private recorded images and supports explicit test overlays and MUSE scene inspection. Paper-signal gate inputs and action verdicts remain labelled simulation/demo observations. Printing alone does not connect a live camera. See [temporary-map behavior](TEMPORARY_MAP.md).
 
 ## Deferred until the installed map is settled
 
-Road routes, stop-line geometry, signal regions, metric AR registration, board-to-BASE transforms, contact/TCP offsets and motion qualification remain separate work. Do not treat this document or a visually plausible overlay as calibration evidence.
+Final production routes, stop-line geometry, signal regions, metric robot registration, board-to-BASE transforms, contact/TCP offsets and motion qualification remain separate work. The user authorized temporary drawing routes and test-only image registration on 2026-10-27. Do not treat a visually plausible overlay as physical calibration evidence.
+
+## Recorded camera evidence
+
+The print was observed on GX10 with a Brio 500. Placement was adjusted until the entire paper and four markers were visible. A native 1920×1080 capture group completed at approximately **15:01 KST on 2026-10-27**. The initial installed GX10 OpenCV 4.6 detector found all four IDs in two of three frames. The pinned application OpenCV 5 detector with default corners found all four in one of three, demonstrating that detector-version changes need their own validation. These small non-simultaneous checks are not an accuracy benchmark.
+
+The application uses the complete second frame as a recorded input. Its subpixel-refined four-marker projection has a **1.4333 px image-space RMS residual**. This is fit residual, not independently measured millimeter accuracy. No physical car or separate paper signal was present. At **15:59 KST**, actual MUSE inspection identified all four shops, reported no separate physical car and returned signal `UNKNOWN`; [provider record](META_API_CHECK.md).
+
+Original photographs and operational capture records remain outside Git. The public repository includes adapted geometry facts and a self-authored spatial schematic, not the raw print artwork or camera photographs. The recorded capture time is operator-provided; an image's upload time is not live freshness evidence.

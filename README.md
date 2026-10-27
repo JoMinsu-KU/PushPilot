@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <code>Stage: connected simulation workspace</code> &nbsp;
+  <code>Stage: temporary-map workspace</code> &nbsp;
   <code>Runtime: Python 3.12+</code> &nbsp;
   <code>Deployment target: GX10</code>
 </p>
@@ -37,11 +37,11 @@ The initial demo design includes **text and push-to-talk goals**. A backend voic
 
 The first use case is a controlled tabletop mission: push a wheel-less car from a named starting station to a destination, stop at controlled intersections, wait on red and enter on qualified green. It is a compact testbed for an inspectable operator workflow. A future AR-glasses companion extends the product idea beyond the tablet.
 
-**The first connected workspace implements typed goals, plan approval, bounded simulation, mandatory-stop signal gating and evidence replay.** An opt-in backend adapter interprets goals with Muse Spark. Voice, image review, metric AR and physical execution remain future integration work. The documentation artwork describes the broader intended experience.
+**The connected workspace now uses a replaceable Little Town test map.** It plans three destinations, projects the planned route onto a registered recorded image, and supports actual Muse Spark scene inspection. Approval, bounded simulation, mandatory stops, scoped signals and evidence replay remain visible. Live camera capture, action-bound image reviews, voice and physical execution remain separate integration work. Read the [temporary-map guide](docs/TEMPORARY_MAP.md).
 
 <p align="center">
-  <a href="docs/assets/workspace-simulation.jpg"><img src="docs/assets/workspace-simulation.jpg" width="1280" alt="Actual PushPilot simulation workspace: English goal entry, an illustrative wheel-less car scene, symbolic plan, approval control and explicit disconnected hardware labels."></a><br>
-  <sub>Actual software screenshot · illustrated scene · simulation only. <a href="docs/VERIFICATION.md">Verification scope</a></sub>
+  <a href="docs/assets/temporary-map-workspace.jpg"><img src="docs/assets/temporary-map-workspace.jpg" width="1280" alt="Actual PushPilot temporary-map workspace: a self-authored Little Town schematic, Bakery route, junction checks, MUSE scene evidence and explicit simulation labels."></a><br>
+  <sub>Actual software screenshot · self-authored spatial schematic · simulation only. <a href="docs/VERIFICATION.md">Verification scope</a></sub>
 </p>
 
 ## The interaction loop
@@ -92,17 +92,19 @@ The planned evidence model records source identity independently for the robot, 
 | Equipment-free checks | **Ready** | Source checks, release tests, mocked provider/API tests and mission transition scenarios. |
 | Source-release tooling | **Ready** | Clean-commit packaging, file hashes and archive verification. |
 | Meta API connectivity | **Verified: text only** | Authenticated model discovery and a real Muse Spark completion; [scope and command](docs/META_API_CHECK.md). |
-| Mission backend and abstract simulator | **Implemented** | SQLite state/evidence, approval, bounded actions, stop/review/signal gate and restart recovery. |
+| Mission backend and abstract simulator | **Implemented** | Three graph routes, per-junction stop/fresh-signal gates, SQLite evidence, approval and restart recovery. |
 | Operator frontend and evidence replay | **Implemented** | Responsive English React workspace connected to revisioned backend state and event history. |
 | MUSE goal interpretation | **Verified: text only** | Backend-only strict-schema Muse Spark adapter; explicit opt-in and no scripted fallback. |
-| Fresh-image MUSE outcome review | **Planned** | Current outcome verdicts are explicitly operator-injected demo inputs. |
+| Recorded-image MUSE scene inspection | **Verified** | Four printed shops identified; physical car absent and paper signal unknown in the tested frame. Scene inspection grants no action authority. |
+| Temporary image overlay | **Implemented** | Private image upload, four-marker test registration, fixed-reference checks and uncropped projective SVG route. |
+| Action-bound fresh-image outcome review | **Planned** | Current action verdicts are explicitly operator-injected demo inputs. |
 | Voice goal input | **Planned: initial demo** | Push-to-talk, backend transcription, editable text and explicit plan approval are designed; no voice API call has been verified. |
 | Final map, metric AR and robot integration | **Deferred** | Awaiting the final installed map and physical qualification. |
 | AR-glasses companion | **Concept** | Future experience; no wearable integration is claimed. |
 
 **Verification covers software simulation and request boundaries.** Mission tests exercise mandatory stopping, red/unknown/stale inhibition, automatic green admission, uncertainty, faults, idempotency and restart recovery. A real structured [MUSE goal check](docs/META_API_CHECK.md) also reached `PLAN_READY`. These checks do not establish image accuracy or physical-robot results.
 
-Final road geometry and physical placement are unresolved. Current development uses symbolic locations, abstract actions and explicitly labelled test inputs. Map-specific routes, calibration, stop lines, signal regions and spatial AR remain deferred. The [temporary print candidate](docs/TEST_INPUTS.md) is documented separately and its artwork is not embedded as a production dependency.
+Final production geometry and physical qualification are unresolved. The user-authorized [temporary map](docs/TEMPORARY_MAP.md) provides replaceable drawing routes and test-only image overlays. Actual stop lines, signal regions, vehicle/tool clearance and robot registration remain unqualified. Sanitized drawing facts are included; the original print artwork and raw camera photographs remain outside public source.
 
 ## Quick start
 
@@ -126,7 +128,7 @@ cd ..
 python tools/serve.py
 ```
 
-Open `http://127.0.0.1:8080`. Submit a Bakery goal with **Demo interpreter**, approve the plan and advance the symbolic actions. Open **Demo** for labelled review verdicts and signal observations. Accepted stopping plus fresh GREEN admits the crossing automatically.
+Open `http://127.0.0.1:8080`. Submit a Bakery, Bookstore or School goal and inspect **Spatial map**. In **Image tools**, optionally upload a recorded print photograph and lock a complete four-marker test view to inspect the projected route. Approve simulation and open **Demo** for labelled action verdicts and junction-scoped signal observations. Each accepted stop plus fresh GREEN admits only its own crossing. **Inspect image with MUSE** is a separate opt-in provider request and does not advance the mission.
 
 Run offline verification separately:
 

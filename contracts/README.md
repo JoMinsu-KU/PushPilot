@@ -6,7 +6,7 @@
 
 [Architecture](../docs/ARCHITECTURE.md) · [Backend](../backend/README.md) · [Voice input](../docs/VOICE_INPUT.md) · [Model interaction](../docs/META_INTELLIGENCE.md)
 
-> **Implemented:** [`workspace.ts`](workspace.ts) describes frontend DTOs for `pushpilot.workspace.v1`. Pydantic models in [`backend/app.py`](../backend/app.py) validate API requests. These are not a formal standalone JSON Schema catalog. Voice, image bundles, physical receipts, and registered coordinates remain future contracts.
+> **Implemented:** [`workspace.ts`](workspace.ts) describes `pushpilot.workspace.v1`; [`scene.ts`](scene.ts) describes temporary map/routes and `pushpilot.scene.v1`. Pydantic models in `backend/app.py` and `backend/scene_api.py` validate requests. These source interfaces are not a formal standalone JSON Schema catalog. Voice, complete action-observation bundles, and physical receipts remain future contracts.
 
 ## Current API
 
@@ -17,29 +17,42 @@
 | `POST /api/v1/goals` | `text`, `provider: demo\|meta`, optional `source` | Interpret typed text and prepare a supported symbolic plan or clarification. |
 | `POST /api/v1/approve` | `plan_id`, `plan_revision` | Approve exactly the current plan. |
 | `POST /api/v1/advance` | None | Admit the next eligible abstract action. Crossing uses its own gate. |
-| `POST /api/v1/signal` | `color: RED\|GREEN\|UNKNOWN` | Inject an explicitly simulated signal observation. |
+| `POST /api/v1/signal` | `color: RED\|GREEN\|UNKNOWN`, optional `junction_id` | Inject a simulated observation bound to the applicable junction. |
 | `POST /api/v1/reviews` | `review_id`, `verdict: PASS\|FAIL\|REOBSERVE\|UNKNOWN` | Inject an explicitly demo-sourced verdict for the pending review. |
 | `POST /api/v1/reobserve` | None | Bind a new simulated review without replaying movement. |
 | `POST /api/v1/cancel` | None | Terminate the simulation; no hardware-stop guarantee. |
 | `POST /api/v1/reset` | None | Clear non-active state while retaining evidence history. |
 
-Every POST requires `request_id`, a UUID, and `expected_revision`, a nonnegative integer. Successful mutations return the snapshot. Invalid request fields/types are rejected by Pydantic; stale revisions or invalid transitions return HTTP 409. Provider failures return a sanitized HTTP 502 error and invalidate the old pending plan.
+Every mission POST in this table requires `request_id`, a UUID, and `expected_revision`, a nonnegative integer. Successful mutations return the snapshot. Invalid request fields/types are rejected by Pydantic; stale revisions or invalid transitions return HTTP 409. Provider failures return a sanitized HTTP 502 error and invalidate the old pending plan.
 
 The same request ID and identical payload return the original receipt without running the command again. Reusing that ID for different content is rejected. An original receipt may have an older revision than a later poll; consumers must not overwrite newer state with it.
 
 `source: voice` exists in the DTO vocabulary but is rejected by the current backend until transcription is implemented. Its presence in a type is not a supported capture capability.
 
+## Independent map and scene API
+
+| Endpoint | Input | Result |
+| :--- | :--- | :--- |
+| `GET /api/v1/map` | None | Sanitized temporary graph/drawing facts and geometry hash. |
+| `GET /api/v1/scene` | None | Current recorded frame, detection, locked-view status, inspection and scene revision. |
+| `POST /api/v1/scene/frames` | Multipart `file`; optional timezone-bearing `captured_at`. | New private JPEG/PNG frame, up to 8 MiB and 12 MP. |
+| `GET /api/v1/scene/frames/{id}/image` | Immutable frame ID. | Private runtime image. |
+| `POST /api/v1/scene/registration` | `expected_revision`, `frame_id`. | Explicitly lock a four-marker board-to-image candidate. |
+| `POST /api/v1/scene/reviews` | `expected_revision`, `frame_id`, `expected`. | Explicit Meta scene inspection, not mission action review. |
+
+Scene mutations use the **scene revision**, not the mission revision or command-idempotency contract. Frame IDs are 32 lowercase hexadecimal characters. A late/superseded inspection or stale registration is rejected. Registration status is unregistered/partial/candidate/locked/locked_partial/view_changed; a withheld homography cannot be interpreted as a valid projection. Scene inspection returns USABLE/REOBSERVE/UNKNOWN, visible places, car visibility, separate paper-signal evidence, limitations, and `motion_authority: false`. No scene endpoint advances the supervisor.
+
 ## Snapshot and evidence
 
-The snapshot binds a session and revision to state, the accepted goal, current plan/step, approval, stopped status, simulated signal, pending review, next check, capabilities, and ordered events.
+The snapshot binds a session and revision to state, goal, current plan/step, map/version/geometry-hash route, approval, stopped status, junction-scoped simulated signal, demo action review, capabilities, next check, and ordered events. Plans contain temporary drawing points/distances and node IDs, never robot targets.
 
 Plan and review identifiers prevent approval or judgment from applying to a different revision. Events retain stable IDs, sequence numbers, timestamps, source labels, state, and explanatory text. SQLite also retains exact request digests and idempotent command receipts. Reset does not remove the event history.
 
-The current `capabilities` response always reports `robot`, `camera`, `registered_ar`, `voice`, and `image_review` as false. `muse_configured` reports server configuration availability; it does not establish provider access or image-review support. Demo reviews cannot become Meta evidence by changing a UI label.
+The mission capability response reports `robot`, `camera`, `registered_ar`, `voice`, and `image_review` as false; here image_review means integrated per-action mission review. The independent scene API can inspect recorded images without changing those capabilities. Scene capabilities report live_camera/robot false. `muse_configured` indicates configuration availability, not successful inference. Demo action reviews cannot become Meta evidence by changing a UI label.
 
 ## Provider goal boundary
 
-The Meta adapter's strict `pushpilot_goal_v1` response schema is inline in `backend/meta.py`. It requires `destination: BAKERY\|UNKNOWN`, an English `summary`, and `requires_clarification`, with no additional properties. The adapter validates the result before the supervisor can prepare the fixed symbolic plan.
+The Meta adapter's strict `pushpilot_goal_v1` response schema is inline in `backend/meta.py`. It requires `destination: BAKERY\|BOOKSTORE\|SCHOOL\|UNKNOWN`, an English `summary`, and `requires_clarification`, with no additional properties. The adapter validates the result before the supervisor can prepare a deterministic temporary-graph plan.
 
 The model supplies an interpretation, not plan approval, metric coordinates, road routes, or robot commands. A failed actual-provider request does not fall back to the demo parser.
 
@@ -56,11 +69,11 @@ The model supplies an interpretation, not plan approval, metric coordinates, roa
 
 Define separate records for capture, transcription, edited transcript revision, confirmed goal, and mission approval. Bind finite batch transcription to its capture/session/request and initiating input revision. Cancellation or supersession invalidates late results. Preserve original provider text and actual provenance without inventing ASR confidence. Original Korean or English text is user data.
 
-Image-review records must bind immutable media hashes/crop lineage, capture timing, expected action outcome, visibility/uncertainty, local findings, exact provider inputs/results, and prompt/schema/model versions. The current event timeline does not yet implement that full receipt.
+Recorded-scene files already bind original frame bytes/SHA-256, source, receive time, optional operator-provided capture time, map identity, registration reference, and validated scene inspection. Full per-action records still need action binding, crop lineage, local findings, exact provider envelope/usage/timing, and prompt/schema versions. The mission event timeline does not yet implement that complete receipt.
 
 ## Deliberately absent
 
-No active map coordinates, road graphs, installed signal ROIs, stop/exit lines, or AR transforms are defined. Label temporary user-provided scenes under [Test inputs](../docs/TEST_INPUTS.md).
+The temporary definition contains drawing coordinates, graph edges, marker geometry, and test-only board-to-image projection. It defines no robot coordinates, camera-to-BASE transform, qualified stop/exit lines, swept footprint, or live signal ROIs. Follow [Temporary map](../docs/TEMPORARY_MAP.md) and label private inputs under [Test inputs](../docs/TEST_INPUTS.md).
 
 The simulator creates no native hardware receipts. Physical completion requires a separately implemented and qualified measured adapter. Credentials and model-generated executable commands do not belong in these contracts.
 

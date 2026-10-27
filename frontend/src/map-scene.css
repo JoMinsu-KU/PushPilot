@@ -1,0 +1,148 @@
+.map-scene-component { min-width: 0; background: #071725; }
+.plan-panel > .plan-list {
+  position: relative;
+  max-height: clamp(225px, 31vh, 340px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #1b5e80 #081d2e;
+  scrollbar-gutter: stable;
+  padding-right: 5px;
+}
+.plan-panel > .plan-list:focus-visible { outline: 2px solid #3ecdf3; outline-offset: 3px; border-radius: 5px; }
+.map-scene-controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 13px; border-bottom: 1px solid #173c54; }
+.scene-view-toggle { display: flex; border: 1px solid #225578; border-radius: 7px; overflow: hidden; background: #071d30; }
+.scene-view-toggle button { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 8px 13px; font-size: 10px; color: #83acc9; }
+.scene-view-toggle button.selected { color: #e3f6ff; background: linear-gradient(150deg,#124b75,#0c2b47); box-shadow: inset 0 0 0 1px #008ed6; }
+.scene-tools-toggle { display: flex; align-items: center; gap: 6px; padding: 7px 5px; color: #7da9c6; font-size: 10px; white-space: nowrap; }
+.scene-tools-toggle:hover { color: #19cbff; }
+.recorded-frame-wrap { position: relative; background: #020912; }
+.recorded-frame { display: block; width: 100%; height: auto; }
+.recorded-frame-label { position: absolute; top: 13px; left: 13px; display: flex; align-items: center; gap: 7px; padding: 7px 9px; border-radius: 5px; border: 1px solid #6e99ad66; background: #04121ed9; font-size: 8px; letter-spacing: .6px; color: #d5e6f0; backdrop-filter: blur(6px); }
+.recorded-frame-label > span:last-child { color: #7396b0; font-size: 7px; margin-left: 5px; letter-spacing: 0; }
+.recorded-dot { width: 4px; height: 4px; background: #a7c7d9; border-radius: 50%; }
+.candidate-overlay-label { position: absolute; bottom: 12px; left: 13px; padding: 6px 8px; background: #362814df; border: 1px solid #bc8c49aa; color: #f0cc90; font-size: 8px; letter-spacing: .6px; border-radius: 4px; }
+.overlay-inhibition { position: absolute; bottom: 13px; left: 13px; right: 13px; display: flex; align-items: center; gap: 8px; background: #3c2024ed; border: 1px solid #b5766c; color: #ffb5a5; padding: 10px 12px; font-size: 10px; border-radius: 6px; line-height: 1.6; }
+.overlay-inhibition.partial { background: #382d1bdc; border-color: #9f824d; color: #f2d49e; }
+.overlay-note { position: absolute; bottom: 13px; left: 13px; padding: 7px 9px; background: #061521dd; border: 1px solid #42677f; border-radius: 4px; color: #a1bdd0; font-size: 9px; }
+.spatial-map-wrap { position: relative; background: radial-gradient(ellipse at 50% 45%,#0b2d43,#061420 75%); padding: 17px 20px 27px; }
+.spatial-map { width: 100%; height: auto; max-height: 620px; }
+.map-view-caption { display: flex; align-items: center; gap: 6px; position: absolute; bottom: 11px; left: 17px; font-size: 8px; color: #6188a4; }
+.registration-summary { display: flex; align-items: center; gap: 12px; padding: 12px 14px 8px; flex-wrap: wrap; }
+.registration-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 9px; color: #779eb7; }
+.registration-badge > span { width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
+.registration-badge.candidate, .registration-badge.locked_partial { color: #dcb777; }
+.registration-badge.locked { color: #39dcbf; }
+.registration-badge.view_changed { color: #f09d8e; }
+.marker-count { font-size: 8px; color: #5c869f; font-variant-numeric: tabular-nums; }
+.registration-summary > button { display: flex; align-items: center; gap: 7px; margin-left: auto; font-size: 9px; border: 1px solid #1c9db7; border-radius: 5px; background: #0c3a4d; padding: 6px 9px; color: #9ee8f1; }
+.registration-message { font-size: 9px; color: #6f94ab; line-height: 1.65; padding: 0 14px 9px; }
+.registration-message.view_changed { color: #deac91; }
+.registration-message.locked_partial { color: #c0ad83; }
+.frame-provenance { display: flex; gap: 6px 14px; justify-content: space-between; flex-wrap: wrap; padding: 2px 14px 12px; font-size: 8px; line-height: 1.6; color: #527d98; }
+.map-route-summary { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 11px 14px; border-top: 1px solid #173c54; background: #0a2133; }
+.map-route-summary > svg { color: #0cc6ed; }
+.map-route-summary > span { font-size: 9px; color: #a5cfe1; letter-spacing: .3px; overflow-wrap: anywhere; }
+.map-route-summary strong { margin-left: auto; font-size: 9px; color: #64c4df; font-weight: 600; white-space: nowrap; }
+.map-route-summary small { font-size: 8px; color: #5786a3; white-space: nowrap; }
+.hidden-file-input { display: none; }
+.no-recorded-frame { min-height: 350px; padding: 36px 30px; display: flex; align-items: center; justify-content: center; text-align: center; flex-direction: column; background: radial-gradient(ellipse at center,#0e2f47,#061420 80%); }
+.no-recorded-frame > svg { color: #2b84ad; margin-bottom: 20px; }
+.no-recorded-frame h2 { font-size: 27px; letter-spacing: -.8px; }
+.no-recorded-frame p { max-width: 360px; font-size: 12px; line-height: 1.8; color: #6f9bb6; margin-top: 12px; }
+.no-recorded-frame button { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border: 1px solid #0d7caf; border-radius: 6px; color: #88d6f6; font-size: 11px; background: #0d3550; margin-top: 22px; }
+.no-recorded-frame small { margin-top: 11px; color: #4b7690; font-size: 9px; }
+.scene-error { display: flex; align-items: flex-start; gap: 8px; font-size: 10px; line-height: 1.7; color: #ecb5a1; background: #38272ad9; padding: 11px 14px; border-bottom: 1px solid #755044; }
+.scene-error > svg { margin-top: 1px; }
+.scene-error > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.scene-error > button { color: #c59581; padding: 2px; }
+.image-tools-panel { padding: 17px 15px; border-top: 1px solid #1d4a65; background: #092131; }
+.image-tools-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+.image-tools-heading > span:last-child { color: #5e91ac; font-size: 8px; }
+.image-upload-row { display: flex; align-items: flex-end; gap: 14px; }
+.image-upload-button { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 10px 12px; border: 1px solid #246183; border-radius: 6px; font-size: 10px; background: #0d3149; color: #9bcbe2; min-height: 37px; white-space: nowrap; }
+.image-upload-row > label { font-size: 9px; color: #8cb4ca; flex: 1; min-width: 0; }
+.image-upload-row > label > span { font-size: 8px; color: #527f99; }
+.image-upload-row input { display: block; width: 100%; background: #071a2a; color: #a7c7da; border: 1px solid #20465e; border-radius: 5px; padding: 8px 9px; margin-top: 7px; min-height: 37px; color-scheme: dark; font-size: 10px; }
+.image-input-note { margin-top: 9px; font-size: 8px; line-height: 1.65; color: #547c95; }
+.inspection-expected { display: block; font-size: 9px; color: #8cb4ca; margin-top: 17px; }
+.inspection-expected textarea { display: block; width: 100%; resize: vertical; min-height: 65px; max-height: 180px; border: 1px solid #214b66; border-radius: 6px; background: #061c2c; color: #a6cbdf; margin-top: 8px; padding: 9px 11px; font: inherit; font-size: 10px; line-height: 1.6; }
+.inspection-expected textarea:focus-visible { outline: 2px solid #2bb9ec; outline-offset: 2px; }
+.inspection-submit-row { display: flex; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+.inspect-image-button { display: flex; align-items: center; gap: 8px; color: #e4f8ff; font-size: 10px; padding: 10px 13px; background: linear-gradient(140deg,#0a76b0,#125481); border: 1px solid #16a3d6; border-radius: 6px; }
+.inspection-submit-row > span { font-size: 8px; color: #528ba8; }
+.inspection-authority-note { display: flex; align-items: center; gap: 6px; font-size: 8px; color: #638d9f; margin-top: 11px; line-height: 1.7; }
+.scene-inspection-result { margin: 0; padding: 17px 16px; border-top: 1px solid #207384; background: linear-gradient(140deg,#0b2e3b,#082330); }
+.scene-inspection-heading { display: flex; align-items: center; gap: 7px; color: #67d4e4; }
+.scene-inspection-heading strong { font-size: 9px; letter-spacing: .6px; }
+.verdict.usable { color: #62e1c2; border-color: #287e69; }
+.scene-inspection-result > p { font-size: 11px; line-height: 1.8; color: #a4c8d9; margin-top: 13px; }
+.scene-inspection-result dl { display: grid; grid-template-columns: 1fr 1fr; gap: 13px 22px; margin: 17px 0 0; }
+.scene-inspection-result dt { font-size: 8px; color: #508da5; margin-bottom: 5px; }
+.scene-inspection-result dd { margin: 0; font-size: 10px; line-height: 1.6; color: #91b9cd; overflow-wrap: anywhere; }
+.scene-inspection-result ul { font-size: 9px; color: #779ba9; line-height: 1.8; padding-left: 16px; margin: 14px 0 0; }
+.scene-inspection-result footer { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; font-size: 8px; color: #3b829b; border-top: 1px solid #1b4859; margin-top: 15px; padding-top: 12px; line-height: 1.5; }
+.scene-inspection-result footer strong { color: #8cb2bd; font-weight: 500; }
+@media (min-width:1550px) {
+  .scene-view-toggle button,.scene-tools-toggle { font-size: 11px; }
+  .registration-badge { font-size: 11px; }
+  .marker-count,.registration-message,.frame-provenance { font-size: 10px; }
+  .recorded-frame-label { font-size: 10px; }
+  .recorded-frame-label > span:last-child { font-size: 9px; }
+  .map-route-summary > span,.map-route-summary strong { font-size: 11px; }
+  .map-route-summary small { font-size: 9px; }
+}
+@media (max-width:1020px) {
+  .map-scene-controls { gap: 8px; padding: 10px; flex-wrap: wrap; }
+  .scene-view-toggle button { padding: 7px 10px; font-size: 9px; gap: 6px; }
+  .scene-tools-toggle { font-size: 9px; margin-left: auto; }
+  .recorded-frame-label { top: 9px; left: 9px; font-size: 7px; padding: 5px 7px; }
+  .recorded-frame-label > span:last-child { display: none; }
+  .candidate-overlay-label { font-size: 7px; bottom: 9px; left: 9px; padding: 5px 7px; }
+  .registration-summary { gap: 8px; padding: 11px 11px 8px; }
+  .registration-badge { font-size: 8px; }
+  .marker-count { font-size: 7px; }
+  .registration-message,.frame-provenance { font-size: 8px; padding-left: 11px; padding-right: 11px; }
+  .map-route-summary { gap: 6px; padding: 10px 11px; }
+  .map-route-summary > span,.map-route-summary strong { font-size: 8px; }
+  .map-route-summary small { font-size: 7px; }
+  .overlay-inhibition { font-size: 8px; left: 9px; right: 9px; bottom: 9px; padding: 7px 9px; gap: 7px; }
+  .overlay-note { font-size: 7px; bottom: 9px; left: 9px; right: 9px; line-height: 1.6; }
+  .image-upload-row { flex-direction: column; align-items: stretch; gap: 14px; }
+  .image-upload-button { align-self: flex-start; }
+  .image-tools-panel { padding: 15px 12px; }
+  .image-tools-heading { align-items: flex-start; flex-direction: column; gap: 7px; }
+  .scene-inspection-result dl { grid-template-columns: 1fr; }
+  .no-recorded-frame { padding: 35px 20px; min-height: 290px; }
+  .no-recorded-frame h2 { font-size: 23px; }
+  .no-recorded-frame p { font-size: 10px; }
+}
+@media (max-width:620px) {
+  .map-scene-controls { padding: 10px 11px; gap: 8px; }
+  .scene-view-toggle button { font-size: 9px; padding: 8px 10px; }
+  .scene-tools-toggle { font-size: 9px; gap: 4px; }
+  .scene-tools-toggle svg { width: 14px; }
+  .registration-badge { font-size: 9px; }
+  .marker-count { font-size: 8px; }
+  .registration-message,.frame-provenance { font-size: 9px; }
+  .registration-summary { gap: 9px; padding-top: 13px; }
+  .registration-summary > button { font-size: 8px; padding: 5px 7px; }
+  .spatial-map-wrap { padding: 13px 8px 27px; }
+  .map-route-summary > span,.map-route-summary strong { font-size: 9px; }
+  .map-route-summary small { font-size: 8px; }
+  .recorded-frame-label { font-size: 7px; }
+  .map-view-caption { font-size: 7px; left: 11px; }
+  .image-tools-panel { padding: 17px 13px; }
+  .image-tools-heading > span:last-child { font-size: 9px; }
+  .image-upload-button,.image-upload-row input { font-size: 11px; }
+  .image-upload-row > label { font-size: 10px; }
+  .image-input-note { font-size: 9px; }
+  .inspection-expected { font-size: 10px; }
+  .inspection-expected textarea { font-size: 11px; }
+  .inspect-image-button { font-size: 11px; padding: 11px 12px; }
+  .inspection-submit-row > span,.inspection-authority-note { font-size: 9px; }
+  .scene-inspection-result > p { font-size: 12px; }
+  .scene-inspection-result dt { font-size: 9px; }
+  .scene-inspection-result dd { font-size: 11px; }
+  .scene-inspection-result footer,.scene-inspection-result ul { font-size: 9px; }
+}

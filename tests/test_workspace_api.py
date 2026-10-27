@@ -60,10 +60,24 @@ class WorkspaceApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         state = response.json()
         self.assertEqual(state["goal"]["destination"], "BAKERY")
-        self.assertEqual([step["kind"] for step in state["plan"]["steps"]], ["PUSH", "STOP", "CROSS", "VERIFY"])
+        self.assertEqual([step["kind"] for step in state["plan"]["steps"]], ["PUSH", "STOP", "CROSS", "PUSH", "STOP", "CROSS", "PUSH", "VERIFY"])
+        self.assertEqual(state["plan"]["route"]["node_ids"], ["PIZZA", "C", "S", "BAKERY"])
         approved = self.command("approve", plan_id=state["plan"]["id"], plan_revision=state["plan"]["revision"])
         self.assertEqual(approved.json()["state"], "READY")
         self.assertEqual(self.command("advance").json()["review"]["source"], "demo")
+
+    def test_temporary_map_and_scene_routes_are_available_without_hardware(self):
+        response = self.client.get("/api/v1/map")
+        self.assertEqual(response.status_code, 200)
+        temporary_map = response.json()
+        self.assertTrue(temporary_map["temporary"])
+        self.assertFalse(temporary_map["physical_execution_enabled"])
+        self.assertEqual(set(temporary_map["destinations"]), {"BAKERY", "BOOKSTORE", "SCHOOL"})
+        scene = self.client.get("/api/v1/scene").json()
+        self.assertEqual(scene["map_hash"], temporary_map["geometry_hash"])
+        self.assertIsNone(scene["frame"])
+        self.assertFalse(scene["capabilities"]["robot"])
+        self.assertFalse(scene["capabilities"]["live_camera"])
 
     def test_stale_request_and_reused_id_are_http409(self):
         payload = {"request_id": str(uuid4()), "expected_revision": 0, "text": "bakery", "provider": "demo"}
@@ -149,7 +163,7 @@ class MetaAdapterTests(unittest.TestCase):
         self.assertNotIn("unit-test-key", str(failure.exception))
 
     def test_malformed_or_inconsistent_provider_result_is_rejected(self):
-        contents = ["not-json", json.dumps({"destination": "SCHOOL", "summary": "Other target.", "requires_clarification": False}),
+        contents = ["not-json", json.dumps({"destination": "HOSPITAL", "summary": "Other target.", "requires_clarification": False}),
                     json.dumps({"destination": "UNKNOWN", "summary": "Unclear.", "requires_clarification": False})]
         for content in contents:
             with self.subTest(content=content), patch("backend.meta.httpx.Client") as factory:

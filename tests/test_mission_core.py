@@ -130,17 +130,26 @@ class MissionCoreTests(unittest.TestCase):
         self.assertEqual(state["current_step"], 2)
         self.assertEqual(self.pass_review()["state"], "READY")
 
-    def test_complete_mission_with_all_four_reviews(self):
+    def test_complete_mission_with_all_route_action_reviews(self):
         self.stop_review()
         self.pass_review()
         self.command("signal", color="GREEN")
-        self.pass_review()
-        self.command("advance")
-        state = self.pass_review()
+        for _ in range(30):
+            state = self.store.snapshot()
+            if state["state"] == "COMPLETED":
+                break
+            if state["state"] == "REVIEW_REQUIRED":
+                self.pass_review()
+            elif state["state"] == "READY":
+                self.command("advance")
+            elif state["state"] == "WAITING_SIGNAL":
+                self.command("signal", color="GREEN")
+            else:
+                self.fail(f"Unexpected mission state: {state['state']}")
         self.assertEqual(state["state"], "COMPLETED")
         self.assertFalse(state["approved"])
         self.assertTrue(all(step["status"] == "complete" for step in state["plan"]["steps"]))
-        self.assertEqual(len([e for e in state["events"] if e["kind"] == "DEMO_REVIEW_RECORDED"]), 4)
+        self.assertEqual(len([e for e in state["events"] if e["kind"] == "DEMO_REVIEW_RECORDED"]), 8)
 
     def test_uncertainty_requires_new_review_binding_without_rerunning_motion(self):
         self.prepare()

@@ -8,9 +8,11 @@ dependencies = [
     "uvicorn==0.54.0",
     "httpx==0.28.1",
     "python-multipart==0.0.32",
+    "opencv-contrib-python-headless==5.0.0.93",
+    "numpy==2.5.4",
 ]
 
 [tool.pushpilot]
-workspace_status = "simulation_workspace"
+workspace_status = "temporary_map_workspace"
 runtime_implemented = true
 physical_execution_implemented = false

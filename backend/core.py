@@ -1,4 +1,4 @@
-"""Durable symbolic mission supervision, with no hardware or timer-driven motion."""
+"""Durable temporary-map simulation, with no hardware or timer-driven motion."""
 from __future__ import annotations
 
 from copy import deepcopy
@@ -13,14 +13,9 @@ from typing import Callable
 from uuid import uuid4
 
 from backend.meta import GoalProvider, ProviderError
+from backend.maps import MapDefinition
 
 ACTIVE = {"READY", "REVIEW_REQUIRED", "WAITING_SIGNAL", "REOBSERVE"}
-STEP_DEFINITIONS = (
-    ("PUSH", "Surface push", "One bounded simulated push from symbolic PIZZA."),
-    ("STOP", "Mandatory stop", "Verify a simulated full stop before evaluating entry."),
-    ("CROSS", "Admitted crossing", "Enter only after an accepted stop review and fresh GREEN."),
-    ("VERIFY", "Destination check", "Review the symbolic BAKERY outcome."),
-)
 
 
 class CommandError(Exception):
@@ -33,13 +28,15 @@ class WorkspaceStore:
     """Serialize revisioned commands and append evidence in one SQLite transaction."""
 
     def __init__(self, db_path: str, *, provider: GoalProvider, muse_configured: bool = False,
-                 signal_ttl_seconds: float = 30.0, clock: Callable[[], float] = time.time):
+                 signal_ttl_seconds: float = 30.0, clock: Callable[[], float] = time.time,
+                 map_definition: MapDefinition | None = None):
         if db_path != ":memory:":
             Path(db_path).parent.mkdir(parents=True, exist_ok=True)
         self._db = sqlite3.connect(db_path, check_same_thread=False)
         self._db.row_factory = sqlite3.Row
         self._lock = threading.RLock()
         self._provider, self._clock = provider, clock
+        self.map_definition = map_definition or MapDefinition()
         self._muse_configured = muse_configured
         self._signal_ttl = signal_ttl_seconds
         self._db.executescript("""
@@ -57,9 +54,17 @@ class WorkspaceStore:
                 state = json.loads(row["value"])
                 if state["state"] in ACTIVE:
                     state.update(state="RECOVERY_REQUIRED", approved=False, stopped=False, review=None)
+                    if not (state.get("plan") or {}).get("route"):
+                        state["plan"] = None
                     state["signal"] = self._empty_signal()
                     state["revision"] += 1
                     self._event(state, "RESTART_RECOVERY", "Recovery required after restart", "Previous approval, stop verification, and signal authority were cleared. Explicit reset is required; no command was replayed.", "simulation")
+                    self._save(state)
+                elif state.get("plan") and not self._map_matches(state):
+                    session, revision = state["session_id"], state["revision"]
+                    state = self._empty_state()
+                    state.update(session_id=session, revision=revision + 1)
+                    self._event(state, "PLAN_INVALIDATED", "Plan invalidated by map replacement", "The prior plan has no matching temporary-map identity. Approval was discarded; create a new plan.", "simulation")
                     self._save(state)
                 elif state["signal"]["observed_at"] is not None:
                     state["signal"] = self._empty_signal()
@@ -75,7 +80,7 @@ class WorkspaceStore:
 
     @staticmethod
     def _empty_signal() -> dict:
-        return {"color": "UNKNOWN", "source": "simulation", "observed_at": None}
+        return {"color": "UNKNOWN", "source": "simulation", "observed_at": None, "junction_id": None}
 
     def _empty_state(self) -> dict:
         return {"schema_version": "pushpilot.workspace.v1", "session_id": str(uuid4()), "revision": 0,
@@ -84,7 +89,9 @@ class WorkspaceStore:
                 "signal": self._empty_signal(), "review": None}
 
     def _load(self) -> dict:
-        return json.loads(self._db.execute("SELECT value FROM workspace WHERE id=1").fetchone()["value"])
+        state = json.loads(self._db.execute("SELECT value FROM workspace WHERE id=1").fetchone()["value"])
+        state["signal"].setdefault("junction_id", None)
+        return state
 
     def _save(self, state: dict) -> None:
         self._db.execute("INSERT INTO workspace(id,value) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value", (json.dumps(state),))
@@ -109,7 +116,7 @@ class WorkspaceStore:
 
     def _next_check(self, state: dict) -> str:
         return {
-            "IDLE": "Enter a goal for symbolic BAKERY.",
+            "IDLE": "Enter a destination on the temporary map: BAKERY, BOOKSTORE, or SCHOOL.",
             "PLAN_READY": "Review and explicitly approve this plan revision.",
             "READY": "Run the next bounded simulated action.",
             "REVIEW_REQUIRED": "Submit an explicitly demo-sourced verdict for this observation.",
@@ -156,6 +163,7 @@ class WorkspaceStore:
         elif action == "approve":
             if state["state"] != "PLAN_READY" or not state["plan"]:
                 raise CommandError("There is no plan awaiting approval.")
+            self._require_current_map(state)
             if payload["plan_id"] != state["plan"]["id"] or payload["plan_revision"] != state["plan"]["revision"]:
                 raise CommandError("Approval does not match the current plan revision.")
             state.update(state="READY", approved=True)
@@ -164,14 +172,18 @@ class WorkspaceStore:
         elif action == "advance":
             if state["state"] != "READY" or not state["approved"]:
                 raise CommandError("The next action is inhibited until approval and the required review.")
+            self._require_current_map(state)
             if self._kind(state) == "CROSS":
                 raise CommandError("Crossing admission is owned by the stop and signal gate.")
             self._run_step(state)
         elif action == "signal":
             if state["state"] not in ACTIVE | {"IDLE", "PLAN_READY"}:
                 raise CommandError("Signal input is unavailable in this mission state.")
-            state["signal"] = {"color": payload["color"], "source": "simulation", "observed_at": self._at()}
-            self._event(state, "SIGNAL_OBSERVED", f"Simulated signal: {payload['color']}", "Operator-injected simulation observation; this is not camera detection.", "simulation")
+            junction = self._signal_junction(state)
+            if payload.get("junction_id") is not None and payload["junction_id"] != junction:
+                raise CommandError("Signal observation belongs to a different junction.")
+            state["signal"] = {"color": payload["color"], "source": "simulation", "observed_at": self._at(), "junction_id": junction}
+            self._event(state, "SIGNAL_OBSERVED", f"Simulated signal: {payload['color']}", f"Operator-injected observation for {junction or 'no active junction'}; this is not camera detection.", "simulation")
             if state["state"] == "WAITING_SIGNAL":
                 self._maybe_cross(state)
         elif action == "reviews":
@@ -206,49 +218,99 @@ class WorkspaceStore:
             raise CommandError("Enter a nonempty goal.", 422)
         if payload["provider"] == "meta":
             result = self._provider.interpret(text)
-            if (not isinstance(result, dict) or result.get("destination") not in {"BAKERY", "UNKNOWN"}
+            if (not isinstance(result, dict) or result.get("destination") not in {*self.map_definition.data["destinations"], "UNKNOWN"}
                     or type(result.get("requires_clarification")) is not bool
                     or not isinstance(result.get("summary"), str)
                     or not 1 <= len(result["summary"]) <= 500):
                 raise ProviderError("MUSE returned an invalid goal interpretation.")
         else:
-            destination_known = any(word in text.casefold() for word in ("bakery", "빵집", "베이커리"))
-            result = {"destination": "BAKERY" if destination_known else "UNKNOWN",
-                      "summary": "Push the wheel-less car from PIZZA to symbolic BAKERY." if destination_known else "Please specify BAKERY for this prototype.",
-                      "requires_clarification": not destination_known}
-        if result["requires_clarification"] or result["destination"] != "BAKERY":
+            aliases = {"BAKERY": ("bakery", "빵집", "베이커리"), "BOOKSTORE": ("bookstore", "book store", "bookshop", "서점"), "SCHOOL": ("school", "학교")}
+            choices = [destination for destination, names in aliases.items()
+                       if destination in self.map_definition.data["destinations"] and any(name in text.casefold() for name in names)]
+            destination = choices[0] if len(choices) == 1 else "UNKNOWN"
+            result = {"destination": destination,
+                      "summary": f"Push the wheel-less car from PIZZA to {destination} on the temporary map." if destination != "UNKNOWN" else "Specify exactly one supported destination: BAKERY, BOOKSTORE, or SCHOOL.",
+                      "requires_clarification": destination == "UNKNOWN"}
+        if result["requires_clarification"] or result["destination"] not in self.map_definition.data["destinations"]:
             state.update(state="IDLE", goal=None, plan=None, approved=False, review=None, stopped=False, current_step=0)
             state["signal"] = self._empty_signal()
             self._event(state, "GOAL_CLARIFICATION", "Goal needs clarification", result["summary"], payload["provider"])
             return
         state.update(state="PLAN_READY", approved=False, stopped=False, review=None, current_step=0)
         state["signal"] = self._empty_signal()
-        state["goal"] = {"text": text, "destination": "BAKERY", "summary": result["summary"],
+        destination = result["destination"]
+        try:
+            route = self.map_definition.route(destination)
+        except ValueError as error:
+            raise CommandError(str(error), 422) from None
+        state["goal"] = {"text": text, "destination": destination, "summary": result["summary"],
                          "source": payload.get("source", "typed"), "provider": payload["provider"]}
         state["plan"] = {"id": str(uuid4()), "revision": state["revision"] + 1,
-                         "steps": [{"id": str(uuid4()), "kind": kind, "label": label, "description": description, "status": "pending"}
-                                   for kind, label, description in STEP_DEFINITIONS]}
+                         "route": route, "steps": self._route_steps(route)}
         self._event(state, "GOAL_INTERPRETED", "Symbolic plan prepared", result["summary"], payload["provider"])
 
     @staticmethod
     def _kind(state: dict) -> str:
         return state["plan"]["steps"][state["current_step"]]["kind"]
 
+    def _map_matches(self, state: dict) -> bool:
+        route = (state.get("plan") or {}).get("route") or {}
+        return (route.get("map_id"), route.get("map_version"), route.get("map_hash")) == (
+            self.map_definition.id, self.map_definition.version, self.map_definition.geometry_hash)
+
+    def _require_current_map(self, state: dict) -> None:
+        if not self._map_matches(state):
+            raise CommandError("The plan belongs to a different map. Cancel or reset and create a new plan.")
+
+    @staticmethod
+    def _route_steps(route: dict) -> list[dict]:
+        steps = []
+        def append(kind, node, label, description):
+            steps.append({"id": str(uuid4()), "kind": kind, "node_id": node, "label": label,
+                          "description": description, "status": "pending"})
+        for index, node in enumerate(route["node_ids"][1:], 1):
+            previous = route["node_ids"][index - 1]
+            append("PUSH", node, f"Approach {node}", f"Simulate the drawing edge {previous} → {node}. No physical push path is qualified.")
+            if node in route["junction_ids"]:
+                append("STOP", node, f"Stop at {node}", f"Record a mandatory simulated full stop at {node}, even if its signal is GREEN.")
+                before, current, after = route["points_mm"][index - 1:index + 2]
+                first = (current[0] - before[0], current[1] - before[1])
+                second = (after[0] - current[0], after[1] - current[1])
+                cross = first[0] * second[1] - first[1] * second[0]
+                turn = "right" if cross > 0 else "left" if cross < 0 else "straight"
+                append("CROSS", node, f"Continue {turn} at {node}", f"Simulate {turn} crossing admission at {node}. Physical contact turning and swept clearance remain unqualified.")
+        append("VERIFY", route["destination"], f"Verify {route['destination']}", "Review the simulated destination outcome; this is not physical vehicle-arrival evidence.")
+        return steps
+
+    @staticmethod
+    def _signal_junction(state: dict) -> str | None:
+        if not state.get("plan"):
+            return None
+        steps = state["plan"]["steps"]
+        current = state["current_step"]
+        if steps[current]["kind"] in {"STOP", "CROSS"}:
+            return steps[current].get("node_id")
+        if steps[current]["kind"] == "PUSH" and current + 1 < len(steps) and steps[current + 1]["kind"] == "STOP":
+            return steps[current + 1].get("node_id")
+        return None
+
     def _new_review(self, state: dict) -> None:
         kind = self._kind(state)
+        node = state["plan"]["steps"][state["current_step"]].get("node_id", "unknown")
         state["state"] = "REVIEW_REQUIRED"
         state["review"] = {"id": str(uuid4()), "verdict": "PENDING", "source": "demo",
-                           "expected": f"Confirm the simulated {kind.lower()} outcome.",
+                           "expected": f"Confirm the simulated {kind.lower()} outcome at {node}.",
                            "observed": "Symbolic simulation result; no image or hardware receipt was captured.",
                            "summary": "Awaiting an explicitly demo-sourced verdict."}
 
     def _run_step(self, state: dict) -> None:
         kind = self._kind(state)
+        node = state["plan"]["steps"][state["current_step"]].get("node_id", "unknown")
         if kind == "STOP":
             state["stopped"] = True
         self._new_review(state)
         self._event(state, "SIMULATED_ACTION_COMPLETED", f"Simulated {kind.lower()} completed",
-                    "Mandatory simulated full stop recorded before entry." if kind == "STOP" else "A bounded abstract action completed in simulation. This is not physical-execution evidence.", "simulation")
+                    f"Mandatory simulated full stop at {node} recorded before entry." if kind == "STOP" else f"A bounded abstract action completed at {node} in simulation. This is not physical-execution evidence.", "simulation")
 
     def _review(self, state: dict, payload: dict) -> None:
         if state["state"] != "REVIEW_REQUIRED" or not state["review"] or state["review"]["id"] != payload["review_id"]:
@@ -267,10 +329,14 @@ class WorkspaceStore:
             elif kind == "VERIFY":
                 state.update(state="COMPLETED", approved=False)
             else:
+                if kind == "CROSS":
+                    state["stopped"] = False
+                    state["signal"] = self._empty_signal()
                 state["current_step"] += 1
                 state["plan"]["steps"][state["current_step"]]["status"] = "current"
                 state["state"] = "READY"
-        self._event(state, "DEMO_REVIEW_RECORDED", f"Demo review: {verdict}", state["review"]["summary"], "demo")
+        # current_step may already point to the next PUSH; bind wording to the review's expected outcome.
+        self._event(state, "DEMO_REVIEW_RECORDED", f"Demo review: {verdict}", f"{state['review']['expected']} {state['review']['summary']}", "demo")
         if state["state"] == "WAITING_SIGNAL":
             self._maybe_cross(state)
 
@@ -278,6 +344,13 @@ class WorkspaceStore:
         review = state["review"]
         if not (state["approved"] and state["stopped"] and self._kind(state) == "STOP"
                 and review and review["verdict"] == "PASS" and state["signal"]["color"] == "GREEN"):
+            return
+        self._require_current_map(state)
+        junction = state["plan"]["steps"][state["current_step"]].get("node_id")
+        next_index = state["current_step"] + 1
+        if (state["signal"].get("junction_id") != junction or next_index >= len(state["plan"]["steps"])
+                or state["plan"]["steps"][next_index]["kind"] != "CROSS"
+                or state["plan"]["steps"][next_index].get("node_id") != junction):
             return
         observed_at = state["signal"]["observed_at"]
         if not observed_at:
@@ -287,7 +360,7 @@ class WorkspaceStore:
         if not 0 <= age <= self._signal_ttl:
             self._event(state, "SIGNAL_STALE", "Fresh GREEN required", "The simulation observation expired. The demonstration TTL is not a qualified physical tolerance.", "simulation")
             return
-        state["current_step"] = 2
-        state["plan"]["steps"][2]["status"] = "current"
-        self._event(state, "CROSSING_ADMITTED", "Simulated crossing admitted", "Accepted stop review and a fresh simulated GREEN admitted one bounded crossing. Later signal changes apply to the next entry.", "simulation")
+        state["current_step"] = next_index
+        state["plan"]["steps"][next_index]["status"] = "current"
+        self._event(state, "CROSSING_ADMITTED", "Simulated crossing admitted", f"Accepted stop review and a fresh simulated GREEN at {junction} admitted one bounded crossing. Later signal changes apply to the next entry.", "simulation")
         self._run_step(state)

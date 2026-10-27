@@ -12,7 +12,7 @@
 
 ---
 
-**Status: first simulation slice implemented; full image/voice architecture remains a design.** The running software consists of a React/TypeScript browser workspace and one FastAPI/Uvicorn backend with SQLite state, source-labelled events, an abstract simulator, and a strict-schema Meta goal adapter. Voice, image review, camera input, registered AR, and robot control remain unavailable. GX10 has been inspected read-only; this application has not been deployed there.
+**Status: temporary-map simulation and recorded-image inspection are implemented.** React/TypeScript and one FastAPI/Uvicorn backend combine a replaceable map graph, SQLite mission state, demo action reviews, Meta goal interpretation, and a separate recorded-scene inspection path. OpenCV detects print markers and supports an explicitly locked test overlay. Scene inspection has no mission or motion authority. Voice, live camera capture, robot/BASE registration, and robot control remain unavailable. GX10 has been inspected read-only; the application is not deployed there.
 
 ## System shape
 
@@ -38,7 +38,7 @@ There are two complementary decisions: the model explains what the scene support
 | **Action adapter** | One bounded action and its corresponding result | Successful vehicle displacement merely because a tool reached its target |
 | **Evidence store** | Immutable inputs/results and their causal connection to decisions | A physical claim unsupported by the recorded sources |
 
-The implemented action adapter is a hardware-free simulator with four symbolic action kinds: PUSH, STOP, CROSS, and VERIFY. `backend/app.py` validates revisioned commands with Pydantic, `backend/core.py` serializes transitions and records SQLite events, and `backend/meta.py` interprets goals through Meta. [`contracts/workspace.ts`](../contracts/workspace.ts) describes the frontend DTOs. Exact runtime dependencies are locked; [Development](DEVELOPMENT.md) documents startup. These source interfaces are not a full JSON Schema contract for future observations or voice.
+The action adapter is a hardware-free simulator using PUSH, STOP, CROSS, and VERIFY. `backend/maps.py` derives an east-facing route from the sanitized temporary drawing graph; `backend/core.py` expands it into per-junction actions, serializes transitions, and records SQLite events. `backend/app.py` validates requests, `backend/meta.py` interprets goals, and `backend/scene.py` handles private uploaded frames, marker detection, locked board-to-image overlays, and independent MUSE scene inspection. [`workspace.ts`](../contracts/workspace.ts) and [`scene.ts`](../contracts/scene.ts) describe frontend DTOs. Exact dependencies are locked; [Development](DEVELOPMENT.md) documents startup. These are not a complete standalone JSON Schema catalog.
 
 Voice is planned initial-demo scope. Start with browser capture and one modular backend containing the voice adapter, MUSE adapter, mission supervisor, simulator and evidence modules. A separate speech server is not required by this design. Realtime transcription and speech playback are later options. No voice provider request or microphone path has been verified; the completed standalone Meta probe covers text only.
 
@@ -76,9 +76,9 @@ The intended sequence is:
 5. Record the supervisor decision with its transition cause.
 6. Continue with the next action, wait, request another observation or enter a fault state.
 
-The current SQLite store retains workspace/plan/step/review identities, ordered source-labelled events, request digests, and original idempotent command receipts. Reusing a request ID with different content or submitting a stale revision is rejected. Reset retains event history. The Meta goal result is represented by its interpreted summary and source; the current store does not preserve a full raw provider receipt with usage, timing, or a prompt version.
+The current SQLite store retains workspace/plan/step/review identities, map/version/geometry-hash route binding, junction-scoped signals, ordered source-labelled events, request digests, and original idempotent command receipts. Reusing a request ID with different content or submitting a stale revision is rejected. Reset retains event history. The Meta goal result is represented by its interpreted summary and source; the current store does not preserve a full raw provider receipt with usage, timing, or a prompt version.
 
-The complete image-review design additionally requires source identity, capture time, immutable image hash/crop lineage, exact provider inputs/results, prompt/schema/model versions, timing, and validation outcome. Those media/review records are not implemented yet.
+The recorded-scene store separately persists original frame bytes, SHA-256, source, received time, optional operator-provided capture time, map identity, registration reference, and validated inspection records. A late inspection cannot attach to a newer frame/revision. Raw media remains private runtime data. The complete per-action image-review design still needs action binding, local measurements, crop lineage, prompt/schema versions, complete provider envelopes, timing, and reported usage.
 
 Robot state, image, vehicle pose, signal and model response retain **independent source labels**. Unknown values remain unknown. Unavailable provider cost is not reported as zero. Credentials must never appear in evidence, prompts, logs or release archives.
 
@@ -99,9 +99,11 @@ Old pending actions, old green observations and earlier crossing admission must 
 
 ## Map and physical integration boundary
 
-Symbolic locations and abstract actions let the supervisor and UI run while the map is unresolved. No old map image or route is an application dependency. A user-provided temporary print can support explicitly labelled vision-input testing under [Test inputs](TEST_INPUTS.md); it does not finalize coordinates, signal regions, routes, or registration.
+The user authorized a replaceable temporary Little Town adapter. Sanitized drawing/graph/marker facts are bundled in `backend/data/little-town-temporary.json`; original artwork, historical robot transforms, and grasp assumptions are excluded. The temporary simulator supports BAKERY, BOOKSTORE, and SCHOOL from east-facing PIZZA. Each traversed junction gets its own mandatory stop, demo review, and fresh simulated GREEN. Drawing distances are not robot travel measurements.
 
-Later integration must establish the final road graph, installed camera/board/robot registration, stop and exit lines, signal regions, vehicle/tool geometry, pushing behavior and contact turning. A fixed gripped-car transform is not a model of surface pushing. Reusing a successful robot endpoint does not prove where an ungripped vehicle ended up.
+Recorded-image registration is board-to-image only. Four consistent markers are required for an explicit lock. Later partial visibility retains the reference without refitting; disagreement, changed view, or no visible reference markers withholds the overlay. A recorded 1920×1080 frame supported four-marker fitting with 1.4333 px residual; this is fit error, not independent absolute accuracy in millimeters. See [Temporary map](TEMPORARY_MAP.md), [Test inputs](TEST_INPUTS.md), and [verification](VERIFICATION.md).
+
+Production integration must establish the final road graph, installed camera/board/robot registration, stop and exit lines, signal regions, vehicle/tool geometry, pushing behavior and contact turning. Replacing the configured temporary map invalidates mismatched plans and scene references; it does not recalibrate the robot. A fixed gripped-car transform is not a model of surface pushing. Reusing a successful robot endpoint does not prove where an ungripped vehicle ended up.
 
 ## Delivery boundary
 

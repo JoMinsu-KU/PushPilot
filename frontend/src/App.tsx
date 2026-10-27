@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { EvidenceEvent, ProviderMode, ReviewVerdict, SignalColor, WorkspaceSnapshot } from '../../contracts/workspace';
+import type { SceneSnapshot } from '../../contracts/scene';
 import { BrandMark, Icon, type IconName } from './Icons';
-import { GlassesArt, Scene } from './Scene';
+import { GlassesArt } from './Scene';
+import { MapScene } from './MapScene';
 import { createRequestId } from './requestId';
 
 type View = 'Workspace' | 'Plan' | 'Replay';
@@ -33,13 +35,25 @@ function ActionLoop({ workspace }: { workspace: WorkspaceSnapshot | null }) {
   </section>;
 }
 function PlanList({ workspace, expanded = false }: { workspace: WorkspaceSnapshot | null; expanded?: boolean }) {
-  return <ol className={`plan-list ${expanded ? 'expanded' : ''}`}>
+  const listRef = useRef<HTMLOListElement>(null);
+  const currentStepId = workspace?.plan?.steps.find(step => step.status === 'current')?.id;
+  useEffect(() => {
+    if (expanded) return;
+    const list = listRef.current;
+    const item = list?.querySelector<HTMLElement>('[data-current-step="true"]');
+    if (!list || !item) return;
+    const top = item.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop;
+    const bottom = top + item.offsetHeight;
+    if (top < list.scrollTop) list.scrollTop = top;
+    else if (bottom > list.scrollTop + list.clientHeight) list.scrollTop = bottom - list.clientHeight;
+  }, [currentStepId, expanded, workspace?.plan?.id]);
+  return <ol ref={listRef} className={`plan-list ${expanded ? 'expanded' : ''}`} tabIndex={expanded ? undefined : 0} aria-label="Route steps">
     {(workspace?.plan?.steps ?? [
       { id: 'push', label: 'Approach the intersection', description: 'Bounded surface push from PIZZA.', kind: 'PUSH', status: 'pending' },
       { id: 'stop', label: 'Stop and check the signal', description: 'Mandatory stop, including on green.', kind: 'STOP', status: 'pending' },
       { id: 'cross', label: 'Cross on fresh green', description: 'Accepted checks permit automatic entry.', kind: 'CROSS', status: 'pending' },
       { id: 'verify', label: 'Verify the destination', description: 'Review the expected arrival at BAKERY.', kind: 'VERIFY', status: 'pending' },
-    ]).map((step, index) => <li key={step.id} className={`plan-step ${step.status}`}>
+    ]).map((step, index) => <li key={step.id} className={`plan-step ${step.status}`} data-current-step={step.status === 'current' ? 'true' : undefined}>
       <span className="step-number">{step.status === 'complete' ? <Icon name="check" size={14}/> : String(index + 1).padStart(2, '0')}</span>
       <span className="step-icon"><Icon name={stepIcons[step.kind] ?? 'route'} size={24}/></span>
       <span className="step-copy"><strong>{step.label}</strong><small>{step.description}</small></span>
@@ -61,6 +75,7 @@ export function App() {
   const [online, setOnline] = useState(false);
   const [showDemo, setShowDemo] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
+  const [sceneSnapshot, setSceneSnapshot] = useState<SceneSnapshot | null>(null);
   const current = useRef<WorkspaceSnapshot | null>(null);
   const goalInput = useRef<HTMLInputElement>(null);
   const applySnapshot = useCallback((snapshot: WorkspaceSnapshot) => {
@@ -110,7 +125,11 @@ export function App() {
   const selected = workspace?.events.find(event => event.id === selectedEvent) ?? workspace?.events.at(-1);
   const signal = workspace?.signal.color ?? 'UNKNOWN';
   const pendingReview = workspace?.review?.verdict === 'PENDING';
-  const title = state === 'IDLE' ? 'From sight\nto action.' : state === 'WAITING_SIGNAL' ? 'Stopped.\nWatching the signal.' : state === 'COMPLETED' ? 'Destination\nverified.' : state === 'REVIEW_REQUIRED' ? 'Observe.\nThen continue.' : 'A shared plan\nto the Bakery.';
+  const destination = workspace?.goal?.destination ?? 'BAKERY';
+  const destinationName = destination[0] + destination.slice(1).toLowerCase();
+  const currentStep = workspace?.plan?.steps[workspace.current_step];
+  const signalJunction = workspace?.signal.junction_id ?? (currentStep?.kind === 'STOP' ? currentStep.node_id : null);
+  const title = state === 'IDLE' ? 'From sight\nto action.' : state === 'WAITING_SIGNAL' ? 'Stopped.\nWatching the signal.' : state === 'COMPLETED' ? 'Destination\nverified.' : state === 'REVIEW_REQUIRED' ? 'Observe.\nThen continue.' : `A shared plan\nto the ${destinationName}.`;
 
   function PrimaryAction() {
     if (!workspace) return <button className="primary-button" disabled>Connecting to workspace…</button>;
@@ -143,7 +162,7 @@ export function App() {
         <section className="left-workspace">
           <form className="goal-bar" onSubmit={event => { event.preventDefault(); if (canEditGoal && draft.trim()) void command('goals', { text: draft, provider, source: 'typed' }); }}>
             <button type="button" className="voice-button" disabled title="Voice capture requires the upcoming Meta Voice adapter" aria-label="Voice input unavailable"><Icon name="mic" size={25}/></button>
-            <div className="goal-field"><label htmlFor="goal-input">YOUR GOAL <span>{active ? 'Mission in progress' : 'Tell us where to go'}</span></label><input ref={goalInput} id="goal-input" value={draft} onChange={event => setDraft(event.target.value)} disabled={!canEditGoal} maxLength={500} aria-label="Your mission goal"/></div>
+            <div className="goal-field"><label htmlFor="goal-input">YOUR GOAL <span>{active ? 'Mission in progress' : 'Bakery · Bookstore · School'}</span></label><input ref={goalInput} id="goal-input" value={draft} onChange={event => setDraft(event.target.value)} disabled={!canEditGoal} maxLength={500} aria-label="Your mission goal"/></div>
             <button className="goal-submit" type="submit" disabled={!canEditGoal || !draft.trim()} aria-label="Interpret goal"><Icon name="arrow" size={28}/></button>
           </form>
 
@@ -151,16 +170,16 @@ export function App() {
           {!online && <div className="connection-banner" role="status"><span className="connection-dot"/>{workspace ? 'Backend disconnected. Actions are unavailable until state is refreshed.' : 'Connecting to the mission backend…'}<button onClick={() => void refresh()}>Retry</button></div>}
 
           <section className={`scene-panel panel ${view !== 'Workspace' ? 'alternate-view' : ''}`} aria-label={view === 'Workspace' ? 'Scene preview' : view === 'Plan' ? 'Mission plan' : 'Evidence replay'}>
-            <div className="scene-toolbar"><div className="scene-toolbar-label"><Icon name={view === 'Workspace' ? 'camera' : view === 'Plan' ? 'route' : 'clock'} size={19}/><h1>{view === 'Workspace' ? 'SCENE VIEW' : view === 'Plan' ? 'MISSION PLAN' : 'EVIDENCE REPLAY'}</h1></div>{view === 'Workspace' ? <span className="scene-preview-label">WORKSPACE PREVIEW</span> : <span className="scene-preview-label">{view === 'Plan' ? 'SYMBOLIC · MAP INDEPENDENT' : 'RECORDED DECISIONS'}</span>}<span className="ar-status"><span/>AR unregistered</span></div>
-            {view === 'Workspace' && <Scene state={state}/>}
-            {view === 'Plan' && <div className="plan-canvas"><span className="eyebrow">ONE ACTION. ONE CHECK.</span><h2>A plan you can inspect.</h2><p>Push on the surface, stop at the intersection, check the signal, then verify arrival. This abstract plan contains no robot coordinates.</p><PlanList workspace={workspace} expanded/><div className="plan-note"><Icon name="shield" size={20}/><span>Every intersection requires a verified stop, even on green. Unknown or stale signals inhibit entry.</span></div></div>}
+            <div className="scene-toolbar"><div className="scene-toolbar-label"><Icon name={view === 'Workspace' ? 'camera' : view === 'Plan' ? 'route' : 'clock'} size={19}/><h1>{view === 'Workspace' ? 'SCENE VIEW' : view === 'Plan' ? 'MISSION PLAN' : 'EVIDENCE REPLAY'}</h1></div>{view === 'Workspace' ? <span className="scene-preview-label">TEMPORARY PRINT</span> : <span className="scene-preview-label">{view === 'Plan' ? 'TEMPORARY ROAD GRAPH' : 'RECORDED DECISIONS'}</span>}<span className="ar-status"><span/>{sceneSnapshot?.registration.status === 'locked' || sceneSnapshot?.registration.status === 'locked_partial' ? 'Test overlay locked' : 'Test overlay only'}</span></div>
+            {view === 'Workspace' && <MapScene workspace={workspace} onSnapshot={setSceneSnapshot}/>}
+            {view === 'Plan' && <div className="plan-canvas"><span className="eyebrow">ONE ACTION. ONE CHECK.</span><h2>A plan you can inspect.</h2><p>Push on the surface, stop at every planned intersection, check its signal, then verify arrival. Temporary drawing geometry defines the simulation route; robot coordinates remain unqualified.</p><PlanList workspace={workspace} expanded/><div className="plan-note"><Icon name="shield" size={20}/><span>Every intersection requires its own verified stop and fresh green. Unknown or stale signals inhibit entry.</span></div></div>}
             {view === 'Replay' && <EvidenceTimeline events={workspace?.events ?? []} selected={selectedEvent} onSelect={setSelectedEvent}/>}
-            <div className="source-strip"><SourcePill>Robot · disconnected</SourcePill><SourcePill>Image · illustration</SourcePill><SourcePill>Pose · unregistered</SourcePill><SourcePill status="amber">Signal · simulation</SourcePill></div>
+            <div className="source-strip"><SourcePill>Robot · disconnected</SourcePill><SourcePill>Image · {sceneSnapshot?.frame?.source ?? 'none'}</SourcePill><SourcePill>Car pose · unmeasured</SourcePill><SourcePill status="amber">Signal · simulation</SourcePill></div>
           </section>
 
           <div className="bottom-cards"><section className="panel companion-card"><div className="card-heading"><Icon name="glasses" size={20}/><h2>GLASSES COMPANION</h2><span className="concept-tag">CONCEPT</span></div><div className="companion-body"><div><h3>See it.<br/>Say it.<br/>Review it.</h3><p>A future wearable experience.</p></div><GlassesArt/></div><span className="companion-note">Hardware and display integration require validation.</span></section><ActionLoop workspace={workspace}/></div>
 
-          {showDemo && view !== 'Replay' && <section className="panel demo-controls" id="simulation-controls"><div className="demo-heading"><span className="eyebrow">SIMULATION INPUTS</span><span>No camera or physical robot</span><button aria-label="Close simulation controls" onClick={() => setShowDemo(false)}><Icon name="close" size={18}/></button></div><div className="demo-grid"><div><h3>Paper signal stand-in</h3><p>Inject a source-labelled test observation.</p><div className="signal-buttons">{(['RED', 'GREEN', 'UNKNOWN'] as SignalColor[]).map(color => <button key={color} className={`signal-option ${color.toLowerCase()} ${signal === color ? 'selected' : ''}`} disabled={busy || !online || !workspace} onClick={() => void command('signal', { color })}><span/>{color[0] + color.slice(1).toLowerCase()}</button>)}</div></div><div><h3>Action review stand-in</h3><p>Demo decisions are never labelled as MUSE.</p><div className="review-buttons">{(['PASS', 'REOBSERVE', 'UNKNOWN', 'FAIL'] as ReviewVerdict[]).map(verdict => <button key={verdict} disabled={!pendingReview || busy || !online} className={verdict === 'FAIL' ? 'danger-text' : ''} onClick={() => void command('reviews', { review_id: workspace!.review!.id, verdict })}>{verdict === 'REOBSERVE' ? 'Re-observe' : verdict[0] + verdict.slice(1).toLowerCase()}</button>)}</div></div></div></section>}
+          {showDemo && view !== 'Replay' && <section className="panel demo-controls" id="simulation-controls"><div className="demo-heading"><span className="eyebrow">SIMULATION INPUTS</span><span>No live camera or physical robot</span><button aria-label="Close simulation controls" onClick={() => setShowDemo(false)}><Icon name="close" size={18}/></button></div><div className="demo-grid"><div><h3>Paper signal stand-in {signalJunction ? `· ${signalJunction}` : ''}</h3><p>{signalJunction ? `A fresh observation applies only to junction ${signalJunction}.` : 'The backend binds an observation to the current junction.'}</p><div className="signal-buttons">{(['RED', 'GREEN', 'UNKNOWN'] as SignalColor[]).map(color => <button key={color} className={`signal-option ${color.toLowerCase()} ${signal === color ? 'selected' : ''}`} disabled={busy || !online || !workspace} onClick={() => void command('signal', { color })}><span/>{color[0] + color.slice(1).toLowerCase()}</button>)}</div></div><div><h3>Action review stand-in</h3><p>Demo decisions are never labelled as MUSE.</p><div className="review-buttons">{(['PASS', 'REOBSERVE', 'UNKNOWN', 'FAIL'] as ReviewVerdict[]).map(verdict => <button key={verdict} disabled={!pendingReview || busy || !online} className={verdict === 'FAIL' ? 'danger-text' : ''} onClick={() => void command('reviews', { review_id: workspace!.review!.id, verdict })}>{verdict === 'REOBSERVE' ? 'Re-observe' : verdict[0] + verdict.slice(1).toLowerCase()}</button>)}</div></div></div></section>}
         </section>
 
         <aside className="plan-panel panel" aria-label="AI plan and mission controls">
@@ -168,8 +187,8 @@ export function App() {
           {view === 'Replay' ? <div className="selected-evidence">{selected ? <><span className="evidence-index">#{String(selected.sequence).padStart(3, '0')}</span><h2>{selected.title}</h2><p>{selected.detail}</p><dl><div><dt>Source</dt><dd>{selected.source}</dd></div><div><dt>Recorded at</dt><dd>{new Date(selected.at).toLocaleString('en-US')}</dd></div><div><dt>State after event</dt><dd>{stateLabels[selected.state] ?? selected.state}</dd></div><div><dt>Event identifier</dt><dd className="mono">{selected.id}</dd></div></dl></> : <><h2>Every decision, visible.</h2><p>Select a recorded event to inspect its source and the state it produced.</p></>}<div className="plan-note"><Icon name="clock" size={19}/><span>Replay is evidence only. Return to Workspace to interact with the simulation.</span></div></div> : <>
             <h2 className="plan-title">{title.split('\n').map((line, i) => <span key={i}>{line}</span>)}</h2>
             <p className="plan-description">{workspace?.goal?.summary ?? 'Your perspective. A shared plan. Review each step before the next action.'}</p>
-            <div className="journey-summary"><div className="journey-from"><span className="destination-icon"><Icon name="car" size={31}/></span><span><strong>PIZZA</strong><small>Start</small></span></div><Icon name="arrow" className="journey-arrow" size={30}/><div className="journey-to"><span className="destination-icon"><Icon name="route" size={29}/></span><span><strong>BAKERY</strong><small>Destination</small></span></div></div>
-            <div className="section-label"><h3>ROUTE LOGIC</h3><span>Abstract actions</span></div><PlanList workspace={workspace}/>
+            <div className="journey-summary"><div className="journey-from"><span className="destination-icon"><Icon name="car" size={31}/></span><span><strong>{workspace?.plan?.route.start ?? 'PIZZA'}</strong><small>Start</small></span></div><Icon name="arrow" className="journey-arrow" size={30}/><div className="journey-to"><span className="destination-icon"><Icon name="route" size={29}/></span><span><strong>{destination}</strong><small>Destination</small></span></div></div>
+            <div className="section-label"><h3>ROUTE LOGIC</h3><span>{workspace?.plan?.route ? `${Math.min(workspace.current_step + 1, workspace.plan.steps.length)}/${workspace.plan.steps.length} · ${workspace.plan.route.junction_ids.length} junction ${workspace.plan.route.junction_ids.length === 1 ? 'check' : 'checks'}` : 'Temporary road graph'}</span></div><PlanList workspace={workspace}/>
             {workspace?.review && <section className="review-card" aria-label="Current action review"><div className="review-card-heading"><Icon name="eye" size={17}/><strong>{workspace.review.source === 'meta' ? 'MUSE REVIEW' : 'DEMO REVIEW'}</strong><span className={`verdict ${workspace.review.verdict.toLowerCase()}`}>{workspace.review.verdict}</span></div><dl><div><dt>Expected</dt><dd>{workspace.review.expected}</dd></div><div><dt>Observed</dt><dd>{workspace.review.observed || 'Awaiting a source-labelled observation.'}</dd></div></dl>{workspace.review.summary && <p>{workspace.review.summary}</p>}</section>}
             <div className="execution-check"><div><Icon name="shield" size={17}/><h3>NEXT CHECK</h3></div><p>{workspace?.next_check ?? 'Connect to the backend, enter a goal and review the proposed plan.'}</p></div>
             <div className="mission-action"><div className="action-status"><span className={`status-dot ${state.toLowerCase()}`}/><strong>{stateLabels[state]}</strong></div><PrimaryAction/>{state === 'PLAN_READY' && <button className="secondary-button" disabled={!canEditGoal} onClick={() => { setView('Workspace'); goalInput.current?.focus(); }}>Edit goal</button>}{pendingReview && <button className="secondary-button" onClick={() => setShowDemo(true)}><Icon name="settings" size={17}/>Open demo review controls</button>}{state === 'WAITING_SIGNAL' && <button className="secondary-button" onClick={() => setShowDemo(true)}><span className={`small-signal ${signal.toLowerCase()}`}/>Signal: {signal.toLowerCase()}<Icon name="chevron" size={16}/></button>}{active && <button className="cancel-button" disabled={busy || !online} onClick={() => void command('cancel')}>End simulation</button>}<small className="action-footnote">{busy ? 'Updating the mission…' : 'Simulation only · no physical execution'}</small></div>
@@ -178,6 +197,6 @@ export function App() {
         </aside>
       </div>
     </main>
-    <footer className="page-footer"><span>PushPilot <span>·</span> Look. Ask. Review.</span><span>Map registration pending <span>·</span> Wearable concept <span>·</span> No robot connected</span><span className="revision">{workspace ? `rev ${workspace.revision}` : 'offline'}</span></footer>
+    <footer className="page-footer"><span>PushPilot <span>·</span> Look. Ask. Review.</span><span>Temporary test map <span>·</span> Wearable concept <span>·</span> No robot connected</span><span className="revision">{workspace ? `rev ${workspace.revision}` : 'offline'}</span></footer>
   </div>;
 }

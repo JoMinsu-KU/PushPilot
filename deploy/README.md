@@ -15,7 +15,7 @@
 | GX10 host | Ubuntu 24.04.4 LTS, `aarch64`. |
 | Host Python | `/usr/bin/python3`, Python 3.12.3. |
 | Host JavaScript tools | `node` and `npm` were absent from the inspected `PATH`. |
-| Application runtime | One Python process, FastAPI/Uvicorn, one worker, SQLite. |
+| Application runtime | One Python process, FastAPI/Uvicorn, one worker, SQLite; OpenCV/NumPy for uploaded-image marker geometry. |
 | Frontend delivery | Compile locally; copy `frontend/dist` into the matching release. Python serves these static assets. |
 | Hardware integration | Unavailable. No robot, camera, or Rodi startup is included. |
 
@@ -74,7 +74,9 @@ Select and verify a dedicated `<deploy-root>` before installing anything:
 └── shared/
     ├── config/                  Host-only configuration
     ├── secrets/application.env  Server credentials; owner-readable only
-    ├── state/workspace.sqlite3  Mission state and immutable event records
+    ├── state/
+    │   ├── workspace.sqlite3   Mission state, events and command receipts
+    │   └── scene/              Private frames, locked views and inspections
     └── logs/                    Restricted application logs
 ```
 
@@ -89,13 +91,15 @@ python3 -m venv .venv
   --state-path /absolute/deploy-root/shared/state/workspace.sqlite3
 ```
 
-These are installation instructions for later use; they have not been executed on GX10. A lockfile records package versions. ARM64 installation and runtime behavior must still be verified in the isolated host environment. Do not change or restart another application's services if a dependency or port is unavailable.
+These installation steps have not been executed on GX10. Package versions, including OpenCV/NumPy, are locked; Linux ARM64 wheels have been resolved as a compatibility check. Installation, imports, and runtime behavior must still be verified in the isolated host environment. Do not change or restart another application's services if a dependency or port is unavailable.
 
 ## Access, credentials, and microphone capture
 
 The launcher binds `127.0.0.1` by default. LAN access requires an explicit host address and reviewed network access. Use a reverse proxy or another deliberately provisioned TLS endpoint for target-device HTTPS. No proxy, firewall, certificate, or service-manager change is performed by the application.
 
-The backend accepts `META_API_KEY` from its process environment or the application-local ignored `.env`. For a host service, put the key into its restricted environment file through the existing direct-input workflow. The key does not belong in frontend build variables or copied public assets. No credentials are needed for the demo simulator.
+The backend accepts `META_API_KEY` from its process environment or the application-local ignored `.env`. For a host service, put the key into its restricted environment file through the existing direct-input workflow. The key does not belong in frontend build variables or copied public assets. No credentials are needed for the graph simulator, frame upload, or marker detection. Actual goal interpretation and scene inspection require the server key. Scene inspection never advances the mission or controls equipment.
+
+`PUSHPILOT_MAP_PATH` optionally selects a validated temporary map JSON; bundled drawing facts live under `backend/data/`, without the original artwork. `PUSHPILOT_SCENE_DIR` optionally selects private media storage; its default `scene/` directory is beside SQLite, so the shared-state layout keeps both together. If using another path, include its deliberate permissions/backups and any service write allowance. Map-hash changes invalidate incompatible plans and recorded-view references. Raw photos, original PDF artwork, and scene files do not enter source bundles.
 
 Future push-to-talk recording requires HTTPS trusted by the actual tablet, microphone permission, and secure-context preflight. Plain LAN HTTP is not microphone-ready. Voice capture and audio normalization remain separate implementation and verification gates; serving the workspace successfully does not establish them.
 

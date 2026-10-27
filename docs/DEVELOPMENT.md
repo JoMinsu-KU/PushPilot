@@ -1,6 +1,6 @@
 <sub>[PushPilot](../README.md) / [Documentation](README.md) / Development</sub>
 
-# Run the map-independent workspace
+# Run the temporary-map workspace
 
 **Build the operator interface, run one Python service, and verify each simulated decision.**
 
@@ -8,11 +8,11 @@
 
 ## Runtime and dependency setup
 
-This is the independent application repository. It must run without private planning material, handoff archives, historical previews, map assets, or operating evidence.
+This is the independent application repository. It runs with the sanitized temporary map data in `backend/data/little-town-temporary.json`, without private planning material, handoff archives, original map artwork, raw camera photos, or historical robot profiles.
 
 | Requirement | Purpose |
 | :--- | :--- |
-| Python 3.12+ | FastAPI/Uvicorn API, SQLite mission state, tooling, and offline tests. GX10 has Python 3.12.3. |
+| Python 3.12+ | FastAPI/Uvicorn, SQLite, OpenCV marker detection and NumPy geometry. GX10 has Python 3.12.3; isolated host installation remains unverified. |
 | Node 24 and npm | Build or develop the React/TypeScript frontend locally. GX10 serves compiled assets without Node. |
 | Git on `PATH` | Reviewed source identity, source packaging, and isolated release tests. |
 | `requirements.lock` and `frontend/package-lock.json` | Exact Python and frontend dependency versions. |
@@ -59,7 +59,7 @@ For frontend development, run the API with `--api-only` in one terminal and `npm
 
 ## Verify the first connected slice
 
-The initial workspace connects a typed goal, symbolic plan, explicit approval, simulated bounded actions, mandatory stop, signal waiting, review decisions, and immutable evidence. Simulated signals and manually injected demo reviews are labelled as such. A backend Meta goal request is a distinct opt-in provider operation, with server-held credentials; it does not establish image review or physical execution.
+The workspace connects a typed destination to a deterministic temporary-map route, explicit approval, simulated actions, per-junction mandatory stops and signal waits, demo action reviews, and evidence. Supported destinations are BAKERY, BOOKSTORE, and SCHOOL from east-facing PIZZA. Simulated signals and operator-injected demo verdicts remain labelled. A Meta goal request and a recorded-scene inspection are distinct opt-in provider operations; neither grants physical execution authority.
 
 Use a separate test database when exploring restart and fault behavior:
 
@@ -74,10 +74,18 @@ The path is resolved relative to the calling directory. It is never part of a so
 3. Observe the required review and explicitly supply a labelled demo verdict.
 4. Complete the mandatory stop and its review. RED or UNKNOWN must retain the wait.
 5. Supply fresh simulated GREEN. An accepted stopped review permits automatic crossing; no repeated approval is required.
-6. Review the crossing and final verification. Inspect the evidence history for the source and cause of each decision.
+6. Review the crossing, then repeat the approach/stop/review/signal cycle at the next junction. Earlier stop evidence and GREEN cannot authorize another junction. Review final verification and inspect the event history.
 7. Restart during an active mission using the same test state. Recovery must require reconciliation and must not resume old work automatically.
 
-These checks establish the software simulation flow. They do not qualify pushing, turning, signal perception, map registration, or actual robot stopping. The UI and capability response must keep those unavailable capabilities explicit.
+These checks establish graph-based simulation only. Drawing lengths are not robot targets or measured vehicle travel. They do not qualify pushing, turning, physical signal perception, robot registration, or stopping.
+
+## Inspect a temporary printed-map image
+
+Use [Temporary map](TEMPORARY_MAP.md) and [Test inputs](TEST_INPUTS.md) for print/capture requirements. Upload JPEG/PNG through the recorded-frame control; the backend accepts at most 8 MiB and 12 megapixels, with at least 32 pixels per side. An optional capture timestamp must include its timezone and remains operator-provided; upload time does not establish live freshness.
+
+A full four-marker detection produces a registration candidate. Explicitly lock that recorded view before displaying a projected route. Later partial visibility retains the reference without refitting; inconsistent/missing reference evidence withholds the overlay. This is drawing-board-to-image projection, never a robot/BASE transform.
+
+With MUSE configured, explicitly submit an expectation for the current frame. The independent inspection can report USABLE/REOBSERVE/UNKNOWN, visible places, whether a separate 3D car is visible, and whether a separate paper signal is identifiable. It does not complete any mission step or replace PASS/FAIL demo action reviews. Actual provider observations belong in [verification](VERIFICATION.md).
 
 ## Checks and tests
 
@@ -88,7 +96,7 @@ cd frontend
 npm run build
 ```
 
-`check` parses Python and JSON source without loading credentials. `test` runs offline release-boundary, connection-tool, mission, and API tests with isolated test state. Provider behavior is injected in tests; the suite must not read the operator's real `.env` or contact equipment. Frontend build validation checks TypeScript and bundle generation. Visual review at desktop and tablet widths remains necessary for spacing, arrows, and readable state labels.
+`check` parses Python and JSON source without loading credentials. `test` runs offline release-boundary, connection-tool, mission, temporary-map, recorded-scene, and API tests with isolated test state. Provider behavior is injected in tests; the suite must not read the operator's real `.env` or contact equipment. Frontend build validation checks TypeScript and bundle generation. Visual review at desktop and tablet widths remains necessary for spacing, arrows, and readable state labels.
 
 The separate [Meta connection check](META_API_CHECK.md) makes a real provider request only when deliberately invoked. A successful connection check establishes endpoint access, not model judgment quality.
 
@@ -96,7 +104,7 @@ The separate [Meta connection check](META_API_CHECK.md) makes a real provider re
 
 `.env.example` contains empty placeholders. The backend reads `META_API_KEY` from its process environment or repository-local ignored `.env` when the ASGI application starts. It does not make an automatic provider request at startup. Enter credentials directly into that local file or the host's restricted configuration through the existing direct-input workflow.
 
-`PUSHPILOT_STATE_PATH` selects the SQLite file; the launcher also exposes `--state-path`. The default is ignored `runtime/workspace.sqlite3`. Credentials, configuration files, and state must not enter browser build variables, Git, source packages, or screenshots.
+`PUSHPILOT_STATE_PATH` selects SQLite; the launcher also exposes `--state-path`. The default is ignored `runtime/workspace.sqlite3`. `PUSHPILOT_SCENE_DIR` optionally selects private frame/registration/inspection storage; by default it is `scene/` beside the SQLite file. `PUSHPILOT_MAP_PATH` selects a validated, explicitly temporary map JSON, defaulting to the bundled sanitized definition. Restart with deliberate state reconciliation after changing map configuration; incompatible plan/registration hashes cannot carry over. `PUSHPILOT_FRONTEND_DIST` is an optional process-environment asset-directory override. Credentials, private frames, configuration and runtime state must not enter browser build variables, Git, source packages, or public screenshots.
 
 ## Repository discipline
 
@@ -129,10 +137,10 @@ The builder refuses an existing output path. The manifest binds committed source
 
 | Area | Current boundary |
 | :--- | :--- |
-| Map | Symbolic locations and abstract actions. Final routes, metric coordinates, registration, stop lines, and signal ROIs remain deferred. User-provided images may be labelled temporary vision fixtures. |
+| Map | Replaceable temporary drawing graph and board-to-image test overlays. Production routes, robot/BASE transforms, qualified stop lines, and live signal ROIs remain unresolved. |
 | Hardware | No robot transport, physical execution, profile replay, mailbox restoration, camera ownership, or operating-service restart. |
 | Signals | Simulated source only in this slice. Full stop even on GREEN; RED, unknown, stale, and obscured observations must inhibit physical admission later. |
-| Review | Demo verdicts are manually injected. Live-image MUSE review and independent local perception need separate implementation and validation. |
+| Review | Scene-only MUSE inspection is frame-bound and cannot advance actions. Mission action reviews remain manually injected demo verdicts; actual action-image review and local physical checks remain future work. |
 | Voice | Planned bounded backend Meta transcription, editable transcript confirmation, common goal interpretation, and explicit plan approval. Capture and normalization are not established by this slice. |
 | Models | Validated goal interpretation; no generated robot scripts or authoritative coordinates. |
 | Evidence | Source-labelled event history. A provider call is not evidence of physical execution. |
@@ -142,7 +150,7 @@ Push-to-talk will require trusted target-device HTTPS, secure-context and permis
 
 ## State and restart
 
-Runtime state belongs in ignored `runtime/` locally or dedicated shared storage on GX10. The SQLite database contains mission state and append-only evidence events. Preserve it across a code update, restrict access, and back it up deliberately. A rollback must not overwrite newer history.
+Runtime state belongs in ignored `runtime/` locally or dedicated shared storage on GX10. SQLite contains mission state/events and command receipts; the private scene directory contains frames, hashes, map/reference bindings, and validated inspection records. Preserve both deliberately across updates, restrict access, and apply a reviewed media retention policy. A rollback must not overwrite newer history.
 
 After restart, an active mission enters non-executing recovery. Pending work, admitted crossings, previous approval, and old GREEN observations do not automatically regain authority. Reconcile or terminate the prior simulation explicitly before starting another.
 

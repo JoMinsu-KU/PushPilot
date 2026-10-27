@@ -1,16 +1,18 @@
-# First workspace verification
+# Workspace verification
 
-Verified on **2026-10-27, Asia/Seoul**. This record covers the first map-independent software slice; it is not a physical mission report.
+Verified on **2026-10-27, Asia/Seoul**. This record includes the temporary-map extension to the initial software slice; it is not a physical mission report.
 
 | Check | Result | Boundary |
 |---|---|---|
 | `python tools/dev.py check` | Passed | Python and JSON source syntax; no credentials loaded |
-| `python tools/dev.py test` | 49 passed | Release integrity, connection checker, mission core and API/provider tests |
-| `npm test` in `frontend` | 3 passed | Valid command UUIDs on native, LAN HTTP and minimal browser paths |
+| `python tools/dev.py test` | 81 passed | Release integrity, connection checker, graph routes, mission/API, recorded scene and provider tests |
+| `npm test` in `frontend` | 7 passed | Projection direction/division, singular rejection, corner arrow direction and command UUIDs |
 | `npm run build` in `frontend` | Passed | TypeScript checking and Vite production bundle |
-| Real Meta application-goal request | HTTP 200, `PLAN_READY` | One strict-schema text request; [details](META_API_CHECK.md) |
+| Real Meta application-goal requests | Accepted, `PLAN_READY` | Bakery and Bookstore interpretations; [details](META_API_CHECK.md) |
+| Real Meta image inspection | Accepted, `USABLE` | Four shops, no separate physical car, signal UNKNOWN; recorded frame only |
+| Actual recorded-image test registration | Passed | Four markers in the selected native 1080p frame; 1.4333 px image-fit RMS, no metric accuracy claim |
 | Combined Python service | Passed | Built UI and API served from one loopback origin |
-| Browser mission flow | Passed | Demo goal → approval → push review → mandatory stop review → RED wait → GREEN auto-admission → crossing review → destination review → completion |
+| Browser mission flow | Passed | Bakery eight-action simulation: C RED wait, C GREEN admission, S mandatory stop with UNKNOWN after C's signal was cleared, S fresh GREEN, final review/completion |
 | Browser evidence replay | Passed | Source-labelled events and read-only event detail; no execution controls in replay |
 | Responsive browser checks | Passed | 1440×1000, 1280×800, 1024×768 and 390×844; no horizontal overflow of visible buttons, inputs, selects or SVGs |
 | Browser console | No errors observed | Verified software session; not a full browser/device matrix |
@@ -26,11 +28,11 @@ Visual review also found and corrected a LAN HTTP fallback that initially produc
 
 ## Limits and next validation
 
-- Robot, camera, pose registration, spatial AR, image review and voice capabilities are unavailable in this version. Demo verdicts and paper-signal stand-ins remain explicitly simulated.
-- The supplied [temporary print candidate](TEST_INPUTS.md) was inspected as a document. No camera image of that print has been reviewed and no vehicle motion has been measured.
+- Robot, live camera, measured vehicle pose, production metric AR, action-bound image review and voice remain unavailable. Temporary recorded-image overlays and MUSE scene inspection are implemented separately. Action verdicts and signal stand-ins remain explicitly simulated.
+- The supplied [temporary print](TEST_INPUTS.md) was photographed separately and the selected recorded frame was inspected by MUSE. No vehicle motion was measured.
 - The MUSE goal adapter currently serializes the store during an upstream request. HTTPX limits individual network operations, not total elapsed request duration. Move remote work outside the store lock and revalidate revisions before integrating live observation/control.
-- Events retain transition causes and source labels. Complete immutable media/provider receipts, usage, latency, prompt versions and held-out image evaluation remain future work.
+- Events retain transition causes and source labels; private immutable frames and scene-inspection records bind their image/map/model/expectation identities. Complete provider usage/latency receipts, prompt catalogs and held-out image evaluation remain future work.
 - The test client emits an upstream Starlette/HTTPX deprecation warning; all current tests pass. This does not affect the production HTTP server path.
 - GX10 activation, trusted tablet HTTPS/microphone testing and physical qualification have not occurred.
 
-The actual workspace screenshot is [`assets/workspace-simulation.jpg`](assets/workspace-simulation.jpg). It shows an original illustration, a symbolic plan and simulation controls, not a live camera or successful physical run.
+The current public screenshot is [`assets/temporary-map-workspace.jpg`](assets/temporary-map-workspace.jpg), showing the self-authored schematic and actual model-result text. The original first-slice screenshot is retained as [`assets/workspace-simulation.jpg`](assets/workspace-simulation.jpg). Private recorded-camera screenshots remain outside Git. Neither view is a physical-run claim.

@@ -6,21 +6,23 @@
 
 [Architecture](../docs/ARCHITECTURE.md) · [Services](../docs/SERVICE_COMPOSITION.md) · [Contracts](../contracts/workspace.ts) · [Deployment](../deploy/README.md)
 
-> **Implemented: first simulation slice.** FastAPI serves a revisioned operator API and the built frontend from one origin. SQLite preserves state, decisions, and command receipts. Every action result is explicitly simulated; image review and voice capture remain unimplemented.
+> **Implemented: temporary-map simulation and recorded-image inspection.** FastAPI serves a revisioned operator API and the built frontend from one origin. SQLite preserves state, decisions, and command receipts. Every mission action and signal result is explicitly simulated. Separate recorded-image inspection can call MUSE but grants no motion authority; voice capture remains unimplemented.
 
 ## What runs today
 
 | Component | Current behavior |
 | :--- | :--- |
-| Mission supervisor | One symbolic PIZZA → BAKERY mission; approved PUSH, STOP, CROSS, and VERIFY actions. |
+| Mission supervisor | Replaceable Little Town graph; east-facing PIZZA start to BAKERY, BOOKSTORE, or SCHOOL, with route-specific PUSH, STOP, CROSS, and VERIFY actions. |
 | Admission gate | A mandatory simulated full stop, accepted demo stop review, and fresh simulated GREEN admit one crossing. |
 | Review | The operator injects PASS, FAIL, UNKNOWN, or REOBSERVE with an exact observation binding. This is labelled `demo`, never MUSE image evidence. |
 | MUSE goal adapter | Explicit `provider: meta` goal requests call Muse Spark 1.3. No provider request runs at startup; failures do not fall back to demo interpretation. |
+| Temporary map | Validated drawing facts and canonical geometry hash; deterministic shortest paths and turn descriptions. No robot coordinate transform. |
+| Scene inspection | Uploaded/recorded images, ArUco detection, explicit test registration, and opt-in MUSE inspection in a separate non-authoritative store. |
 | Evidence store | Chronological, append-only events plus exact request-ID/payload receipts. Reset retains the timeline. |
 | Same-origin host | Serves `frontend/dist` when built. Unknown `/api` routes return JSON 404 rather than an HTML application page. |
-| Unavailable capabilities | Robot, camera, registered AR, voice, and image review are reported as unavailable. |
+| Unavailable capabilities | Robot, live camera, production registered AR, voice, and automatic mission image review are unavailable. Recorded-image scene inspection is separate. |
 
-The symbolic plan is a contract demonstration, not a road graph, installed route, vehicle pose, or physical reachability result. The map hold remains in effect.
+The temporary graph describes drawing centerlines. Its route is a simulation plan, not an installed robot trajectory, measured vehicle pose, or physical reachability result. Production geometry, physical stop lines, contact turning, and camera-to-BASE registration remain unqualified.
 
 ## Run on a developer machine or GX10
 
@@ -38,18 +40,30 @@ Use **one application worker**. The workspace is one serialized demonstration se
 | :--- | :--- |
 | `PUSHPILOT_STATE_PATH` | `runtime/workspace.sqlite3`; set to a persistent shared-state location for a release. |
 | `PUSHPILOT_FRONTEND_DIST` | `frontend/dist`; optionally override the built asset directory. |
+| `PUSHPILOT_MAP_PATH` | `backend/data/little-town-temporary.json`; replaceable reviewed temporary drawing adapter. |
+| `PUSHPILOT_SCENE_DIR` | Optional private image/inspection/registration directory; defaults beside the workspace database. |
 | `META_API_KEY` | Optional backend-only credential from process environment or the repository's ignored `.env`. |
 
 Configuration, local credential reads, and database initialization happen in ASGI lifespan, not at module import. No startup path contacts a robot, camera, or provider. The key is never returned to the browser. Keep `.env`, databases, and operational evidence out of Git and source releases.
 
-## The first mission
+## Temporary-map missions
 
-1. Submit a typed goal. Demo interpretation recognizes the symbolic bakery destination; other goals need clarification. Actual MUSE interpretation is opt-in.
-2. Review and approve the exact plan ID and revision.
-3. Advance one bounded simulated PUSH and record its demo review.
-4. Advance STOP. A simulated full-stop result is recorded even if GREEN was observed earlier. Its review must be accepted before entry.
-5. RED or UNKNOWN waits. Fresh simulated GREEN automatically admits CROSS after the stop gate is satisfied; another PLAY or advance command is unnecessary.
-6. Review CROSS, advance VERIFY, and review the final outcome to complete the simulation.
+| Destination | Drawing-node route | Drawing distance | Reviewed actions |
+| :--- | :--- | ---: | ---: |
+| BOOKSTORE | PIZZA → C → BOOKSTORE | 148 mm | 5 |
+| BAKERY | PIZZA → C → S → BAKERY | 232 mm | 8 |
+| SCHOOL | PIZZA → C → S → SCHOOL | 232 mm | 8 |
+
+The start is constrained to face east; routes are deterministic shortest paths under that initial-heading assumption. Drawing distances are not qualified TCP travel distances.
+
+1. Submit one supported destination. Demo interpretation accepts English/Korean aliases; ambiguous or unsupported goals need clarification. Actual MUSE interpretation is opt-in.
+2. Approve the exact plan ID/revision and temporary-map identity.
+3. For each junction, run the approach PUSH and review it, then run a mandatory STOP and review it even if GREEN was observed earlier.
+4. RED or UNKNOWN waits. A fresh simulated GREEN bound to this junction automatically admits CROSS after its stop gate is satisfied.
+5. Review CROSS. Its stop/signal bindings are cleared, so the next junction requires its own independent stop, review, and fresh signal.
+6. Run and review the final PUSH, then VERIFY the simulated destination outcome.
+
+Map replacement invalidates pending approval. Approval, advance, and automatic crossing admission reject a mismatched map ID/version/hash. Old unmapped prepared plans migrate to IDLE; active missions still enter restart recovery without replay.
 
 A GREEN observation expires after **30 seconds in this demonstrator**. This is a software demonstration setting, not a measured physical tolerance. A later RED does not undo an already admitted bounded crossing. Its result still requires review before the next action.
 
@@ -62,6 +76,8 @@ The definitive DTO and command contract is [workspace.ts](../contracts/workspace
 | Request | Purpose |
 | :--- | :--- |
 | `GET /api/health` | Equipment-free process health. |
+| `GET /api/v1/map` | Temporary geometry, graph, source flags, and geometry hash. |
+| `GET /api/v1/scene` | Independent recorded-image and test-overlay inspection state. |
 | `GET /api/v1/state` | Current snapshot, capabilities, and chronological evidence. |
 | `POST /api/v1/goals` | Interpret a typed or future confirmed voice goal. |
 | `POST /api/v1/approve` | Bind approval to a plan ID and revision. |
@@ -82,9 +98,9 @@ SQLite commits the state, event append, and command receipt together. Evidence r
 ## Still to implement
 
 - Bounded push-to-talk upload, format validation, and Meta voice transcription, following the [voice design](../docs/VOICE_INPUT.md).
-- Source-labelled image intake and actual fresh-image MUSE review with image hashes and provider-result bindings.
+- Bind actual fresh-image MUSE review to each mission action. Current scene inspection is intentionally separate and cannot authorize simulated or physical continuation.
 - Qualified local signal observation/inhibition, separate from model latency.
-- Installed-map registration, AR alignment, contact geometry, physical pushing/turning, robot transport, and independent physical verification.
+- Production map and metric AR registration, contact geometry, physical pushing/turning, robot transport, and independent physical verification. Test-only camera-to-drawing overlays are already available for uploaded frames.
 
 The model interprets intent and eventually reviews scene evidence. Deterministic gates own state transitions; model text never supplies executable robot code or authoritative metric coordinates.
 
@@ -95,7 +111,7 @@ python tools/dev.py check
 python tools/dev.py test
 ```
 
-The backend tests inject isolated temporary databases and offline providers. They cover stale approval/revision, review binding, mandatory stops, RED waiting/GREEN admission, stale signals, uncertainty/failure, idempotency, restart reconciliation, static/API routing, and provider-failure isolation. They never inspect the real `.env`, call Meta, or contact equipment.
+The backend tests inject isolated temporary databases and offline providers. They cover stale approval/revision, review binding, mandatory stops, RED waiting/GREEN admission, stale and junction-scoped signals, uncertainty/failure, idempotency, restart reconciliation, route geometry/hash changes, static/API routing, and provider-failure isolation. Separate scene tests cover marker detection and registration using synthetic images. They never inspect the real `.env`, call Meta, or contact equipment.
 
 ---
 

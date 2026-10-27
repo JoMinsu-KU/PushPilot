@@ -27,8 +27,8 @@ class MetaGoalProvider:
             raise ProviderError("MUSE is not configured on the backend.")
         prompt = (
             "Interpret a PushPilot operator goal. The only supported symbolic destination "
-            "in this hardware-free prototype is BAKERY, starting at PIZZA and pushing a "
-            "wheel-less car. Return JSON with destination (BAKERY or UNKNOWN), summary "
+            "in this hardware-free prototype is BAKERY, BOOKSTORE, or SCHOOL, starting at PIZZA and pushing a "
+            "wheel-less car. Return JSON with destination (BAKERY, BOOKSTORE, SCHOOL, or UNKNOWN), summary "
             "(concise English), requires_clarification (boolean). Use UNKNOWN and true "
             "for any other destination, ambiguous request, pickup request, or unrelated "
             "text. Never provide coordinates, routes, robot commands, or approval. "
@@ -50,7 +50,7 @@ class MetaGoalProvider:
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "destination": {"type": "string", "enum": ["BAKERY", "UNKNOWN"]},
+                                        "destination": {"type": "string", "enum": ["BAKERY", "BOOKSTORE", "SCHOOL", "UNKNOWN"]},
                                         "summary": {"type": "string"},
                                         "requires_clarification": {"type": "boolean"},
                                     },
@@ -71,7 +71,7 @@ class MetaGoalProvider:
             result = json.loads(content)
             if (
                 not isinstance(result, dict)
-                or result.get("destination") not in {"BAKERY", "UNKNOWN"}
+                or result.get("destination") not in {"BAKERY", "BOOKSTORE", "SCHOOL", "UNKNOWN"}
                 or type(result.get("requires_clarification")) is not bool
                 or not isinstance(result.get("summary"), str)
                 or not 1 <= len(result["summary"]) <= 500

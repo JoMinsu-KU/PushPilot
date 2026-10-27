@@ -6,6 +6,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Literal
 from uuid import UUID
+from tempfile import TemporaryDirectory
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
@@ -14,6 +15,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from backend.core import CommandError, WorkspaceStore
 from backend.meta import GoalProvider, MetaGoalProvider
 from backend.settings import Settings
+from backend.maps import MapDefinition
+from backend.scene import SceneStore
+from backend.scene_api import router as scene_router
 
 
 class Command(BaseModel):
@@ -35,6 +39,7 @@ class ApprovalCommand(Command):
 
 class SignalCommand(Command):
     color: Literal["RED", "GREEN", "UNKNOWN"]
+    junction_id: str | None = Field(default=None, min_length=1, max_length=80)
 
 
 class ReviewCommand(Command):
@@ -55,12 +60,20 @@ def create_app(settings: Settings | None = None, *, db_path: str | None = None,
             provider=provider or MetaGoalProvider(configured.meta_api_key),
             muse_configured=bool(configured.meta_api_key),
             signal_ttl_seconds=configured.signal_ttl_seconds,
+            map_definition=MapDefinition(configured.map_path),
         )
+        temporary_scene = TemporaryDirectory() if configured.db_path == ":memory:" and configured.scene_dir is None else None
+        scene_dir = configured.scene_dir or (temporary_scene.name if temporary_scene else str(Path(configured.db_path).parent / "scene"))
+        application.state.scene = SceneStore(scene_dir, map_definition=application.state.store.map_definition,
+                                           meta_api_key=configured.meta_api_key)
         application.state.frontend = Path(configured.frontend_dist).resolve()
         try:
             yield
         finally:
+            application.state.scene.close()
             application.state.store.close()
+            if temporary_scene:
+                temporary_scene.cleanup()
 
     application = FastAPI(title="PushPilot Workspace", version="0.1.0", lifespan=lifespan,
                           docs_url=None, redoc_url=None)
@@ -122,6 +135,8 @@ def create_app(settings: Settings | None = None, *, db_path: str | None = None,
     @application.post("/api/v1/reset")
     def reset(request: Request, command: Command):
         return dispatch(request, "reset", command)
+
+    application.include_router(scene_router)
 
     @application.api_route("/api", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
     @application.api_route("/api/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])

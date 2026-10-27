@@ -12,7 +12,7 @@
 
 The intended demonstration begins at **PIZZA**. The operator states or types a destination, confirms the chosen text, reviews the understood goal and explicitly approves the mission. A robot pushes a wheel-less car across the tabletop, stops before each configured intersection, waits for a green paper signal and continues to the destination.
 
-**This is the scenario specification, not a completed physical demonstration.** PIZZA and destinations remain symbolic until the final map and installation are available. Current software work uses abstract actions and explicit simulation.
+**This is the scenario specification, not a completed physical demonstration.** The current temporary-map adapter provides drawing-grounded PIZZA/BAKERY/BOOKSTORE/SCHOOL routes and abstract simulation. A recorded-image overlay is test-only. Production installation, robot coordinates, actual pushing, and turning remain unqualified.
 
 ## Operator journey
 
@@ -55,7 +55,7 @@ Voice recording or typed request
   → verify the destination outcome
 ```
 
-The final map will determine which intersections have signals, how approaches are defined and where the stop/exit boundaries lie. No specific route, coordinate or turn count is fixed here.
+The temporary adapter starts east-facing at PIZZA. Its default shortest drawing routes are PIZZA → C → S → BAKERY (232 mm, eight abstract steps), PIZZA → C → BOOKSTORE (148 mm, five steps), and PIZZA → C → S → SCHOOL (232 mm, eight steps). Each traversed junction receives PUSH approach, mandatory STOP, accepted demo review, and separately scoped fresh GREEN before CROSS. These drawing lengths and centerlines do not qualify the car/tool swept path or physical stop lines. The final production installation may change all of these details; see [Temporary map](TEMPORARY_MAP.md).
 
 ## Intersection policy
 
@@ -68,7 +68,7 @@ The final map will determine which intersections have signals, how approaches ar
 | Checks accept the stopped state and fresh green | Continue automatically through the admitted crossing |
 | Application restarts while waiting or crossing | Return to review; do not restore permission from old observations |
 
-The simulator automatically admits one crossing after an accepted mandatory-stop review and fresh simulated GREEN, without another approval. The corresponding physical red-to-green continuation still requires a qualified robot adapter; no pendant or robot operation is supplied by this application.
+The simulator automatically admits one crossing after an accepted mandatory-stop review and fresh simulated GREEN bound to that same junction, without another approval. It clears stop/signal authority before the next approach, which requires its own stop and review. The corresponding physical red-to-green continuation still requires a qualified robot adapter; no pendant or robot operation is supplied by this application.
 
 The scenario concerns **stop-line admission**. Changing a card during an admitted crossing is not specified as an immediate interruption request. Any later in-flight stop requirement would need a separate controller-supported design and qualification.
 
@@ -82,7 +82,7 @@ Tool clearance, observation poses, friction, slip, contact heights and usable tu
 
 ## What completes an action?
 
-The future supervisor needs three kinds of evidence:
+The simulator currently advances only through its simulated action receipt and explicit demo verdict. Separate recorded-scene MUSE inspection cannot complete a step or supply its GREEN. The future physical supervisor needs three kinds of evidence:
 
 1. **Action evidence:** the action adapter reports the result for the correct request/session.
 2. **Local evidence:** applicable freshness, signal and outcome checks support the expected state.
@@ -106,7 +106,7 @@ The primary surface is an **English tablet workspace** in dark navy and electric
 | **Plan** | Current symbolic interpretation, approval state and action sequence |
 | **Replay** | Source-aware timeline with images, actual review responses and transition causes |
 
-Spatial AR route alignment is deferred with map registration. The **glasses companion** remains a clearly labelled future concept. Hardware connection, microphone capture, transcription and wearable display behavior must only be shown as live capabilities when they are actually implemented and supported by evidence. Streaming transcription and spoken feedback are later extensions.
+The temporary recorded-image view can project the drawing route through an explicitly locked four-marker homography. Occlusion does not trigger refitting; changed or unverifiable views withhold the overlay. This test-only projection is separate from production metric AR and robot registration. The **glasses companion** remains a clearly labelled future concept. Hardware connection, microphone capture, transcription and wearable display behavior must only be shown as live capabilities when they are actually implemented and supported by evidence. Streaming transcription and spoken feedback are later extensions.
 
 ---
 
