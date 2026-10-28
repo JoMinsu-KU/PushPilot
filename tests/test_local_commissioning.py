@@ -134,8 +134,8 @@ class LocalCommissioningTests(unittest.TestCase):
         self.assert_guard("ORIENTATION_CHANGED", receiver={**receiver, "actual_pose": [0., 0., full_pose[2], 179.899, 0., 0.]})
 
     def test_local_volume_and_speed_caps_cannot_be_whole_board_limits(self):
-        for changes in ({"workspace_max_mm": [16.1, 4., 101.]}, {"max_step_mm": 5.01},
-                        {"max_speed_mm_s": 5.01}, {"max_accel_mm_s2": 10.01},
+        for changes in ({"workspace_max_mm": [196.1, 4., 101.]}, {"max_step_mm": 20.01},
+                        {"max_speed_mm_s": 10.01}, {"max_accel_mm_s2": 20.01},
                         {"max_step_mm": True}, {"max_speed_mm_s": float("nan")},
                         {"workspace_min_mm": [-4., False, 99.]}):
             with self.subTest(changes=changes), self.assertRaises(ValueError):
@@ -143,6 +143,44 @@ class LocalCommissioningTests(unittest.TestCase):
         for key, value in (("max_translation_mm", 3.), ("translation_speed_mm_s", 2.),
                            ("translation_accel_mm_s2", 3.), ("translation_speed_mm_s", True)):
             self.assert_guard("PROFILE_LIMIT", receiver={**self.receiver, "profile": {**self.profile, key: value}})
+
+    def test_reviewed_free_xy_teaching_at_new_ceiling_keeps_height_and_orientation_fixed(self):
+        local = {**self.installation, "workspace_min_mm": [-100., -100., 99.],
+                 "workspace_max_mm": [100., 100., 101.],
+                 "max_step_mm": 20., "max_speed_mm_s": 10., "max_accel_mm_s2": 20.}
+        profile = prepare.build_profile(local, self.state, on_site_review=True)
+        receiver = {**self.receiver, "profile": profile}
+        command = {**self.command, "target": [20., 0., *self.state["actual_pose"][2:]]}
+        self.gate(installation=local, receiver=receiver, command=command)
+        self.assertFalse(profile["installation_binding"]["board_registration_qualified"])
+        self.assertFalse(profile["installation_binding"]["vehicle_control_qualified"])
+        self.assert_guard("STEP_LIMIT", installation=local, receiver=receiver,
+                          command={**command, "target": [20.000001, 0., *self.state["actual_pose"][2:]]})
+        self.assert_guard("LOCAL_Z_CHANGED", installation=local, receiver=receiver,
+                          command={**command, "target": [20., 0., 100.000001, 180., 0., 0.]})
+        self.assert_guard("ORIENTATION_CHANGED", installation=local, receiver=receiver,
+                          command={**command, "target": [20., 0., 100., 180., 0., .000001]})
+        for changes in ({"purpose": "push"}, {"purpose": "tool_reposition"},
+                        {"kind": "rotate", "purpose": "tool_reposition"}):
+            self.assert_guard("LOCAL_OPERATION_FORBIDDEN", installation=local, receiver=receiver,
+                              command={**command, **changes})
+
+    def test_new_ceiling_does_not_expand_an_actual_narrower_review_or_profile(self):
+        local = {**self.installation, "workspace_min_mm": [-20., -.2, 99.],
+                 "workspace_max_mm": [.2, 60., 101.],
+                 "max_step_mm": 10., "max_speed_mm_s": 3., "max_accel_mm_s2": 5.}
+        profile = prepare.build_profile(local, self.state, on_site_review=True)
+        receiver = {**self.receiver, "profile": profile}
+        command = {**self.command, "target": [0., 10., *self.state["actual_pose"][2:]]}
+        self.gate(installation=local, receiver=receiver, command=command)
+        self.assert_guard("OUTSIDE_WORKSPACE", installation=local, receiver=receiver,
+                          command={**command, "target": [.200001, 1., *self.state["actual_pose"][2:]]})
+        self.assert_guard("STEP_LIMIT", installation=local, receiver=receiver,
+                          command={**command, "target": [0., 10.000001, *self.state["actual_pose"][2:]]})
+        for field, value in (("translation_speed_mm_s", 3.01), ("translation_accel_mm_s2", 5.01),
+                             ("max_translation_mm", 10.01)):
+            self.assert_guard("PROFILE_LIMIT", installation=local, command=command,
+                              receiver={**receiver, "profile": {**profile, field: value}})
 
     def test_changed_tool_definition_payload_and_review_reject_current_profile(self):
         for key, value in (("tcp_definition_sha256", "b" * 64), ("tool_id", "changed-tool"),
@@ -305,7 +343,7 @@ class LocalProfileRefreshTests(unittest.TestCase):
         for key, value in (("translation_speed_mm_s", 5.1), ("max_translation_mm", 5.1),
                            ("translation_accel_mm_s2", 10.1)):
             self.rejects("PROFILE_LIMIT", command={**self.command, "profile": {**self.candidate, key: value}})
-        local = {**self.local, "workspace_max_mm": [16., 5., 101.]}
+        local = {**self.local, "workspace_max_mm": [196., 5., 101.]}
         self.rejects("LOCAL_INSTALLATION_INVALID", installation=local)
 
     def test_refresh_cannot_carry_a_motion_or_enable_rotation(self):

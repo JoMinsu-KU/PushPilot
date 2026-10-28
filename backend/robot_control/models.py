@@ -50,7 +50,7 @@ class Installation(StrictModel):
 
 
 class LocalBaseInstallation(StrictModel):
-    """A measured local BASE envelope, explicitly independent of any board.
+    """A reviewed free-XY teaching envelope, independent of any board fit.
 
     Small software ceilings do not qualify this volume. The supplied review
     must cover the actual tool, arm, cable and surrounding installation.
@@ -70,16 +70,16 @@ class LocalBaseInstallation(StrictModel):
     fixed_orientation_deg: list[Number] = Field(min_length=3, max_length=3)
     tcp_clearance_margin_mm: Number = Field(default=0, ge=0)
     inflated_keepout_boxes_base_mm: list[list[Number]] = Field(max_length=16)
-    max_step_mm: Number = Field(default=1, gt=0, le=5)
-    max_speed_mm_s: Number = Field(default=1, gt=0, le=5)
-    max_accel_mm_s2: Number = Field(default=2, gt=0, le=10)
+    max_step_mm: Number = Field(default=1, gt=0, le=20)
+    max_speed_mm_s: Number = Field(default=1, gt=0, le=10)
+    max_accel_mm_s2: Number = Field(default=2, gt=0, le=20)
 
     @model_validator(mode="after")
     def local_bounds(self):
         margin = self.tcp_clearance_margin_mm
-        if not all(-10000 <= a < b <= 10000 and b - a <= 20 and a + 2 * margin < b
+        if not all(-10000 <= a < b <= 10000 and b - a <= 200 and a + 2 * margin < b
                    for a, b in zip(self.workspace_min_mm, self.workspace_max_mm)):
-            raise ValueError("Local BASE bounds must be ordered, span at most 20 mm per axis and retain the reviewed clearance margin.")
+            raise ValueError("Local BASE bounds must be ordered, span at most 200 mm per axis and retain the reviewed clearance margin.")
         if not self.workspace_min_mm[2] + margin <= self.fixed_tcp_z_mm <= self.workspace_max_mm[2] - margin:
             raise ValueError("The measured fixed TCP height must lie inside the reviewed local BASE envelope.")
         if not all(-180 <= angle <= 180 for angle in self.fixed_orientation_deg):
