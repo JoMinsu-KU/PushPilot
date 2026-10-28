@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 
-export type IconName = 'arrow' | 'chevron' | 'eye' | 'mic' | 'text' | 'home' | 'clock' | 'settings' | 'camera' | 'check' | 'pause' | 'play' | 'refresh' | 'stop' | 'glasses' | 'car' | 'shield' | 'close' | 'spark' | 'route' | 'upload';
+export type IconName = 'arrow' | 'chevron' | 'eye' | 'mic' | 'text' | 'home' | 'clock' | 'settings' | 'camera' | 'check' | 'pause' | 'play' | 'refresh' | 'stop' | 'glasses' | 'car' | 'shield' | 'close' | 'spark' | 'route' | 'upload' | 'plus' | 'minus';
 const paths: Record<IconName, React.ReactNode> = {
   arrow: <><path d="M4 12h15M13 5l7 7-7 7" /></>,
   chevron: <path d="m9 5 7 7-7 7" />,
@@ -23,6 +23,8 @@ const paths: Record<IconName, React.ReactNode> = {
   spark: <><path d="m12 2 2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5Z" /></>,
   route: <><circle cx="5" cy="19" r="2" /><circle cx="19" cy="5" r="2" /><path d="M7 19h8a4 4 0 0 0 0-8H9a4 4 0 0 1 0-8h8" /></>,
   upload: <><path d="M4 16v5h16v-5M12 16V3m-5 5 5-5 5 5" /></>,
+  plus: <path d="M5 12h14M12 5v14" />,
+  minus: <path d="M5 12h14" />,
 };
 export function Icon({ name, size = 22, style, className = '' }: { name: IconName; size?: number; style?: CSSProperties; className?: string }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={style} className={className}>{paths[name]}</svg>;

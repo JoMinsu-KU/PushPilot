@@ -11,6 +11,7 @@ import { cityPreviewFit, cityPreviewLabel } from './cityRoutePreview';
 import { recordedDisplay } from './boardFocus';
 import { createLivePollGate, liveDisplaySnapshot, liveFrameAge, liveFrameFresh, liveOverlayAllowed } from './liveCamera';
 import { liveCameraPresentation } from './cameraPresentation';
+import { CameraNavigation } from './CameraNavigation';
 import './map-scene.css';
 
 const CityModelView = lazy(() => import('./CityModelView'));
@@ -54,7 +55,11 @@ function CameraFrame({ scene, route, map, focused, display, live = false, fresh 
   const candidate = scene.registration.status === 'candidate';
   const livePresentation = live ? liveCameraPresentation(scene as LiveCameraSnapshot, map, fresh) : null;
   const { viewport, quad } = recordedDisplay(scene, map, focused);
+  // Live frame IDs advance continuously; only a changed view identity resets navigation.
+  const navigationIdentity = [live ? 'live' : 'recorded', 'epoch' in scene ? scene.epoch : frame.id,
+    frame.width, frame.height, scene.map_id, scene.map_version, scene.map_hash, scene.registration.id, focused].join('|');
   return <div className="recorded-frame-wrap">
+    <CameraNavigation key={navigationIdentity}>
     <svg className="recorded-frame" viewBox={viewport.join(' ')} preserveAspectRatio="xMidYMid meet"
       style={{ aspectRatio: `${viewport[2]} / ${viewport[3]}`, maxWidth: `${viewport[2]}px`, maxHeight: `${viewport[3]}px` }} role="img"
       aria-label={`${live ? 'Live' : 'Recorded'} workspace image${live && !fresh ? ' · stale' : ''}${projectedDisplay ? ' with test-only route overlay' : ''}`}>
@@ -70,6 +75,7 @@ function CameraFrame({ scene, route, map, focused, display, live = false, fresh 
       <RouteOverlay display={projectedDisplay} scale={scale} boundary={routeBoundary}/>
       </g>
     </svg>
+    </CameraNavigation>
     {livePresentation ? livePresentation.alerts.map(alert => <div key={alert.kind} className={`overlay-inhibition${alert.kind === 'view_changed' ? '' : alert.kind === 'marker_disagreement' ? ' partial live-warning' : ' live-warning'}`}><Icon name={alert.kind === 'view_changed' ? 'shield' : alert.kind === 'stale' ? 'clock' : 'eye'} size={17}/>{alert.message}</div>)
       : scene.registration.status === 'view_changed' && <div className="overlay-inhibition"><Icon name="shield" size={17}/>View changed. The previous overlay is hidden.</div>}
     {matchesMap && !overlayAllowed && scene.registration.status !== 'view_changed' && (!live || fresh) && <div className="overlay-note">{candidate ? `Lock the ${live ? 'live' : 'test'} view to project the planned route.` : 'Route overlay requires a valid locked test registration.'}</div>}

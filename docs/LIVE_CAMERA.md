@@ -73,6 +73,12 @@ The installed static-view check and short backend delivery sample are recorded i
 
 The helper retains only its latest JPEG; the backend retains eight immutable frames in memory. They are not written to `SceneStore`, SQLite or server image files. Expired backend frame IDs return 404. Unique preview-image responses may be privately cached by the browser for 30 seconds to support decode-before-swap; this is not persistent mission evidence. Do not publish raw live images, hardware identities or private connection details in source or documentation assets.
 
+## Local camera navigation
+
+The primary operator device is a 13-inch landscape tablet. Camera provides 50–400% display zoom, a visible zoom-out/zoom-in/fit toolbar, one-finger or mouse drag, pointer-anchored wheel zoom and two-finger pinch. The image, board mask, marker outlines and AR route share one CSS transform. Original JPEG URLs/bytes and board-to-image coordinates remain unchanged; enlarging the display adds no image detail. Floating HUD cards keep their own size and position, so the operator can zoom out and move the board clear of them without page scrolling.
+
+Navigation remains local to the camera component. New live frames retain the selected zoom/pan. A different camera epoch, map identity, registration, native dimensions, live/recorded source or board-focus mode starts a centered 100% view. Fit restores that view. Focused keyboard users can use plus/minus, arrow keys and zero/Home. These gestures issue no API request, inference, registration update or robot command. Spatial retains its independent orbit controls. Pointer math has equipment-free regression tests; browser/tablet viewport checks do not establish actual iPad touch-hardware validation.
+
 ## Fixed display registration
 
 Live display registration is separate from a recorded-image lock. **Lock live view** requires a fresh selected frame and the current frame to contain all four consistent printed markers. The explicit lock binds camera identity, epoch, resolution and map ID/version/hash. The active transform is held in RAM; the application separately keeps its original server-held lock receipt in private SQLite for deliberate continuity after a web-process restart. This metadata receipt grants no motion authority and does not persist the preview JPEG stream.
