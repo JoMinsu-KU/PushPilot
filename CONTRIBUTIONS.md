@@ -6,6 +6,10 @@ PushPilot has existing POC robot transport, earlier tabletop experiments, a city
 
 ## Initial repository boundary
 
+### October 28, 2026 KST — City A3 display adapter
+
+The user-confirmed A3 replacement now has a separate source-hashed drawing adapter, new place vocabulary, explicit scenario departure and per-junction display geometry. New validated `spatial_preview` metadata binds the selected clean GLB to the drawing-road envelope while Camera and Spatial retain a shared canonical route renderer. Specific live-registration errors remain actionable in the existing UI. The inherited supplied artwork/model and old Little Town adapter retain their provenance; no private artwork is bundled. This is drawing/display and simulation work, not new physical calibration, car tracking or a qualified robot motion. See [City A3](docs/CITY_A3.md).
+
 ### October 28, 2026 KST — isolated robot commissioning
 
 New `backend/robot_control/`, authenticated commissioning CLI/API, private durable command journal, bounded admission/review/reconciliation, equipment-free failure tests and GX10 deployment preparation were implemented under the user's explicit robot-control request. These are new wrappers around the existing `poc-persistent-v1` protocol, not a newly authored robot driver. The unchanged inherited host/policy/transport/kinematics and installed pendant script are imported privately by exact hashes in [the runtime provenance manifest](docs/data/robot-runtime-source.json); no historical profile, coordinate, mailbox or run is restored or publicly bundled. The offline helper derives a fresh profile only from explicitly reviewed measured installation/current-state inputs. Status: software verified; no new-map physical motion, car-turn, measured stop, production calibration or physical MUSE loop demonstrated. See [commissioning boundaries](docs/ROBOT_CONTROL.md).

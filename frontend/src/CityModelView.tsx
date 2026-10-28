@@ -5,7 +5,7 @@ import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { cityPreviewFit, projectCityPreview, type CityProjection } from './cityRoutePreview';
+import { cityPreviewFit, cityPreviewLabel, projectCityPreview, type CityProjection } from './cityRoutePreview';
 import { projectRouteDisplay, type RouteDisplay } from './routeProgress';
 import { RouteOverlay } from './RouteOverlay';
 import type { Point } from './projection';
@@ -150,8 +150,9 @@ export function CityModelView({ map, display }: { map: TemporaryMap | null; disp
   const [preset, setPreset] = useState<Preset>('city');
   const [status, setStatus] = useState<ModelStatus>({ kind: 'loading', message: 'Loading the supplied city model…' });
   const [projection, setProjection] = useState<CityProjection | null>(null);
+  const fit = useMemo(() => cityPreviewFit(map), [map]);
+  const routeLabel = cityPreviewLabel(fit);
   const routePreview = useMemo(() => {
-    const fit = cityPreviewFit(map);
     if (!fit || !projection || !display) return null;
     const project = (point: Point) => projectCityPreview(point, fit, projection);
     const projected = projectRouteDisplay(display, project);
@@ -159,7 +160,7 @@ export function CityModelView({ map, display }: { map: TemporaryMap | null; disp
       [fit.left + fit.width, fit.top + fit.height], [fit.left, fit.top + fit.height]];
     const boundary = corners.map(project);
     return projected ? { display: projected, boundary: boundary.every((point): point is Point => point !== null) ? boundary : undefined } : null;
-  }, [map, display, projection]);
+  }, [fit, display, projection]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -259,7 +260,7 @@ export function CityModelView({ map, display }: { map: TemporaryMap | null; disp
       renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       renderer.domElement.className = 'city-model-canvas';
       renderer.domElement.setAttribute('role', 'img');
-      renderer.domElement.setAttribute('aria-label', 'Interactive Spatial city preview. The 2D route is illustrative; city alignment is pending.');
+      renderer.domElement.setAttribute('aria-label', 'Interactive Spatial city view. Route correspondence is display only; no measured vehicle position.');
       renderer.domElement.addEventListener('webglcontextlost', onContextLost);
       renderer.domElement.addEventListener('webglcontextrestored', onContextRestored);
       host.appendChild(renderer.domElement);
@@ -364,8 +365,8 @@ export function CityModelView({ map, display }: { map: TemporaryMap | null; disp
   return <div className="city-model-view">
     <div className="city-model-host" ref={hostRef}/>
     {status.kind === 'ready' && routePreview && projection && <svg className="city-route-preview"
-      viewBox={`0 0 ${projection.width} ${projection.height}`} role="img" aria-label="Current 2D route preview on the city. Alignment pending; no measured vehicle position.">
-      <title>The same selected 2D path, direction, stop lines and simulation progress as Camera. Approximate display fit only.</title>
+      viewBox={`0 0 ${projection.width} ${projection.height}`} role="img" aria-label={`${routeLabel}. No measured vehicle position.`}>
+      <title>{routeLabel}. The same selected path, direction, stop lines and simulation progress as Camera. No camera-to-robot calibration.</title>
       <RouteOverlay display={routePreview.display} scale={Math.max(.9, Math.min(1.4, projection.width / 900))} boundary={routePreview.boundary}/>
     </svg>}
     {status.kind !== 'ready' && <div className={`city-model-state city-model-state-${status.kind}`} role={status.kind === 'loading' ? 'status' : 'alert'}>
@@ -375,7 +376,7 @@ export function CityModelView({ map, display }: { map: TemporaryMap | null; disp
       {status.kind !== 'loading' && <button type="button" onClick={() => setAttempt(value => value + 1)}>Reload 3D view</button>}
     </div>}
     <div className="city-model-view-controls" aria-label="3D view controls">
-      <span className="city-model-concept">3D concept</span>
+      <span className="city-model-concept" title={routeLabel}>{fit?.spatial ? 'Display correspondence' : '3D concept'}</span>
       <div className="city-model-presets">
         <button type="button" aria-pressed={preset === 'city'} onClick={() => selectPreset('city')} disabled={status.kind !== 'ready'}>City</button>
         <button type="button" aria-pressed={preset === 'intersection'} onClick={() => selectPreset('intersection')} disabled={status.kind !== 'ready'}>Intersection</button>

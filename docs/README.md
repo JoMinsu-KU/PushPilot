@@ -25,6 +25,7 @@ The current [visual direction](DESIGN_SYSTEM.md) follows the user's industrial r
 | Follow MUSE route selection and native-frame reviews | [Live intelligence](LIVE_INTELLIGENCE.md) | [Live contracts](../contracts/live-intelligence.ts) and [backend](../backend/README.md) |
 | Design the operator workspace | [Design system](DESIGN_SYSTEM.md) | [Frontend](../frontend/README.md) |
 | Follow route progress or replace the drawing | [Route display](ROUTE_DISPLAY.md) | [Map validation and replacement](MAP_REPLACEMENT.md) |
+| Use the placed City A3 print | [City A3](CITY_A3.md) | New places and shared Camera/Spatial drawing correspondence; physical geometry remains unqualified |
 | Understand the system | [Architecture](ARCHITECTURE.md) | [Service composition](SERVICE_COMPOSITION.md) |
 | Prepare isolated robot tests | [Robot commissioning](ROBOT_CONTROL.md) | [Dedicated GX10 delivery](../deploy/ROBOT_CONTROL.md); startup disarmed, no motion replay |
 | Review voice goal entry | [Voice input](VOICE_INPUT.md) | [Finite-upload backend](VOICE_BACKEND.md); browser capture remains disconnected |

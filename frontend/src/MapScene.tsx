@@ -7,6 +7,7 @@ import { projectPoint, type Point } from './projection';
 import { createRouteDisplay, projectRouteDisplay, type RouteDisplay } from './routeProgress';
 import { RouteLegend, RouteOverlay } from './RouteOverlay';
 import { CityViewBoundary } from './CityViewBoundary';
+import { cityPreviewFit, cityPreviewLabel } from './cityRoutePreview';
 import { recordedDisplay } from './boardFocus';
 import { createLivePollGate, liveDisplaySnapshot, liveFrameAge, liveFrameFresh, liveOverlayAllowed } from './liveCamera';
 import './map-scene.css';
@@ -350,7 +351,7 @@ export function MapScene({ workspace, readOnly = false, onSnapshot, onPreviewSou
     </div>
     <div className={`scene-source-plate ${usingLive && view === 'camera' ? liveFresh ? 'live-source' : 'stale-source' : ''}`}>
       <span className="scene-source-dot"/>
-      <div><strong>{view === 'spatial' ? 'Spatial city preview' : usingLive ? liveScene?.frame ? `Live camera${liveFresh ? '' : ' · STALE'} · ${Number.isFinite(liveAge) ? `${(liveAge / 1000).toFixed(1)} s` : 'age unknown'}` : 'Live camera · connecting' : scene?.frame ? `${scene.frame.source === 'recorded' ? 'Recorded' : 'Uploaded'} camera frame` : 'Camera not connected'}</strong><span>{view === 'spatial' ? routeDisplay ? '2D route preview · alignment pending' : 'City model · awaiting a 2D plan' : usingLive ? `${hasBoardMask ? 'Board focus' : 'Full frame'} · ${liveRegistrationLabel}` : hasBoardMask ? 'Board focus · background masked' : scene?.frame ? `${scene.frame.width} × ${scene.frame.height} · full frame` : 'Load a recorded image to inspect the scene'}</span></div>
+      <div><strong>{view === 'spatial' ? 'Spatial city preview' : usingLive ? liveScene?.frame ? `Live camera${liveFresh ? '' : ' · STALE'} · ${Number.isFinite(liveAge) ? `${(liveAge / 1000).toFixed(1)} s` : 'age unknown'}` : 'Live camera · connecting' : scene?.frame ? `${scene.frame.source === 'recorded' ? 'Recorded' : 'Uploaded'} camera frame` : 'Camera not connected'}</strong><span>{view === 'spatial' ? routeDisplay ? cityPreviewLabel(cityPreviewFit(map)) : 'City model · awaiting a 2D plan' : usingLive ? `${hasBoardMask ? 'Board focus' : 'Full frame'} · ${liveRegistrationLabel}` : hasBoardMask ? 'Board focus · background masked' : scene?.frame ? `${scene.frame.width} × ${scene.frame.height} · full frame` : 'Load a recorded image to inspect the scene'}</span></div>
       {view === 'spatial' ? <span className="live-motion-note"><Icon name="eye" size={14}/>Preview only</span> : usingLive && view === 'camera' && (resumeAvailable || ['candidate', 'view_changed'].includes(liveScene?.registration.status ?? ''))
         ? <button className="live-lock-button" disabled={!(resumeAvailable ? canResumeLive : canLockLive)} onClick={() => void lockLiveView(resumeAvailable)} title={resumeAvailable ? 'Explicitly reuse the saved fixed display mapping after server validation. No refit.' : active ? 'Lock a live view during mission preparation.' : 'Explicitly lock the current live camera-to-board test mapping.'}><Icon name="check" size={14}/>{lockingLive ? 'Checking…' : resumeAvailable ? 'Resume fixed view' : 'Lock live view'}</button>
         : usingLive && view === 'camera' ? <span className="live-motion-note" title="Live preview and its test mapping have no robot motion authority."><Icon name="shield" size={14}/>Preview only</span>

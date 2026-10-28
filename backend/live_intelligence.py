@@ -117,7 +117,7 @@ class LiveIntelligenceService:
         binding.update(inputs)
         self.store._db.execute("UPDATE live_operations SET binding=? WHERE id=?", (json.dumps(binding), request_id))
 
-    def _fail(self, request_id, message, status=502, evidence=None):
+    def _fail(self, request_id, message, status=502, evidence=None, *, detail=None):
         with self.store._lock, self.store._db:
             state = self.store._load()
             if (state.get("planning_pending") or {}).get("request_id") == request_id:
@@ -125,7 +125,7 @@ class LiveIntelligenceService:
                 state["revision"] += 1
                 self.store._event(state, "LIVE_PLANNING_FAILED", "No live plan accepted", message, "meta", record=evidence)
                 self.store._save(state)
-            return self._finish(request_id, {"detail": message}, status, evidence)
+            return self._finish(request_id, {"detail": message if detail is None else detail}, status, evidence)
 
     def _save_frame(self, frame):
         metadata = deepcopy(frame["metadata"])
@@ -253,7 +253,13 @@ class LiveIntelligenceService:
                                   "MUSE route prepared" if route else "Planning needs clarification", result["summary"], "meta", record=evidence)
                 self.store._save(state)
                 return self._finish(payload["request_id"], self.store._snapshot(state), 200, evidence)
-        except (CommandError, SceneError):
+        except SceneError as error:
+            # SceneError contains bounded, credential-free camera diagnostics.
+            # Preserve them for both the failed request receipt and its event;
+            # registration failures are not workspace revision conflicts.
+            return self._fail(payload["request_id"], f"{error.code}: {error}", error.status_code, evidence,
+                              detail={"code": error.code, "message": str(error)})
+        except CommandError:
             return self._fail(payload["request_id"], "Live camera, registration or workspace changed. No plan was accepted. Refresh and try again.", 409, evidence)
         except (ValueError, ProviderError):
             return self._fail(payload["request_id"], "MUSE returned an invalid route or failed to plan. No alternative route or demo result was substituted.", 502, evidence)

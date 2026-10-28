@@ -4,7 +4,7 @@
 
 [Temporary map](TEMPORARY_MAP.md) · [Route display](ROUTE_DISPLAY.md) · [Live camera](LIVE_CAMERA.md) · [MUSE signal gate](MUSE_SIGNAL_GATE.md)
 
-The current Little Town print is temporary. The separately supplied 3D town image is a spatial design reference, not a surveyed road graph or an instruction to duplicate its buildings. No geometry, vehicle pose, road connection or signal region is inferred from that reference image.
+The user replaced the Little Town print with the supplied Seoul City artwork on October 28, confirming nominal A3 landscape. The separate [`seoul-city-a3.json`](../backend/data/seoul-city-a3.json) adapter records the reviewed drawing and exact source hash. It is selected explicitly on GX10; the historical Little Town file/default remains a compatibility fixture. See [City A3 registration](CITY_A3.md) for drawing provenance, intended waypoints and shared Camera/Spatial display correspondence. No drawing establishes robot BASE geometry, measured car pose or a qualified signal region.
 
 ## Spatial-only map definitions
 

@@ -26,7 +26,9 @@ Robot endpoint telemetry answers where the tool went. An operator still needs to
 
 The demonstration mission pushes a wheel-less model car from **Pizza** to a named destination. Every controlled intersection requires a stop, a reviewed outcome and a fresh green signal before entry. One fixed spatial stage shows the proposed route, with rounded translucent mission and status panels floating over it. Map-derived route portions distinguish completed, current and remaining simulated actions, with junction stop, signal and review context. The current action, next check and primary decision remain in view; route history, image tools and detailed evidence use bounded dialogs, tabs and pages instead of a vertically scrolling workspace.
 
-**Camera** is the default view, with separate **Live** and **Recorded** sources. An explicitly configured live preview is preferred when available; recorded-image tools and MUSE evidence remain separate. Both preserve the source image's perspective and overlay geometry. Optional **Board focus** masks the surrounding desk when the selected source has a valid test lock; **Full frame** restores the complete image. **Spatial map** is a deterministic illustration. The display mask adds no image detail or physical accuracy. [Live preview](docs/LIVE_CAMERA.md) does not automatically save images, call MUSE or grant motion authority.
+**Camera** is the default view, with separate **Live** and **Recorded** sources. An explicitly configured live preview is preferred when available; recorded-image tools and MUSE evidence remain separate. Both preserve the source image's perspective and overlay geometry. Optional **Board focus** masks the surrounding desk when the selected source has a valid test lock; **Full frame** restores the complete image. **Spatial** shows the privately supplied city model with the same canonical route. The display mask adds no image detail or physical accuracy. [Live preview](docs/LIVE_CAMERA.md) does not automatically save images, call MUSE or grant motion authority.
+
+The [October 28 City A3 adapter](docs/CITY_A3.md) replaces the operating print with **Pizza, Villa, Hanok and Office Building**. Camera and the supplied Spatial model share one map-bound route, arrow, stop-line and progress contract. The model's authored drawing correspondence remains display-only; prior Little Town results below retain their original map scope.
 
 | Observe | Plan | Approve | Act | Verify |
 |---|---|---|---|---|
@@ -114,10 +116,10 @@ cd frontend
 npm ci
 npm run build
 cd ..
-python tools/serve.py
+python tools/serve.py --map-path backend/data/seoul-city-a3.json
 ```
 
-Open `http://127.0.0.1:8080`. Set a Bakery, Bookstore or School goal, inspect **Spatial map**, and approve the simulation. Open **Simulation inputs** for clearly labelled demo signals and verdicts. **Plan**, **Replay**, image tools and recorded action review open within the fixed viewport. Optional recorded-image upload and actual MUSE requests use the [image-review workflow](docs/ACTION_REVIEWS.md). Save `META_API_KEY` only in the ignored backend `.env`; no provider request runs at startup.
+Open `http://127.0.0.1:8080`. Set a Villa, Hanok or Office Building goal, inspect **Spatial**, and review the simulation plan. The supplied city artwork/model is private and installed separately. Open **Simulation inputs** for clearly labelled demo signals and verdicts. **Plan**, **Replay**, image tools and recorded action review open within the fixed viewport. Optional recorded-image upload and actual MUSE requests use the [image-review workflow](docs/ACTION_REVIEWS.md). Save `META_API_KEY` only in the ignored backend `.env`; no provider request runs at startup.
 
 Live preview is off by default. With an already-running authorized loopback camera service, opt in using `python tools/serve.py --live-camera-url http://127.0.0.1:8895`. This connects to that service; it does not start a camera process. See [Live camera](docs/LIVE_CAMERA.md) for the standalone helper, SSH forward, time semantics and display-only boundary.
 

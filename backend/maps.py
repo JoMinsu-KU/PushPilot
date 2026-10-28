@@ -34,7 +34,7 @@ class MapDefinition:
             "board", "page", "start", "destinations", "markers", "marker_dictionary", "building_panels")}
         geometry["nodes"] = sorted(self._data["nodes"], key=lambda node: node["id"])
         # Labels and language aliases are display metadata, not calibration facts.
-        geometry["nodes"] = [{key: node[key] for key in ("id", "x_mm", "y_mm", "kind")}
+        geometry["nodes"] = [{key: node[key] for key in ("id", "x_mm", "y_mm", "kind", "junction_size_mm", "road_width_mm") if key in node}
                              for node in geometry["nodes"]]
         if self.start_heading != "east":
             geometry["start_heading"] = self.start_heading
@@ -46,6 +46,9 @@ class MapDefinition:
         geometry["building_panels"] = sorted(geometry["building_panels"], key=lambda panel: panel["id"])
         if self._data.get("signal_targets"):
             geometry["signal_targets"] = sorted(self._data["signal_targets"], key=lambda target: target["id"])
+        if "spatial_preview" in self._data:
+            # Display correspondence is bound to this map revision, never a robot transform.
+            geometry["spatial_preview"] = self._data["spatial_preview"]
         self.geometry_hash = hashlib.sha256(json.dumps(geometry, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()).hexdigest()
         self._adjacency: dict[str, list[tuple[str, float]]] = {node: [] for node in self._nodes}
         for edge in self._data["edges"]:
@@ -280,6 +283,10 @@ class MapDefinition:
                 raise ValueError("Node coordinates must be finite.")
             if not 0 <= node["x_mm"] <= board["width_mm"] or not 0 <= node["y_mm"] <= board["height_mm"]:
                 raise ValueError("Node coordinates lie outside the working board.")
+            for field in ("junction_size_mm", "road_width_mm"):
+                if field in node and (node["kind"] != "junction" or not self._finite(node[field])
+                                      or not 0 < node[field] <= min(board["width_mm"], board["height_mm"])):
+                    raise ValueError("Per-junction display dimensions must be finite positive sizes inside the board.")
             if ("label" in node and (not isinstance(node["label"], str) or not 1 <= len(node["label"]) <= 100)):
                 raise ValueError("Node labels must be nonempty display strings of at most 100 characters.")
             aliases = node.get("aliases", [])
@@ -334,6 +341,31 @@ class MapDefinition:
                 or origin[0] + board["width_mm"] > page["width_mm"]
                 or origin[1] + board["height_mm"] > page["height_mm"]):
             raise ValueError("The working board must fit inside the declared print page.")
+        if "spatial_preview" in data:
+            preview = data["spatial_preview"]
+            keys = {"schema_version", "model_id", "model_sha256", "drawing_rect_mm", "model_rect_xz",
+                    "elevation", "alignment", "coordinate_authority"}
+            if (not isinstance(preview, dict) or set(preview) != keys
+                    or preview["schema_version"] != "pushpilot.spatial-preview.v1"
+                    or preview["alignment"] != "drawing_correspondence"
+                    or preview["coordinate_authority"] != "display_only"
+                    or not isinstance(preview["model_id"], str) or not 1 <= len(preview["model_id"]) <= 100
+                    or preview["model_id"].strip() != preview["model_id"]
+                    or not isinstance(preview["model_sha256"], str) or len(preview["model_sha256"]) != 64
+                    or any(value not in "0123456789abcdef" for value in preview["model_sha256"])
+                    or not self._finite(preview["elevation"]) or not 0 <= preview["elevation"] <= 1000):
+                raise ValueError("Spatial preview metadata must bind a model to a display-only drawing correspondence.")
+            drawing, model = preview["drawing_rect_mm"], preview["model_rect_xz"]
+            if (not isinstance(drawing, list) or len(drawing) != 4 or not all(self._finite(value) for value in drawing)
+                    or not 0 <= drawing[0] < drawing[2] <= board["width_mm"]
+                    or not 0 <= drawing[1] < drawing[3] <= board["height_mm"]
+                    or not isinstance(model, list) or len(model) != 4 or not all(self._finite(value) for value in model)
+                    or not -1_000_000 <= model[0] < model[2] <= 1_000_000
+                    or not -1_000_000 <= model[1] < model[3] <= 1_000_000):
+                raise ValueError("Spatial preview rectangles must be finite positive drawing and model regions.")
+            if any(not drawing[0] - 1e-8 <= node["x_mm"] <= drawing[2] + 1e-8
+                   or not drawing[1] - 1e-8 <= node["y_mm"] <= drawing[3] + 1e-8 for node in nodes):
+                raise ValueError("Spatial preview drawing correspondence must contain the complete map graph.")
         panels = data.get("building_panels")
         if not isinstance(panels, list) or len(panels) > 500:
             raise ValueError("Building panels must be a list of at most 500 drawing regions.")
@@ -382,6 +414,8 @@ class MapDefinition:
         public = {key: deepcopy(self._data[key]) for key in (
             "schema_version", "id", "version", "title", "temporary", "physical_execution_enabled",
             "board", "start", "destinations", "nodes", "edges", "markers", "building_panels", "limitations")}
+        if "spatial_preview" in self._data:
+            public["spatial_preview"] = deepcopy(self._data["spatial_preview"])
         return {**public, "start_heading": self.start_heading, "geometry_hash": self.geometry_hash,
                 "camera_registration_supported": self.camera_registration_supported,
                 "signal_targets": deepcopy(self._data.get("signal_targets", []))}
@@ -423,8 +457,10 @@ class MapDefinition:
         """Split drawing centerlines for status display, not physical stop targets.
 
         Neighboring junction offsets occupy at most half of each shared edge.
-        This permits touching display regions on very short roads without
-        reversing a segment or changing the supervisor's bounded action count.
+        A destination has no competing junction region, so a drawing override
+        can use the complete adjacent edge without stopping inside a crosswalk.
+        Very short approaches may touch without reversing a segment or changing
+        the supervisor's bounded action count.
         """
         points, nodes = route["points_mm"], route["node_ids"]
         identity = {key: route[key] for key in ("map_id", "map_version", "map_hash", "node_ids")}
@@ -439,11 +475,15 @@ class MapDefinition:
             outgoing = math.dist(center, after)
             incoming_unit = [(center[axis] - before[axis]) / incoming for axis in (0, 1)]
             outgoing_unit = [(after[axis] - center[axis]) / outgoing for axis in (0, 1)]
-            stop_offset = min(self._data["board"]["junction_size_mm"] / 2, incoming / 2)
-            exit_offset = min(self._data["board"]["junction_size_mm"] / 2, outgoing / 2)
+            junction_node = self._nodes[nodes[index]]
+            junction_size = junction_node.get("junction_size_mm", self._data["board"]["junction_size_mm"])
+            incoming_limit = incoming / 2 if self._nodes[nodes[index - 1]]["kind"] == "junction" else incoming
+            outgoing_limit = outgoing / 2 if self._nodes[nodes[index + 1]]["kind"] == "junction" else outgoing
+            stop_offset = min(junction_size / 2, incoming_limit)
+            exit_offset = min(junction_size / 2, outgoing_limit)
             stop = [center[axis] - incoming_unit[axis] * stop_offset for axis in (0, 1)]
             exit_point = [center[axis] + outgoing_unit[axis] * exit_offset for axis in (0, 1)]
-            half_width = self._data["board"]["road_width_mm"] / 2
+            half_width = junction_node.get("road_width_mm", self._data["board"]["road_width_mm"]) / 2
             perpendicular = [-incoming_unit[1] * half_width, incoming_unit[0] * half_width]
             junction = {"node_id": nodes[index], "label": self.node_label(nodes[index]),
                         "center_mm": center, "stop_point_mm": stop,

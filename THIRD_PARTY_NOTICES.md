@@ -1,5 +1,7 @@
 # Third-party and inherited material
 
+The October 28 City A3 drawing adapter derives nominal marker, panel and road facts from the user's supplied 2400 × 1697 city PNG, exact source hash recorded in `backend/data/seoul-city-a3.json`. It also declares a display-only correspondence to the existing private clean-road GLB. The adapter, validation and projection code are new; supplied city artwork/model authorship and redistribution rights remain separate. Neither original artwork nor raw camera inputs are bundled in Git or public source releases.
+
 Status: application source, adapted PushPilot temporary-map geometry, original documentation/UI artwork and an unmodified vendored Pretendard font. No supplied map artwork, raw camera photograph, model weights, archived operating profile or POC driver is bundled. Runtime and build dependencies are declared below and resolved by lockfiles; the font has a separate pinned source and hash record.
 
 Python and Node are external prerequisites; their runtimes are not bundled. Python dependencies are installed separately. The built frontend includes its React dependencies and the vendored font with their upstream notices. No software license has been selected for PushPilot itself; dependency licenses do not license this repository's original code or artwork.

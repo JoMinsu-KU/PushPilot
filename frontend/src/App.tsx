@@ -11,6 +11,7 @@ import { ViewportDialog, PlanBrowser, EvidenceBrowser, TextPages } from './Works
 import { GoalIntentBar, VoiceInputOptions } from './GoalIntent';
 import { destinationGoal, destinationOptions, destinationPage, nodeLabel } from './mapMetadata';
 import { currentSignalJunction, signalDisplay } from './routeProgress';
+import { commandErrorMessage, readableError } from './commandError';
 
 type View = 'Workspace' | 'Plan' | 'Replay';
 const terminalStates = new Set(['COMPLETED', 'CANCELLED', 'FAULT', 'RECOVERY_REQUIRED']);
@@ -26,11 +27,6 @@ const stepDescriptions: Record<string, string> = {
   CROSS: 'Fresh green required before entry.',
   VERIFY: 'Compare arrival with the planned goal.',
 };
-function readableError(value: unknown): string {
-  if (typeof value === 'string') return value;
-  if (value && typeof value === 'object' && 'message' in value && typeof value.message === 'string') return value.message;
-  return 'The request could not be completed. Refresh the state and try again.';
-}
 function timeLabel(at: string) {
   const date = new Date(at);
   return Number.isNaN(date.valueOf()) ? at : date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
@@ -94,9 +90,8 @@ export function App() {
       });
       const payload: unknown = await response.json();
       if (!response.ok) {
-        if (response.status === 409) { await refresh(); throw new Error('The mission state changed. Review the current state before trying again.'); }
-        const detail = payload && typeof payload === 'object' && 'detail' in payload ? payload.detail : payload;
-        throw new Error(readableError(detail));
+        if (response.status === 409) await refresh();
+        throw new Error(commandErrorMessage(payload, response.status));
       }
       applySnapshot(payload as WorkspaceSnapshot);
     } catch (err) { setError(err instanceof Error ? err.message : 'Connection interrupted. Refresh the workspace before continuing.'); }

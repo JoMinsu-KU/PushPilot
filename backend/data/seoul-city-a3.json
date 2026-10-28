@@ -1,0 +1,448 @@
+{
+  "schema_version": "pushpilot.temporary-map.v1",
+  "id": "seoul-city-a3",
+  "version": "2026-10-28.1",
+  "title": "Seoul City",
+  "temporary": true,
+  "physical_execution_enabled": false,
+  "source": {
+    "filename": "codex-clipboard-5cabe228-f177-471a-92c8-89464e32ba46.png",
+    "sha256": "87c06c120864965ad85fb4653e375058db28307db40af47ef4c00d29b8368003",
+    "image_size_px": [
+      2400,
+      1697
+    ],
+    "provenance": "User-supplied final city print reference. The user confirmed an A3 replacement was placed on October 28, 2026 KST. Original artwork remains private.",
+    "adaptation": "Separate display and simulation adapter derived from the approved city drawing. The historical Little Town map is preserved unchanged. Nominal A3 scaling is not a measured installation.",
+    "geometry_derivation": {
+      "units": "source_image_pixels",
+      "page_scale_mm_per_px": [
+        0.175,
+        0.17501473187978786
+      ],
+      "marker_centers_px": {
+        "10": [
+          72.25,
+          54
+        ],
+        "11": [
+          2326.75,
+          54
+        ],
+        "12": [
+          2326.75,
+          1642
+        ],
+        "13": [
+          72.25,
+          1642
+        ]
+      },
+      "marker_black_dimensions_px_approx": [
+        47.5,
+        48
+      ],
+      "road_centerline_columns_px": [
+        226.5,
+        1199.5,
+        2171
+      ],
+      "road_centerline_rows_px": [
+        230.5,
+        848.5,
+        1472
+      ],
+      "building_panels_px": {
+        "VILLA": [
+          347,
+          349,
+          1018,
+          667
+        ],
+        "HANOK": [
+          1381,
+          349,
+          2050,
+          667
+        ],
+        "PIZZA": [
+          347,
+          1030,
+          1018,
+          1348
+        ],
+        "OFFICE_BUILDING": [
+          1381,
+          1030,
+          2050,
+          1348
+        ]
+      },
+      "place_waypoints_px": {
+        "PIZZA": [
+          682.5,
+          848.5
+        ],
+        "VILLA": [
+          682.5,
+          230.5
+        ],
+        "HANOK": [
+          1715.5,
+          230.5
+        ],
+        "OFFICE_BUILDING": [
+          1715.5,
+          848.5
+        ]
+      },
+      "central_yellow_stop_line_components_px": {
+        "west": [905, 667, 24, 363],
+        "east": [1471, 667, 24, 363],
+        "north": [1018, 554, 364, 24],
+        "south": [1018, 1120, 364, 23]
+      },
+      "review": "Road centerlines, panel bounds and central yellow stop-line components were read from the reference image. Main Junction uses a drawing-only 49.5 mm approach offset and 63.525 mm crossing width, separately from narrower outer roads. Place nodes are provisional road approach waypoints, not measured storefront entrances. The declared Pizza eastbound departure is encoded by the directed graph. No paper signal region has been reviewed."
+    }
+  },
+  "board": {
+    "width_mm": 420,
+    "height_mm": 297,
+    "road_width_mm": 42.175,
+    "junction_size_mm": 42,
+    "origin": "upper_left_of_A3_page",
+    "x_axis": "right",
+    "y_axis": "down"
+  },
+  "page": {
+    "width_mm": 420,
+    "height_mm": 297,
+    "board_origin_page_mm": [
+      0,
+      0
+    ]
+  },
+  "start": "PIZZA",
+  "start_heading": "east",
+  "destinations": [
+    "VILLA",
+    "HANOK",
+    "OFFICE_BUILDING"
+  ],
+  "nodes": [
+    {
+      "id": "NW",
+      "label": "Northwest Junction",
+      "x_mm": 39.6375,
+      "y_mm": 40.340895698,
+      "kind": "junction"
+    },
+    {
+      "id": "N",
+      "label": "North Junction",
+      "x_mm": 209.9125,
+      "y_mm": 40.340895698,
+      "kind": "junction"
+    },
+    {
+      "id": "NE",
+      "label": "Northeast Junction",
+      "x_mm": 379.925,
+      "y_mm": 40.340895698,
+      "kind": "junction"
+    },
+    {
+      "id": "W",
+      "label": "West Junction",
+      "x_mm": 39.6375,
+      "y_mm": 148.5,
+      "kind": "junction"
+    },
+    {
+      "id": "C",
+      "label": "Main Junction",
+      "junction_size_mm": 99,
+      "road_width_mm": 63.525,
+      "x_mm": 209.9125,
+      "y_mm": 148.5,
+      "kind": "junction"
+    },
+    {
+      "id": "E",
+      "label": "East Junction",
+      "x_mm": 379.925,
+      "y_mm": 148.5,
+      "kind": "junction"
+    },
+    {
+      "id": "SW",
+      "label": "Southwest Junction",
+      "x_mm": 39.6375,
+      "y_mm": 257.621685327,
+      "kind": "junction"
+    },
+    {
+      "id": "S",
+      "label": "South Junction",
+      "x_mm": 209.9125,
+      "y_mm": 257.621685327,
+      "kind": "junction"
+    },
+    {
+      "id": "SE",
+      "label": "Southeast Junction",
+      "x_mm": 379.925,
+      "y_mm": 257.621685327,
+      "kind": "junction"
+    },
+    {
+      "id": "PIZZA",
+      "label": "Pizza",
+      "aliases": [
+        "pizza",
+        "pizzeria"
+      ],
+      "x_mm": 119.4375,
+      "y_mm": 148.5,
+      "kind": "destination"
+    },
+    {
+      "id": "VILLA",
+      "label": "Villa",
+      "aliases": [
+        "villa",
+        "residential block"
+      ],
+      "x_mm": 119.4375,
+      "y_mm": 40.340895698,
+      "kind": "destination"
+    },
+    {
+      "id": "HANOK",
+      "label": "Hanok",
+      "aliases": [
+        "hanok",
+        "traditional house",
+        "Korean house"
+      ],
+      "x_mm": 300.2125,
+      "y_mm": 40.340895698,
+      "kind": "destination"
+    },
+    {
+      "id": "OFFICE_BUILDING",
+      "label": "Office Building",
+      "aliases": [
+        "office",
+        "office building",
+        "offices"
+      ],
+      "x_mm": 300.2125,
+      "y_mm": 148.5,
+      "kind": "destination"
+    }
+  ],
+  "edges": [
+    {
+      "from": "NW",
+      "to": "VILLA",
+      "length_mm": 79.8,
+      "bidirectional": true
+    },
+    {
+      "from": "VILLA",
+      "to": "N",
+      "length_mm": 90.475,
+      "bidirectional": true
+    },
+    {
+      "from": "N",
+      "to": "HANOK",
+      "length_mm": 90.3,
+      "bidirectional": true
+    },
+    {
+      "from": "HANOK",
+      "to": "NE",
+      "length_mm": 79.7125,
+      "bidirectional": true
+    },
+    {
+      "from": "NW",
+      "to": "W",
+      "length_mm": 108.159104302,
+      "bidirectional": true
+    },
+    {
+      "from": "W",
+      "to": "SW",
+      "length_mm": 109.121685327,
+      "bidirectional": true
+    },
+    {
+      "from": "N",
+      "to": "C",
+      "length_mm": 108.159104302,
+      "bidirectional": true
+    },
+    {
+      "from": "C",
+      "to": "S",
+      "length_mm": 109.121685327,
+      "bidirectional": true
+    },
+    {
+      "from": "NE",
+      "to": "E",
+      "length_mm": 108.159104302,
+      "bidirectional": true
+    },
+    {
+      "from": "E",
+      "to": "SE",
+      "length_mm": 109.121685327,
+      "bidirectional": true
+    },
+    {
+      "from": "W",
+      "to": "PIZZA",
+      "length_mm": 79.8,
+      "bidirectional": false
+    },
+    {
+      "from": "PIZZA",
+      "to": "C",
+      "length_mm": 90.475,
+      "bidirectional": true
+    },
+    {
+      "from": "C",
+      "to": "OFFICE_BUILDING",
+      "length_mm": 90.3,
+      "bidirectional": true
+    },
+    {
+      "from": "OFFICE_BUILDING",
+      "to": "E",
+      "length_mm": 79.7125,
+      "bidirectional": true
+    },
+    {
+      "from": "SW",
+      "to": "S",
+      "length_mm": 170.275,
+      "bidirectional": true
+    },
+    {
+      "from": "S",
+      "to": "SE",
+      "length_mm": 170.0125,
+      "bidirectional": true
+    }
+  ],
+  "markers": [
+    {
+      "id": 10,
+      "center_mm": [
+        12.64375,
+        9.450795522
+      ],
+      "size_mm": 8.356
+    },
+    {
+      "id": 11,
+      "center_mm": [
+        407.18125,
+        9.450795522
+      ],
+      "size_mm": 8.356
+    },
+    {
+      "id": 12,
+      "center_mm": [
+        407.18125,
+        287.374189747
+      ],
+      "size_mm": 8.356
+    },
+    {
+      "id": 13,
+      "center_mm": [
+        12.64375,
+        287.374189747
+      ],
+      "size_mm": 8.356
+    }
+  ],
+  "marker_dictionary": "DICT_4X4_50",
+  "camera_registration_supported": true,
+  "building_panels": [
+    {
+      "id": "VILLA",
+      "bounds_mm": [
+        60.725,
+        61.080141426,
+        178.15,
+        116.734826164
+      ]
+    },
+    {
+      "id": "HANOK",
+      "bounds_mm": [
+        241.675,
+        61.080141426,
+        358.75,
+        116.734826164
+      ]
+    },
+    {
+      "id": "PIZZA",
+      "bounds_mm": [
+        60.725,
+        180.265173836,
+        178.15,
+        235.919858574
+      ]
+    },
+    {
+      "id": "OFFICE_BUILDING",
+      "bounds_mm": [
+        241.675,
+        180.265173836,
+        358.75,
+        235.919858574
+      ]
+    }
+  ],
+  "signal_targets": [],
+  "limitations": [
+    "A3 page dimensions and marker sizes are nominal drawing values; actual print scaling and installation dimensions have not been measured.",
+    "Drawing coordinates support display registration and simulation only; no board-to-BASE, TCP, contact height or robot motion targets are provided.",
+    "Place nodes are provisional road approach waypoints, not qualified physical destination entrances or car poses.",
+    "The Pizza start and initial eastbound departure are scenario declarations, not observations of the current car position or orientation.",
+    "Every route from Pizza first reaches Main Junction; the graph does not establish a reviewed signal approach or paper signal target.",
+    "No active paper signal region is configured. MUSE signal queries must remain unavailable until a current approach-specific region is explicitly registered.",
+    "Road centerlines and nominal junction size do not qualify swept car/tool clearance, physical stop lines or pushing turns.",
+    "The optional Spatial correspondence is display metadata only and supplies no camera registration or robot coordinate authority."
+  ],
+  "spatial_preview": {
+    "schema_version": "pushpilot.spatial-preview.v1",
+    "model_id": "pushpilot-seoul-city-web-clean-roads",
+    "model_sha256": "f5fb0b2524d6bee45f5b939f121b29d5eac274ea34e670895dada3a2b70b39d7",
+    "drawing_rect_mm": [
+      39.6375,
+      40.3408956982911,
+      379.925,
+      257.6216853270477
+    ],
+    "model_rect_xz": [
+      -236,
+      -149,
+      236,
+      149
+    ],
+    "elevation": 2,
+    "alignment": "drawing_correspondence",
+    "coordinate_authority": "display_only"
+  }
+}

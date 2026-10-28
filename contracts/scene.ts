@@ -5,11 +5,22 @@ export interface TemporaryMap {
   temporary: true; physical_execution_enabled: false;
   board: {width_mm: number; height_mm: number; road_width_mm: number; junction_size_mm: number};
   start: string; start_heading?: 'east' | 'south' | 'west' | 'north'; destinations: string[];
-  nodes: {id: string; x_mm: number; y_mm: number; kind: 'junction' | 'destination'; label?: string; aliases?: string[]}[];
+  nodes: {id: string; x_mm: number; y_mm: number; kind: 'junction' | 'destination'; label?: string; aliases?: string[];
+    /** Optional drawing-only dimensions for a junction with different printed geometry. */
+    junction_size_mm?: number; road_width_mm?: number}[];
   edges: {from: string; to: string; length_mm: number; bidirectional: boolean}[];
   markers: {id: number; center_mm: [number,number]; size_mm: number}[];
   building_panels: {id: string; bounds_mm: [number,number,number,number]}[];
   limitations: string[];
+  /** Drawing-to-model display correspondence only; never camera or robot calibration. */
+  spatial_preview?: SpatialPreview;
+}
+export interface SpatialPreview {
+  schema_version: 'pushpilot.spatial-preview.v1';
+  model_id: string; model_sha256: string;
+  drawing_rect_mm: [number, number, number, number];
+  model_rect_xz: [number, number, number, number]; elevation: number;
+  alignment: 'drawing_correspondence'; coordinate_authority: 'display_only';
 }
 export interface MapRoute {
   map_id: string; map_version: string; map_hash: string;
