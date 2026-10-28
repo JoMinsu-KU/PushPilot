@@ -1,0 +1,86 @@
+{
+  "schema_version": "pushpilot.verification.v1",
+  "date": "2026-10-28",
+  "timezone": "Asia/Seoul",
+  "source_commit": "19cef5f4dde5903f0e4a335f85847376910fb76c",
+  "release": "20261028-front-destinations-19cef5f",
+  "scope": "Front-road drawing-route correction and quiet expected marker occlusion; unapproved simulation only.",
+  "root_cause": "Rear-road destination waypoints and a blanket directed PIZZA-S-C prefix placed routes behind buildings. The user explicitly requested straight-right Office arrival.",
+  "map": {
+    "id": "seoul-city-a3",
+    "version": "2026-10-28.3",
+    "geometry_hash": "9690544d510f2d69366cae2556e880cd86f0ac09bfae1edebf3eda40e4770a90",
+    "nodes": 13,
+    "directed_edges": 31,
+    "same_physical_print_and_marker_layout": true,
+    "active_signal_targets": 0,
+    "office_direct_visits_central_signal": false
+  },
+  "software": {
+    "local_python_tests_passed": 458,
+    "gx10_arm64_python_tests_passed": 458,
+    "gx10_test_seconds": 13.679,
+    "frontend_tests_passed": 63,
+    "typescript_and_production_build_passed": true,
+    "source_checks_passed": true,
+    "map_reachability_passed": true
+  },
+  "actual_muse_native_image_planning": {
+    "prompt_version": "pushpilot.live-route.prompt.v3",
+    "request_pattern": "Push the car from PIZZA to <destination>.",
+    "checks": [
+      {"destination": "VILLA", "http_status": 200, "seconds": 8.88, "node_ids": ["PIZZA", "S", "C", "VILLA"], "state": "PLAN_READY", "approved": false},
+      {"destination": "HANOK", "http_status": 200, "seconds": 5.49, "node_ids": ["PIZZA", "S", "C", "HANOK"], "state": "PLAN_READY", "approved": false},
+      {"destination": "OFFICE_BUILDING", "http_status": 200, "seconds": 5.33, "node_ids": ["PIZZA", "S", "OFFICE_BUILDING"], "state": "PLAN_READY", "approved": false}
+    ],
+    "silent_route_substitution": false,
+    "physical_action_or_signal_judgment": false
+  },
+  "display_registration": {
+    "explicit_same_print_graph_revision_derivation": true,
+    "new_reference_identity_with_private_provenance": true,
+    "standard_fresh_reference_resume_checks_applied": true,
+    "exact_prior_homography_retained": true,
+    "new_homography_fit": false,
+    "old_plan_invalidated": true,
+    "new_native_unique_frame_check": {
+      "frames": 24,
+      "seconds": 2.92,
+      "all_live": true,
+      "locked_partial": 24,
+      "marker_sets": {"11,12,13": 18, "12,13": 6},
+      "maximum_host_receive_age_ms": 193.9,
+      "maximum_image_residual_px": 1.7252,
+      "same_epoch_and_exact_homography_all_frames": true
+    }
+  },
+  "browser": {
+    "camera_and_spatial_viewports_css_px": [[1194, 834], [1024, 768]],
+    "no_vertical_page_overflow": true,
+    "office_same_three_segment_ids_and_planned_phases": true,
+    "office_same_south_junction_stop": true,
+    "camera_original_perspective_and_unfiltered_svg": true,
+    "missing_marker_banner_absent": true,
+    "source_plate_stable_fixed_mapping": true,
+    "diagnostic_tooltip_retains_truthful_count": true,
+    "console_warnings_or_errors_observed": 0,
+    "independent_ipad_safari_test": false
+  },
+  "operations": {
+    "static_marker_ui_update_retained_all_service_pids": true,
+    "graph_activation_restarted_web_only": true,
+    "camera_epoch_retained": true,
+    "camera_restarted": false,
+    "rodi_restarted": false,
+    "robot_api_process_retained": true,
+    "robot_motion_issued": false,
+    "plan_approved": false
+  },
+  "limits": [
+    "Short static-camera samples with placed objects do not measure recognition accuracy, moving-robot occlusion performance or physical route feasibility.",
+    "Map and Spatial geometry remain authored drawing/display correspondence, not measured car pose, board-to-BASE, contact/TCP/Z or swept-clearance qualification.",
+    "Direct Office arrival bypasses central C; it is not evidence of the central paper-signal scenario. S checks remain simulation with no reviewed live signal target.",
+    "Expected covers change presentation only. Actual disagreement, stale imagery, changed view, unreadable car outcomes and UNKNOWN signals retain independent guards.",
+    "Original images, complete provider records, private reference lineage, deployment receipts and screenshots remain outside public source."
+  ]
+}
