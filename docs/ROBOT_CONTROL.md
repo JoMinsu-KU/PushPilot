@@ -6,6 +6,8 @@
 
 [Source provenance](data/robot-runtime-source.json) · [Control API](../backend/robot_control/api.py) · [Offline tests](../tests/test_robot_control_service.py) · [GX10 delivery](../deploy/ROBOT_CONTROL.md)
 
+The operator's current-Z pushing request and drift/coordinate collection plan are recorded in [Contact pushing](PUSH_ALIGNMENT.md). A private read-only stationary baseline is available; TCP identity/payload, measured drawing-to-BASE correspondences, contact clearance and physical pushing remain pending. The target pose may change without changing the TCP definition; preserving its numeric Z alone does not preserve an offset tool's physical height through rotation or a TCP-definition change.
+
 > **Deployment checked October 28, 2026, 01:17 KST:** the isolated GX10 API runs from source `6cfe6d2`, on loopback 8897, disarmed and disconnected, with no loaded installation and zero robot commands. The physical listener is not started. Local software tests: 414 passed; GX10 equipment-free subset: 64 passed. Existing web and camera were retained. [Exact verification scope](evidence/robot-control-20261028.json).
 
 ## Service boundaries
@@ -17,6 +19,8 @@
 | Existing camera and MUSE application | Original images, fixed display mapping and currently simulated mission judgments | Separate processes; no camera or Rodi restart to update this API |
 
 The API uses the inherited mailbox interface through a hash-verified private runtime. It does not implement another robot driver. The manifest identifies each exact imported source; installer excludes old profiles, mailboxes, observations and run state. Original Rodi functions for translation, raised wrist repositioning, profile update and persistent idle are preserved.
+
+The host now has an explicit `--wait-for-profile` startup mode for preparing a new installation. While its named reviewed profile is absent or invalid, it keeps the pendant port open but handles only a bounded diagnostic HELLO and closes without BEGIN, command consumption or a new execution session. It reports `waiting_reviewed_profile` / `ready: false`; this is not persistent idle. A genuine reviewed profile and a fresh manual PLAY are still required. The installed online script cannot accept a fabricated unqualified idle profile. See [deployment](../deploy/ROBOT_CONTROL.md#listen-while-current-measurements-are-being-prepared).
 
 ## What is implemented
 

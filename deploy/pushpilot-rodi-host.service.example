@@ -1,0 +1,15 @@
+[Unit]
+Description=PushPilot pendant listener waiting for a current reviewed profile
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/pushpilot-robot-control/host-current
+ExecStart=%h/pushpilot-robot-control/venv/bin/python tools/serve_rodi_host.py --runtime %h/pushpilot-robot-control/shared/receiver --profile %h/pushpilot-robot-control/shared/profiles/city-a3-reviewed-20261028.json --listen --motion --wait-for-profile
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+TimeoutStopSec=15
+
+# Start manually after reviewing the explicit profile path. No boot activation.
