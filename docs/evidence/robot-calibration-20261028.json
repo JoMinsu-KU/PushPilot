@@ -1,0 +1,77 @@
+{
+  "schema_version": "pushpilot.scoped-verification.v1",
+  "date_kst": "2026-10-28",
+  "scope": "Independent Native teaching, measured planar registration software, scoped local commissioning and initial physical tool trial",
+  "online_api_commit": "b4e5e5e9e44d91a1a66fef93afd5e99eb0ecf129",
+  "online_host_commit": "0d5e0a14d76ab98c3e97a66a87eb8b1a4300a985",
+  "user_scope": {
+    "agent_physical_commissioning_requested": true,
+    "fresh_contact_placement_and_current_tcp_confirmed": true,
+    "current_xy_half_span_review_mm": 2,
+    "payload_setting_operator_confirmed_kg": 0.1,
+    "local_scope_only": true,
+    "board_geometry_or_car_turn_qualification_inferred": false
+  },
+  "physical_evidence": {
+    "session_run": "session-20261028T074128447708Z-1f60a035",
+    "hello_begin_session_ready_verified": true,
+    "idle_acknowledgments_at_2026_10_28T08_16_06Z": 1469,
+    "idle_requests_at_that_check": 1469,
+    "read_only_ik_queries_completed": 5,
+    "single_local_retreat_request_id": "ea431467-fa12-46ff-aa4a-4a42ffb23025",
+    "local_tool_retreat_mm": 0.5,
+    "translation_speed_mm_s": 1,
+    "translation_accel_mm_s2": 2,
+    "go_packets": 1,
+    "done_and_independent_native_endpoint_verifications": 1,
+    "literal_command_z_and_orientation_preserved": true,
+    "same_persistent_session_retained": true,
+    "later_read_only_native_stationary_capture_accepted": true,
+    "api_disarmed_after_trial": true,
+    "pending_commands_at_check": 0,
+    "rodi_script_modified": false,
+    "web_camera_epoch_and_exact_registration_retained": true,
+    "raw_coordinates_profiles_native_images_and_packets": "Private GX10 shared commissioning records; excluded from Git"
+  },
+  "diagnostic_limits": {
+    "red_tool_and_printed_start_region_connected_in_component_mask": true,
+    "strict_sparse_flow_first_small_pair_result": "unknown",
+    "thresholds_weakened_to_force_success": false,
+    "tool_feature_visibility_is_motion_completion_gate": false,
+    "car_metric_pose_or_car_outcome_verified": false,
+    "exact_original_pendant_45102_cause_established": false
+  },
+  "software_verification": {
+    "online_api_release_gx10_python_tests": 544,
+    "online_api_release_gx10_failures": 0,
+    "later_core_local_python_tests": 611,
+    "later_core_local_failures": 0,
+    "later_core_windows_symlink_skips": 2,
+    "later_core_staged_gx10_tests": null,
+    "typescript_and_vite_build": "passed; frontend source unchanged by robot work",
+    "planar_fit_is_actual_site_calibration": false,
+    "fixed_start_record_measures_car_pose": false,
+    "empirical_contact_selector_has_physical_response_samples": false,
+    "proposal_selector_is_connected_to_robot_executor": false
+  },
+  "remaining_physical_work": [
+    "Measured drawing-to-BASE relationship and independent reference checks",
+    "Vehicle footprint, tool/contact geometry and feasible recontact approaches",
+    "Small measured straight, lateral-correction and offset-contact yaw response trials",
+    "Bounded physical observation/MUSE review bridge",
+    "Qualified stop, signal, contact-turn and all three destination trials"
+  ],
+  "physical_car_push_demonstrated": false,
+  "physical_car_turn_demonstrated": false,
+  "destinations_completed": [],
+  "final_map_replacement_preparation": {
+    "checked_at_utc": "2026-10-28T08:19:11.616612+00:00",
+    "api_disarmed_and_held": true,
+    "receiver_connected_idle_seq": 7,
+    "active_commands": 0,
+    "pending_mailbox": false,
+    "automatic_tool_lift_issued": false,
+    "operator_to_clear_tool_before_paper_removal": true,
+    "old_geometry_reuse_permitted": false
+  }
+}

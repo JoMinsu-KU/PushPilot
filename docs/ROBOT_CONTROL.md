@@ -2,7 +2,7 @@
 
 # One command. One receipt. No automatic replay.
 
-**A separate GX10 commissioning service prepares bounded robot tests without converting the tablet's simulated mission into physical execution.** Implemented October 28, 2026 KST under explicit user authorization. Physical motion on the new print and car remains unqualified.
+**A separate GX10 commissioning service prepares bounded robot tests without converting the tablet's simulated mission into physical execution.** Implemented October 28, 2026 KST under explicit user authorization. A later current-site local profile established the persistent connection, five read-only IK queries and one real 0.5 mm tool retreat. Car pushing, turning and destination completion remain unqualified. See [current scoped evidence](evidence/robot-calibration-20261028.json).
 
 [Source provenance](data/robot-runtime-source.json) · [Control API](../backend/robot_control/api.py) · [Offline tests](../tests/test_robot_control_service.py) · [GX10 delivery](../deploy/ROBOT_CONTROL.md)
 
@@ -55,7 +55,7 @@ Admission is checked again just before a durable `committed` record. **That reco
 
 `done` is followed by independent Native endpoint/stationarity verification in the inherited host. A push then needs a different, fresh post-action frame bound to the installation and a visible measured car pose plus an accepted review. PASS records review acceptance and its source; it does not relabel operator assertions as independent physical evidence. UNKNOWN/REOBSERVE remain pending. FAIL disarms. No request automatically moves the tool aside to reveal the car: such a retract must be an explicitly qualified motion sequence.
 
-## Tomorrow's commissioning order
+## Commissioning order
 
 1. Fix the actual print and camera mechanically. Record print/hash, installation and calibration identities. The temporary web overlay is not board-to-BASE calibration.
 2. Measure current TCP/tool identity, payload, workspace limits, work Z and raised Z. Capture actual TCP and six joint angles at the reviewed stationary starting pose. Never reuse POC slot coordinates.

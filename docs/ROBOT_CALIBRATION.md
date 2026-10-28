@@ -15,6 +15,20 @@ python tools/read_robot_pose.py \
 
 The tool loads the hash-verified inherited runtime, then calls only Native FC03 `snapshot`. It does not require a pendant session, start a host, touch receiver/session/mailbox files, generate a profile or change TCP settings. Each acquisition writes a new private JSON record with current TCP, joints, program/flags, quantized speeds and per-sample UTC/monotonic timestamps. Input failures retain diagnostic evidence without retrying or substituting historical values.
 
+For an operator-established fixed start with a connected idle receiver, capture the full-precision pose without requiring a vehicle image:
+
+```sh
+python tools/capture_fixed_start.py \
+  --map-path backend/data/seoul-city-a3.json \
+  --installation <current-private-local-installation.json> \
+  --runtime <private-hash-verified-receiver-directory> \
+  --token-file <private-control-token-file> \
+  --output <new-private-fixed-start.json> \
+  --operator-fixed-start
+```
+
+Capture requires a disarmed/inactive API, unchanged current installation/TCP/tool binding, stable receiver identity across the read and fresh stationary Native samples. It performs GET/FC03 only and never sends the robot back. The record labels the initial setup as operator-established; it does not assert that an occluded car was detected or that returning the robot resets the car. See [fixed start and overlap](PUSH_ALIGNMENT.md#fixed-start-and-expected-overlap).
+
 Two or more coherent samples, unchanged eligible flags, exact reported zero speed and at most 0.2 mm/degree pairwise drift admit a stationary teaching observation. These limits describe telemetry consistency at Native's 0.1-unit quantization, not endpoint accuracy or collision clearance. A stationary program register value alone never establishes readiness. Ineligible controller flags, moving data and single samples remain diagnostics. The collector does not read the selected TCP definition or certify that a measured TCP is the physical contact point.
 
 ## Establish the same physical reference in both frames
