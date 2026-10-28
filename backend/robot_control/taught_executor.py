@@ -471,6 +471,39 @@ class ExecutorPorts(Protocol):
     def load_checkpoint(self) -> dict | None: ...
 
 
+def checked_snapshot(ports, adapter, native_max_age_s):
+    state = ports.snapshot()
+    age = ports.now()-state.native_observed_at
+    _require(state.held_disarmed_idle is True and state.scope in {"local_contact_commissioning", "local_contact_turn_commissioning"}
+             and type(state.sequence) is int and state.sequence >= 1
+             and state.session_id and state.profile_id and state.installation_id
+             and _hash(state.native_evidence_sha256) and _finite(age) and 0 <= age <= native_max_age_s,
+             "ROBOT_STATE", "Use fresh verified stationary Native data and a held, disarmed, idle contact receiver.")
+    _require((state.tcp_definition_sha256, state.tool_id, state.car_id, state.surface_id)
+             == (adapter.tcp_definition_sha256, adapter.tool_id, adapter.car_id, adapter.surface_id),
+             "TOOL_BINDING", "The current installation differs from the measured contact adapter.")
+    _pose(state.tcp_base)
+    _pose(state.native_tcp_base)
+    _require(all(abs(a-b) <= .100000001 for a, b in zip(state.tcp_base, state.native_tcp_base)),
+             "NATIVE_DISAGREEMENT", "The independent 0.1-unit Native registers must agree with receiver TCP.")
+    _require(len(state.joints_deg) == 6 and all(_finite(x) for x in state.joints_deg)
+             and _finite(state.configured_stroke_mm) and 0 < state.configured_stroke_mm <= 20,
+             "ROBOT_STATE", "Preserve actual joints and the explicitly reviewed current stroke limit.")
+    return state
+
+
+def checked_frame(ports, frame_max_age_s):
+    frame = ports.capture()
+    age = ports.now()-frame.captured_at
+    _require(isinstance(frame.original_jpeg, bytes) and frame.original_jpeg.startswith(b"\xff\xd8")
+             and frame.original_jpeg.endswith(b"\xff\xd9")
+             and _hash(frame.sha256) and hashlib.sha256(frame.original_jpeg).hexdigest() == frame.sha256
+             and frame.id and frame.epoch and type(frame.sequence) is int and frame.sequence >= 1
+             and _finite(age) and 0 <= age <= frame_max_age_s,
+             "FRAME_INVALID", "Select a fresh immutable original JPEG with a verified hash.")
+    return frame
+
+
 class TaughtExecutor:
     """One fresh stroke, Native receipt, then one image-pair review per call.
 
@@ -538,35 +571,10 @@ class TaughtExecutor:
         return value
 
     def _snapshot(self):
-        state = self.ports.snapshot()
-        age = self.ports.now()-state.native_observed_at
-        _require(state.held_disarmed_idle is True and state.scope in {"local_contact_commissioning", "local_contact_turn_commissioning"}
-                 and type(state.sequence) is int and state.sequence >= 1
-                 and state.session_id and state.profile_id and state.installation_id
-                 and _hash(state.native_evidence_sha256) and _finite(age) and 0 <= age <= self.native_max_age_s,
-                 "ROBOT_STATE", "Use fresh verified stationary Native data and a held, disarmed, idle contact receiver.")
-        _require((state.tcp_definition_sha256, state.tool_id, state.car_id, state.surface_id)
-                 == (self.adapter.tcp_definition_sha256, self.adapter.tool_id, self.adapter.car_id, self.adapter.surface_id),
-                 "TOOL_BINDING", "The current installation differs from the measured contact adapter.")
-        _pose(state.tcp_base)
-        _pose(state.native_tcp_base)
-        _require(all(abs(a-b) <= .100000001 for a, b in zip(state.tcp_base, state.native_tcp_base)),
-                 "NATIVE_DISAGREEMENT", "The independent 0.1-unit Native registers must agree with receiver TCP.")
-        _require(len(state.joints_deg) == 6 and all(_finite(x) for x in state.joints_deg)
-                 and _finite(state.configured_stroke_mm) and 0 < state.configured_stroke_mm <= 20,
-                 "ROBOT_STATE", "Preserve actual joints and the explicitly reviewed current stroke limit.")
-        return state
+        return checked_snapshot(self.ports, self.adapter, self.native_max_age_s)
 
     def _frame(self):
-        frame = self.ports.capture()
-        age = self.ports.now()-frame.captured_at
-        _require(isinstance(frame.original_jpeg, bytes) and frame.original_jpeg.startswith(b"\xff\xd8")
-                 and frame.original_jpeg.endswith(b"\xff\xd9")
-                 and _hash(frame.sha256) and hashlib.sha256(frame.original_jpeg).hexdigest() == frame.sha256
-                 and frame.id and frame.epoch and type(frame.sequence) is int and frame.sequence >= 1
-                 and _finite(age) and 0 <= age <= self.frame_max_age_s,
-                 "FRAME_INVALID", "Select a fresh immutable original JPEG with a verified hash.")
-        return frame
+        return checked_frame(self.ports, self.frame_max_age_s)
 
     def _on_road(self, current, road):
         a, b = road.start_base, road.end_base

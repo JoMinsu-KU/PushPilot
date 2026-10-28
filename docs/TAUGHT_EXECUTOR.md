@@ -4,6 +4,15 @@
 port contract. It is not connected to the web application's simulated action
 runner, and its tests do not qualify any physical road or destination.
 
+The latest operator contract is implemented separately in
+`backend/robot_control/coordinate_units.py`: coordinate approach/contact,
+Native-confirmed completion, required coordinate withdrawal, then one real
+whole-unit MUSE review. The compatibility runner below retains its historical
+per-action review behavior and is not the new unit dispatcher. The new
+component has equipment-free failure/no-replay tests and explicit real IO ports;
+it is not yet an activated MUSE-route-to-city-hardware adapter. See
+[TCP coordinate control](TCP_COORDINATE_CONTROL.md#execute-by-coordinates-review-after-withdrawal).
+
 ## Actual commissioning evidence
 
 One physical B / Office-frontage course is complete, with an independent robot

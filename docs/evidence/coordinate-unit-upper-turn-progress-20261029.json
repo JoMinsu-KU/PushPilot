@@ -1,0 +1,64 @@
+{
+  "schema": "pushpilot.coordinate-action-unit-evidence.v1",
+  "status": "physical_commissioning_partial",
+  "date_kst": "2026-10-29",
+  "upper_turn_unit_3": {
+    "internal_robot_operations": 11,
+    "approach_muse_admission_required": false,
+    "contact_tcp_delta_local_east_north_mm": [-15.0, -8.0],
+    "contact_tcp_distance_mm": 17.0,
+    "east_disengagement_tcp_mm": 5.0,
+    "east_observation_withdrawal_tcp_mm": 83.0,
+    "all_native_endpoints_verified": true,
+    "literal_z_and_orientation_preserved": true,
+    "source_sequence": 86,
+    "push_endpoint_sequence": 91,
+    "observation_endpoint_sequence": 97,
+    "post_withdrawal_held_disarmed_idle": true,
+    "whole_unit_muse": {
+      "provider": "Meta",
+      "model": "muse-spark-1.3",
+      "status": "SUPPORTED",
+      "yaw_change_visible": "COUNTERCLOCKWISE",
+      "heading_after": "WEST",
+      "west_exit_alignment": "ALIGNED",
+      "translation_image_direction": "LEFT",
+      "original_car_flat_on_drivable_road": true,
+      "isolated_withdrawal_stationarity_qualified": false,
+      "limitations": [
+        "No calibrated angle or displacement claim.",
+        "The contact phase is partially occluded by the tool.",
+        "A separate stricter footprint check contradicted the broad drivable-road result."
+      ]
+    }
+  },
+  "read_only_road_margin_check": {
+    "new_motion_issued": false,
+    "receiver_sequence": 97,
+    "independent_stationary_native_record_saved": true,
+    "footprint": "OVERLAPS_BUILDING_ISLAND",
+    "heading": "WEST_ALIGNED",
+    "northward_clearance": "ROAD_VISIBLE",
+    "observed": "The south edge overlaps the north edge of the printed Pizza/park island.",
+    "decision": "Do not continue westward delivery as road-centered; prepare a separately reviewed bounded northward centering experiment."
+  },
+  "private_source_sha256": {
+    "unit_results": "5ef9e0a2165edfdc4651096a8c63f3f010c3ee44f9dedbd1f49f33030966abd3",
+    "whole_unit_muse_original_record": "68e19a9ac735abf8ae2c520c55b98f90f3ab0342b9ff73cd5dbb93cf5afc65d6",
+    "strict_road_margin_original_record": "d4102a589361a92ff1c55d5d27f2c58d67615707a72cb8506f03985786e576b1",
+    "selected_upper_unit_original_archive": "dd1416786831f13e5b6ba9a28387bbf0af4dc4e220234c32328d2132a28f1936"
+  },
+  "backup": {
+    "original_files_verified_locally": 530,
+    "actual_motion_checkpoints_in_selected_archive": 31,
+    "complete_tcp_and_joint_records_preserved_privately": true
+  },
+  "qualification": {
+    "whole_map_transform_accepted": false,
+    "precise_vehicle_90_degree_turn_qualified": false,
+    "C_destination_complete": false,
+    "D_destination_complete": false,
+    "physical_web_mission_connected": false,
+    "reusable_city_route_adapter_activated": false
+  }
+}

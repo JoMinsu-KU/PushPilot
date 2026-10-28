@@ -20,11 +20,40 @@ MUSE judges the visible outcome of the whole unit. A covered contact frame
 cannot prove the isolated push displacement or unchanged car pose during
 withdrawal. Keep those narrower results uncertain when they cannot be observed.
 
-Current commissioning helpers have physically completed one such northbound
-unit with a supported post-withdrawal MUSE progress judgment. This is not yet
-an activated reusable city-route adapter, a qualified turn or C/D delivery.
-The reusable executor and private measured registry must preserve this phase
-contract as actual course qualification continues. See the
+`backend/robot_control/coordinate_units.py` now implements this finite phase
+contract as a reusable `CoordinateUnitExecutor`. One instance executes a
+continuous reviewed approach, exactly one <=20 mm contact trial and a required
+coordinate withdrawal. Every internal command has its own durable UUID and
+independent Native confirmation. There is no intermediate image capture or
+MUSE admission dependency. One original before image and one fresh image after
+the full withdrawal feed `RealTaughtPorts.review_coordinate_unit()`; the
+provider receives all actual internal action/receipt references and explicit
+whole-unit limitations. Provider/camera failure after withdrawal permits only
+read-only reobservation. A control/Native ambiguity or restart requires
+reconciliation, with no automatic replay. Verified arrival requires empty-tool
+return before asking the operator to reset the car.
+
+`CoordinateBinding` records current-site map/tool/car/surface identities without
+inventing a qualified road. The existing physical API still enforces the
+installation/profile, original low-speed limits, fixed posture and Native
+guards. This component does not grant physical authority, qualify a path or
+activate the web mission. The older `TaughtExecutor` per-action review flow is
+retained for compatibility; it is not the new coordinate-unit dispatch path.
+
+`tools/run_coordinate_unit.py --unit-file <private-bundle.json>` validates a
+single `pushpilot.experimental-coordinate-unit.v1` bundle offline. Physical IO
+requires `--execute`, private port configuration and a new journal outside the
+source tree. The bundle's original SHA-256 site-review reference must bind every
+stage, exact unit geometry, current installation/profile and map/tool identities
+to the operator's experimental contact authorization. Validation does not grant
+route qualification. The runner performs one unit and stops; it does not switch
+services, resume a journal or treat simulation approval as physical authority.
+
+Current commissioning helpers have physically completed northbound units and
+upper-corner experiments with post-withdrawal MUSE reviews. This is not yet
+an activated reusable city-route adapter or completed C/D delivery. The private
+measured registry must preserve this scope as course qualification continues.
+See the
 [coordinate-unit evidence](evidence/coordinate-unit-north-progress-20261029.json).
 
 ## Current mode: directly taught destinations

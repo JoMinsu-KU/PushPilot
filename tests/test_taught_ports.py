@@ -241,6 +241,38 @@ class RealTaughtPortsTests(TestCase):
         with self.assertRaises(ExecutionBlocked):
             self.ports.review(self.intent(), before, before, at_goal=False)
 
+    def test_coordinate_unit_provider_receives_all_stages_and_whole_unit_scope(self):
+        from tests.test_coordinate_units import Ports, unit
+        from backend.robot_control.coordinate_units import CoordinateUnitExecutor
+        synthetic = Ports()
+        executor = CoordinateUnitExecutor(unit(), self.adapter, synthetic)
+        executor.run()
+        before = self.ports.capture()
+        after = replace(before, id="unit-after", sequence=11)
+        value = {"verdict": "UNCERTAIN", "occlusion_cause": "UNKNOWN", "car_visible": False,
+                 "expected_progress": False, "signal_region_visible": False, "signal_occlusion_cause": "UNKNOWN",
+                 "excessive_yaw": False, "arrived": False, "observed": "Synthetic covered result.",
+                 "summary": "No inferred car progress.", "limitations": ["Synthetic imagery."]}
+        envelope = {"choices": [{"finish_reason": "stop", "message": {"content": json.dumps(value)}}]}
+        self.provider.return_value = 200, envelope, 20
+        result = self.ports.review_coordinate_unit(unit(), tuple(executor.completed), before, after)
+        self.assertEqual(result.request_id, unit().id)
+        self.assertEqual(result.verdict, "UNCERTAIN")
+        payload = self.provider.call_args.args[3]
+        context = json.loads(payload["messages"][1]["content"][0]["text"])
+        self.assertEqual(context["review_scope"], "whole_unit")
+        self.assertFalse(context["approach_vision_gate"])
+        self.assertFalse(context["isolated_push_or_withdrawal_qualified"])
+        self.assertEqual(len(context["stages"]), 4)
+        saved = json.loads(next(self.journal.root.glob("muse-input-*.json")).read_bytes())
+        self.assertEqual(saved["operation"], "coordinate_action_unit")
+        self.assertEqual(self.provider.call_count, 1)
+        self.assertFalse(any(path == "/v1/commands" for path, _ in self.api.calls))
+        self.provider.reset_mock()
+        with self.assertRaises(ExecutionBlocked):
+            self.ports.review_coordinate_unit(unit(), tuple(executor.completed[:-1]), before, after)
+        self.provider.assert_not_called()
+
     def test_clearance_review_sends_three_originals_and_separates_visibility_from_stationarity(self):
         before = self.ports.capture()
         covered_bytes, clear_bytes = b"\xff\xd8covered-original\xff\xd9", b"\xff\xd8clear-original\xff\xd9"
