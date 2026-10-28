@@ -39,9 +39,10 @@ def read_profile(path, modules, motion):
 
 def _waiting_profile_result(error=None):
     return {"source": "rodi_host", "status": "waiting_reviewed_profile", "ready": False,
+            "listening": False, "receiver_session_active": False,
             "physical_execution": False, "begin_sent": False, "motion_issued": False,
             "mailbox_consumed": False, "automatic_retry": False,
-            "waiting_for_manual_play": True, "server_exit_is_robot_stop": False,
+            "waiting_for_manual_play": False, "server_exit_is_robot_stop": False,
             "profile_error_type": type(error).__name__ if error is not None else None}
 
 
@@ -56,13 +57,14 @@ def _host_status(runtime, modules, value):
 
 
 def capture_profile_wait(connection, peer, runtime, modules, profile_error):
-    """Read one bounded HELLO, then close without BEGIN or an execution session.
+    """Explicit diagnostic only: read one HELLO, then close without BEGIN.
 
-    The installed online script requires a genuinely reviewed motion profile
-    even for its persistent idle handshake. No substitute profile is invented.
-    Another manual PLAY is required after the explicit profile becomes valid.
+    Production profile waiting never calls this helper or opens a listener.
+    Keep the historical diagnostic available without presenting a captured
+    HELLO as a persistent receiver session. No substitute profile is invented.
     """
     result = _waiting_profile_result(profile_error)
+    result["waiting_for_manual_play"] = True
     journal = None
     try:
         g = modules["policy"]
@@ -221,46 +223,59 @@ def _session_unavailable(runtime, previous_pointer, modules, error):
     return result
 
 
+def wait_for_reviewed_profile(runtime, profile, modules):
+    """Poll explicit local configuration before opening any pendant socket.
+
+    A missing or malformed profile must never accept HELLO and strand the
+    unchanged pendant without BEGIN. Waiting performs no Native/wire calls or
+    session/mailbox reads. KeyboardInterrupt and SystemExit are not contained.
+    """
+    previous_error_type = None
+    while True:
+        try:
+            read_profile(profile, modules, True)
+            return
+        except (OSError, ValueError, KeyError, TypeError, AttributeError, UnicodeError, RecursionError) as error:
+            _host_status(runtime, modules, _waiting_profile_result(error))
+            error_type = type(error).__name__
+            if error_type != previous_error_type:
+                try:
+                    print("RODI_HOST_WAITING_REVIEWED_PROFILE; not listening; prepare the explicit reviewed profile before manual PLAY", flush=True)
+                except OSError:
+                    pass
+                previous_error_type = error_type
+            time.sleep(1)
+
+
 def serve(runtime, profile, modules, *, wait_for_profile=False):
     """One listener, fresh session per manual connection, no automatic motion."""
     import fcntl
     runtime = Path(runtime)
     with (runtime / "receiver-host.lock").open("a+") as ownership:
         fcntl.flock(ownership, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if wait_for_profile:
+            wait_for_reviewed_profile(runtime, profile, modules)
+        else:
+            read_profile(profile, modules, True)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
             listener.bind(("192.168.10.31", 19507))
             listener.listen(1)
-            if wait_for_profile:
-                _host_status(runtime, modules, _waiting_profile_result())
-                print("RODI_HOST_WAITING_REVIEWED_PROFILE; not ready; no BEGIN or motion without a valid explicit profile", flush=True)
-            else:
-                print("RODI_HOST_WAITING_FOR_MANUAL_PLAY; no replay; server exit is NOT robot stop", flush=True)
+            _host_status(runtime, modules, {"source": "rodi_host", "status": "waiting_for_manual_play",
+                "ready": False, "listening": True, "receiver_session_active": False,
+                "begin_sent": False, "motion_issued": False, "mailbox_consumed": False,
+                "automatic_retry": False, "waiting_for_manual_play": True,
+                "server_exit_is_robot_stop": False})
+            print("RODI_HOST_WAITING_FOR_MANUAL_PLAY; no replay; server exit is NOT robot stop", flush=True)
             while True:
                 connection, peer = listener.accept()
                 previous = _current_pointer(runtime)
-                execution_session_started = False
                 try:
                     with connection:
-                        if wait_for_profile:
-                            try:
-                                read_profile(profile, modules, True)
-                            except Exception as error:
-                                result = capture_profile_wait(connection, peer, runtime, modules, error)
-                            else:
-                                execution_session_started = True
-                                result = run_session(connection, peer, runtime, profile, modules)
-                                _host_status(runtime, modules, result)
-                        else:
-                            execution_session_started = True
-                            result = run_session(connection, peer, runtime, profile, modules)
+                        result = run_session(connection, peer, runtime, profile, modules)
                 except Exception as error:
                     # Includes Journal creation, exchange finalization and socket
                     # close errors. KeyboardInterrupt/SystemExit still exit.
-                    if wait_for_profile and not execution_session_started:
-                        result = {**_waiting_profile_result(), "diagnostic_error_type": type(error).__name__}
-                        _host_status(runtime, modules, result)
-                    else:
-                        result = _session_unavailable(runtime, previous, modules, error)
+                    result = _session_unavailable(runtime, previous, modules, error)
                 try:
                     print(json.dumps(result), flush=True)
                 except OSError:
@@ -276,7 +291,7 @@ def main(argv=None) -> int:
     parser.add_argument("--listen", action="store_true", help="Explicitly bind the GX10 pendant listener.")
     parser.add_argument("--motion", action="store_true", help="Match the installed online script motion flag; does not publish a target.")
     parser.add_argument("--wait-for-profile", action="store_true",
-                        help="Keep listening while the explicit reviewed profile is missing/invalid; capture HELLO only, never send BEGIN in that state.")
+                        help="Wait without opening a pendant listener until the explicit reviewed profile is valid, then use the normal persistent session protocol.")
     args = parser.parse_args(argv)
     if args.listen != args.motion:
         parser.error("Network mode requires both --listen and --motion.")

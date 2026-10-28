@@ -1,4 +1,4 @@
-"""Equipment-free profile-wait listener checks; no controller or sockets opened."""
+"""Equipment-free pre-listener profile waiting and explicit HELLO diagnostics."""
 from __future__ import annotations
 
 import copy
@@ -214,43 +214,145 @@ class ProfileWaitTests(unittest.TestCase):
         journal.close.assert_called_once()
         self.assert_no_execution(connection)
 
-    def serve_connections(self, connections):
+    def serve_connections(self, connections, *, wait_for_profile=True, before_socket=None):
         listener = Mock()
         listener.__enter__ = Mock(return_value=listener)
         listener.__exit__ = Mock(return_value=False)
         listener.accept.side_effect = [*( (connection, ("192.168.10.10", index))
                                          for index, connection in enumerate(connections) ), KeyboardInterrupt]
         fcntl = SimpleNamespace(LOCK_EX=2, LOCK_NB=4, flock=Mock())
+
+        def open_listener(*args):
+            if before_socket is not None:
+                before_socket()
+            return listener
+
         with patch.dict(sys.modules, {"fcntl": fcntl}), \
-             patch.object(host.socket, "socket", return_value=listener), \
+             patch.object(host.socket, "socket", side_effect=open_listener), \
              patch("sys.stdout", new_callable=io.StringIO):
             with self.assertRaises(KeyboardInterrupt):
-                host.serve(self.root, self.root / "new-profile.json", self.modules, wait_for_profile=True)
+                host.serve(self.root, self.root / "new-profile.json", self.modules,
+                           wait_for_profile=wait_for_profile)
         listener.bind.assert_called_once_with(("192.168.10.31", 19507))
         return listener
 
-    def test_missing_and_invalid_profiles_never_reach_normal_session_then_valid_profile_can(self):
-        connections = [Connection(self.packet) for _ in range(3)]
-        with patch.object(host, "read_profile", side_effect=[FileNotFoundError(), ValueError(), (b"{}", {})]), \
-             patch.object(host, "run_session", return_value={"status": "blocked"}) as session:
-            listener = self.serve_connections(connections)
-        session.assert_called_once_with(connections[2], ("192.168.10.10", 2), self.root,
-                                        self.root / "new-profile.json", self.modules)
-        self.assertEqual(listener.accept.call_count, 4)
-        for connection in connections:
-            self.assert_no_execution(connection)
+    def assert_wait_has_no_receiver_access(self):
+        self.modules["transport"].Native.assert_not_called()
+        self.modules["transport"].Wire.assert_not_called()
+        self.modules["transport"].read_stationary.assert_not_called()
+        self.modules["server"].exchange.assert_not_called()
+        self.modules["server"].environment_check.assert_not_called()
+        self.assertEqual(self.pointer.read_text(), '{"path":"historical"}')
+        self.assertEqual((self.old / "command.json").read_text(), "Never replay or remove this historical request.")
 
-    def test_pending_connection_close_failure_does_not_invalidate_historical_pointer(self):
-        connections = [Connection(self.packet, close_error=True), Connection(self.packet)]
-        with patch.object(host, "read_profile", side_effect=FileNotFoundError()), \
+    def test_missing_and_invalid_profiles_are_rechecked_before_any_listener_then_normal_session_runs(self):
+        connection = Connection(self.packet)
+        sleeps = []
+
+        def wait(seconds):
+            self.assertEqual(seconds, 1)
+            sleeps.append(seconds)
+            status = json.loads((self.root / "host-status.json").read_text())
+            self.assertEqual(status["status"], "waiting_reviewed_profile")
+            self.assertFalse(status["listening"])
+            self.assertFalse(status["waiting_for_manual_play"])
+            self.assert_wait_has_no_receiver_access()
+
+        with patch.object(host, "read_profile", side_effect=[FileNotFoundError(), ValueError(), (b"{}", {})]), \
+             patch.object(host, "run_session", return_value={"status": "blocked"}) as session, \
+             patch.object(host, "capture_profile_wait") as capture, \
+             patch.object(host, "_current_pointer", wraps=host._current_pointer) as pointer, \
+             patch.object(host.time, "sleep", side_effect=wait):
+            def before_socket():
+                self.assertEqual(sleeps, [1, 1])
+                pointer.assert_not_called()
+                session.assert_not_called()
+                capture.assert_not_called()
+            listener = self.serve_connections([connection], before_socket=before_socket)
+        session.assert_called_once_with(connection, ("192.168.10.10", 0), self.root,
+                                        self.root / "new-profile.json", self.modules)
+        self.assertEqual(listener.accept.call_count, 2)
+        capture.assert_not_called()
+        self.assert_wait_has_no_receiver_access()
+
+    def test_missing_profile_never_opens_a_port_even_if_a_pendant_would_attempt_play(self):
+        listener = Mock()
+        listener.accept.side_effect = AssertionError("An unprepared host must not accept a pendant HELLO")
+        fcntl = SimpleNamespace(LOCK_EX=2, LOCK_NB=4, flock=Mock())
+        with patch.dict(sys.modules, {"fcntl": fcntl}), \
+             patch.object(host.socket, "socket", return_value=listener) as opened, \
+             patch.object(host.time, "sleep", side_effect=KeyboardInterrupt), \
+             patch.object(host, "capture_profile_wait") as capture, \
+             patch.object(host, "_current_pointer") as pointer, \
+             patch("sys.stdout", new_callable=io.StringIO):
+            with self.assertRaises(KeyboardInterrupt):
+                host.serve(self.root, self.root / "missing-profile.json", self.modules, wait_for_profile=True)
+        opened.assert_not_called()
+        listener.bind.assert_not_called()
+        listener.listen.assert_not_called()
+        listener.accept.assert_not_called()
+        capture.assert_not_called()
+        pointer.assert_not_called()
+        self.assert_wait_has_no_receiver_access()
+
+    def test_wait_recovers_from_local_profile_io_errors_with_one_second_polling(self):
+        failures = [PermissionError("Synthetic profile unavailable"), OSError("Synthetic read failure")]
+        with patch.object(host, "read_profile", side_effect=[*failures, (b"{}", {})]) as read, \
+             patch.object(host.time, "sleep") as sleep, \
+             patch.object(host.socket, "socket") as opened, \
+             patch("sys.stdout", new_callable=io.StringIO):
+            host.wait_for_reviewed_profile(self.root, self.root / "new-profile.json", self.modules)
+        self.assertEqual(read.call_count, 3)
+        self.assertEqual(sleep.call_args_list, [unittest.mock.call(1), unittest.mock.call(1)])
+        opened.assert_not_called()
+        self.assert_wait_has_no_receiver_access()
+
+    def test_new_valid_profile_file_starts_the_existing_session_without_hello_diagnostics(self):
+        profile = self.root / "new-profile.json"
+        profile.write_text("{}")
+        reviewed = {"synthetic_reviewed": True, "allow_motion": True, "site_verified": True}
+
+        def prepare_current_profile(seconds):
+            self.assertEqual(seconds, 1)
+            self.assert_wait_has_no_receiver_access()
+            profile.write_text(json.dumps(reviewed))
+
+        connection = Connection(self.packet)
+        with patch.object(host.time, "sleep", side_effect=prepare_current_profile) as sleep, \
+             patch.object(host, "capture_profile_wait") as capture, \
+             patch.object(host, "run_session", return_value={"status": "blocked"}) as session:
+            listener = self.serve_connections([connection])
+        sleep.assert_called_once_with(1)
+        session.assert_called_once_with(connection, ("192.168.10.10", 0), self.root, profile, self.modules)
+        capture.assert_not_called()
+        self.assertEqual(listener.accept.call_count, 2)
+        status = json.loads((self.root / "host-status.json").read_text())
+        self.assertEqual(status["status"], "waiting_for_manual_play")
+        self.assertTrue(status["listening"])
+        self.assertFalse(status["ready"])
+
+    def test_nonwaiting_serve_rejects_invalid_profile_before_opening_listener(self):
+        fcntl = SimpleNamespace(LOCK_EX=2, LOCK_NB=4, flock=Mock())
+        with patch.dict(sys.modules, {"fcntl": fcntl}), \
+             patch.object(host.socket, "socket") as opened, \
              patch.object(host, "run_session") as session, \
-             patch.object(host, "_session_unavailable") as unavailable:
-            listener = self.serve_connections(connections)
+             patch.object(host.time, "sleep") as sleep:
+            with self.assertRaises(ValueError):
+                host.serve(self.root, self.root / "missing-profile.json", self.modules)
+        opened.assert_not_called()
         session.assert_not_called()
-        unavailable.assert_not_called()
-        self.assertEqual(listener.accept.call_count, 3)
-        for connection in connections:
-            self.assert_no_execution(connection)
+        sleep.assert_not_called()
+        self.assert_wait_has_no_receiver_access()
+
+    def test_profile_invalidated_after_listener_precheck_never_reaches_native_or_wire(self):
+        profile = self.root / "new-profile.json"
+        profile.write_text("{}")
+        result = host.run_session(Connection(self.packet), ("192.168.10.10", 1), self.root, profile, self.modules)
+        self.assertEqual(result["status"], "blocked")
+        self.modules["transport"].Native.assert_not_called()
+        self.modules["transport"].Wire.assert_not_called()
+        self.modules["server"].exchange.assert_not_called()
+        self.assertEqual(self.pointer.read_text(), '{"path":"historical"}')
 
     def test_unbounded_or_unreviewed_profile_is_rejected(self):
         profile = self.root / "new-profile.json"

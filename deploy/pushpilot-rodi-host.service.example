@@ -1,5 +1,5 @@
 [Unit]
-Description=PushPilot pendant listener waiting for a current reviewed profile
+Description=PushPilot host preparation and reviewed-profile pendant listener
 After=network.target
 
 [Service]

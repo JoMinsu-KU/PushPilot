@@ -1,10 +1,12 @@
 # GX10 robot commissioning deployment
 
-This is separate from the tablet application, POC runtime and standalone camera. See [behavior and commissioning order](../docs/ROBOT_CONTROL.md). Do not establish a physical execution session without a newly measured reviewed installation/profile. The explicitly selected profile-wait listener below may open the pendant port before that profile exists, but cannot send BEGIN or enter persistent idle in that state.
+This is separate from the tablet application, POC runtime and standalone camera. See [behavior and commissioning order](../docs/ROBOT_CONTROL.md). Do not establish a physical execution session without a newly measured reviewed installation/profile. The explicit profile-wait mode below keeps its preparation process alive, but does not open the pendant port before that profile is valid.
 
 **Installed October 28, 2026, 01:17 KST:** `pushpilot-robot-control.service` is active/enabled, serving the isolated API from `6cfe6d2` at GX10 loopback 8897. Startup is disarmed, receiver disconnected, no installation loaded and no commands created. The separate physical listener remains stopped. Dependencies and 64 equipment-free tests passed on Python 3.12.3 ARM64; authenticated status, rejection behavior and existing web/camera retention were checked. See [the scoped evidence](../docs/evidence/robot-control-20261028.json). User lingering is disabled; startup after reboot without login is unverified. No shared login/boot policy was changed.
 
-**Later profile-wait startup, October 28:** source `98b2a19` was installed separately for `pushpilot-rodi-host.service`, manually started without boot activation. The configured pendant port is now listening while its new explicit reviewed profile path is absent. Status is `waiting_reviewed_profile`, not persistent idle. No BEGIN, mailbox consumption or motion occurred. The already running API/web PIDs and exact camera reference/epoch remained unchanged. All 474 equipment-free tests passed on GX10; the private protocol hashes were independently checked. [Current evidence](../docs/evidence/rodi-profile-wait-20261028.json) supersedes only the earlier listener-stopped status above.
+**Historical profile-wait startup, October 28:** source `98b2a19` was installed separately for `pushpilot-rodi-host.service`, manually started without boot activation. It opened the pendant port while its explicit reviewed profile path was absent. No BEGIN, mailbox consumption or motion occurred. The API/web PIDs and exact camera reference/epoch remained unchanged. All 474 equipment-free tests passed on GX10; the private protocol hashes were independently checked. [Historical startup evidence](../docs/evidence/rodi-profile-wait-20261028.json) records that limited state.
+
+**Protocol correction, October 28:** actual pendant HELLO packets subsequently confirmed `poc-persistent-v1`, but the missing-profile branch closed without BEGIN. This is not persistent operation and unnecessarily strands the installed script. Profile waiting now validates and retries local configuration before binding/listening; the preparation process stays alive with `listening: false`. It opens the port only after a genuine reviewed profile is available and then uses the original persistent exchange. The exact pendant `45102` numeric error remains unproven. See [the POC receiver review](../docs/POC_RECEIVER_REVIEW.md) and [correction evidence](../docs/evidence/rodi-startup-correction-20261028.json) for deployed status and verification boundaries.
 
 ## Files and process arrangement
 
@@ -45,18 +47,18 @@ This opens the local HTTP service and exclusive mailbox ownership only. With no 
 
 ## Deliberate physical host startup tomorrow
 
-### Listen while current measurements are being prepared
+### Keep preparation alive while current measurements are being prepared
 
 ```sh
 python tools/serve_rodi_host.py --runtime <shared/receiver> \
   --profile <new-absent-reviewed-profile.json> --listen --motion --wait-for-profile
 ```
 
-Use a new explicit private path, never an old profile. This mode keeps the listener available when that profile is missing/invalid. It accepts only a bounded HELLO from the configured pendant peer, logs unqualified telemetry privately and closes without BEGIN, Native calls, command consumption or motion. It preserves the current session pointer and historical mailboxes. Per-connection errors leave the listener waiting. `host-status.json` truthfully reports `waiting_reviewed_profile`, `ready: false`.
+Use a new explicit private path, never an old profile. When it is missing/invalid, this mode waits and revalidates once per second without creating a pendant socket, reading Native state or consuming commands. It preserves the current session pointer and historical mailboxes. `host-status.json` reports `waiting_reviewed_profile`, `listening: false`, `ready: false` and `waiting_for_manual_play: false`. A running process is not a ready receiver. Do not ask the operator to PLAY at this stage.
 
-The installed script's local motion flag is true; `--motion` matches that protocol flag and does not invent a reviewed profile. A false `allow_motion`/`site_verified` placeholder cannot complete the installed BEGIN check. Do not manufacture true qualification flags merely to retain idle. The pendant exits after a profile-wait connection; one fresh manual PLAY is needed after a genuine profile is ready. No script editing is required. This state is a listening port, not an established persistent session or armed robot.
+The installed script's local motion flag is true; `--motion` matches that protocol flag and does not invent a reviewed profile. A false `allow_motion`/`site_verified` placeholder cannot complete the installed BEGIN check. Do not manufacture true qualification flags merely to retain idle. After a genuine profile becomes valid, the host reports `waiting_for_manual_play` and `listening: true`; then one fresh manual PLAY can establish the original persistent session. No script editing is required for this qualified path. Approximately +/-2 mm operator-reported clearance and stationary telemetry alone do not establish reviewed installation/contact geometry.
 
-The [separate host service template](pushpilot-rodi-host.service.example) uses `Restart=on-failure` to restore listening, not commands. Start it deliberately; do not enable automatic boot with an old profile. Keep the existing API/camera/web processes running. Its code release may differ from the already running API; record both identities independently.
+The [separate host service template](pushpilot-rodi-host.service.example) uses `Restart=on-failure` to restore host preparation, not commands. Start it deliberately; do not enable automatic boot with an old profile. Keep the existing API/camera/web processes running. Its code release may differ from the already running API; record both identities independently.
 
 ### Establish persistent idle with a reviewed profile
 
