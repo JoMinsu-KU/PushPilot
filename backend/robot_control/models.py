@@ -111,6 +111,131 @@ class LocalContactInstallation(LocalBaseInstallation):
         return self
 
 
+class TeachingOrientation(StrictModel):
+    id: str = Field(min_length=1, max_length=80)
+    rxyz_deg: list[Number] = Field(min_length=3, max_length=3)
+
+
+class TeachingRotationAnchor(StrictModel):
+    id: str = Field(min_length=1, max_length=80)
+    xyz_base_mm: list[Number] = Field(min_length=3, max_length=3)
+    site_verified: bool = Field(strict=True)
+    review_reference: str = Field(min_length=10, max_length=500)
+    position_window_mm: Number = Field(ge=0, le=20)
+    max_in_place_correction_mm: Number = Field(ge=0, le=20)
+    window_and_correction_reviewed: bool = Field(strict=True)
+
+
+class TeachingRotationEdge(StrictModel):
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False, populate_by_name=True)
+    id: str = Field(min_length=1, max_length=80)
+    from_orientation: str = Field(alias="from", min_length=1, max_length=80)
+    to: str = Field(min_length=1, max_length=80)
+    anchor_id: str = Field(min_length=1, max_length=80)
+    site_verified: bool = Field(strict=True)
+    review_reference: str = Field(min_length=10, max_length=500)
+    expected_source_joint_deg: list[Number] = Field(min_length=6, max_length=6)
+    expected_target_joint_deg: list[Number] = Field(min_length=6, max_length=6)
+    wrist_only: bool = Field(default=False, strict=True)
+    joint_path_reviewed: bool = Field(default=False, strict=True)
+
+
+class TeachingRotationRuntime(StrictModel):
+    verified: bool = Field(strict=True)
+    primitive: Literal["moveLinear_tcp", "moveJoint_wrist"]
+    controller_version: str = Field(min_length=1, max_length=100)
+    argument_semantics: str = Field(min_length=1, max_length=500)
+    speed_argument: Number = Field(ge=0, le=10)
+    accel_argument: Number = Field(ge=0, le=20)
+    completion_timeout_s: Number = Field(ge=0, le=300)
+    review_reference: str = Field(min_length=10, max_length=500)
+
+
+class PlanarTeachingInstallation(StrictModel):
+    """Reviewed car-removed BASE teaching, without a board/contact qualification.
+
+    Software ceilings are not measurements. Rotation requires separately
+    reviewed fixed-XYZ anchors, finite poses and inherited receiver preflight.
+    """
+    scope: Literal["planar_teaching"]
+    installation_id: str = Field(min_length=1, max_length=80)
+    tcp_id: str = Field(min_length=1, max_length=80)
+    tcp_definition_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    tool_id: str = Field(min_length=1, max_length=80)
+    payload_kg: Number = Field(ge=0, le=10000)
+    review_reference: str = Field(min_length=10, max_length=500)
+    qualified: bool = Field(default=False, strict=True)
+    on_site_review: bool = Field(default=False, strict=True)
+    car_removed: bool = Field(strict=True)
+    noncontact_teaching_authorized: bool = Field(strict=True)
+    workspace_min_mm: list[Number] = Field(min_length=3, max_length=3)
+    workspace_max_mm: list[Number] = Field(min_length=3, max_length=3)
+    fixed_tcp_z_mm: Number
+    fixed_roll_pitch_deg: list[Number] = Field(min_length=2, max_length=2)
+    tcp_clearance_margin_mm: Number = Field(default=0, ge=0)
+    inflated_keepout_boxes_base_mm: list[list[Number]] = Field(max_length=16)
+    orientations: list[TeachingOrientation] = Field(min_length=1, max_length=8)
+    rotation_anchors: list[TeachingRotationAnchor] = Field(max_length=8)
+    rotation_edges: list[TeachingRotationEdge] = Field(max_length=32)
+    rotation_runtime: TeachingRotationRuntime
+    max_step_mm: Number = Field(default=1, gt=0, le=20)
+    max_speed_mm_s: Number = Field(default=1, gt=0, le=10)
+    max_accel_mm_s2: Number = Field(default=2, gt=0, le=20)
+
+    @model_validator(mode="after")
+    def teaching_limits(self):
+        lower, upper, margin = self.workspace_min_mm, self.workspace_max_mm, self.tcp_clearance_margin_mm
+        if not all(-10000 <= a < b <= 10000 and b-a <= (1000 if i < 2 else 2)
+                   and a+2*margin < b for i, (a, b) in enumerate(zip(lower, upper))):
+            raise ValueError("Supply reviewed finite BASE bounds, XY span <=1000 mm and fixed-Z slab <=2 mm.")
+        if not lower[2]+margin <= self.fixed_tcp_z_mm <= upper[2]-margin:
+            raise ValueError("Fixed Z must lie within the reviewed slab.")
+        poses = {pose.id: pose.rxyz_deg for pose in self.orientations}
+        if len(poses) != len(self.orientations) or any(
+            pose[:2] != self.fixed_roll_pitch_deg or any(not -180 <= a <= 180 for a in pose)
+            for pose in poses.values()
+        ):
+            raise ValueError("Finite unique orientations must retain the reviewed literal roll/pitch.")
+        if any(all(abs((a-b+180) % 360-180) <= .6 for a, b in zip(first, second))
+               for index, first in enumerate(poses.values()) for second in list(poses.values())[index+1:]):
+            raise ValueError("Orientation tolerance regions must not overlap.")
+        if any(len(box) != 6 or any(not -10000 <= a <= 10000 for a in box)
+               or any(box[i] > box[i+3] for i in range(3)) for box in self.inflated_keepout_boxes_base_mm):
+            raise ValueError("Supply ordered inflated six-number BASE keepouts.")
+        anchors = {anchor.id: anchor for anchor in self.rotation_anchors}
+        if len(anchors) != len(self.rotation_anchors):
+            raise ValueError("Rotation anchors need unique IDs.")
+        for anchor in anchors.values():
+            if (not anchor.site_verified or not anchor.window_and_correction_reviewed
+                or anchor.max_in_place_correction_mm > anchor.position_window_mm
+                or anchor.xyz_base_mm[2] != self.fixed_tcp_z_mm
+                or any(not lower[i]+margin <= value <= upper[i]-margin
+                       for i, value in enumerate(anchor.xyz_base_mm))):
+                raise ValueError("Each fixed-Z rotation anchor needs its actual swept-window review.")
+        if len({edge.id for edge in self.rotation_edges}) != len(self.rotation_edges):
+            raise ValueError("Rotation edges need unique IDs.")
+        runtime = self.rotation_runtime
+        if runtime.verified and not (runtime.speed_argument > 0 and runtime.accel_argument > 0
+                                     and runtime.completion_timeout_s > 0):
+            raise ValueError("Verified rotation runtime needs measured positive argument semantics.")
+        for edge in self.rotation_edges:
+            if (not runtime.verified or not edge.site_verified or edge.anchor_id not in anchors
+                or edge.from_orientation not in poses or edge.to not in poses or edge.from_orientation == edge.to
+                or any(not -360 <= a <= 360 for a in edge.expected_source_joint_deg+edge.expected_target_joint_deg)):
+                raise ValueError("Each directed rotation edge needs reviewed runtime, anchor, poses and joints.")
+            if runtime.primitive == "moveJoint_wrist":
+                if (not edge.wrist_only or not edge.joint_path_reviewed
+                    or edge.expected_source_joint_deg[:5] != edge.expected_target_joint_deg[:5]
+                    or not 0 < abs(edge.expected_source_joint_deg[5]-edge.expected_target_joint_deg[5]) <= 90
+                    or runtime.completion_timeout_s < 15):
+                    raise ValueError("Wrist-only edges retain inherited joint, path and <=90 degree limits.")
+            elif any(abs(a-b) >= 180 for a, b in zip(poses[edge.from_orientation], poses[edge.to])):
+                raise ValueError("Linear rotation cannot cross an Euler branch.")
+        if self.qualified and not (self.on_site_review and self.car_removed and self.noncontact_teaching_authorized):
+            raise ValueError("Teaching qualification requires actual site review, removed car and explicit noncontact authorization.")
+        return self
+
+
 class RobotCommand(StrictModel):
     request_id: UUID
     kind: Literal["inspect_current", "inspect_ik", "profile_update", "translate", "rotate"]

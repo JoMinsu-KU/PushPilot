@@ -2,6 +2,20 @@
 
 # Teach a fixed frame once. Compute the road between endpoints.
 
+## Current mode: directly taught destinations
+
+On October 29 the operator selected the actual manually taught BASE positions B, C and D as the destination references. This mode uses those controller coordinates directly and does not require a drawing-to-BASE transform. The earlier nominal-map calibration remains rejected: the A/B/C unit-scale fit has a maximum 11.42 mm residual, and its reserved D/E numerical discrepancies are 2.87/6.47 mm. Reusing the records as operator-selected BASE goals does not make the map calibration pass or establish vehicle arrival.
+
+`backend/robot_control/taught_roads.py` constructs route proposals from the taught lower A–B and upper C–D frontage lines. E locates a proposed perpendicular connecting road. This perpendicularity is an explicit layout assumption; proposed junctions and complete tool/arm/hose sweeps need actual review. B uses the lower frontage. C/D use the connector and their respective upper frontage. The algorithm uses no image coordinates, map artwork or printer scale. Every proposal preserves the observation hashes, fixed taught Z/orientation and missing physical qualifications.
+
+Run `python tools/preview_taught_roads.py <private-input.json>` for geometry and optional route previews. Actual operating poses and source evidence stay outside Git. Input contains five `points`, each with `id`, `pose_base_mm_deg` and `observation_sha256`; an optional fresh `start` has the same fields. Without a fresh start, the tool does not substitute historical calibration point A as the car start. The utility never contacts a service or dispatches a move.
+
+The operator then placed the car and selected its actual rear-contact START as the fixed reference. Three identical manual-mode Native reads captured that pose, and an unchanged original live frame documented the car/tool setup. Manual-control flags remain explicitly labelled; a stationary coordinate record is not controller execution readiness. START and the five taught coordinates are stored privately. Recheck the current actual pose before motion; selecting a fixed start never authorizes replay of interrupted commands or automatic recovery to it.
+
+`next_fixed_pose_target` proposes one bounded point from the latest actual TCP toward a fixed-pose endpoint. It does not queue or replay an entire road. The execution service still requires a current installation/profile, low-speed limits, exact receiver binding and measured endpoint receipts. The first car test is a separately reviewed short straight contact trial from the actual start. Reaching B with a car, recovering drift, and pushing through the two turns needed for C/D remain physical tests. Geometric direction changes are not gripper rotation commands: changed yaw needs a measured contact-face/TCP offset, reviewed rotation/recontact paths and observed car response.
+
+The taught endpoints currently describe the TCP at one tool orientation. Keep robot-reference completion and vehicle task completion separate. A lost/occluded car result waits for a new outcome observation; it must neither terminate the independent receiver heartbeat nor advance a destination as successful.
+
 The October 28 operator correction supersedes gripper-image tracking as the execution basis. The map is a flat surface; its oblique camera appearance does not make a road curved. The executor uses controller TCP coordinates and a fixed map-to-BASE relation. It must not locate the rubber tip in each image to decide where the robot is.
 
 | Responsibility | Source |

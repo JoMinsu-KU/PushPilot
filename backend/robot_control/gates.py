@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import math
 
-from .models import LocalBaseInstallation, LocalContactInstallation
+from .models import LocalBaseInstallation, LocalContactInstallation, PlanarTeachingInstallation
 
 # Native FC03 uses 0.1 mm / degree registers while pendant HELLO retains full
 # precision. This allowance compares two representations of the same baseline;
@@ -353,6 +353,148 @@ def _admit_contact(command: dict, installation: dict, receiver: dict) -> None:
              "STEP_LIMIT", "Use one bounded step within the current approach or contact-trial limit.")
 
 
+def _same_json(left, right) -> bool:
+    """Numeric JSON equality without accepting booleans as review numbers."""
+    if _number(left) and _number(right):
+        return left == right
+    if type(left) is not type(right):
+        return False
+    if type(left) is dict:
+        return set(left) == set(right) and all(_same_json(left[key], right[key]) for key in left)
+    if type(left) is list:
+        return len(left) == len(right) and all(_same_json(a, b) for a, b in zip(left, right))
+    return left == right
+
+
+def planar_teaching_profile_binding(installation: dict) -> dict:
+    """Bind the complete physical teaching review, with no map/contact claim."""
+    return {"source": "reviewed_noncontact_planar_teaching", **installation,
+            "site_review_explicit": True, "board_registration_qualified": False,
+            "vehicle_control_qualified": False, "car_turn_qualified": False}
+
+
+def _teaching_inside(pose: list, profile: dict) -> None:
+    bounds = profile["tcp_bounds_base_mm"]
+    margin = profile["tcp_clearance_margin_mm"]
+    _require(all(bounds[i]+margin <= pose[i] <= bounds[i+3]-margin for i in range(3)),
+             "OUTSIDE_WORKSPACE", "Teaching TCP lies outside the actual reviewed BASE envelope.")
+    _require(not any(_teaching_hits(pose, pose, box) for box in profile["inflated_keepout_boxes_base_mm"]),
+             "INSIDE_KEEPOUT", "Teaching TCP intersects an inflated keepout.")
+
+
+def _teaching_hits(source: list, target: list, box: list) -> bool:
+    low, high = 0., 1.
+    for index in range(3):
+        delta = target[index]-source[index]
+        if abs(delta) < 1e-12:
+            if not box[index] <= source[index] <= box[index+3]:
+                return False
+        else:
+            first, second = (box[index]-source[index])/delta, (box[index+3]-source[index])/delta
+            low, high = max(low, min(first, second)), min(high, max(first, second))
+            if low > high:
+                return False
+    return True
+
+
+def validate_planar_teaching_profile(installation: dict, receiver: dict) -> dict:
+    try:
+        local = PlanarTeachingInstallation.model_validate(installation).model_dump(mode="json", by_alias=True)
+    except (ValueError, TypeError):
+        raise GuardError("TEACHING_INSTALLATION_INVALID", "Use a complete actual noncontact planar teaching review.") from None
+    _require(local["qualified"] is True and local["on_site_review"] is True
+             and local["car_removed"] is True and local["noncontact_teaching_authorized"] is True,
+             "INSTALLATION_UNQUALIFIED", "Current physical review and car-removed noncontact authorization are required.")
+    _require(receiver.get("physical_execution") is True, "PHYSICAL_RECEIVER_REQUIRED", "Physical receiver execution must be explicit.")
+    profile = receiver.get("profile")
+    _require(type(profile) is dict and profile.get("scope") == "planar_teaching", "PROFILE_SCOPE", "Use a genuine planar_teaching profile.")
+    _require(profile.get("schema") == "pushpilot.hcr1-pose-profile.experimental-v1"
+             and profile.get("coordinate_frame") == "robot_base_mm" and profile.get("pose_type") == "tcp",
+             "PROFILE_SCOPE", "Teaching retains the installed BASE TCP profile schema.")
+    _require(profile.get("allow_motion") is True and profile.get("site_verified") is True,
+             "PROFILE_UNQUALIFIED", "Actual teaching site review must permit this motion.")
+    _require(not any(key in profile for key in ("map_id", "map_hash", "calibration_id", "camera_epoch", "registration_id",
+                                               "board_registration_qualified", "vehicle_control_qualified", "car_turn_qualified")),
+             "PROFILE_SCOPE", "Uncalibrated teaching cannot claim board or camera qualification.")
+    _require(_same_json(profile.get("installation_binding"), planar_teaching_profile_binding(local)),
+             "PROFILE_INSTALLATION_BINDING", "Profile must exactly bind the complete actual teaching review.")
+    _require(profile.get("tcp_id") == local["tcp_id"] and _same_json(profile.get("payload_kg"), local["payload_kg"]),
+             "TEACHING_TOOL_BINDING", "Profile tool and payload must match the reviewed setup.")
+    bounds = _vector(profile.get("tcp_bounds_base_mm"), 6, "PROFILE_BOUNDS")
+    _require(all(local["workspace_min_mm"][i] <= bounds[i] < bounds[i+3] <= local["workspace_max_mm"][i] for i in range(3)),
+             "PROFILE_BOUNDS", "Profile cannot exceed reviewed BASE bounds.")
+    for key in ("tcp_clearance_margin_mm", "inflated_keepout_boxes_base_mm", "orientations", "rotation_anchors", "rotation_edges", "rotation_runtime"):
+        _require(_same_json(profile.get(key), local[key]), "TEACHING_REVIEW_BINDING", f"Profile must retain reviewed {key} exactly.")
+    for field, key in (("translation_speed_mm_s", "max_speed_mm_s"), ("translation_accel_mm_s2", "max_accel_mm_s2"), ("max_translation_mm", "max_step_mm")):
+        _require(_number(profile.get(field)) and 0 < profile[field] <= local[key], "PROFILE_LIMIT", f"Teaching {field} exceeds its reviewed limit.")
+    source = _vector(receiver.get("actual_pose"), 6, "ROBOT_POSE_INVALID")
+    _teaching_inside(source, profile)
+    _require(abs(source[2]-local["fixed_tcp_z_mm"]) <= NATIVE_BASELINE_COMPARISON_QUANTIZATION,
+             "TEACHING_Z_CHANGED", "Current Z differs from the fixed teaching baseline.")
+    _require(all(abs(a-b) <= NATIVE_BASELINE_COMPARISON_QUANTIZATION for a, b in zip(source[3:5], local["fixed_roll_pitch_deg"]))
+             and any(all(abs(a-b) <= NATIVE_BASELINE_COMPARISON_QUANTIZATION for a, b in zip(source[3:], pose["rxyz_deg"])) for pose in local["orientations"]),
+             "ORIENTATION_CHANGED", "Current literal orientation is outside the finite reviewed teaching set.")
+    return local
+
+
+def _admit_planar_teaching_refresh(command: dict, installation: dict, receiver: dict, *, armed: bool, held: bool) -> None:
+    _require(armed is False and held is True, "TEACHING_REFRESH_REQUIRES_HOLD", "Teaching handoff requires explicit disarmed HOLD.")
+    _require(command.get("purpose") == "commissioning" and command.get("target") is None and command.get("edge_id") is None,
+             "TEACHING_OPERATION_FORBIDDEN", "Teaching handoff contains no motion or contact.")
+    _require(command.get("installation_id") == installation.get("installation_id"), "INSTALLATION_MISMATCH", "Bind the new teaching review.")
+    current, candidate = receiver.get("profile"), command.get("profile")
+    _require(type(current) is dict and current.get("scope") in {"local_base_commissioning", "planar_teaching"},
+             "PROFILE_SCOPE", "Handoff accepts only a local BASE or existing planar teaching profile.")
+    local = validate_planar_teaching_profile(installation, {**receiver, "profile": candidate})
+    for key in ("schema", "coordinate_frame", "pose_type", "tcp_id", "payload_kg", "allow_motion"):
+        _require(_same_json(current.get(key), candidate.get(key)), "TEACHING_TOOL_BINDING", f"Handoff cannot change {key}.")
+    old_binding = current.get("installation_binding")
+    _require(type(old_binding) is dict and old_binding.get("scope") == current["scope"]
+             and all(_same_json(old_binding.get(key), local[key]) for key in ("tcp_id", "tcp_definition_sha256", "tool_id", "payload_kg")),
+             "TEACHING_TOOL_BINDING", "Handoff must preserve the exact physical TCP definition, tool and payload.")
+    _require(old_binding.get("installation_id") != local["installation_id"] and old_binding.get("review_reference") != local["review_reference"],
+             "TEACHING_NEW_REVIEW_REQUIRED", "Handoff requires a distinct current installation and site review.")
+    source = _vector(receiver.get("actual_pose"), 6, "ROBOT_POSE_INVALID")
+    joints = _vector(receiver.get("actual_joint"), 6, "ROBOT_JOINT_INVALID")
+    _require(_same_json(candidate.get("expected_start_tcp_mm_deg"), source)
+             and _same_json(candidate.get("expected_start_joint_deg"), joints)
+             and local["fixed_tcp_z_mm"] == source[2] and local["fixed_roll_pitch_deg"] == source[3:5],
+             "TEACHING_BASELINE_CHANGED", "Handoff requires the exact fresh full-precision TCP/joint baseline and unchanged Z/roll/pitch.")
+
+
+def _admit_planar_teaching(command: dict, installation: dict, receiver: dict) -> None:
+    kind, purpose = command.get("kind"), command.get("purpose")
+    _require((kind == "translate" and purpose == "commissioning") or (kind == "rotate" and purpose == "tool_reposition"),
+             "TEACHING_OPERATION_FORBIDDEN", "Teaching permits free translation or separate anchored tool rotation; no contact.")
+    local = validate_planar_teaching_profile(installation, receiver)
+    _require(command.get("installation_id") == local["installation_id"], "INSTALLATION_MISMATCH", "Bind the current teaching installation.")
+    source, target, profile = receiver["actual_pose"], _vector(command.get("target"), 6, "TARGET_INVALID"), receiver["profile"]
+    _teaching_inside(target, profile)
+    _require(target[2] == source[2], "TEACHING_Z_CHANGED", "Every teaching command retains exact current Z.")
+    _require(target[3:5] == source[3:5], "TEACHING_ROLL_PITCH_CHANGED", "Every teaching command retains literal roll and pitch.")
+    if kind == "translate":
+        _require(target[3:] == source[3:], "ORIENTATION_CHANGED", "Translation cannot also change yaw.")
+        _require(command.get("edge_id") is None, "TEACHING_OPERATION_FORBIDDEN", "Translation cannot carry a rotation edge.")
+        _require(0 < math.dist(source[:3], target[:3]) <= min(local["max_step_mm"], profile["max_translation_mm"]),
+                 "STEP_LIMIT", "Use one nonzero reviewed teaching step.")
+        _require(not any(_teaching_hits(source, target, box) for box in profile["inflated_keepout_boxes_base_mm"]),
+                 "CROSSES_KEEPOUT", "Teaching segment intersects an inflated keepout.")
+        return
+    _require(target[:3] == source[:3], "ROTATION_TRANSLATES", "Teaching yaw rotation holds XYZ exactly.")
+    edges = [edge for edge in local["rotation_edges"] if edge["id"] == command.get("edge_id")]
+    _require(len(edges) == 1 and local["rotation_runtime"]["verified"] is True, "ROTATION_EDGE", "A reviewed directed rotation edge and runtime are required.")
+    edge = edges[0]
+    poses = {pose["id"]: pose["rxyz_deg"] for pose in local["orientations"]}
+    _require(all(abs(a-b) <= NATIVE_BASELINE_COMPARISON_QUANTIZATION for a, b in zip(source[3:], poses[edge["from"]]))
+             and target[3:] == poses[edge["to"]], "ROTATION_EDGE", "Rotation must follow the reviewed literal source and target orientations.")
+    joints = _vector(receiver.get("actual_joint"), 6, "ROBOT_JOINT_INVALID")
+    _require(all(abs(a-b) <= .5 for a, b in zip(joints, edge["expected_source_joint_deg"])),
+             "ROTATION_SOURCE_CHANGED", "Current joints differ from the reviewed directed edge.")
+    anchor = next(anchor for anchor in local["rotation_anchors"] if anchor["id"] == edge["anchor_id"])
+    _require(math.dist(source[:3], anchor["xyz_base_mm"]) <= anchor["position_window_mm"],
+             "ROTATION_ANCHOR", "Rotation is confined to its reviewed fixed-Z anchor window.")
+
+
 def admit(command: dict, installation: dict | None, receiver: dict,
           observation: dict | None, *, armed: bool, now: float,
           require_profile_binding: bool = False, held: bool = False) -> None:
@@ -384,6 +526,10 @@ def admit(command: dict, installation: dict | None, receiver: dict,
             _vector(command.get("target"), 6, "TARGET_INVALID")
         return
     if (kind == "profile_update" and type(installation) is dict
+            and installation.get("scope") == "planar_teaching"):
+        _admit_planar_teaching_refresh(command, installation, receiver, armed=armed, held=held)
+        return
+    if (kind == "profile_update" and type(installation) is dict
             and installation.get("scope") == "local_base_commissioning"):
         _admit_local_profile_refresh(command, installation, receiver, armed=armed, held=held)
         return
@@ -395,6 +541,9 @@ def admit(command: dict, installation: dict | None, receiver: dict,
     _require(type(installation) is dict and installation.get("qualified") is True,
              "INSTALLATION_UNQUALIFIED", "A qualified installation is required before physical changes.")
     scope = installation.get("scope", "board")
+    if scope == "planar_teaching":
+        _admit_planar_teaching(command, installation, receiver)
+        return
     if scope == "local_base_commissioning":
         _admit_local(command, installation, receiver)
         return

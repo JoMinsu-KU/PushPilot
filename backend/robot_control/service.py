@@ -6,7 +6,7 @@ from pathlib import Path
 import threading
 import time
 
-from .gates import GuardError, admit, validate_contact_profile, validate_local_profile
+from .gates import GuardError, admit, validate_contact_profile, validate_local_profile, validate_planar_teaching_profile
 from .legacy import PrewireRejected
 from .store import ControlError, Journal, encode
 
@@ -87,14 +87,16 @@ class RobotService:
                 "worker_alive": bool(self.thread and self.thread.is_alive()), "worker_error": self.worker_error,
                 "hardware_connected": self.physical and receiver.get("connected", False), "receiver": receiver,
                 "installation": installation, "installation_scope": scope,
-                "permitted_mutations": (["fixed_z_orientation_local_translate"] if scope == "local_base_commissioning"
+                "permitted_mutations": (["fixed_z_translate", "reviewed_fixed_xyz_yaw_rotation"] if scope == "planar_teaching"
+                                        else ["fixed_z_orientation_local_translate"] if scope == "local_base_commissioning"
                                         else ["fixed_z_orientation_free_approach", "fixed_z_orientation_contact_trial"] if scope == "local_contact_commissioning"
                                         else ["translate", "profile_update", "qualified_raised_rotation"] if scope == "board" else []),
                 "local_scope_qualifies_board_registration": False,
-                "permitted_held_mutations": (["local_profile_update"] if scope == "local_base_commissioning"
+                "permitted_held_mutations": (["planar_teaching_profile_handoff"] if scope == "planar_teaching"
+                                             else ["local_profile_update"] if scope == "local_base_commissioning"
                                              else ["local_contact_profile_handoff"] if scope == "local_contact_commissioning" else []),
                 "local_profile_refresh_requires": (["disarmed", "hold", "current_review", "fresh_exact_baseline"]
-                                                    if scope in {"local_base_commissioning", "local_contact_commissioning"} else []),
+                                                    if scope in {"local_base_commissioning", "local_contact_commissioning", "planar_teaching"} else []),
                 "active_commands": self.journal.active(),
                 "automatic_replay": False, "hold_is_emergency_stop": False}
 
@@ -123,6 +125,8 @@ class RobotService:
                     validate_local_profile(installation, receiver)
                 elif installation.get("scope") == "local_contact_commissioning":
                     validate_contact_profile(installation, receiver)
+                elif installation.get("scope") == "planar_teaching":
+                    validate_planar_teaching_profile(installation, receiver)
             except GuardError as error:
                 raise ControlError(error.code, str(error)) from None
             with self.journal.transaction():

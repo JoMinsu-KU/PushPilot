@@ -1,7 +1,9 @@
 """Prepare an explicitly reviewed experimental contact profile offline.
 
-This neither performs the review nor applies a profile. Calibration and the
-existing-pad contact-offset work precede physical trial activation.
+This neither performs the review nor applies a profile. A current actual
+contact-start/tool/clearance review precedes the bounded straight trial. A
+direct BASE trial does not require drawing registration; changed-direction
+contact and rotation still need separate pad-offset and response measurements.
 """
 from __future__ import annotations
 
