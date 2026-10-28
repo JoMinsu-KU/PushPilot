@@ -18,7 +18,12 @@
     "pendant_45102_exact_numeric_argument_identified": false,
     "program_state_after_accepted_connection": 2,
     "operator_reported_script_is_latest_poc_persistent": true,
-    "complete_pendant_program_readback_independently_verified": false
+    "complete_pendant_program_readback_independently_verified": false,
+    "historical_poc_task_consulted_at_user_request": true,
+    "historical_poc_task_consultation_completed": true,
+    "historical_current_45102_stack_or_full_generated_program_preserved": false,
+    "distinct_historical_45100_field_and_helper_errors_found": true,
+    "those_historical_errors_prove_current_45102_cause": false
   },
   "observed_state_after_correction": {
     "host_service_active": true,
