@@ -29,6 +29,15 @@
 .recorded-frame { overflow: hidden; }
 .scene-source-plate { position: absolute; z-index: 3; bottom: 15px; left: var(--stage-content-left, 108px); display: flex; align-items: center; gap: 9px; padding: 9px 11px; border: 1px solid #ffffffb5; border-radius: 13px; background: #ffffffa8; backdrop-filter: blur(16px); color: #858c91; }
 .map-scene-stage .scene-source-plate { bottom: var(--stage-source-bottom, 146px); }
+/* Keep the lower storefront departure visible beneath the existing glass HUD. */
+@media (min-width: 701px) {
+  .workspace-stage .map-scene-stage .scene-source-plate {
+    top: calc(var(--stage-controls-top, 200px) + 116px);
+    bottom: auto;
+    left: auto;
+    right: calc(var(--stage-overlay-width, 340px) + 24px);
+  }
+}
 .scene-source-dot { width: 5px; height: 5px; border-radius: 50%; background: #97a39b; flex: none; }
 .live-source .scene-source-dot { background: #38835f; box-shadow: 0 0 0 3px #38835f12; }
 .stale-source .scene-source-dot { background: #af7948; }
