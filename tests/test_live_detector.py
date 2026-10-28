@@ -151,7 +151,7 @@ class LiveDetectorTests(unittest.TestCase):
         roi_calls, global_calls = [], []
 
         def factory(_dictionary, parameters):
-            if parameters.cornerRefinementMethod == cv2.aruco.CORNER_REFINE_APRILTAG:
+            if parameters.cornerRefinementMethod != cv2.aruco.CORNER_REFINE_SUBPIX:
                 output = outputs[min(len(roi_calls), len(outputs)-1)]
                 roi_calls.append(parameters)
             else:
@@ -197,14 +197,193 @@ class LiveDetectorTests(unittest.TestCase):
         for marker in recovered["markers"]:
             self.assertTrue(detector._matches_reference(marker["corners"], self.reference_pixels(marker["id"])))
 
+    def test_native_contour_reference_fallback_preserves_existing_profiles_and_pixels(self):
+        image = self.image()
+        original_pixels = image.copy()
+        baseline = self.scene._detect(image)
+        self.assertEqual(baseline["marker_ids"], [12, 13])
+        detector = LiveMarkerDetector(self.map, lambda _: baseline, self.scene._candidate)
+        original_factory = cv2.aruco.ArucoDetector
+        profiles, crops = [], []
+
+        def factory(dictionary, parameters):
+            profile = (parameters.cornerRefinementMethod, parameters.adaptiveThreshConstant,
+                       parameters.perspectiveRemoveIgnoredMarginPerCell)
+            profiles.append(profile)
+            self.assertEqual(parameters.errorCorrectionRate, 1.0)
+            self.assertEqual(parameters.perspectiveRemovePixelPerCell, 12)
+            self.assertNotEqual(parameters.cornerRefinementMethod, cv2.aruco.CORNER_REFINE_SUBPIX)
+            actual = original_factory(dictionary, parameters)
+
+            def decode(roi):
+                crops.append(roi.copy())
+                if parameters.cornerRefinementMethod == cv2.aruco.CORNER_REFINE_APRILTAG:
+                    return self.detection_output([])
+                return actual.detectMarkers(roi)
+            return Mock(detectMarkers=Mock(side_effect=decode))
+
+        with patch("backend.live_detector.cv2.aruco.ArucoDetector", side_effect=factory):
+            result = detector(image, reference_homography=self.reference())
+        self.assertEqual(result["marker_ids"], [10, 11, 12, 13])
+        self.assertIsNotNone(self.scene._candidate(result, image.shape[1], image.shape[0]))
+        self.assertEqual(profiles, [(cv2.aruco.CORNER_REFINE_APRILTAG, 7.0, 0.13)]*2
+                         + [(cv2.aruco.CORNER_REFINE_APRILTAG, 7.0, 0.30)]*2
+                         + [(cv2.aruco.CORNER_REFINE_NONE, 3.0, 0.30)]*2)
+        native_gray = cv2.cvtColor(original_pixels, cv2.COLOR_BGR2GRAY)
+        for identifier, crop in zip((10, 11)*3, crops):
+            x, y, width, height = cv2.boundingRect(self.reference_pixels(identifier).astype(np.float32))
+            expected_crop = native_gray[max(0, y-15):y+height+15, max(0, x-15):x+width+15]
+            self.assertTrue(np.array_equal(crop, expected_crop))
+        self.assertTrue(np.array_equal(image, original_pixels))
+
+    def test_third_reference_profile_cannot_fill_a_gap_with_absence_or_wrong_target(self):
+        local = self.local_target()
+        wrong_id = deepcopy(local)
+        wrong_id["id"] = 11
+        displaced = self.local_target(shift=10)
+        for targets in ([], [wrong_id], [displaced], [local, local]):
+            with self.subTest(targets=targets):
+                empty = self.detection_output([])
+                detector, baseline, factory, roi_calls, global_calls = self.mocked_reference_decode(
+                    [empty, empty, self.detection_output(targets)])
+                with patch("backend.live_detector.cv2.aruco.ArucoDetector", side_effect=factory):
+                    result = detector(np.zeros((1200, 1800, 3), np.uint8), reference_homography=self.reference())
+                self.assertIs(result, baseline)
+                self.assertEqual(len(roi_calls), 3)
+                self.assertEqual(roi_calls[-1].cornerRefinementMethod, cv2.aruco.CORNER_REFINE_NONE)
+                self.assertEqual(roi_calls[-1].adaptiveThreshConstant, 3.0)
+                self.assertEqual(len(global_calls), 2)
+
     def test_reference_cannot_create_a_detection_for_a_genuinely_absent_marker(self):
         image = self.image(absent=(10,))
         baseline = self.scene._detect(image)
         pixels_before = image.copy()
         self.assertNotIn(10, baseline["marker_ids"])
         result = self.detector(image, reference_homography=self.reference())
-        self.assertEqual(result, baseline)
+        self.assertNotIn(10, result["marker_ids"])
+        self.assertEqual(result["marker_ids"], [11, 12, 13])
+        self.assertIsNone(self.scene._candidate(result, image.shape[1], image.shape[0]))
+        for marker in baseline["markers"]:
+            self.assertEqual(next(item for item in result["markers"] if item["id"] == marker["id"]), marker)
         self.assertTrue(np.array_equal(image, pixels_before))
+
+    def test_failed_first_reference_target_does_not_starve_later_partial_observation(self):
+        baseline = self.reference_partial((12, 13))
+        missing = self.detection_output([])
+        visible = self.detection_output([self.local_target(11)])
+        candidate = Mock(return_value=None)
+        detector, _, factory, roi_calls, global_calls = self.mocked_reference_decode(
+            [missing, visible, missing, visible], baseline=baseline, candidate=candidate)
+        pixels = np.zeros((1200, 1800, 3), np.uint8)
+        with patch("backend.live_detector.cv2.aruco.ArucoDetector", side_effect=factory):
+            result = detector(pixels, reference_homography=self.reference())
+        self.assertEqual(result["marker_ids"], [11, 12, 13])
+        self.assertTrue(np.allclose(result["markers"][0]["corners"], self.reference_pixels(11)))
+        self.assertEqual(result["markers"][1:], baseline["markers"])
+        self.assertEqual(len(roi_calls), 6)
+        self.assertEqual(len(global_calls), 2)
+        candidate.assert_not_called()
+        self.assertFalse(np.any(pixels))
+
+    def test_independent_complete_decode_wins_over_reference_partial_fallback(self):
+        baseline = self.reference_partial((12, 13))
+        complete = self.reference_partial((10, 11, 12, 13))
+        outputs = [self.detection_output([]), self.detection_output([self.local_target(11)])]*3
+        roi_calls, global_calls = [], []
+
+        def factory(_dictionary, parameters):
+            if parameters.cornerRefinementMethod != cv2.aruco.CORNER_REFINE_SUBPIX:
+                output = outputs[len(roi_calls)]
+                roi_calls.append(parameters)
+            else:
+                global_calls.append(parameters)
+                output = self.detection_output(complete["markers"])
+            return Mock(detectMarkers=Mock(return_value=output))
+
+        detector = LiveMarkerDetector(self.map, lambda _: baseline, self.scene._candidate)
+        with patch("backend.live_detector.cv2.aruco.ArucoDetector", side_effect=factory):
+            result = detector(np.zeros((1200, 1800, 3), np.uint8), reference_homography=self.reference())
+        self.assertEqual(result["marker_ids"], complete["marker_ids"])
+        for observed, expected in zip(result["markers"], complete["markers"]):
+            self.assertEqual(observed["id"], expected["id"])
+            self.assertTrue(np.allclose(observed["corners"], expected["corners"]))
+        self.assertEqual(len(roi_calls), 6)
+        self.assertEqual(len(global_calls), 1)
+        self.assertIsNotNone(self.scene._candidate(result, 1800, 1200))
+
+    def test_partial_reference_pools_are_not_combined_across_sampling_profiles(self):
+        baseline = self.reference_partial((12, 13))
+        missing = self.detection_output([])
+        outputs = [self.detection_output([self.local_target(10)]), missing,
+                   missing, self.detection_output([self.local_target(11)])]
+        candidate = Mock(return_value=None)
+        detector, _, factory, roi_calls, global_calls = self.mocked_reference_decode(
+            outputs, baseline=baseline, candidate=candidate)
+        with patch("backend.live_detector.cv2.aruco.ArucoDetector", side_effect=factory):
+            result = detector(np.zeros((1200, 1800, 3), np.uint8), reference_homography=self.reference())
+        self.assertEqual(result["marker_ids"], [10, 12, 13])
+        self.assertNotIn(11, result["marker_ids"])
+        self.assertEqual(len(roi_calls), 6)
+        self.assertEqual(len(global_calls), 2)
+        candidate.assert_not_called()
+
+    def test_reference_fallback_keeps_the_largest_single_profile_partial_pool(self):
+        data = self.map.data
+        data["markers"].extend([
+            {"id": 14, "center_mm": [100., 100.], "size_mm": 16.},
+            {"id": 15, "center_mm": [300., 100.], "size_mm": 16.},
+        ])
+        self.map = MapDefinition.from_data(data)
+        self.scene.map_definition = self.map
+        baseline = self.reference_partial((12, 13))
+        missing = self.detection_output([])
+        outputs = [self.detection_output([self.local_target(10)]), missing, missing, missing,
+                   missing, self.detection_output([self.local_target(11)]),
+                   self.detection_output([self.local_target(14)]), missing]
+        candidate = Mock(return_value=None)
+        detector, _, factory, roi_calls, global_calls = self.mocked_reference_decode(
+            outputs, baseline=baseline, candidate=candidate)
+        with patch("backend.live_detector.cv2.aruco.ArucoDetector", side_effect=factory):
+            result = detector(np.zeros((1200, 1800, 3), np.uint8), reference_homography=self.reference())
+        self.assertEqual(result["marker_ids"], [11, 12, 13, 14])
+        self.assertNotIn(10, result["marker_ids"])
+        self.assertNotIn(15, result["marker_ids"])
+        self.assertEqual(len(roi_calls), 12)
+        self.assertEqual(len(global_calls), 2)
+        candidate.assert_not_called()
+
+    def test_invalid_reference_target_cannot_pollute_a_later_valid_partial_observation(self):
+        baseline = self.reference_partial((12, 13))
+        local = self.local_target(10)
+        wrong_id = deepcopy(local)
+        wrong_id["id"] = 17
+        wrong_known_id = deepcopy(local)
+        wrong_known_id["id"] = 11
+        nonfinite = deepcopy(local)
+        nonfinite["corners"][0][0] = float("nan")
+        for targets in ([wrong_id], [wrong_known_id], [local, local],
+                        [self.local_target(10, shift=10)], [nonfinite]):
+            with self.subTest(targets=targets):
+                output = self.detection_output(targets)
+                visible = self.detection_output([self.local_target(11)])
+                detector, _, factory, roi_calls, global_calls = self.mocked_reference_decode(
+                    [output, visible, output, visible], baseline=baseline)
+                with patch("backend.live_detector.cv2.aruco.ArucoDetector", side_effect=factory):
+                    result = detector(np.zeros((1200, 1800, 3), np.uint8), reference_homography=self.reference())
+                self.assertEqual(result["marker_ids"], [11, 12, 13])
+                self.assertTrue(np.allclose(result["markers"][0]["corners"], self.reference_pixels(11)))
+                self.assertEqual(len(roi_calls), 6)
+                self.assertEqual(len(global_calls), 2)
+
+    def test_empty_reference_search_keeps_baseline_and_still_checks_all_missing_targets(self):
+        baseline = self.reference_partial((12, 13))
+        detector, _, factory, roi_calls, global_calls = self.mocked_reference_decode(
+            [self.detection_output([])], baseline=baseline)
+        with patch("backend.live_detector.cv2.aruco.ArucoDetector", side_effect=factory):
+            result = detector(np.zeros((1200, 1800, 3), np.uint8), reference_homography=self.reference())
+        self.assertIs(result, baseline)
+        self.assertEqual(len(roi_calls), 6)
+        self.assertEqual(len(global_calls), 2)
 
     def test_reference_roi_rejects_wrong_id_position_and_duplicate_target(self):
         local = self.local_target()
@@ -222,7 +401,7 @@ class LiveDetectorTests(unittest.TestCase):
                 with patch("backend.live_detector.cv2.aruco.ArucoDetector", side_effect=factory):
                     self.assertEqual(detector(np.zeros((1200, 1800, 3), np.uint8),
                                               reference_homography=self.reference()), baseline)
-                self.assertEqual(len(roi_calls), 2)
+                self.assertEqual(len(roi_calls), 3)
                 self.assertEqual(len(global_calls), 2)
 
     def test_reference_roi_ignores_unrelated_ids_and_requires_strict_print_candidate(self):
@@ -243,7 +422,7 @@ class LiveDetectorTests(unittest.TestCase):
                     self.assertFalse(global_calls)
                 else:
                     self.assertEqual(result, baseline)
-                    self.assertEqual(len(roi_calls), 2)
+                    self.assertEqual(len(roi_calls), 3)
                 candidate.assert_called()
 
     def test_invalid_or_changed_reference_cannot_select_a_target_roi(self):
@@ -310,7 +489,7 @@ class LiveDetectorTests(unittest.TestCase):
         with patch("backend.live_detector.cv2.cvtColor", side_effect=AssertionError("Unexpected recovery")):
             self.assertIs(detector(np.zeros((10, 10, 3), np.uint8), reference_homography=self.reference()), baseline)
 
-    def test_reference_search_has_at_most_eight_native_decodes(self):
+    def test_reference_search_has_at_most_twelve_native_decodes(self):
         data = self.map.data
         data["markers"].extend([
             {"id": 14, "center_mm": [100., 100.], "size_mm": 16.},
@@ -320,13 +499,13 @@ class LiveDetectorTests(unittest.TestCase):
         self.scene.map_definition = self.map
         baseline = self.reference_partial((12, 13))
         outputs = [self.detection_output([self.local_target(identifier)])
-                   for identifier in (10, 11, 14, 15)*2]
+                   for identifier in (10, 11, 14, 15)*3]
         detector, _, factory, roi_calls, global_calls = self.mocked_reference_decode(
             outputs, baseline=baseline, candidate=Mock(return_value=None))
         with patch("backend.live_detector.cv2.aruco.ArucoDetector", side_effect=factory):
             self.assertEqual(detector(np.zeros((1200, 1800, 3), np.uint8),
                                       reference_homography=self.reference()), baseline)
-        self.assertEqual(len(roi_calls), 8)
+        self.assertEqual(len(roi_calls), 12)
         self.assertEqual(len(global_calls), 2)
 
         # A future map with more missing IDs must not expand the search budget.

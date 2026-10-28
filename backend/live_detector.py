@@ -1,9 +1,10 @@
 """Guarded native-resolution marker recovery for the live preview only.
 
 Small foreshortened markers may need the DICT_4X4_50 dictionary's supported
-one-bit correction. A relaxed decode is accepted only as a complete four-marker
-print with the existing strict geometry checks and agreement with baseline IDs.
-The display JPEG, recorded detector and locked homography are never modified.
+one-bit correction. Independent recovery requires a complete consistent print;
+a bound reference may also support fresh partial observations at its expected
+positions. The display JPEG, recorded detector and locked homography are never
+modified.
 """
 from __future__ import annotations
 
@@ -27,10 +28,15 @@ class LiveMarkerDetector:
             # A complete ordinary decode wins, including its geometry rejection.
             return baseline
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        partial_reference = None
         if reference_homography is not None:
             recovered = self._reference_rois(gray, baseline, expected, reference_homography)
             if recovered is not None:
-                return recovered
+                if set(recovered["marker_ids"]) == expected:
+                    return recovered
+                # A partial ROI observation must not prevent an independent
+                # complete decode of the same native frame below.
+                partial_reference = recovered
         # Two bounded sampling choices handle blurred foreshortened cells.
         # These are internal bit decoding, never a resized camera/display image.
         pool = {}
@@ -63,7 +69,7 @@ class LiveMarkerDetector:
             if not (12 <= width <= 160 and 12 <= height <= 160):
                 continue
             if rois >= 32:
-                return baseline
+                return partial_reference or baseline
             rois += 1
             x0, y0 = max(0, x-15), max(0, y-15)
             roi = gray[y0:min(gray.shape[0], y+height+15), x0:min(gray.shape[1], x+width+15)]
@@ -76,8 +82,8 @@ class LiveMarkerDetector:
                 corners, ids, _ = cv2.aruco.ArucoDetector(self.dictionary, parameters).detectMarkers(roi)
                 shifted = [np.asarray(points).reshape(4, 2)+[x0, y0] for points in corners]
                 if not self._merge(pool, shifted, ids, expected):
-                    return baseline
-        return self._complete(pool, expected, image.shape) or baseline
+                    return partial_reference or baseline
+        return self._complete(pool, expected, image.shape) or partial_reference or baseline
 
     def _reference_rois(self, gray, baseline, expected, homography):
         """Search fresh native pixels near missing markers, never infer corners.
@@ -148,13 +154,21 @@ class LiveMarkerDetector:
             return None
 
         # Each profile starts from the same ordinary same-frame detections.
-        # At most four missing IDs and two profiles mean at most eight decodes.
-        for margin in (0.13, 0.30):
+        # Keep one observed pool, never combine partial sampling profiles.
+        # At most four missing IDs and three profiles mean at most 12 decodes.
+        # Keep the existing AprilTag profiles first. The last native contour
+        # profile handles tiny foreshortened cells without image resampling.
+        profiles = ((cv2.aruco.CORNER_REFINE_APRILTAG, 7, 0.13),
+                    (cv2.aruco.CORNER_REFINE_APRILTAG, 7, 0.30),
+                    (cv2.aruco.CORNER_REFINE_NONE, 3, 0.30))
+        best_partial = None
+        for refinement, threshold_constant, margin in profiles:
             recovered_pool = deepcopy(pool)
             for identifier in missing:
                 x0, y0, roi = crops[identifier]
                 parameters = cv2.aruco.DetectorParameters()
-                parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_APRILTAG
+                parameters.cornerRefinementMethod = refinement
+                parameters.adaptiveThreshConstant = threshold_constant
                 parameters.errorCorrectionRate = 1.0
                 parameters.perspectiveRemovePixelPerCell = 12
                 parameters.perspectiveRemoveIgnoredMarginPerCell = margin
@@ -163,15 +177,22 @@ class LiveMarkerDetector:
                                                    if value == identifier]
                 # Neither an unrelated ID nor a duplicate target can fill a gap.
                 if len(targeted) != 1:
-                    break
+                    continue
                 observed = np.asarray(targeted[0]).reshape(4, 2).astype(float)+[x0, y0]
                 if not self._matches_reference(observed, projected[identifier]):
-                    break
+                    continue
                 recovered_pool[identifier] = {"id": identifier, "corners": observed.tolist()}
             recovered = self._complete(recovered_pool, expected, gray.shape)
             if recovered is not None:
                 return recovered
-        return None
+            # A failed full-print candidate cannot be relabelled as a partial
+            # success. Additional partial observations are current native
+            # detections only; they neither fit nor replace the reference.
+            if len(pool) < len(recovered_pool) < len(expected) and (
+                    best_partial is None or len(recovered_pool) > len(best_partial["markers"])):
+                best_partial = {"marker_ids": sorted(recovered_pool),
+                                "markers": [recovered_pool[value] for value in sorted(recovered_pool)]}
+        return best_partial
 
     @staticmethod
     def _matches_reference(observed, projected):
