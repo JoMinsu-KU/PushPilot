@@ -8,7 +8,9 @@
 
 The operator's current-Z pushing request and drift/coordinate collection plan are recorded in [Contact pushing](PUSH_ALIGNMENT.md). A private read-only stationary baseline is available; TCP identity/payload, measured drawing-to-BASE correspondences, contact clearance and physical pushing remain pending. The target pose may change without changing the TCP definition; preserving its numeric Z alone does not preserve an offset tool's physical height through rotation or a TCP-definition change.
 
-> **Deployment checked October 28, 2026, 01:17 KST:** the isolated GX10 API runs from source `6cfe6d2`, on loopback 8897, disarmed and disconnected, with no loaded installation and zero robot commands. The physical listener is not started. Local software tests: 414 passed; GX10 equipment-free subset: 64 passed. Existing web and camera were retained. [Exact verification scope](evidence/robot-control-20261028.json).
+> **Profile-wait startup checked October 28, 2026:** the separate host from `98b2a19` is listening on the configured pendant port, in `waiting_reviewed_profile` with no BEGIN, consumed mailbox or motion. The existing API remains at source `6cfe6d2`, disarmed with no installation. Web/API processes, camera epoch and exact display transform were retained. GX10 passed all 474 equipment-free tests. Persistent pendant idle has not yet been established. [Current scoped result](evidence/rodi-profile-wait-20261028.json).
+
+> **Earlier API deployment, October 28, 2026, 01:17 KST:** source `6cfe6d2` started on loopback 8897; the pendant listener was stopped at that time. The original 414 local / 64 GX10 subset results retain their historical scope in the [earlier evidence](evidence/robot-control-20261028.json).
 
 ## Service boundaries
 

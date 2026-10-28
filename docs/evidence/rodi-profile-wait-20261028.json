@@ -1,0 +1,65 @@
+{
+  "schema_version": "pushpilot.verification.v1",
+  "date": "2026-10-28",
+  "timezone": "Asia/Seoul",
+  "scope": "Explicit pendant listener startup while a fresh reviewed profile is pending; read-only stationary baseline and contact-pushing design.",
+  "host_source_commit": "98b2a19ef92449662071c8cc166d341839540b43",
+  "host_release": "20261028-rodi-profile-wait-98b2a19",
+  "existing_api_source_commit": "6cfe6d2cfb1a8da53058d2c7d572415da89588c8",
+  "root_cause": "The commissioning HTTP API was active, but the pendant TCP listener was not running.",
+  "observed_state": {
+    "host_service_active": true,
+    "pendant_port_listening": true,
+    "readiness": "waiting_reviewed_profile",
+    "reviewed_profile_present": false,
+    "persistent_receiver_session_established": false,
+    "api_armed": false,
+    "installation_loaded": false,
+    "begin_sent": false,
+    "mailbox_consumed": false,
+    "agent_robot_commands_issued": 0,
+    "boot_activation_enabled": false
+  },
+  "baseline": {
+    "source": "native_fc03_readonly",
+    "stationary_samples": 3,
+    "pose_and_joints_equal_across_samples": true,
+    "joint_speeds_all_zero": true,
+    "current_z_recorded_privately": true,
+    "tcp_definition_changed": false,
+    "raw_pose_joint_camera_and_tool_records_public": false,
+    "contact_height_qualified": false
+  },
+  "software": {
+    "local_python_tests_run": 474,
+    "local_python_tests_passed": 473,
+    "local_python_tests_skipped": 1,
+    "local_skip_reason": "Windows account cannot create an actual symlink fixture; synthetic symlink rejection passed.",
+    "gx10_arm64_python_tests_passed": 474,
+    "gx10_python_tests_skipped": 0,
+    "gx10_python_test_seconds": 13.142,
+    "profile_wait_cases": 16,
+    "public_tests_require_private_runtime": false,
+    "frontend_tests_passed": 63,
+    "typescript_and_frontend_build_passed": true,
+    "source_checks_passed": true,
+    "installed_private_protocol_hashes_verified": true
+  },
+  "preserved": {
+    "existing_web_and_robot_api_processes": true,
+    "camera_epoch_and_exact_homography": true,
+    "camera_restarted": false,
+    "web_restarted": false,
+    "robot_api_restarted": false,
+    "rodi_script_modified": false,
+    "historical_profiles_or_commands_restored": false
+  },
+  "limits": [
+    "The installed online script requires a genuine reviewed profile even for BEGIN into persistent idle. No fabricated allow_motion or site_verified flags were created.",
+    "When the explicit profile is absent or invalid, the listener can capture a bounded HELLO only and closes without BEGIN or execution. A later genuine profile needs a fresh manual PLAY.",
+    "Real pendant HELLO capture, persistent idle and physical movement were not established by this startup verification.",
+    "TCP/tool identity and payload, drawing-to-BASE teaching, physical contact clearance, car response and turning remain pending.",
+    "Fixed-Z drift correction and contact turns are design/qualification work; existing raised-tool rotate is not a car-turn primitive.",
+    "The tablet mission remains simulated and its automated physical observation/review bridge remains unconfigured."
+  ]
+}

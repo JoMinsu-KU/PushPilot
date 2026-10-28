@@ -4,6 +4,8 @@ This is separate from the tablet application, POC runtime and standalone camera.
 
 **Installed October 28, 2026, 01:17 KST:** `pushpilot-robot-control.service` is active/enabled, serving the isolated API from `6cfe6d2` at GX10 loopback 8897. Startup is disarmed, receiver disconnected, no installation loaded and no commands created. The separate physical listener remains stopped. Dependencies and 64 equipment-free tests passed on Python 3.12.3 ARM64; authenticated status, rejection behavior and existing web/camera retention were checked. See [the scoped evidence](../docs/evidence/robot-control-20261028.json). User lingering is disabled; startup after reboot without login is unverified. No shared login/boot policy was changed.
 
+**Later profile-wait startup, October 28:** source `98b2a19` was installed separately for `pushpilot-rodi-host.service`, manually started without boot activation. The configured pendant port is now listening while its new explicit reviewed profile path is absent. Status is `waiting_reviewed_profile`, not persistent idle. No BEGIN, mailbox consumption or motion occurred. The already running API/web PIDs and exact camera reference/epoch remained unchanged. All 474 equipment-free tests passed on GX10; the private protocol hashes were independently checked. [Current evidence](../docs/evidence/rodi-profile-wait-20261028.json) supersedes only the earlier listener-stopped status above.
+
 ## Files and process arrangement
 
 - Dedicated root: `~/pushpilot-robot-control/` with `releases/<commit>/` and private `shared/`.
