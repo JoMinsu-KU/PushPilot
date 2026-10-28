@@ -236,10 +236,66 @@ class PlanarTeachingInstallation(StrictModel):
         return self
 
 
+class LocalContactTurnInstallation(LocalContactInstallation):
+    """Opt-in contact experiments with finite reviewed wrist edges.
+
+    The inherited fixed_orientation_deg is the fresh handoff baseline, not a
+    promise that every experiment keeps that orientation. Full literal Euler
+    vectors are reviewed because tool-local yaw can change all three angles.
+    A reviewed experiment is not a qualified car turn or board registration.
+    """
+    scope: Literal["local_contact_turn_commissioning"]
+    contact_turn_trials_authorized: bool = Field(default=False, strict=True)
+    max_rotation_increment_deg: Number = Field(default=10, gt=0, le=90)
+    orientations: list[TeachingOrientation] = Field(min_length=1, max_length=8)
+    rotation_anchors: list[TeachingRotationAnchor] = Field(max_length=8)
+    rotation_edges: list[TeachingRotationEdge] = Field(max_length=32)
+    rotation_runtime: TeachingRotationRuntime
+
+    @model_validator(mode="after")
+    def contact_turn_limits(self):
+        if self.qualified and not self.contact_turn_trials_authorized:
+            raise ValueError("Contact-turn commissioning needs explicit current experimental turn authorization.")
+        poses = {pose.id: pose.rxyz_deg for pose in self.orientations}
+        if (len(poses) != len(self.orientations) or self.fixed_orientation_deg not in poses.values()
+            or any(any(not -180 <= value <= 180 for value in pose) for pose in poses.values())):
+            raise ValueError("Supply unique bounded full Euler poses including the exact fresh handoff orientation.")
+        if any(all(abs((a-b+180) % 360-180) <= .6 for a, b in zip(first, second))
+               for index, first in enumerate(poses.values()) for second in list(poses.values())[index+1:]):
+            raise ValueError("Reviewed orientation tolerance regions must not overlap.")
+        anchors = {anchor.id: anchor for anchor in self.rotation_anchors}
+        if len(anchors) != len(self.rotation_anchors):
+            raise ValueError("Contact-turn anchors need unique IDs.")
+        lower, upper, margin = self.workspace_min_mm, self.workspace_max_mm, self.tcp_clearance_margin_mm
+        for anchor in anchors.values():
+            if (not anchor.site_verified or not anchor.window_and_correction_reviewed
+                or anchor.max_in_place_correction_mm > anchor.position_window_mm
+                or anchor.xyz_base_mm[2] != self.fixed_tcp_z_mm
+                or any(not lower[i]+margin <= value <= upper[i]-margin for i, value in enumerate(anchor.xyz_base_mm))):
+                raise ValueError("Each fixed-Z anchor needs its actual tool, arm, cable and contact swept-window review.")
+        if len({edge.id for edge in self.rotation_edges}) != len(self.rotation_edges):
+            raise ValueError("Contact-turn directed edges need unique IDs.")
+        runtime = self.rotation_runtime
+        if (not runtime.verified or runtime.primitive != "moveJoint_wrist"
+            or not 0 < runtime.speed_argument <= self.max_speed_mm_s
+            or not 0 < runtime.accel_argument <= self.max_accel_mm_s2
+            or not 15 <= runtime.completion_timeout_s <= 300):
+            raise ValueError("Contact-turn experiments retain the reviewed bounded wrist-only runtime semantics.")
+        for edge in self.rotation_edges:
+            if (not edge.site_verified or not edge.wrist_only or not edge.joint_path_reviewed
+                or edge.anchor_id not in anchors or edge.from_orientation not in poses or edge.to not in poses
+                or edge.from_orientation == edge.to
+                or any(not -360 <= value <= 360 for value in edge.expected_source_joint_deg+edge.expected_target_joint_deg)
+                or edge.expected_source_joint_deg[:5] != edge.expected_target_joint_deg[:5]
+                or not 0 < abs(edge.expected_source_joint_deg[5]-edge.expected_target_joint_deg[5]) <= self.max_rotation_increment_deg):
+                raise ValueError("Each experiment needs a reviewed directed wrist-only edge within its explicit increment limit.")
+        return self
+
+
 class RobotCommand(StrictModel):
     request_id: UUID
     kind: Literal["inspect_current", "inspect_ik", "profile_update", "translate", "rotate"]
-    purpose: Literal["commissioning", "push", "tool_reposition", "contact_trial"] = "commissioning"
+    purpose: Literal["commissioning", "push", "tool_reposition", "contact_trial", "contact_turn_trial"] = "commissioning"
     installation_id: str | None = Field(default=None, max_length=80)
     expected_receiver: ReceiverBinding
     target: list[Number] | None = Field(default=None, min_length=6, max_length=6)
@@ -263,6 +319,8 @@ class RobotCommand(StrictModel):
             raise ValueError("A push requires translation and a visible expected outcome.")
         if self.purpose == "contact_trial" and (self.kind != "translate" or not self.expected_visual.strip()):
             raise ValueError("An experimental contact trial requires translation and an explicit expected visual outcome.")
+        if self.purpose == "contact_turn_trial" and (self.kind not in {"translate", "rotate"} or not self.expected_visual.strip()):
+            raise ValueError("An experimental contact-turn trial requires one translation or rotation and an explicit expected visual outcome.")
         return self
 
 

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import math
 
-from .models import LocalBaseInstallation, LocalContactInstallation, PlanarTeachingInstallation
+from .models import LocalBaseInstallation, LocalContactInstallation, LocalContactTurnInstallation, PlanarTeachingInstallation
 
 # Native FC03 uses 0.1 mm / degree registers while pendant HELLO retains full
 # precision. This allowance compares two representations of the same baseline;
@@ -308,7 +308,7 @@ def _admit_contact_refresh(command: dict, installation: dict, receiver: dict,
     _require(command.get("installation_id") == installation.get("installation_id"),
              "INSTALLATION_MISMATCH", "Contact handoff must bind the new actual review.")
     current, candidate = receiver.get("profile"), command.get("profile")
-    scopes = {"local_base_commissioning", "local_contact_commissioning"}
+    scopes = {"local_base_commissioning", "local_contact_commissioning", "local_contact_turn_commissioning"}
     _require(type(current) is dict and current.get("scope") in scopes,
              "PROFILE_SCOPE", "Contact handoff accepts only an existing local teaching or contact profile.")
     local = validate_contact_profile(installation, {**receiver, "profile": candidate})
@@ -495,6 +495,111 @@ def _admit_planar_teaching(command: dict, installation: dict, receiver: dict) ->
              "ROTATION_ANCHOR", "Rotation is confined to its reviewed fixed-Z anchor window.")
 
 
+def contact_turn_profile_binding(installation: dict) -> dict:
+    """Bind experimental authorization; never manufacture physical evidence."""
+    return {"source": "reviewed_experimental_contact_turn", **installation,
+            "site_review_explicit": True, "board_registration_qualified": False,
+            "vehicle_control_qualified": False, "car_turn_qualified": False}
+
+
+def validate_contact_turn_profile(installation: dict, receiver: dict) -> dict:
+    try:
+        local = LocalContactTurnInstallation.model_validate(installation).model_dump(mode="json", by_alias=True)
+    except (ValueError, TypeError):
+        raise GuardError("CONTACT_TURN_INSTALLATION_INVALID", "Use a complete actual experimental contact-turn review.") from None
+    _require(local["qualified"] is True and local["on_site_review"] is True
+             and local["contact_trials_authorized"] is True and local["contact_turn_trials_authorized"] is True,
+             "INSTALLATION_UNQUALIFIED", "Actual site review and explicit current contact-turn experiment authorization are required.")
+    _require(receiver.get("physical_execution") is True, "PHYSICAL_RECEIVER_REQUIRED", "Physical execution must be explicit.")
+    profile = receiver.get("profile")
+    _require(type(profile) is dict and profile.get("scope") == "local_contact_turn_commissioning"
+             and profile.get("schema") == "pushpilot.hcr1-pose-profile.experimental-v1"
+             and profile.get("coordinate_frame") == "robot_base_mm" and profile.get("pose_type") == "tcp",
+             "PROFILE_SCOPE", "Use the separate BASE TCP experimental contact-turn profile.")
+    _require(profile.get("allow_motion") is True and profile.get("site_verified") is True,
+             "PROFILE_UNQUALIFIED", "A genuine current experimental site review is required.")
+    _require(not any(key in profile for key in ("map_id", "map_hash", "calibration_id", "camera_epoch", "registration_id",
+                                               "board_registration_qualified", "vehicle_control_qualified", "car_turn_qualified")),
+             "PROFILE_SCOPE", "Experimental turning cannot claim board, camera or car-turn qualification.")
+    _require(_same_json(profile.get("installation_binding"), contact_turn_profile_binding(local)),
+             "PROFILE_INSTALLATION_BINDING", "Profile must exactly bind the complete current experimental review.")
+    _require(profile.get("tcp_id") == local["tcp_id"] and _same_json(profile.get("payload_kg"), local["payload_kg"]),
+             "CONTACT_TURN_TOOL_BINDING", "Retain the current reviewed TCP, tool and payload.")
+    bounds = _vector(profile.get("tcp_bounds_base_mm"), 6, "PROFILE_BOUNDS")
+    _require(all(local["workspace_min_mm"][i] <= bounds[i] < bounds[i+3] <= local["workspace_max_mm"][i] for i in range(3)),
+             "PROFILE_BOUNDS", "Profile bounds cannot exceed the actual reviewed local envelope.")
+    for key in ("tcp_clearance_margin_mm", "inflated_keepout_boxes_base_mm", "orientations", "rotation_anchors", "rotation_edges", "rotation_runtime"):
+        _require(_same_json(profile.get(key), local[key]), "CONTACT_TURN_REVIEW_BINDING", f"Retain the explicit reviewed {key}.")
+    for field, key in (("translation_speed_mm_s", "max_speed_mm_s"), ("translation_accel_mm_s2", "max_accel_mm_s2"), ("max_translation_mm", "max_step_mm")):
+        _require(_number(profile.get(field)) and 0 < profile[field] <= local[key], "PROFILE_LIMIT", f"Experimental {field} exceeds its reviewed limit.")
+    source = _vector(receiver.get("actual_pose"), 6, "ROBOT_POSE_INVALID")
+    _teaching_inside(source, profile)
+    _require(abs(source[2]-local["fixed_tcp_z_mm"]) <= NATIVE_BASELINE_COMPARISON_QUANTIZATION,
+             "LOCAL_Z_CHANGED", "The current TCP Z differs from the reviewed fixed height.")
+    _require(any(all(abs(a-b) <= NATIVE_BASELINE_COMPARISON_QUANTIZATION for a, b in zip(source[3:], pose["rxyz_deg"]))
+                 for pose in local["orientations"]), "ORIENTATION_CHANGED", "The current full literal Euler pose is outside the finite reviewed set.")
+    return local
+
+
+def _admit_contact_turn_refresh(command: dict, installation: dict, receiver: dict, *, armed: bool, held: bool) -> None:
+    _require(armed is False and held is True, "LOCAL_REFRESH_REQUIRES_HOLD", "Contact-turn handoff requires explicit disarmed HOLD.")
+    _require(command.get("purpose") == "commissioning" and command.get("target") is None and command.get("edge_id") is None,
+             "CONTACT_TURN_OPERATION_FORBIDDEN", "A profile handoff contains no physical experiment.")
+    _require(command.get("installation_id") == installation.get("installation_id"), "INSTALLATION_MISMATCH", "Bind the new experimental review.")
+    current, candidate = receiver.get("profile"), command.get("profile")
+    _require(type(current) is dict and current.get("scope") in {"local_contact_commissioning", "local_contact_turn_commissioning"},
+             "PROFILE_SCOPE", "Contact-turn handoff accepts only an existing reviewed local contact scope.")
+    local = validate_contact_turn_profile(installation, {**receiver, "profile": candidate})
+    for key in ("schema", "coordinate_frame", "pose_type", "tcp_id", "payload_kg", "allow_motion"):
+        _require(_same_json(current.get(key), candidate.get(key)), "CONTACT_TURN_TOOL_BINDING", f"Handoff cannot change {key}.")
+    binding = current.get("installation_binding")
+    _require(type(binding) is dict and binding.get("scope") == current["scope"]
+             and all(_same_json(binding.get(key), local[key]) for key in ("tcp_id", "tcp_definition_sha256", "tool_id", "payload_kg")),
+             "CONTACT_TURN_TOOL_BINDING", "Handoff must retain the same physical TCP definition, tool and payload.")
+    _require(binding.get("installation_id") != local["installation_id"] and binding.get("review_reference") != local["review_reference"],
+             "LOCAL_REFRESH_NEW_REVIEW_REQUIRED", "Handoff needs a distinct current installation and explicit new review.")
+    source = _vector(receiver.get("actual_pose"), 6, "ROBOT_POSE_INVALID")
+    joints = _vector(receiver.get("actual_joint"), 6, "ROBOT_JOINT_INVALID")
+    _require(_same_json(candidate.get("expected_start_tcp_mm_deg"), source)
+             and _same_json(candidate.get("expected_start_joint_deg"), joints)
+             and local["fixed_tcp_z_mm"] == source[2] and local["fixed_orientation_deg"] == source[3:],
+             "LOCAL_REFRESH_BASELINE_CHANGED", "Handoff needs the exact fresh TCP/joint baseline and unchanged actual Z/orientation.")
+
+
+def _admit_contact_turn(command: dict, installation: dict, receiver: dict) -> None:
+    kind = command.get("kind")
+    _require(kind in {"translate", "rotate"} and command.get("purpose") == "contact_turn_trial",
+             "CONTACT_TURN_OPERATION_FORBIDDEN", "Use an explicitly labelled single contact-turn experiment, never free commissioning or a qualified push.")
+    _require(type(command.get("expected_visual")) is str and bool(command["expected_visual"].strip()),
+             "CONTACT_EXPECTED_OUTCOME_REQUIRED", "Each experiment needs an explicit expected vehicle outcome.")
+    local = validate_contact_turn_profile(installation, receiver)
+    _require(command.get("installation_id") == local["installation_id"], "INSTALLATION_MISMATCH", "Bind the current contact-turn installation.")
+    source, target, profile = receiver["actual_pose"], _vector(command.get("target"), 6, "TARGET_INVALID"), receiver["profile"]
+    _teaching_inside(target, profile)
+    _require(target[2] == source[2], "LOCAL_Z_CHANGED", "Every experimental command retains exact current Z.")
+    _require(not any(_teaching_hits(source, target, box) for box in profile["inflated_keepout_boxes_base_mm"]),
+             "CROSSES_KEEPOUT", "The experimental segment intersects an inflated keepout.")
+    if kind == "translate":
+        _require(target[3:] == source[3:], "ORIENTATION_CHANGED", "A contact translation retains exact current full orientation.")
+        _require(command.get("edge_id") is None, "CONTACT_TURN_OPERATION_FORBIDDEN", "A translation cannot carry a rotation edge.")
+        _require(0 < math.dist(source[:3], target[:3]) <= min(local["trial_max_step_mm"], local["max_step_mm"], profile["max_translation_mm"]) + 1e-9,
+                 "STEP_LIMIT", "Use one nonzero contact translation within the explicit current trial limit.")
+        return
+    _require(target[:3] == source[:3], "ROTATION_TRANSLATES", "Experimental rotation retains exact XYZ.")
+    edges = [edge for edge in local["rotation_edges"] if edge["id"] == command.get("edge_id")]
+    _require(len(edges) == 1, "ROTATION_EDGE", "Use one explicitly reviewed directed wrist edge.")
+    edge = edges[0]
+    poses = {pose["id"]: pose["rxyz_deg"] for pose in local["orientations"]}
+    _require(all(abs(a-b) <= NATIVE_BASELINE_COMPARISON_QUANTIZATION for a, b in zip(source[3:], poses[edge["from"]]))
+             and target[3:] == poses[edge["to"]], "ROTATION_EDGE", "Retain the reviewed full source and exact target Euler vectors.")
+    joints = _vector(receiver.get("actual_joint"), 6, "ROBOT_JOINT_INVALID")
+    _require(all(abs(a-b) <= .5 for a, b in zip(joints, edge["expected_source_joint_deg"])),
+             "ROTATION_SOURCE_CHANGED", "Current joints differ from the reviewed directed wrist edge.")
+    anchor = next(anchor for anchor in local["rotation_anchors"] if anchor["id"] == edge["anchor_id"])
+    _require(math.dist(source[:3], anchor["xyz_base_mm"]) <= anchor["position_window_mm"],
+             "ROTATION_ANCHOR", "Experimental rotation is confined to its actual reviewed swept window.")
+
+
 def admit(command: dict, installation: dict | None, receiver: dict,
           observation: dict | None, *, armed: bool, now: float,
           require_profile_binding: bool = False, held: bool = False) -> None:
@@ -526,6 +631,10 @@ def admit(command: dict, installation: dict | None, receiver: dict,
             _vector(command.get("target"), 6, "TARGET_INVALID")
         return
     if (kind == "profile_update" and type(installation) is dict
+            and installation.get("scope") == "local_contact_turn_commissioning"):
+        _admit_contact_turn_refresh(command, installation, receiver, armed=armed, held=held)
+        return
+    if (kind == "profile_update" and type(installation) is dict
             and installation.get("scope") == "planar_teaching"):
         _admit_planar_teaching_refresh(command, installation, receiver, armed=armed, held=held)
         return
@@ -541,6 +650,9 @@ def admit(command: dict, installation: dict | None, receiver: dict,
     _require(type(installation) is dict and installation.get("qualified") is True,
              "INSTALLATION_UNQUALIFIED", "A qualified installation is required before physical changes.")
     scope = installation.get("scope", "board")
+    if scope == "local_contact_turn_commissioning":
+        _admit_contact_turn(command, installation, receiver)
+        return
     if scope == "planar_teaching":
         _admit_planar_teaching(command, installation, receiver)
         return

@@ -1,0 +1,47 @@
+{
+  "schema": "pushpilot.scoped-physical-course-evidence.v1",
+  "date_kst": "2026-10-29",
+  "destination": "B",
+  "display_destination": "Office frontage",
+  "runtime_source_commit": "38de91e32868b07be6ab92c6af9e4a9d06f9e5ce",
+  "physical_contact_strokes": 12,
+  "total_tcp_translation_mm": 204.15573350364397,
+  "max_requested_stroke_mm": 20,
+  "speed_mm_s": 5,
+  "acceleration_mm_s2": 10,
+  "same_literal_z_and_orientation": true,
+  "all_robot_endpoints_verified": true,
+  "final_destination_receiver_sequence": 20,
+  "vehicle_arrival": {
+    "source": "meta",
+    "model": "muse-spark-1.3",
+    "input": "original actual before/after JPEGs",
+    "status": "ARRIVED",
+    "car_visible": true,
+    "flat_on_open_road": true,
+    "in_front_of_office_block": true,
+    "precision_vehicle_pose_measured": false
+  },
+  "supplementary_native_after_read": {
+    "initial_result": "TimeoutError after the final motion was already endpoint-verified",
+    "recovery": "New stationary three-sample observation at unchanged session/sequence/profile/endpoint",
+    "motion_replayed": false,
+    "original_failure_preserved": true
+  },
+  "operator_requested_robot_first_return": {
+    "empty_tool_strokes": 11,
+    "final_receiver_sequence": 32,
+    "original_START_return_verified": true,
+    "same_literal_z_and_orientation": true,
+    "car_reset_requested_after_stop": true
+  },
+  "B_repeatability_trials": 1,
+  "C_completed": false,
+  "D_completed": false,
+  "car_contact_turn_completed": false,
+  "map_to_BASE_calibration_accepted": false,
+  "web_simulation_connected_to_physical_motion": false,
+  "private_original_archive_sha256": "ca2250a921810d09d6f6fbd6732c09201a58f912d281e92643473c1b218646ae",
+  "private_media_and_coordinates_published": false,
+  "state_warning": "Historical result only. Never replay these commands, profiles or mailboxes; read current state before further movement."
+}

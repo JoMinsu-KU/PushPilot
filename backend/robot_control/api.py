@@ -7,7 +7,7 @@ from fastapi import FastAPI, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import Field
 
-from .models import ControlChange, Installation, LocalBaseInstallation, LocalContactInstallation, PlanarTeachingInstallation, Observation, Reconciliation, Review, RobotCommand, StrictModel
+from .models import ControlChange, Installation, LocalBaseInstallation, LocalContactInstallation, LocalContactTurnInstallation, PlanarTeachingInstallation, Observation, Reconciliation, Review, RobotCommand, StrictModel
 from .store import ControlError
 
 
@@ -70,7 +70,7 @@ def create_app(service, token: str, *, manage_lifecycle=True, external_review_va
         return {"events": service.journal.events(after)}
 
     @app.post("/v1/installation")
-    def install(value: Installation | LocalBaseInstallation | LocalContactInstallation | PlanarTeachingInstallation):
+    def install(value: Installation | LocalBaseInstallation | LocalContactInstallation | LocalContactTurnInstallation | PlanarTeachingInstallation):
         return service.install(value.model_dump(mode="json", by_alias=True))
 
     @app.post("/v1/arm")
