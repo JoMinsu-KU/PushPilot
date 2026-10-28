@@ -88,6 +88,8 @@ Offline generated-image/mock-provider tests cover these software bindings and tr
 
 ## Map and print preparation
 
+The October 28 front-destination correction supersedes the earlier blanket requirement to pass C for every destination. The user explicitly requested a straight-right Office route; city version `2026-10-28.3` therefore permits `PIZZA → S → OFFICE_BUILDING` on the southern road. This route does not visit the central signal or demonstrate its RED/GREEN behavior. Villa/Hanok front routes through C retain the `C` from `S` approach. The existing generic stop/check at S is simulation only; never reuse C's signal target for S or silently add a central detour to the direct Office request. Active paper-signal targets remain absent pending separate review.
+
 Identify the signal that controls each approach in replaceable map metadata. Decorative traffic-light artwork is not automatically an active signal. The operator-controlled red/green target must be distinguishable in the actual camera image. Its final size and location require testing on the printed installation, including occlusion, shadows and red/green/unknown cases. MUSE as the judge does not remove the need for sufficient visible image detail. No recognition accuracy is established by the supplied 3D rendering.
 
 The current temporary map intentionally has no reviewed active-paper signal targets. Live signal requests therefore reject before dispatch until target identities, incoming approaches, board regions and descriptions are supplied in reviewed replacement-map metadata. This does not require recalibrating for a passing gripper or hose; camera registration remains fixed until an actual view/map change requires explicit relocking. See [map replacement](MAP_REPLACEMENT.md).

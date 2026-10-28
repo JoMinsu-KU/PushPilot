@@ -1,7 +1,7 @@
 {
   "schema_version": "pushpilot.temporary-map.v1",
   "id": "seoul-city-a3",
-  "version": "2026-10-28.2",
+  "version": "2026-10-28.3",
   "title": "Seoul City",
   "temporary": true,
   "physical_execution_enabled": false,
@@ -85,24 +85,44 @@
         ],
         "VILLA": [
           682.5,
-          230.5
+          848.5
         ],
         "HANOK": [
           1715.5,
-          230.5
+          848.5
         ],
         "OFFICE_BUILDING": [
           1715.5,
-          848.5
+          1472
         ]
       },
       "central_yellow_stop_line_components_px": {
-        "west": [905, 667, 24, 363],
-        "east": [1471, 667, 24, 363],
-        "north": [1018, 554, 364, 24],
-        "south": [1018, 1120, 364, 23]
+        "west": [
+          905,
+          667,
+          24,
+          363
+        ],
+        "east": [
+          1471,
+          667,
+          24,
+          363
+        ],
+        "north": [
+          1018,
+          554,
+          364,
+          24
+        ],
+        "south": [
+          1018,
+          1120,
+          364,
+          23
+        ]
       },
-      "review": "Road centerlines, panel bounds and central yellow stop-line components were read from the reference image. The user corrected Pizza to start in front of its south-facing red storefront, on the south road at source [534,1472], rather than the central road behind the building. This is an authored nominal start, not a measured car pose. Main Junction uses a drawing-only 49.5 mm approach offset and 63.525 mm crossing width, separately from narrower outer roads. Directed scenario edges force PIZZA to S to C: eastbound departure, then a left turn north toward Main Junction. They are demo route restrictions, not inferred printed traffic rules. No paper signal region has been reviewed."
+      "review": "Road centerlines, panel bounds and central yellow stop-line components were read from the reference image. All four building frontages face south: Pizza remains on source [534,1472], Villa and Hanok use the central road at source y848.5, and Office Building uses the south road at source [1715.5,1472]. These are authored nominal road waypoints, not measured car poses or entrances. Pizza departs east to South Junction, where Office Building is reached by continuing straight east; Main Junction is no longer mandatory for every destination. The graph splits each road at its registered places without moving the artwork, board frame, markers or Spatial correspondence. Main Junction uses a drawing-only 49.5 mm approach offset and 63.525 mm crossing width, separately from narrower outer roads. No paper signal region has been reviewed."
     }
   },
   "board": {
@@ -214,7 +234,7 @@
         "residential block"
       ],
       "x_mm": 119.4375,
-      "y_mm": 40.340895698,
+      "y_mm": 148.5,
       "kind": "destination"
     },
     {
@@ -226,7 +246,7 @@
         "Korean house"
       ],
       "x_mm": 300.2125,
-      "y_mm": 40.340895698,
+      "y_mm": 148.5,
       "kind": "destination"
     },
     {
@@ -238,33 +258,21 @@
         "offices"
       ],
       "x_mm": 300.2125,
-      "y_mm": 148.5,
+      "y_mm": 257.621685327,
       "kind": "destination"
     }
   ],
   "edges": [
     {
       "from": "NW",
-      "to": "VILLA",
-      "length_mm": 79.8,
-      "bidirectional": true
-    },
-    {
-      "from": "VILLA",
       "to": "N",
-      "length_mm": 90.475,
+      "length_mm": 170.275,
       "bidirectional": true
     },
     {
       "from": "N",
-      "to": "HANOK",
-      "length_mm": 90.3,
-      "bidirectional": true
-    },
-    {
-      "from": "HANOK",
       "to": "NE",
-      "length_mm": 79.7125,
+      "length_mm": 170.0125,
       "bidirectional": true
     },
     {
@@ -305,8 +313,26 @@
     },
     {
       "from": "W",
+      "to": "VILLA",
+      "length_mm": 79.8,
+      "bidirectional": true
+    },
+    {
+      "from": "VILLA",
       "to": "C",
-      "length_mm": 170.275,
+      "length_mm": 90.475,
+      "bidirectional": true
+    },
+    {
+      "from": "C",
+      "to": "HANOK",
+      "length_mm": 90.3,
+      "bidirectional": true
+    },
+    {
+      "from": "HANOK",
+      "to": "E",
+      "length_mm": 79.7125,
       "bidirectional": true
     },
     {
@@ -316,14 +342,14 @@
       "bidirectional": true
     },
     {
-      "from": "C",
+      "from": "S",
       "to": "OFFICE_BUILDING",
       "length_mm": 90.3,
       "bidirectional": true
     },
     {
       "from": "OFFICE_BUILDING",
-      "to": "E",
+      "to": "SE",
       "length_mm": 79.7125,
       "bidirectional": true
     },
@@ -331,12 +357,6 @@
       "from": "SW",
       "to": "PIZZA",
       "length_mm": 53.8125,
-      "bidirectional": false
-    },
-    {
-      "from": "SE",
-      "to": "S",
-      "length_mm": 170.0125,
       "bidirectional": false
     }
   ],
@@ -420,8 +440,8 @@
     "Drawing coordinates support display registration and simulation only; no board-to-BASE, TCP, contact height or robot motion targets are provided.",
     "Place nodes are provisional road approach waypoints, not qualified physical destination entrances or car poses.",
     "The Pizza start is on the south road in front of the south-facing red storefront, not the road behind the building. Its nominal position and initial eastbound departure are scenario declarations, not observations of the current car pose.",
-    "Every route starts PIZZA to S to C, turning left at South Junction before approaching Main Junction from the south. Directed restrictions enforce this demo sequence and are not printed lane rules or physical turning qualification.",
-    "The Main Junction incoming node is S, not PIZZA. No reviewed paper signal target or physical stop is established by this graph.",
+    "Pizza has only an eastbound departure to South Junction. Office Building is straight ahead on the same south road; Villa and Hanok are approached on the central road in front of their south-facing frontages. No blanket Main Junction detour is imposed.",
+    "Main Junction is approached from S on the default Villa and Hanok routes, but the direct Office Building route does not traverse it. Every traversed junction retains its simulated stop and signal gate; no reviewed paper signal target or physical stop is established by this graph.",
     "No active paper signal region is configured. MUSE signal queries must remain unavailable until a current approach-specific region is explicitly registered.",
     "Road centerlines and nominal junction size do not qualify swept car/tool clearance, physical stop lines or pushing turns.",
     "The optional Spatial correspondence is display metadata only and supplies no camera registration or robot coordinate authority."

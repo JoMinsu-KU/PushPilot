@@ -16,7 +16,7 @@ import httpx
 from backend.meta import MetaGoalProvider, ProviderError
 
 
-PROMPT_VERSION = "pushpilot.live-route.prompt.v2"
+PROMPT_VERSION = "pushpilot.live-route.prompt.v3"
 SCHEMA_VERSION = "pushpilot.live-route.result.v1"
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 MAX_CONTEXT_BYTES = 1_000_000
@@ -156,6 +156,9 @@ class MetaPlanningProvider:
             "supported destination, with each consecutive pair permitted by the graph edge direction. "
             "Choose a route satisfying the actual user request, including departure direction, first turn, ordered "
             "via nodes and avoided nodes. Do not silently replace a requested route with a default or shortest route. "
+            "For a destination-only goal without a requested detour, prefer the most direct connected road path "
+            "with no unnecessary turns or junctions. Do not invent a mandatory visit to a central junction or "
+            "use a road behind the destination when its configured arrival node is on the front road. "
             "Set constraint fields to any or empty lists when the user imposed no such constraint; the configured "
             "start heading is context, not an instruction to ignore an explicitly different requested departure. "
             "Map directions use the map's fixed coordinate convention: north is decreasing y, east increasing x, "

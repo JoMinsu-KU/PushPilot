@@ -92,7 +92,8 @@ class PlanningProviderTests(unittest.TestCase):
             self.assertEqual(set(schema["schema"]["properties"]["destination"]["enum"]), {"SCHOOL", "PARK", "UNKNOWN"})
             self.assertNotIn("PIZZA", json.dumps(schema))
             system = body["messages"][0]["content"]
-            for rule in ("untrusted task", "Turn left/right/straight", "green signal", "never authorizes", "measured car pose"):
+            for rule in ("untrusted task", "Turn left/right/straight", "green signal", "never authorizes", "measured car pose",
+                         "destination-only goal", "most direct connected road path", "Do not silently replace a requested route"):
                 self.assertIn(rule, system)
             return httpx.Response(200, json=envelope())
 

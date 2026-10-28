@@ -2,7 +2,15 @@
 
 Initial software verification on **2026-10-27, Asia/Seoul**; the GX10 deployment follow-up on **2026-10-28** is recorded below. This record covers replaceable-map live-image planning, bound native-image action/signal services, finite voice uploads, execution-aware route display, recorded reviews and native preview. Execution remains simulated; this is not a physical mission report.
 
-## Live marker stability repair, October 28
+## Front-destination routing and quiet marker visibility, October 28
+
+The user reported that Office Building should be straight right from Pizza, but the AR route went behind buildings. The cause was authored map data: destination nodes were on rear roads and directed edges forced all destinations through C. City version `2026-10-28.3` moves Villa/Hanok to their central frontage road and Office to the southern frontage road. Default Office is `PIZZA → S → OFFICE_BUILDING`, with a straight continuation at S; default Villa/Hanok use `PIZZA → S → C → destination`. Exact valid requested alternatives remain supported. Office direct does not exercise the central paper signal, and no active signal ROI or physical motion qualification is added.
+
+Expected partial/all-marker covers now keep the source plate at `Fixed mapping`, with counts and unverified-alignment detail available on demand. Missing-marker banners are removed from both live and recorded display paths. Actual disagreement, stale images and changed views retain their alerts and guards. The first static-only UI update retained web/robot PIDs, camera epoch, reference identity, exact homography and mission revision while the actual image showed three markers.
+
+Local verification passed 458 Python tests, 63 frontend tests, TypeScript/Vite production build, source checks and map reachability validation. Regressions cover frontage geometry, the monotonic straight Office path, exact requested alternatives, stop geometry and guarded unchanged-print reference derivation/restoration. The latter issues a new explicitly derived display reference only for identical print/marker facts plus fresh distributed agreement, preserving the exact transform and invalidating old plans. It does not add automatic migration or a public transform API. Deployment and actual provider results are recorded separately after observation.
+
+## Earlier live marker stability repair, October 28
 
 A read-only 120-frame check found fresh video and the exact fixed homography throughout, while only 54 frames decoded all four markers. The upper markers have an observed short side around 15 pixels. Missing-target search also stopped at the first failed ROI and discarded otherwise valid partial observations. Expected partial visibility repeatedly mounted a large warning banner, making stable geometry look unstable.
 
