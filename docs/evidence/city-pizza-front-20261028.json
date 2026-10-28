@@ -1,0 +1,93 @@
+{
+  "schema": "pushpilot.city-front-start-verification.v1",
+  "date": "2026-10-28",
+  "timezone": "Asia/Seoul",
+  "source_commit": "48c1fd584075d0f988a37a6e11aad5340db09513",
+  "map_implementation_commit": "1123b04345b5fd39d50c0634170e4b82a08e2041",
+  "release": "20261028-city-pizza-front-48c1fd5",
+  "supersedes_start_geometry_in": "city-a3-20261028.json",
+  "map": {
+    "id": "seoul-city-a3",
+    "version": "2026-10-28.2",
+    "geometry_hash": "80467be6b9669b839cd29ff9bb430299cad1f8d9b7fd93c1fcb54f21e4512c9d",
+    "start": "PIZZA",
+    "start_source_pixels": [534, 1472],
+    "nominal_start_mm": [93.45, 257.621685327],
+    "placement": "South road in front of the south-facing red Pizza storefront, below the blue-roof building",
+    "required_prefix": ["PIZZA", "S", "C"],
+    "departure": "east",
+    "first_junction_turn": "left_at_S_toward_north",
+    "main_junction_approach_from": "S",
+    "main_junction_drawing_stop_mm": [209.9125, 198],
+    "directed_edge_count": 30,
+    "directed_restrictions_source": "Authored demo scenario, not printed traffic rules",
+    "measured_car_pose": false,
+    "physical_execution_enabled": false,
+    "configured_signal_targets": 0
+  },
+  "software_checks": {
+    "local_python_tests_passed": 433,
+    "gx10_arm64_python_tests_passed": 433,
+    "python_test_source_commit": "1123b04345b5fd39d50c0634170e4b82a08e2041",
+    "final_css_release_backend_and_tests_unchanged": true,
+    "frontend_tests_passed": 59,
+    "typescript_and_vite_build": "passed",
+    "all_enumerated_simple_destination_paths_have_required_prefix": true,
+    "former_direct_back_road_and_east_bypass_paths_rejected": true,
+    "first_turn_left_accepted_and_straight_rejected": true,
+    "road_segment_continuity_and_south_stop_line": "passed"
+  },
+  "actual_muse_planning": {
+    "input_scope": "live_native_frame_and_graph",
+    "cases": [
+      {"destination": "VILLA", "http_status": 200, "seconds": 10.09, "node_ids": ["PIZZA", "S", "C", "N", "VILLA"]},
+      {"destination": "HANOK", "http_status": 200, "seconds": 2.52, "node_ids": ["PIZZA", "S", "C", "N", "HANOK"]},
+      {"destination": "OFFICE_BUILDING", "http_status": 200, "seconds": 5.31, "node_ids": ["PIZZA", "S", "C", "OFFICE_BUILDING"]}
+    ],
+    "office_rechecked_after_final_css_release": "HTTP_200_PLAN_READY",
+    "approved": false,
+    "simulation_only": true,
+    "motion_authority": false,
+    "scope": "Declared-start route planning; no physical vehicle movement, action review or signal-color test."
+  },
+  "camera_registration": {
+    "new_version_fresh_four_marker_lock": true,
+    "rear_start_reference_not_restored": true,
+    "initial_samples": 24,
+    "initial_locked": 24,
+    "initial_maximum_image_residual_px": 1.1905,
+    "final_css_release_exact_current_transform_explicitly_resumed": true,
+    "final_samples": 24,
+    "final_locked": 7,
+    "final_locked_partial": 17,
+    "final_maximum_image_residual_px": 2.1163,
+    "exact_fixed_mapping_retained_in_all_final_samples": true,
+    "automatic_refit": false,
+    "scope": "Short display-registration checks, including reduced marker visibility; not long-run recognition accuracy or metric physical calibration."
+  },
+  "browser_checks": {
+    "camera_spatial_canonical_segment_ids_and_phases_match": true,
+    "office_route_segments_compared": 5,
+    "junctions": ["S", "C"],
+    "front_start_visible_in_both_views_at": [1194, 834],
+    "source_badge_overlaps_start_marker": false,
+    "source_badge_style_preserved_and_position_moved": true,
+    "camera_viewports_without_vertical_overflow": [[1194, 834], [1366, 1024], [1024, 768]],
+    "loaded_spatial_viewports_without_vertical_overflow": [[1194, 834], [1366, 1024]],
+    "observed_console_errors_or_warnings": 0,
+    "camera_pixels_and_perspective_unchanged": true,
+    "spatial_mapping_authority": "display_only",
+    "independent_ipad_safari_hardware_test": false
+  },
+  "operational_preservation": {
+    "prior_rear_start_plan_invalidated_by_map_identity": true,
+    "historical_evidence_preserved": true,
+    "camera_epoch_retained": true,
+    "camera_helper_restarted": false,
+    "rodi_restarted": false,
+    "robot_control_api_process_retained": true,
+    "robot_motion_issued": false
+  },
+  "remaining_scope": "Physical start/TCP/BASE/contact/turn/stop qualification and approach-specific paper-signal registration remain pending. South Junction retains the existing simulated mandatory-check policy; this update does not establish a physical signal there.",
+  "private_evidence": "Native frames, detailed provider results and operating receipts remain outside Git."
+}

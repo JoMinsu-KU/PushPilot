@@ -2,7 +2,13 @@
 
 Initial software verification on **2026-10-27, Asia/Seoul**; the GX10 deployment follow-up on **2026-10-28** is recorded below. This record covers replaceable-map live-image planning, bound native-image action/signal services, finite voice uploads, execution-aware route display, recorded reviews and native preview. Execution remains simulated; this is not a physical mission report.
 
-## City A3 replacement, October 28
+## Front-of-Pizza correction, October 28
+
+The user corrected the Pizza start to the road in front of its south-facing red storefront. Active city version `2026-10-28.2` now requires `PIZZA → S → C`: east departure, then left/north at South Junction before Main Junction. This supersedes the rear-start geometry and west-facing central approach in the earlier city verification below. The [new scoped record](evidence/city-pizza-front-20261028.json) preserves the distinction.
+
+All three actual native-image MUSE destination plans accepted that prefix; the Office route was requested again after the final source-badge layout update. The rear-start plan/reference was not migrated to the corrected map identity. Camera and Spatial show the same five Office route segments and the front start; the glass source badge no longer covers it. Python passed 433 tests locally and on GX10, and the final frontend passed 59 tests plus its production build. Current plans remain unapproved simulation, signal targets remain absent, and no hardware process restart or robot motion was issued.
+
+## Earlier City A3 replacement, October 28
 
 The placed nominal A3 landscape city print now has a separate selected adapter, `seoul-city-a3`, and an isolated GX10 workspace/release. This follow-up supersedes the older active-map, helper-only deployment and untested alternative-route statuses below; historical records retain their original evidence scope. [City A3 implementation](CITY_A3.md) and the [scoped verification record](evidence/city-a3-20261028.json) contain the geometry identity and limits.
 

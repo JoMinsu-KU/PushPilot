@@ -42,6 +42,12 @@ Check all three destination paths and at least one longer alternative using the 
 
 Live registration failures now preserve their specific error code/message so `view_changed` does not masquerade as a revision conflict. A real revision conflict still requires refreshing the workspace. Neither condition triggers automatic re-registration, provider fallback or robot movement.
 
+## Verified front-start correction, October 28
+
+Release `20261028-city-pizza-front-48c1fd5` activates version `2026-10-28.2`. Fresh native-image MUSE requests accepted all three destinations with the required `PIZZA → S → C` prefix. The former rear-start plan was invalidated; a fresh current-version four-marker view was explicitly locked. The final CSS-only release then explicitly resumed that exact current-version transform and requested a fresh Office plan. No plan was approved and no robot moved.
+
+Both Camera and Spatial show the same five Office route segments, two junction stop geometries and the front-storefront start marker. The existing glass source badge was moved above the road so it no longer covers the marker; camera pixels, perspective and map projections are unchanged. Python suites passed 433 tests locally and on GX10; the frontend passed 59 tests and its build. See the [front-start verification](evidence/city-pizza-front-20261028.json), including short-window partial-marker observations and device-test limits. Physical signal coverage at S or C is not established by their simulated checkpoints.
+
 ## Earlier rear-start rollout, October 28
 
 The isolated GX10 release `20261028-city-a3-88331e6` served the earlier version `2026-10-28.1`, before the user corrected the Pizza start. Its [historical evidence](evidence/city-a3-20261028.json) does not verify the corrected route. Actual unchanged native-camera MUSE requests accepted Villa, Hanok, Office Building and a longer northern/eastern Office route. A new four-marker city reference replaced the prior-map display setup; the final web-only update explicitly resumed that exact current-city transform and requested a fresh MUSE plan. All plans remained unapproved simulation. No physical car was visible.
