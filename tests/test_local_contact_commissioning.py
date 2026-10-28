@@ -62,7 +62,7 @@ class ContactScopeTests(unittest.TestCase):
         self.gate()
         for changes in ({"contact_trials_authorized": False}, {"on_site_review": False},
                         {"reported_car_dimensions_mm": [45., 0., 15.]}, {"reported_car_dimensions_mm": [45., True, 15.]},
-                        {"trial_max_step_mm": 5.000001}, {"map_id": "pretend-map"}, {"calibration_id": "pretend-fit"}):
+                        {"trial_max_step_mm": 20.000001}, {"map_id": "pretend-map"}, {"calibration_id": "pretend-fit"}):
             with self.subTest(changes=changes), self.assertRaises(ValueError):
                 LocalContactInstallation.model_validate({**self.local, **changes})
         self.rejects("INSTALLATION_UNQUALIFIED", installation={**self.local, "qualified": False})
@@ -81,6 +81,28 @@ class ContactScopeTests(unittest.TestCase):
             self.rejects("CONTACT_OPERATION_FORBIDDEN", command={**self.command, "purpose": purpose})
         self.rejects("CONTACT_OPERATION_FORBIDDEN", command={**self.command, "kind": "rotate"})
         self.rejects("CONTACT_EXPECTED_OUTCOME_REQUIRED", command={**self.command, "expected_visual": ""})
+
+    def test_reviewed_ten_and_twenty_mm_strokes_keep_numeric_profile_binding(self):
+        for limit in (10., 20.):
+            with self.subTest(limit=limit):
+                local = {**self.local, "trial_max_step_mm": limit}
+                LocalContactInstallation.model_validate(local)
+                profile = prepare.build_profile(local, self.state, on_site_review=True)
+                receiver = {**self.receiver, "profile": profile}
+                command = {**self.command, "target": [limit, 0., *self.state["actual_pose"][2:]]}
+                self.gate(command=command, installation=local, receiver=receiver)
+                self.rejects("STEP_LIMIT", command={**command, "target": [limit + .000001, 0., *command["target"][2:]]},
+                             installation=local, receiver=receiver)
+                self.rejects("PROFILE_INSTALLATION_BINDING", command=command, installation=local)
+                for index, code in ((2, "LOCAL_Z_CHANGED"), (5, "ORIENTATION_CHANGED")):
+                    target = command["target"][:]
+                    target[index] += .000001
+                    self.rejects(code, command={**command, "target": target}, installation=local, receiver=receiver)
+
+    def test_default_contact_limit_remains_one_mm(self):
+        local = dict(self.local)
+        del local["trial_max_step_mm"]
+        self.assertEqual(LocalContactInstallation.model_validate(local).trial_max_step_mm, 1.)
 
     def test_exact_height_orientation_bounds_and_profile_limits_remain_mandatory(self):
         for index, code in ((2, "LOCAL_Z_CHANGED"), (5, "ORIENTATION_CHANGED")):

@@ -100,7 +100,7 @@ class LocalContactInstallation(LocalBaseInstallation):
     surface_id: str = Field(min_length=1, max_length=80)
     reported_car_dimensions_mm: list[Number] = Field(min_length=3, max_length=3)
     contact_trials_authorized: bool = Field(strict=True)
-    trial_max_step_mm: Number = Field(default=1, gt=0, le=5)
+    trial_max_step_mm: Number = Field(default=1, gt=0, le=20)
 
     @model_validator(mode="after")
     def contact_limits(self):
