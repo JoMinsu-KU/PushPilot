@@ -9,6 +9,11 @@ import math
 
 from .models import LocalBaseInstallation
 
+# Native FC03 uses 0.1 mm / degree registers while pendant HELLO retains full
+# precision. This allowance compares two representations of the same baseline;
+# it never permits a commanded Z or orientation delta from the current pose.
+NATIVE_BASELINE_COMPARISON_QUANTIZATION = 0.100000001
+
 
 class GuardError(RuntimeError):
     def __init__(self, code: str, message: str, retryable: bool = False):
@@ -187,9 +192,10 @@ def validate_local_profile(installation: dict, receiver: dict) -> dict:
     margin = local["tcp_clearance_margin_mm"]
     _require(all(bounds[i] + margin <= source[i] <= bounds[i + 3] - margin for i in range(3)),
              "OUTSIDE_WORKSPACE", "The current TCP lies outside the measured local profile envelope.")
-    _require(abs(source[2] - local["fixed_tcp_z_mm"]) <= 0.01,
+    _require(abs(source[2] - local["fixed_tcp_z_mm"]) <= NATIVE_BASELINE_COMPARISON_QUANTIZATION,
              "LOCAL_Z_CHANGED", "Local commissioning must retain the reviewed current TCP height.")
-    _require(all(abs(a - b) <= 0.01 for a, b in zip(source[3:], local["fixed_orientation_deg"])),
+    _require(all(abs(a - b) <= NATIVE_BASELINE_COMPARISON_QUANTIZATION
+                 for a, b in zip(source[3:], local["fixed_orientation_deg"])),
              "ORIENTATION_CHANGED", "The current literal TCP orientation differs from the local review.")
     return local
 
@@ -205,10 +211,9 @@ def _admit_local(command: dict, installation: dict, receiver: dict) -> None:
     margin = local["tcp_clearance_margin_mm"]
     _require(all(bounds[i] + margin <= target[i] <= bounds[i + 3] - margin for i in range(3)),
              "OUTSIDE_WORKSPACE", "The target TCP lies outside the measured local profile envelope.")
-    _require(target[2] == source[2] and abs(target[2] - local["fixed_tcp_z_mm"]) <= 0.01,
+    _require(target[2] == source[2],
              "LOCAL_Z_CHANGED", "Local commissioning does not permit lifting, lowering or combined XYZ travel.")
-    _require(source[3:] == target[3:]
-             and all(abs(a - b) <= 0.01 for a, b in zip(target[3:], local["fixed_orientation_deg"])),
+    _require(source[3:] == target[3:],
              "ORIENTATION_CHANGED", "Local trials must preserve the reviewed literal TCP orientation.")
     _require(0 < math.dist(source[:3], target[:3]) <= min(local["max_step_mm"], receiver["profile"]["max_translation_mm"]) + 1e-9,
              "STEP_LIMIT", "Local trials need one nonzero bounded step inside the reviewed local volume.")

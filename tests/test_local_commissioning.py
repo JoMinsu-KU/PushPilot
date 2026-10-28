@@ -97,7 +97,7 @@ class LocalCommissioningTests(unittest.TestCase):
             self.assert_guard("LOCAL_Z_CHANGED", command={**self.command, "target": target})
         for target in ([1., 0., 100., -180., 0., 0.], [1., 0., 100., 180., 0., 0.000001]):
             self.assert_guard("ORIENTATION_CHANGED", command={**self.command, "target": target})
-        self.assert_guard("LOCAL_Z_CHANGED", receiver={**self.receiver, "actual_pose": [0., 0., 100.1, 180., 0., 0.]})
+        self.assert_guard("LOCAL_Z_CHANGED", receiver={**self.receiver, "actual_pose": [0., 0., 100.2, 180., 0., 0.]})
         self.assert_guard("ORIENTATION_CHANGED", receiver={**self.receiver, "actual_pose": [0., 0., 100., 180., 0., 1.]})
 
     def test_source_target_step_margin_and_profile_bounds_apply(self):
@@ -112,6 +112,25 @@ class LocalCommissioningTests(unittest.TestCase):
         self.assert_guard("OUTSIDE_WORKSPACE", installation=installation,
                           receiver={**self.receiver, "profile": profile},
                           command={**self.command, "target": [3.6, 0., 100., 180., 0., 0.]})
+
+    def test_full_precision_hello_matches_quantized_baseline_but_commands_hold_exact_pose(self):
+        full_pose = [0., 0., 100.037, 179.994, 0.047, -0.049]
+        receiver = {**self.receiver, "actual_pose": full_pose}
+        target = [1., 0., *full_pose[2:]]
+        self.gate(receiver=receiver, command={**self.command, "target": target})
+        self.assertEqual(self.profile["orientations"], [{"id": "measured_current", "rxyz_deg": [180., 0., 0.]}])
+        prepared = prepare.build_profile(self.installation, {**self.state, "actual_pose": full_pose}, on_site_review=True)
+        self.assertEqual(prepared["expected_start_tcp_mm_deg"], full_pose)
+        self.assertEqual(prepared["orientations"], self.profile["orientations"])
+        for delta in (0.000001, -0.000001, 0.05):
+            changed = target[:]
+            changed[2] += delta
+            self.assert_guard("LOCAL_Z_CHANGED", receiver=receiver, command={**self.command, "target": changed})
+            changed = target[:]
+            changed[5] += delta
+            self.assert_guard("ORIENTATION_CHANGED", receiver=receiver, command={**self.command, "target": changed})
+        self.assert_guard("LOCAL_Z_CHANGED", receiver={**receiver, "actual_pose": [0., 0., 100.101, *full_pose[3:]]})
+        self.assert_guard("ORIENTATION_CHANGED", receiver={**receiver, "actual_pose": [0., 0., full_pose[2], 179.899, 0., 0.]})
 
     def test_local_volume_and_speed_caps_cannot_be_whole_board_limits(self):
         for changes in ({"workspace_max_mm": [16.1, 4., 101.]}, {"max_step_mm": 5.01},
@@ -175,7 +194,7 @@ class LocalCommissioningTests(unittest.TestCase):
     def test_unsafe_state_or_old_profile_import_is_not_normalized(self):
         for state in ({**self.state, "profile": {"old": True}},
                       {**self.state, "actual_pose": [0., 0., 100., 180., 0., 360.]},
-                      {**self.state, "actual_pose": [0., 0., 100.1, 180., 0., 0.]},
+                      {**self.state, "actual_pose": [0., 0., 100.2, 180., 0., 0.]},
                       {**self.state, "actual_joint": [True] * 6}):
             with self.subTest(state=state), self.assertRaises((ValueError, GuardError)):
                 prepare.build_profile(self.installation, state, on_site_review=True)

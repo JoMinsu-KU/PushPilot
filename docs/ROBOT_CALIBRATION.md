@@ -52,6 +52,8 @@ Initial local BASE probe commissioning must be scoped separately from map-qualif
 
 `LocalBaseInstallation` uses `scope: "local_base_commissioning"` and deliberately has no map, calibration or camera fields. It records the current TCP definition hash, tool, payload, measured BASE envelope, fixed Z/orientation and actual site review. Its entire envelope spans at most 20 mm per axis, with software ceilings of 5 mm per trial, 5 mm/s and 10 mm/s². These limits do not establish physical clearance. At runtime the HTTP admission layer accepts only same-Z, fixed-literal-orientation `translate` commands with purpose `commissioning`; it rejects pushes, tool repositioning, rotation and profile updates. The inherited receiver retains its original generic BASE policy and protocol checks. Use only the single-owner commissioning API; these additional scope restrictions are not a newly installed pendant feature.
 
+Native baseline coordinates have 0.1 mm/degree quantization, while pendant HELLO supplies full precision. The baseline comparison permits at most one Native unit of representation difference; it is not a permitted motion or per-step drift. Every command's Z and orientation must still equal the current full-precision source exactly. The initial profile's narrow Z envelope accommodates readback representation only and does not admit vertical trials through the API.
+
 ```sh
 python tools/prepare_local_commissioning.py \
   --installation <private-measured-local-base-review.json> \
