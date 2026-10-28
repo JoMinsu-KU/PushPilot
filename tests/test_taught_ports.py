@@ -1,6 +1,6 @@
 """Real port contract exercised with fake HTTP, Native and Meta providers only."""
 from copy import deepcopy
-from dataclasses import replace
+from dataclasses import asdict, replace
 import hashlib
 import json
 from pathlib import Path
@@ -14,8 +14,8 @@ from backend.robot_control.taught_ports import (LocalHTTP, NativeObservation, Pr
                                                prove_host_journal_cycle, host_journal_native_capture)
 from tools.prepare_local_contact import build_profile
 from tools.prepare_contact_turn import build_profile as build_turn_profile
-from tests.test_taught_executor import configuration, pose
-from tools.run_taught_executor import load_route
+from tests.test_taught_executor import clearance_policy, configuration, pose, right_signal_target
+from tools.run_taught_executor import load_adapter, load_route
 
 
 def synthetic_status():
@@ -212,6 +212,7 @@ class RealTaughtPortsTests(TestCase):
         before = self.ports.capture()
         after = replace(before, id="newer-frame", sequence=11)
         value = {"verdict": "UNCERTAIN", "occlusion_cause": "UNKNOWN", "car_visible": True, "expected_progress": False,
+                 "signal_region_visible": False, "signal_occlusion_cause": "UNKNOWN",
                  "excessive_yaw": False, "arrived": False, "observed": "Synthetic ambiguous movement.",
                  "summary": "Movement not resolved.", "limitations": ["Synthetic imagery."]}
         envelope = {"choices": [{"finish_reason": "stop", "message": {"content": json.dumps(value)}}]}
@@ -250,7 +251,7 @@ class RealTaughtPortsTests(TestCase):
         withdrawal = replace(self.intent(), request_id="synthetic-clearance-uuid", observation_clearance_id="synthetic-side-policy",
                              expected_visual="Only the physical tool withdraws sideways; inspect the stationary car.")
         value = {"verdict": "PASS", "car_visible": True, "original_action_supported": True,
-                 "car_unchanged_during_withdrawal": False, "recontact_eligible": False,
+                 "car_unchanged_during_withdrawal": False, "recontact_eligible": False, "signal_region_visible": False,
                  "observed": "The car is now readable, but earlier occlusion prevents a stationarity comparison.",
                  "summary": "Visible car; recontact remains unverified.", "limitations": ["Earlier contact view was occluded."]}
         envelope = {"choices": [{"finish_reason": "stop", "message": {"content": json.dumps(value)}}]}
@@ -267,6 +268,55 @@ class RealTaughtPortsTests(TestCase):
         saved = json.loads(next(self.journal.root.glob("clearance-muse-result-*.json")).read_bytes())
         self.assertEqual(saved["provider_envelope"], envelope)
         self.assertEqual(saved["context"]["automatic_return"], False)
+
+    def test_pair_and_clearance_use_bound_right_target_for_visibility_only(self):
+        target = right_signal_target(camera_epoch="synthetic-camera")
+        policy = replace(clearance_policy(), required_signal_observation=target)
+        self.ports.adapter = replace(self.adapter, observation_clearances=(policy,))
+        before = self.ports.capture()
+        after = replace(before, id="newer-frame", sequence=11)
+        pair = {"verdict": "PASS", "occlusion_cause": "NONE", "car_visible": True, "expected_progress": True,
+                "excessive_yaw": False, "arrived": False, "signal_region_visible": False, "signal_occlusion_cause": "TOOL",
+                "observed": "Synthetic car motion is readable, while the tool covers the specified right-side region.",
+                "summary": "Car readable; right-side region covered.", "limitations": ["Synthetic imagery only."]}
+        self.provider.return_value = 200, {"choices": [{"finish_reason": "stop", "message": {"content": json.dumps(pair)}}]}, 900
+        result = self.ports.review(self.intent(), before, after, at_goal=False)
+        self.assertEqual((result.signal_region_visible, result.signal_occlusion_cause), (False, "TOOL"))
+        context = json.loads(self.provider.call_args.args[3]["messages"][1]["content"][0]["text"])
+        self.assertEqual(context["required_signal_observation"], json.loads(encoded(asdict(target))))
+        self.assertTrue(context["signal_visibility_only"])
+        clearance = {"verdict": "PASS", "car_visible": True, "original_action_supported": True,
+                     "car_unchanged_during_withdrawal": True, "recontact_eligible": True, "signal_region_visible": True,
+                     "observed": "The synthetic car and configured right-side region are readable.",
+                     "summary": "Both observation targets readable; no signal colour or permission assessed.", "limitations": []}
+        self.provider.return_value = 200, {"choices": [{"finish_reason": "stop", "message": {"content": json.dumps(clearance)}}]}, 900
+        withdrawal = replace(self.intent(), observation_clearance_id=policy.id, observation_junction_id="S")
+        result = self.ports.review_clearance(self.intent(), withdrawal, before, before, after)
+        self.assertTrue(result.signal_region_visible)
+        payload = self.provider.call_args.args[3]
+        self.assertIn("visibility ONLY", payload["messages"][0]["content"])
+        self.assertNotIn("signal_color", payload["response_format"]["json_schema"]["schema"]["properties"])
+        self.assertNotIn("crossing_permission", payload["response_format"]["json_schema"]["schema"]["properties"])
+
+    def test_unconfigured_signal_cannot_be_claimed_visible_by_provider(self):
+        before = self.ports.capture()
+        value = {"verdict": "PASS", "car_visible": True, "original_action_supported": True,
+                 "car_unchanged_during_withdrawal": True, "recontact_eligible": True, "signal_region_visible": True,
+                 "observed": "Synthetic unsupported target claim.", "summary": "Unbound visibility is not accepted.", "limitations": []}
+        self.provider.return_value = 200, {"choices": [{"finish_reason": "stop", "message": {"content": json.dumps(value)}}]}, 1
+        with self.assertRaises(ExecutionBlocked):
+            self.ports.review_clearance(self.intent(), self.intent(), before, before, before)
+        self.assertFalse(list(self.journal.root.glob("clearance-muse-result-*.json")))
+
+    def test_signal_view_mismatch_is_rejected_before_any_io(self):
+        policy = replace(clearance_policy(), required_signal_observation=right_signal_target(camera_epoch="different-camera"))
+        api, camera = MagicMock(), MagicMock()
+        with self.assertRaisesRegex(ValueError, "actual fixed camera"):
+            RealTaughtPorts(adapter=replace(self.adapter, observation_clearances=(policy,)), journal=self.journal,
+                runtime=self.root, token_file=self.root/"unused", meta_env_file=self.env,
+                camera_epoch="synthetic-camera", registration_id="synthetic-view", expected_visual="Synthetic target fixture only.",
+                api=api, camera=camera, provider_request=self.provider)
+        self.assertFalse(api.mock_calls or camera.mock_calls or self.provider.mock_calls)
 
     def test_clearance_provider_failure_is_saved_without_recontact_or_demo_pass(self):
         before = self.ports.capture()
@@ -362,6 +412,46 @@ class RealTaughtPortsTests(TestCase):
 
 
 class PhysicalRouteBundleTests(TestCase):
+    def test_private_signal_target_requires_original_exact_view_and_region_record(self):
+        drawing, adapter, _ = configuration()
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            def source(name, value):
+                path = root/name
+                path.write_bytes(encoded(value))
+                return {"path": name, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+            primitive = source("synthetic-primitive.json", {"fixture": "Offline synthetic primitive only; no hardware qualification."})
+            target = right_signal_target()
+            metadata = {key: value for key, value in asdict(target).items() if key != "target_evidence_sha256"}
+            target_source = source("synthetic-signal-target.json", {"schema": "pushpilot.signal-observation-target.v1",
+                "visibility_only": True, "signal_color_qualified": False, "target": metadata})
+            target = replace(target, target_evidence_sha256=target_source["sha256"])
+            policy = clearance_policy()
+            action = replace(policy.withdrawal, qualification_sha256=primitive["sha256"])
+            policy = replace(policy, qualification_sha256=primitive["sha256"], withdrawal=action, withdrawal_actions=(action,),
+                             recontact=None, required_signal_observation=target)
+            review = source("synthetic-review.json", {"schema": "pushpilot.taught-course-qualification.v1",
+                "scope": "fixed_pose_contact_corridor", "qualification": "accepted", "physical_execution": True,
+                "map_identity": {"id": drawing.id, "version": drawing.version, "hash": drawing.geometry_hash},
+                "fixture": "Synthetic loader input, not a real physical qualification."})
+            adapter = replace(adapter, review_sha256=review["sha256"],
+                roads=tuple(replace(road, qualification_sha256=primitive["sha256"]) for road in adapter.roads),
+                observation_clearances=(policy,))
+            bundle = {"schema": "pushpilot.taught-physical-adapter.v1", "adapter": asdict(adapter),
+                      "qualification_evidence": [primitive, review, target_source]}
+            path = root/"synthetic-adapter.json"
+            path.write_bytes(encoded(bundle))
+            self.assertEqual(load_adapter(path), adapter)
+            bundle["qualification_evidence"] = [primitive, review]
+            path.write_bytes(encoded(bundle))
+            with self.assertRaisesRegex(ValueError, "original actual review"):
+                load_adapter(path)
+            bundle["qualification_evidence"].append(target_source)
+            bundle["adapter"]["observation_clearances"][0]["required_signal_observation"]["image_bounds_px"] = [1200, 300, 1450, 550]
+            path.write_bytes(encoded(bundle))
+            with self.assertRaisesRegex(ValueError, "exact visibility region"):
+                load_adapter(path)
+
     def test_live_meta_intent_requires_distinct_exact_operator_physical_approval(self):
         drawing, _, route = configuration()
         with TemporaryDirectory() as temp:

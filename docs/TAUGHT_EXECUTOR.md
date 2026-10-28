@@ -153,7 +153,11 @@ MUSE latency is followed by a fresh Native/receiver baseline check.
 ## Conditional junction observation clearance
 
 The operator requested one small automatic side withdrawal when the car is
-occluded at the first intersection. `TaughtAdapter.observation_clearances` is an
+occluded at the first intersection. The later correction requires exposing both
+the car and the paper signal on the RIGHT. A farther-right park, leftward move or
+rearward move is only a candidate until its actual path and resulting joint
+visibility are independently reviewed; no direction is selected by assumption.
+`TaughtAdapter.observation_clearances` is an
 optional registry of actual measured `MeasuredObservationClearance` records;
 none is bundled or inferred from camera pixels. Each record contains `id`,
 `junction_id`, exact directed `incoming`, measured `contact_pose`, its actual
@@ -169,16 +173,43 @@ By default, `contact_pose` is the incoming road's actual taught endpoint. A poli
 may instead bind `transition_id` and `transition_action_id` together to the exact
 completed action inside that junction; the stored contact pose must match its
 endpoint. The actual junction is resolved from that transition's incoming edge,
-not its spanning course labels. The path must have a measured lateral component
-relative to the triggering contact translation. An optional measured
+not its spanning course labels. The path must have a measured lateral or
+rearward component relative to the triggering contact translation; a pure
+forward displacement cannot masquerade as observation clearance. An optional measured
 `contact_direction_base_xy` supplies that direction explicitly; it is required
 for a wrist-only target because Euler yaw does not establish contact direction.
 Transition IDs and clearance IDs are globally unique within the adapter.
 
-The trigger requires an already verified robot endpoint, explicit validated MUSE
-`occlusion_cause=TOOL` together with `UNCERTAIN` or `car_visible=false`, the first
-configured junction on this exact selected route and the matching full contact
-pose. Generic uncertainty, unrelated loss of visibility and PASS without expected
+An optional `required_signal_observation` contains a `SignalObservationTarget`:
+`id`, `junction_id`, `approach_from`, `description`, `camera_epoch`,
+`registration_id`, native `image_bounds_px` `[left, top, right, bottom]`,
+`target_evidence_sha256` and `side=RIGHT`. Its identity/approach convention follows
+the map signal-target contract. The bounds reference the unchanged 1920 x 1080
+original frame; no drawing region, paper placement or image transform is inferred.
+The target must match this policy's incoming junction/approach and the actual
+configured fixed camera view. Keep it in the private adapter until measured and
+reviewed; no physical signal target is supplied by the software.
+
+The retained target evidence uses `schema=pushpilot.signal-observation-target.v1`,
+`visibility_only=true`, `signal_color_qualified=false` and `target` containing
+exactly the same target metadata except its own `target_evidence_sha256`. Its
+original bytes must match that hash in `qualification_evidence`. An unrelated
+source file cannot validate a different region or camera view. This visibility
+record does not qualify RED/GREEN detection, a physical stopped signal check or
+crossing permission.
+
+The trigger requires an already verified robot endpoint at the first configured
+junction on this exact selected route and the matching full contact pose. It
+accepts explicit MUSE `occlusion_cause=TOOL` together with `UNCERTAIN` or
+`car_visible=false`, or a configured right-side region with
+`signal_region_visible=false` and `signal_occlusion_cause=TOOL`. The latter may
+trigger even when the car is readable and its progress is PASS. Signal visibility
+is logged on earlier approach strokes but becomes a required joint observation
+only at the exact bound endpoint; an unviewable signal must not deadlock travel
+halfway to that observation anchor. UNKNOWN/OTHER signal cover at the endpoint
+waits for new images without guessing a side move. With no configured target,
+the provider must report signal visibility false and its cause UNKNOWN.
+Generic uncertainty, unrelated loss of visibility and PASS without expected
 progress do not authorize withdrawal. FAIL/excessive yaw, a provider failure, a
 changed receiver/profile/pose, a later junction, a missing measured path or a
 smaller installed limit never cause an inferred side movement. The same
@@ -205,6 +236,15 @@ endpoint proof alone does not prove car stationarity. A tool movement cannot
 be counted as vehicle progress. Current visibility refers to the new clear
 image; it does not require the earlier covered image to expose the car, nor
 permit unseen stationarity to be invented.
+
+For a policy with the required right-side target, the final sequence must also
+report `signal_region_visible=true`. A PASS with a visible car but a hidden,
+missing or unreadable signal region remains `WAIT_CLEARANCE_REVIEW`, and
+`recontact_eligible` remains false. New images may resolve visibility without
+another withdrawal. The field judges visibility only; neither it nor a clear
+car view produces signal colour, GREEN permission or physical qualification.
+Right, left and rearward offsets are accepted from the exact measured path; the
+compiler does not choose a side or infer a new offset from an occlusion result.
 
 Missing/stale/reused frames or model failure retain `WAIT_CLEARANCE_REVIEW` and
 can obtain newer images without repeating withdrawal or losing the first path
@@ -415,6 +455,13 @@ never resends a physical command or performs an additional FC03 query.
 
 ## Validation
 
+The subsequent [right-side signal view comparison](evidence/first-junction-right-signal-view-20261029.json)
+preserves a failed left/rear hose view, a partly obstructed outer-right view and
+a farther-right candidate with the car and nominal signal area exposed. An
+actual paper signal face and its private view-bound target record remain
+unqualified. Candidate visibility does not qualify signal colour, vehicle
+stationarity, automatic recontact or route continuation.
+
 Actual first-junction commissioning is recorded separately in
 [the October 29 evidence summary](evidence/first-junction-observation-clearance-20261029.json).
 Front-side NORTH/NW pushing produced visible counterclockwise rotation toward
@@ -449,4 +496,10 @@ three-original provider requests, current visibility versus unknown stationarity
 fresh frames, failed model queries, unknown withdrawal outcomes, known-receipt
 Native recovery without dispatching a following step, durable-write failure
 recovery, full malformed/truncated provider response retention and the absence
-of automatic or blind return.
+of automatic or blind return. Optional right-signal tests cover original-pair
+TOOL occlusion with a readable car, approach versus endpoint admission,
+visibility-only sequence review, blocked partial clear views, exact private
+target/evidence/view binding and qualified left/rear paths. A changed joint
+branch during either provider review requires reconciliation even if TCP and
+receiver identity stay unchanged; existing Native quantization allowance remains
+0.100001 degrees.

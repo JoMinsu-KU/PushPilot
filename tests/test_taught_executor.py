@@ -9,7 +9,7 @@ from backend.maps import MapDefinition
 from backend.robot_control.taught_executor import (
     ApprovedRoute, ClearanceReview, ExecutionBlocked, Frame, MeasuredRoad, MeasuredObservationClearance,
     MeasuredTransition, MeasuredTransitionAction, MotionReceipt,
-    Snapshot, TaughtAdapter, TaughtExecutor, VehicleReview, compile_taught_route,
+    SignalObservationTarget, Snapshot, TaughtAdapter, TaughtExecutor, VehicleReview, compile_taught_route,
 )
 
 
@@ -53,6 +53,8 @@ class SyntheticPorts:
         self.review_verdict, self.visible, self.excessive_yaw = "PASS", True, False
         self.expected_progress = True
         self.occlusion_cause = "UNKNOWN"
+        self.signal_visible, self.signal_occlusion_cause = False, "UNKNOWN"
+        self.clearance_signal_visible = False
         self.force_arrived = None
         self.changed_receipt, self.motion_exception = False, False
         self.endpoint_error = 0
@@ -109,7 +111,8 @@ class SyntheticPorts:
             self.sequence += 1
         return VehicleReview(intent.request_id, "synthetic-provider-receipt", before.sha256, after.sha256,
             self.review_verdict, self.visible, self.expected_progress, self.excessive_yaw,
-            at_goal if self.force_arrived is None else self.force_arrived, "Synthetic original-pair result.", self.occlusion_cause)
+            at_goal if self.force_arrived is None else self.force_arrived, "Synthetic original-pair result.",
+            self.occlusion_cause, self.signal_visible, self.signal_occlusion_cause)
 
     def hold(self, reason):
         self.holds.append(reason)
@@ -123,7 +126,7 @@ class SyntheticPorts:
         return ClearanceReview(withdrawal.request_id, original.request_id, "synthetic-clearance-provider",
             (original_before.sha256, withdrawal_before.sha256, clear_after.sha256), self.clearance_verdict,
             self.clearance_visible, True, self.clearance_unchanged, self.clearance_recontact,
-            "Synthetic clear-view sequence result; not physical qualification.")
+            "Synthetic clear-view sequence result; not physical qualification.", self.clearance_signal_visible)
 
     def append_event(self, kind, payload):
         self.events.append((kind, payload))
@@ -461,6 +464,12 @@ def clearance_policy(junction="S", incoming=("PIZZA", "S"), contact=None, *, rec
     return MeasuredObservationClearance("synthetic-clearance-"+junction, junction, incoming, contact, "a"*64, withdrawal, returned)
 
 
+def right_signal_target(*, camera_epoch="synthetic-camera-epoch", registration_id="synthetic-view"):
+    return SignalObservationTarget("synthetic-right-signal", "S", "PIZZA",
+        "Synthetic right-side paper signal region; placement metadata only, no physical signal qualification.",
+        camera_epoch, registration_id, (1200, 300, 1400, 550), "e"*64)
+
+
 class ObservationClearanceExecutorTests(unittest.TestCase):
     def setUp(self):
         self.drawing, self.adapter, self.route = configuration()
@@ -596,10 +605,10 @@ class ObservationClearanceExecutorTests(unittest.TestCase):
         self.assertEqual(executor.advance()["state"], "WAIT_REVIEW")
         self.assertIsNone(executor.clearance_context)
 
-    def test_invented_nonlateral_or_wrong_anchor_recipe_rejected_offline(self):
+    def test_forward_only_path_cannot_masquerade_as_observation_clearance(self):
         policy = clearance_policy()
-        backward = replace(policy.withdrawal, end_base=pose(15))
-        changed = replace(policy, withdrawal=backward, withdrawal_actions=(backward,), recontact=None)
+        forward = replace(policy.withdrawal, end_base=pose(25))
+        changed = replace(policy, withdrawal=forward, withdrawal_actions=(forward,), recontact=None)
         with self.assertRaises(ExecutionBlocked):
             compile_taught_route(self.route, replace(self.adapter, observation_clearances=(changed,)), self.drawing)
 
@@ -613,6 +622,135 @@ class ObservationClearanceExecutorTests(unittest.TestCase):
                 self.assertEqual(executor.advance()["state"], "WAIT_REVIEW")
                 self.assertIsNone(executor.clearance_context)
                 self.assertEqual(len(ports.motions), 1)
+
+
+class RightSignalObservationTests(unittest.TestCase):
+    def setUp(self):
+        self.drawing, adapter, self.route = configuration()
+        self.policy = replace(clearance_policy(), required_signal_observation=right_signal_target())
+        self.adapter = replace(adapter, observation_clearances=(self.policy,))
+        self.ports = SyntheticPorts()
+        self.executor = TaughtExecutor(self.route, self.adapter, self.drawing, self.ports, stroke_mm=20)
+
+    def test_visible_car_and_passed_progress_still_clear_for_tool_covered_right_signal(self):
+        self.ports.signal_occlusion_cause = "TOOL"
+        self.assertEqual(self.executor.advance()["state"], "CLEARANCE_READY")
+        self.assertTrue(self.ports.visible)
+        self.assertEqual(self.ports.review_verdict, "PASS")
+        result = self.executor.advance()
+        self.assertEqual(result["state"], "WAIT_CLEARANCE_REVIEW")
+        self.assertFalse(result["observation_clearance"]["recontact_eligible"])
+        self.assertFalse(result["observation_clearance"]["signal_region_visible"])
+        self.assertEqual(result["observation_clearance"]["required_signal_observation_id"], self.policy.required_signal_observation.id)
+        self.ports.clearance_signal_visible = True
+        result = self.executor.reobserve()
+        self.assertEqual(result["state"], "WAIT_RECONTACT")
+        self.assertTrue(result["observation_clearance"]["recontact_eligible"])
+        self.assertEqual(len(self.ports.motions), 2)  # Visibility recheck never withdraws or returns again.
+
+    def test_unknown_or_other_signal_visibility_does_not_guess_a_side_move(self):
+        for cause in ("UNKNOWN", "OTHER"):
+            ports = SyntheticPorts()
+            ports.signal_occlusion_cause = cause
+            executor = TaughtExecutor(self.route, self.adapter, self.drawing, ports, stroke_mm=20)
+            with self.subTest(cause=cause):
+                self.assertEqual(executor.advance()["state"], "WAIT_REVIEW")
+                self.assertIsNone(executor.clearance_context)
+                ports.signal_visible = True
+                self.assertEqual(executor.reobserve()["state"], "READY")
+                self.assertEqual(len(ports.motions), 1)
+
+    def test_hidden_signal_during_approach_does_not_deadlock_before_observation_anchor(self):
+        for cause, endpoint_state in (("TOOL", "CLEARANCE_READY"), ("UNKNOWN", "WAIT_REVIEW")):
+            ports = SyntheticPorts()
+            ports.signal_occlusion_cause = cause
+            executor = TaughtExecutor(self.route, self.adapter, self.drawing, ports, stroke_mm=10)
+            with self.subTest(cause=cause):
+                self.assertEqual(executor.advance()["state"], "READY")
+                self.assertEqual(ports.tcp, pose(10))
+                self.assertIsNone(executor.clearance_context)
+                self.assertEqual(executor.advance()["state"], endpoint_state)
+                self.assertEqual(ports.tcp, pose(20))
+                self.assertEqual(len(ports.motions), 2)
+
+    def test_changed_camera_target_blocks_withdrawal_and_mismatched_approach_is_rejected(self):
+        wrong_view = replace(self.policy, required_signal_observation=right_signal_target(camera_epoch="different-view"))
+        executor = TaughtExecutor(self.route, replace(self.adapter, observation_clearances=(wrong_view,)), self.drawing,
+                                 self.ports, stroke_mm=20)
+        self.ports.signal_occlusion_cause = "TOOL"
+        self.assertEqual(executor.advance()["state"], "CLEARANCE_READY")
+        with self.assertRaisesRegex(ExecutionBlocked, "another camera epoch"):
+            executor.advance()
+        self.assertEqual(len(self.ports.motions), 1)
+        with self.assertRaises(ValueError):
+            replace(self.policy, required_signal_observation=replace(right_signal_target(), approach_from="C"))
+        with self.assertRaises(ValueError):
+            replace(right_signal_target(), target_evidence_sha256="missing-evidence")
+
+    def test_qualified_left_rear_path_is_direction_neutral_and_exposes_both_targets(self):
+        drawing, adapter, route, edges = mixed_configuration()
+        contact = adapter.transitions[0].actions[-1].end_base
+        first = (contact[0]-10., contact[1]-3., *contact[2:])
+        last = (contact[0]-20., contact[1]-6., *contact[2:])
+        actions = (
+            MeasuredTransitionAction("synthetic-left-rear-1", "translate", contact, first, "a"*64,
+                "The tool follows a measured left/rear segment to expose both car and right-side signal region."),
+            MeasuredTransitionAction("synthetic-left-rear-2", "translate", first, last, "b"*64,
+                "The tool completes the measured left/rear view path while the car stays stationary."),
+        )
+        policy = MeasuredObservationClearance("synthetic-left-rear-policy", "S", ("PIZZA", "S"), contact, "c"*64,
+            withdrawal_actions=actions, transition_id=adapter.transitions[0].id, transition_action_id="s-contact",
+            required_signal_observation=right_signal_target())
+        ports = SyntheticPorts()
+        ports.qualification_scope, ports.reviewed_edges, ports.runtime_hash = "local_contact_turn_commissioning", edges, "f"*64
+        ports.signal_visible = True  # No clearance before the bound action endpoint.
+        executor = TaughtExecutor(route, replace(adapter, observation_clearances=(policy,)), drawing, ports, stroke_mm=20)
+        executor.advance(); executor.advance()
+        ports.signal_visible, ports.signal_occlusion_cause = False, "TOOL"
+        self.assertEqual(executor.advance()["state"], "CLEARANCE_READY")
+        self.assertEqual(executor.advance()["state"], "CLEARANCE_READY")
+        ports.clearance_signal_visible = True
+        self.assertEqual(executor.advance()["state"], "WAIT_RECONTACT")
+        self.assertEqual(ports.motions[-1].target_base, last)
+        self.assertTrue(all(intent.target_base[0] < intent.start_base[0] and intent.target_base[1] < intent.start_base[1]
+                            for intent in ports.motions[-2:]))
+        self.assertEqual(len(ports.clearance_path_evidence), 2)
+
+    def test_independently_qualified_pure_rear_path_is_allowed_without_east_bias(self):
+        contact = self.policy.contact_pose
+        rear = replace(self.policy.withdrawal, end_base=(contact[0]-5., *contact[1:]))
+        policy = replace(self.policy, withdrawal=rear, withdrawal_actions=(rear,), recontact=None)
+        compile_taught_route(self.route, replace(self.adapter, observation_clearances=(policy,)), self.drawing)
+        ports = SyntheticPorts()
+        ports.signal_occlusion_cause, ports.clearance_signal_visible = "TOOL", True
+        executor = TaughtExecutor(self.route, replace(self.adapter, observation_clearances=(policy,)), self.drawing, ports, stroke_mm=20)
+        self.assertEqual(executor.advance()["state"], "CLEARANCE_READY")
+        self.assertEqual(executor.advance()["state"], "WAIT_RECONTACT")
+        self.assertEqual(ports.motions[-1].target_base, rear.end_base)
+
+    def test_joint_branch_change_during_review_cannot_authorize_clearance_or_recontact(self):
+        for phase in ("original", "clearance"):
+            ports = SyntheticPorts()
+            ports.signal_occlusion_cause, ports.clearance_signal_visible = "TOOL", True
+            executor = TaughtExecutor(self.route, self.adapter, self.drawing, ports, stroke_mm=20)
+            method = ports.review if phase == "original" else ports.review_clearance
+            def change_joint_branch(*args, **kwargs):
+                result = method(*args, **kwargs)
+                ports.joints = (0., 0., 0., 0., 0., 1.)
+                return result
+            if phase == "original":
+                ports.review = change_joint_branch
+            else:
+                ports.review_clearance = change_joint_branch
+                self.assertEqual(executor.advance()["state"], "CLEARANCE_READY")
+            with self.subTest(phase=phase), self.assertRaises(ExecutionBlocked):
+                executor.advance()
+            self.assertEqual(executor.state, "NEEDS_RECONCILIATION")
+            self.assertEqual(len(ports.motions), 1 if phase == "original" else 2)
+            if executor.clearance_context is not None:
+                self.assertFalse(executor.clearance_context["recontact_eligible"])
+            with self.assertRaises(ExecutionBlocked):
+                executor.reobserve()
 
 
 class TransitionMultiPathObservationTests(unittest.TestCase):

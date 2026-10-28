@@ -131,6 +131,36 @@ class MeasuredTransition:
 
 
 @dataclass(frozen=True)
+class SignalObservationTarget:
+    """Private reviewed visibility target, never a signal colour/permission gate.
+
+    Identity follows the map signal-target convention; image bounds describe the
+    actually reviewed fixed camera view of the right-side paper target. Its
+    source hash records placement evidence, not physical signal qualification.
+    """
+    id: str
+    junction_id: str
+    approach_from: str
+    description: str
+    camera_epoch: str
+    registration_id: str
+    image_bounds_px: tuple[int, int, int, int]
+    target_evidence_sha256: str
+    side: str = "RIGHT"
+
+    def __post_init__(self):
+        bounds = tuple(self.image_bounds_px)
+        if (not all(isinstance(value, str) and 0 < len(value) <= 100 for value in
+                    (self.id, self.junction_id, self.approach_from, self.camera_epoch, self.registration_id))
+                or not isinstance(self.description, str) or not 10 <= len(self.description) <= 500
+                or self.side != "RIGHT" or not _hash(self.target_evidence_sha256)
+                or len(bounds) != 4 or not all(type(value) is int for value in bounds)
+                or not 0 <= bounds[0] < bounds[2] <= 1920 or not 0 <= bounds[1] < bounds[3] <= 1080):
+            raise ValueError("Bind the actual right-side signal target, unchanged native view, bounded region and original placement evidence.")
+        object.__setattr__(self, "image_bounds_px", bounds)
+
+
+@dataclass(frozen=True)
 class MeasuredObservationClearance:
     """One finite measured side-withdrawal path for a stopped junction view.
 
@@ -148,6 +178,7 @@ class MeasuredObservationClearance:
     transition_id: str | None = None
     transition_action_id: str | None = None
     contact_direction_base_xy: tuple[float, float] | None = None
+    required_signal_observation: SignalObservationTarget | None = None
 
     def __post_init__(self):
         incoming, contact = tuple(self.incoming), _pose(self.contact_pose)
@@ -170,6 +201,10 @@ class MeasuredObservationClearance:
             if len(direction) != 2 or not all(_finite(x) for x in direction) or math.hypot(*direction) == 0:
                 raise ValueError("An explicitly measured contact direction needs two finite nonzero XY components.")
             object.__setattr__(self, "contact_direction_base_xy", direction)
+        target = self.required_signal_observation
+        if target is not None and (not isinstance(target, SignalObservationTarget)
+                or (target.approach_from, target.junction_id) != incoming):
+            raise ValueError("A required signal observation must bind this exact junction and incoming approach.")
         object.__setattr__(self, "incoming", incoming)
         object.__setattr__(self, "contact_pose", contact)
         object.__setattr__(self, "withdrawal", actions[0])
@@ -273,8 +308,10 @@ def compile_taught_route(route: ApprovedRoute, adapter: TaughtAdapter, drawing: 
                          "A wrist-only action needs an explicit measured contact direction; do not infer it from Euler yaw.")
                 offset = (clearance.withdrawal_actions[-1].end_base[0]-clearance.contact_pose[0],
                           clearance.withdrawal_actions[-1].end_base[1]-clearance.contact_pose[1])
-                _require(abs(direction[0]*offset[1]-direction[1]*offset[0]) > 1e-9,
-                         "OBSERVATION_NOT_LATERAL", "A side-observation path must include its explicitly reviewed lateral offset.")
+                lateral = abs(direction[0]*offset[1]-direction[1]*offset[0]) > 1e-9
+                rearward = direction[0]*offset[0]+direction[1]*offset[1] < -1e-9
+                _require(lateral or rearward, "OBSERVATION_NOT_CLEARANCE",
+                         "A measured observation path needs a reviewed lateral or rearward offset, not another forward push.")
         if roads:
             prior = roads[-1]
             transition = transitions.get(((prior.source, prior.target), (road.source, road.target)))
@@ -389,6 +426,8 @@ class VehicleReview:
     arrived: bool
     summary: str
     occlusion_cause: str = "UNKNOWN"
+    signal_region_visible: bool = False
+    signal_occlusion_cause: str = "UNKNOWN"
 
 
 @dataclass(frozen=True)
@@ -403,6 +442,7 @@ class ClearanceReview:
     car_unchanged_during_withdrawal: bool
     recontact_eligible: bool
     summary: str
+    signal_region_visible: bool = False
 
 
 class ExecutorPorts(Protocol):
@@ -490,7 +530,10 @@ class TaughtExecutor:
                 "measured_recontact_available": context["policy"].recontact is not None,
                 "withdrawal_index": context.get("withdrawal_index", 0),
                 "completed_withdrawal_request_ids": [row["request_id"] for row in context.get("path_records", [])],
-                "path_before_sha256": context["path_before"].sha256 if context.get("path_before") else None}
+                "path_before_sha256": context["path_before"].sha256 if context.get("path_before") else None,
+                "required_signal_observation_id": context["policy"].required_signal_observation.id
+                    if context["policy"].required_signal_observation is not None else None,
+                "signal_region_visible": context.get("signal_region_visible", False)}
         self.ports.save_checkpoint(value)
         return value
 
@@ -648,6 +691,9 @@ class TaughtExecutor:
         _require(math.dist(target[:2], current.tcp_base[:2]) <= current.configured_stroke_mm,
                  "OBSERVATION_STEP_LIMIT", "The current reviewed profile must already allow this measured observation path.")
         before = self._frame()
+        target_observation = policy.required_signal_observation
+        _require(target_observation is None or before.epoch == target_observation.camera_epoch,
+                 "SIGNAL_OBSERVATION_VIEW", "Do not withdraw using a signal-region binding from another camera epoch.")
         fresh = self._snapshot()
         _require((fresh.session_id, fresh.sequence, fresh.profile_id, fresh.installation_id, fresh.tcp_base)
                  == (current.session_id, current.sequence, current.profile_id, current.installation_id, current.tcp_base)
@@ -736,40 +782,51 @@ class TaughtExecutor:
                  and review.before_sha256 == before.sha256 and review.after_sha256 == after.sha256
                  and review.verdict in {"PASS", "FAIL", "UNCERTAIN"}
                  and all(type(v) is bool for v in (review.car_visible, review.expected_progress,
-                                                  review.excessive_yaw, review.arrived))
-                 and review.occlusion_cause in {"NONE", "TOOL", "OTHER", "UNKNOWN"},
+                                                  review.excessive_yaw, review.arrived, review.signal_region_visible))
+                 and review.occlusion_cause in {"NONE", "TOOL", "OTHER", "UNKNOWN"}
+                 and review.signal_occlusion_cause in {"NONE", "TOOL", "OTHER", "UNKNOWN"},
                  "REVIEW_BINDING", "Preserve the original physical action/image-pair MUSE result and exact request binding.")
         self.ports.append_event("vehicle_review", {"result": asdict(review), "robot_endpoint_verified": True})
         # Provider latency cannot authorize a transition on a changed robot
         # baseline. Native freshness is checked anew, independent of MUSE.
         current = self._snapshot()
+        same_joints = all(abs(a-b) <= .100001 for a, b in zip(current.joints_deg, actual.joints_deg))
+        if not same_joints:
+            self.state = "NEEDS_RECONCILIATION"
+            self._checkpoint()
         _require((current.session_id, current.sequence, current.profile_id, current.installation_id, current.tcp_base)
-                 == (actual.session_id, actual.sequence, actual.profile_id, actual.installation_id, actual.tcp_base),
+                 == (actual.session_id, actual.sequence, actual.profile_id, actual.installation_id, actual.tcp_base) and same_joints,
                  "REVIEW_BASELINE_CHANGED", "The robot changed while the provider was reviewing this action.")
+        incoming, junction = (step.source, step.target), step.target
+        if step.action is not None:
+            transition = next(item for item in self.adapter.transitions if item.id == step.transition_id)
+            incoming, junction = transition.incoming, transition.incoming[1]
+        policy = next((item for item in self.adapter.observation_clearances
+                       if item.incoming == incoming and item.transition_id == step.transition_id
+                       and item.transition_action_id == (step.action.id if step.action is not None else None)), None)
+        # The joint observation belongs to this measured junction/action anchor,
+        # not to every shorter approach-road stroke before the car reaches it.
+        signal_required = policy is not None and policy.required_signal_observation is not None and at_end
+        car_tool_cover = review.occlusion_cause == "TOOL" and (review.verdict == "UNCERTAIN" or not review.car_visible)
+        signal_tool_cover = signal_required and not review.signal_region_visible and review.signal_occlusion_cause == "TOOL"
         if review.verdict == "FAIL" or review.excessive_yaw:
             self.state = "NEEDS_RECONCILIATION"
-        elif review.verdict != "PASS" or not review.car_visible or not review.expected_progress:
+        elif (policy is not None and at_end and (car_tool_cover or signal_tool_cover)
+                and junction == self.first_junction and policy.id not in self.clearance_used
+                and all(abs(a-b) <= self.endpoint_tolerance_mm for a, b in zip(current.tcp_base, policy.contact_pose))):
+            self.clearance_used.add(policy.id)
+            self.clearance_context = {"policy": policy, "original_pending": self.pending,
+                "contact_pose": current.tcp_base, "contact_snapshot": current, "original_review": review,
+                "occluded_after": after, "recontact_eligible": False,
+                "withdrawal_index": 0, "path_records": [], "path_before": None}
+            self.state = "CLEARANCE_READY"
+            self.ports.append_event("observation_clearance_triggered", {"clearance_id": policy.id,
+                "junction_id": policy.junction_id, "original_request_id": intent.request_id,
+                "original_review": asdict(review), "contact_pose": list(current.tcp_base),
+                "car_tool_cover": car_tool_cover, "signal_tool_cover": signal_tool_cover})
+        elif (review.verdict != "PASS" or not review.car_visible or not review.expected_progress
+                or signal_required and not review.signal_region_visible):
             self.state = "WAIT_REVIEW"
-            incoming, junction = (step.source, step.target), step.target
-            if step.action is not None:
-                transition = next(item for item in self.adapter.transitions if item.id == step.transition_id)
-                incoming, junction = transition.incoming, transition.incoming[1]
-            policy = next((item for item in self.adapter.observation_clearances
-                           if item.incoming == incoming and item.transition_id == step.transition_id
-                           and item.transition_action_id == (step.action.id if step.action is not None else None)), None)
-            if (policy is not None and at_end and review.occlusion_cause == "TOOL"
-                    and (review.verdict == "UNCERTAIN" or not review.car_visible)
-                    and junction == self.first_junction and policy.id not in self.clearance_used
-                    and all(abs(a-b) <= self.endpoint_tolerance_mm for a, b in zip(current.tcp_base, policy.contact_pose))):
-                self.clearance_used.add(policy.id)
-                self.clearance_context = {"policy": policy, "original_pending": self.pending,
-                    "contact_pose": current.tcp_base, "contact_snapshot": current, "original_review": review,
-                    "occluded_after": after, "recontact_eligible": False,
-                    "withdrawal_index": 0, "path_records": [], "path_before": None}
-                self.state = "CLEARANCE_READY"
-                self.ports.append_event("observation_clearance_triggered", {"clearance_id": policy.id,
-                    "junction_id": policy.junction_id, "original_request_id": intent.request_id,
-                    "original_review": asdict(review), "contact_pose": list(current.tcp_base)})
         elif at_goal:
             # Actual car arrival is separate from reaching the taught TCP anchor.
             self.state = "WAIT_HUMAN_RESET" if review.arrived else "WAIT_REVIEW"
@@ -833,20 +890,27 @@ class TaughtExecutor:
                  and review.provider_receipt and tuple(review.frame_sha256) == tuple(frame.sha256 for frame in frames)
                  and review.verdict in {"PASS", "FAIL", "UNCERTAIN"}
                  and all(type(value) is bool for value in (review.car_visible, review.original_action_supported,
-                         review.car_unchanged_during_withdrawal, review.recontact_eligible)),
+                         review.car_unchanged_during_withdrawal, review.recontact_eligible, review.signal_region_visible)),
                  "OBSERVATION_REVIEW_BINDING", "Preserve the exact physical sequence result; neither receipt implies car visibility or safe recontact.")
         self.ports.append_event("observation_sequence_review", {"result": asdict(review), "automatic_return": False})
         fresh = self._snapshot()
+        same_joints = all(abs(a-b) <= .100001 for a, b in zip(fresh.joints_deg, actual.joints_deg))
+        if not same_joints:
+            context["recontact_eligible"] = False
+            self.state = "NEEDS_RECONCILIATION"
+            self._checkpoint()
         _require((fresh.session_id, fresh.sequence, fresh.profile_id, fresh.installation_id, fresh.tcp_base)
-                 == (actual.session_id, actual.sequence, actual.profile_id, actual.installation_id, actual.tcp_base),
+                 == (actual.session_id, actual.sequence, actual.profile_id, actual.installation_id, actual.tcp_base) and same_joints,
                  "OBSERVATION_BASELINE_CHANGED", "The observation endpoint changed during the provider review.")
         context["original_action_supported"] = review.original_action_supported
+        context["signal_region_visible"] = review.signal_region_visible
+        required_signal_visible = context["policy"].required_signal_observation is None or review.signal_region_visible
         context["recontact_eligible"] = (review.verdict == "PASS" and review.car_visible
             and review.original_action_supported and review.car_unchanged_during_withdrawal
-            and review.recontact_eligible and context["policy"].recontact is not None)
+            and review.recontact_eligible and context["policy"].recontact is not None and required_signal_visible)
         if review.verdict == "FAIL":
             self.state = "NEEDS_RECONCILIATION"
-        elif review.verdict != "PASS" or not review.car_visible:
+        elif review.verdict != "PASS" or not review.car_visible or not required_signal_visible:
             self.state = "WAIT_CLEARANCE_REVIEW"
         else:
             self.state = "WAIT_RECONTACT"

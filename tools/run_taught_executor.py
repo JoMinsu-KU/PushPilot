@@ -6,6 +6,7 @@ never resumed. Do not feed a simulated action/approval receipt into this runner.
 from __future__ import annotations
 
 import argparse
+from dataclasses import asdict
 import hashlib
 import json
 from pathlib import Path
@@ -20,7 +21,7 @@ if str(ROOT) not in sys.path:
 from backend.maps import MapDefinition
 from backend.robot_control.taught_executor import (
     ApprovedRoute, ExecutionBlocked, MeasuredRoad, MeasuredTransition, MeasuredTransitionAction,
-    MeasuredObservationClearance, TaughtAdapter, TaughtExecutor, compile_taught_route,
+    MeasuredObservationClearance, SignalObservationTarget, TaughtAdapter, TaughtExecutor, compile_taught_route,
 )
 from backend.robot_control.taught_ports import PrivateJournal, RealTaughtPorts
 
@@ -98,6 +99,8 @@ def load_adapter(path):
                                                  for action in clearance.get("withdrawal_actions", []))
         if clearance.get("recontact") is not None:
             clearance["recontact"] = MeasuredTransitionAction(**clearance["recontact"])
+        if clearance.get("required_signal_observation") is not None:
+            clearance["required_signal_observation"] = SignalObservationTarget(**clearance["required_signal_observation"])
         clearances.append(MeasuredObservationClearance(**clearance))
     data["observation_clearances"] = tuple(clearances)
     adapter = TaughtAdapter(**data)
@@ -108,8 +111,22 @@ def load_adapter(path):
     required |= {item.qualification_sha256 for item in adapter.observation_clearances}
     required |= {action.qualification_sha256 for item in adapter.observation_clearances for action in item.withdrawal_actions}
     required |= {item.recontact.qualification_sha256 for item in adapter.observation_clearances if item.recontact is not None}
+    required |= {item.required_signal_observation.target_evidence_sha256 for item in adapter.observation_clearances
+                 if item.required_signal_observation is not None}
     if not required <= sources.keys():
         raise ValueError("Retain the original actual review and qualification record for every selected corridor.")
+    for policy in adapter.observation_clearances:
+        target = policy.required_signal_observation
+        if target is None:
+            continue
+        target_source = sources[target.target_evidence_sha256]
+        metadata = {key: value for key, value in asdict(target).items() if key != "target_evidence_sha256"}
+        # Match JSON wire values, including tuple-backed native image bounds.
+        metadata = json.loads(json.dumps(metadata, allow_nan=False))
+        if (target_source.get("schema") != "pushpilot.signal-observation-target.v1"
+                or target_source.get("visibility_only") is not True or target_source.get("signal_color_qualified") is not False
+                or target_source.get("target") != metadata):
+            raise ValueError("The original signal-target evidence must bind this exact visibility region and fixed view, without color qualification.")
     review = sources[adapter.review_sha256]
     if (review.get("schema") != "pushpilot.taught-course-qualification.v1"
             or review.get("qualification") != "accepted" or review.get("physical_execution") is not True

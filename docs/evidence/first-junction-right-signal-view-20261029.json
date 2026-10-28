@@ -1,0 +1,46 @@
+{
+  "schema": "pushpilot.right-signal-view-evidence.v1",
+  "date_kst": "2026-10-29",
+  "status": "physical_observation_candidate_only",
+  "operator_direction": "Expose the car and the right-side paper signal together; consider a farther-right fixed park as the simplest option.",
+  "actual_comparison": {
+    "left_rear_candidate_sequence": 159,
+    "left_rear_result": "Hoses still covered the car; the joint view was not accepted.",
+    "outer_right_candidate_sequence": 172,
+    "outer_right_result": "Car fully visible; MUSE reported the right junction area still obstructed.",
+    "farther_right_endpoint_sequences": [176, 177],
+    "additional_east_steps_mm": [15, 15],
+    "native_endpoints_verified": true,
+    "working_z_and_literal_orientation_preserved": true,
+    "speed_mm_s": 5,
+    "acceleration_mm_s2": 10,
+    "final_original_sha256": "83958d2f1ec6b71376495e969f3f87b8395aca6d71354ef00e9067b8efc8ea31",
+    "final_current_car_visible": true,
+    "muse_right_junction_area_unobstructed": "YES",
+    "muse_actual_paper_signal_face_identifiable": false
+  },
+  "preserved_provider_limit": {
+    "observation": "The final provider response described unchanged car position but also emitted translation_image_direction=LEFT.",
+    "consequence": "Preserve the contradictory raw response. Do not use it as an unambiguous stationarity, recontact or route-continuation qualification.",
+    "visibility_result_is_separate_from_motion_result": true
+  },
+  "software": {
+    "optional_private_required_signal_observation": true,
+    "target_evidence_native_bounds_epoch_registration_and_approach_bound": true,
+    "tool_cover_of_car_or_configured_signal_can_trigger_at_first_junction": true,
+    "joint_visibility_not_required_midway_along_approach": true,
+    "final_clear_view_requires_car_and_configured_signal": true,
+    "missing_signal_region_keeps_wait_clearance_review": true,
+    "direction_selected_only_from_measured_private_path": true,
+    "clearance_grants_color_or_green_permission": false,
+    "automatic_blind_recontact_or_resume": false,
+    "full_offline_tests_passed": 795,
+    "offline_tests_skipped": 2
+  },
+  "remaining": [
+    "Place and identify the actual right-side paper signal face, retain its original placement evidence and bind its native-image region to the current camera view.",
+    "Validate the candidate with the actual signal face and current car before treating it as a qualified traffic-observation recipe.",
+    "C/D delivery, exact physical 90 degree accuracy and the complete physical web mission remain incomplete."
+  ],
+  "privacy": "Exact BASE poses, joints, operating profiles, source Native records, raw images, provider responses and credentials remain private."
+}
