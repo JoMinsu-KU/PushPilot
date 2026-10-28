@@ -6,7 +6,7 @@ from pathlib import Path
 import threading
 import time
 
-from .gates import GuardError, admit, validate_local_profile
+from .gates import GuardError, admit, validate_contact_profile, validate_local_profile
 from .legacy import PrewireRejected
 from .store import ControlError, Journal, encode
 
@@ -88,11 +88,13 @@ class RobotService:
                 "hardware_connected": self.physical and receiver.get("connected", False), "receiver": receiver,
                 "installation": installation, "installation_scope": scope,
                 "permitted_mutations": (["fixed_z_orientation_local_translate"] if scope == "local_base_commissioning"
+                                        else ["fixed_z_orientation_free_approach", "fixed_z_orientation_contact_trial"] if scope == "local_contact_commissioning"
                                         else ["translate", "profile_update", "qualified_raised_rotation"] if scope == "board" else []),
                 "local_scope_qualifies_board_registration": False,
-                "permitted_held_mutations": ["local_profile_update"] if scope == "local_base_commissioning" else [],
+                "permitted_held_mutations": (["local_profile_update"] if scope == "local_base_commissioning"
+                                             else ["local_contact_profile_handoff"] if scope == "local_contact_commissioning" else []),
                 "local_profile_refresh_requires": (["disarmed", "hold", "current_review", "fresh_exact_baseline"]
-                                                    if scope == "local_base_commissioning" else []),
+                                                    if scope in {"local_base_commissioning", "local_contact_commissioning"} else []),
                 "active_commands": self.journal.active(),
                 "automatic_replay": False, "hold_is_emergency_stop": False}
 
@@ -119,6 +121,8 @@ class RobotService:
                 admit(probe, installation, receiver, None, armed=False, now=self.clock())
                 if installation.get("scope") == "local_base_commissioning":
                     validate_local_profile(installation, receiver)
+                elif installation.get("scope") == "local_contact_commissioning":
+                    validate_contact_profile(installation, receiver)
             except GuardError as error:
                 raise ControlError(error.code, str(error)) from None
             with self.journal.transaction():
@@ -227,7 +231,16 @@ class RobotService:
             result = {"source": "receiver" if self.physical else "mock", "physical_execution": self.physical,
                       "robot_receipt": receipt, "robot_completed_at": self.clock(),
                       "before_observation": observation, "vehicle_completion_verified": False}
-            self.journal.update(request_id, "awaiting_review" if job["payload"]["purpose"] == "push" else "complete", result=result)
+            if job["payload"]["purpose"] == "contact_trial":
+                result.update(contact_trial=True, physical_contact_trial=self.physical, robot_completed=True,
+                              vehicle_outcome="unassessed", board_mission_advanced=False)
+                with self.lock:
+                    # Inhibit later commands before completing this robot-only
+                    # record; a car result is a separate physical diagnostic.
+                    self.hold("One experimental contact trial ended; inspect the car outcome before separately arming another trial.")
+                    self.journal.update(request_id, "complete", result=result)
+            else:
+                self.journal.update(request_id, "awaiting_review" if job["payload"]["purpose"] == "push" else "complete", result=result)
         except GuardError as error:
             self.journal.update(request_id, "waiting_observation" if error.retryable else "rejected", error=error.code)
         except PrewireRejected as error:
@@ -235,6 +248,8 @@ class RobotService:
         except Exception:
             self.journal.update(request_id, "outcome_unknown", error="Dispatch outcome is unknown. Inspect receiver and reconcile; do not resend.")
             self.journal.set_meta("armed", False)
+            if job["payload"]["purpose"] == "contact_trial":
+                self.journal.set_meta("hold", True)
 
     def review(self, request_id, value):
         with self.lock, self.journal.transaction():

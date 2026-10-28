@@ -93,10 +93,28 @@ class LocalBaseInstallation(StrictModel):
         return self
 
 
+class LocalContactInstallation(LocalBaseInstallation):
+    """A reviewed experimental contact envelope, not board-qualified control."""
+    scope: Literal["local_contact_commissioning"]
+    car_id: str = Field(min_length=1, max_length=80)
+    surface_id: str = Field(min_length=1, max_length=80)
+    reported_car_dimensions_mm: list[Number] = Field(min_length=3, max_length=3)
+    contact_trials_authorized: bool = Field(strict=True)
+    trial_max_step_mm: Number = Field(default=1, gt=0, le=5)
+
+    @model_validator(mode="after")
+    def contact_limits(self):
+        if not all(0 < value <= 500 for value in self.reported_car_dimensions_mm):
+            raise ValueError("Report positive bounded car length, width and height in millimetres.")
+        if self.qualified and not self.contact_trials_authorized:
+            raise ValueError("Contact qualification requires explicit current on-site contact-trial authorization.")
+        return self
+
+
 class RobotCommand(StrictModel):
     request_id: UUID
     kind: Literal["inspect_current", "inspect_ik", "profile_update", "translate", "rotate"]
-    purpose: Literal["commissioning", "push", "tool_reposition"] = "commissioning"
+    purpose: Literal["commissioning", "push", "tool_reposition", "contact_trial"] = "commissioning"
     installation_id: str | None = Field(default=None, max_length=80)
     expected_receiver: ReceiverBinding
     target: list[Number] | None = Field(default=None, min_length=6, max_length=6)
@@ -118,6 +136,8 @@ class RobotCommand(StrictModel):
             raise ValueError("Only wrist rotation requires a reviewed directed edge.")
         if self.purpose == "push" and (self.kind != "translate" or not self.expected_visual.strip()):
             raise ValueError("A push requires translation and a visible expected outcome.")
+        if self.purpose == "contact_trial" and (self.kind != "translate" or not self.expected_visual.strip()):
+            raise ValueError("An experimental contact trial requires translation and an explicit expected visual outcome.")
         return self
 
 

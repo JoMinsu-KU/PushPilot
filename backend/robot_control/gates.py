@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import math
 
-from .models import LocalBaseInstallation
+from .models import LocalBaseInstallation, LocalContactInstallation
 
 # Native FC03 uses 0.1 mm / degree registers while pendant HELLO retains full
 # precision. This allowance compares two representations of the same baseline;
@@ -260,6 +260,99 @@ def _admit_local_profile_refresh(command: dict, installation: dict, receiver: di
     _require(candidate != current, "LOCAL_REFRESH_NO_CHANGE", "Do not publish an unchanged local profile.")
 
 
+def _contact_base_fields(local: dict) -> dict:
+    """Reuse bounded geometry checks only; never admit a contact as free teaching."""
+    return {**{key: local[key] for key in LocalBaseInstallation.model_fields},
+            "scope": "local_base_commissioning"}
+
+
+def local_contact_profile_binding(local: dict) -> dict:
+    return {**local_profile_binding(_contact_base_fields(local)),
+            "scope": "local_contact_commissioning", "source": "reviewed_local_contact_trials",
+            **{key: local[key] for key in ("car_id", "surface_id", "reported_car_dimensions_mm",
+                                           "contact_trials_authorized", "trial_max_step_mm")}}
+
+
+def validate_contact_profile(installation: dict, receiver: dict) -> dict:
+    try:
+        local = LocalContactInstallation.model_validate(installation).model_dump(mode="json")
+    except (ValueError, TypeError):
+        raise GuardError("CONTACT_INSTALLATION_INVALID", "Use an explicit reviewed local contact installation without board identities.") from None
+    _require(local["qualified"] is True and local["on_site_review"] is True
+             and local["contact_trials_authorized"] is True,
+             "INSTALLATION_UNQUALIFIED", "Current actual site review and explicit contact-trial authorization are required.")
+    profile = receiver.get("profile")
+    _require(type(profile) is dict and profile.get("scope") == "local_contact_commissioning",
+             "PROFILE_SCOPE", "Experimental contact trials need their own reviewed profile scope.")
+    expected, binding = local_contact_profile_binding(local), profile.get("installation_binding")
+    _require(type(binding) is dict and set(binding) == set(expected)
+             and all(type(binding[key]) is type(value) and binding[key] == value for key, value in expected.items()),
+             "PROFILE_INSTALLATION_BINDING", "Contact profile must exactly bind current car, surface, tool and trial review.")
+    # The old local admission path remains unchanged. Reuse its numerical
+    # bounds/tool/disabled-rotation checks after the contact-specific binding
+    # has been validated, without publishing or returning this internal view.
+    base = _contact_base_fields(local)
+    numerical_profile = {**profile, "scope": "local_base_commissioning",
+                         "installation_binding": local_profile_binding(base)}
+    validate_local_profile(base, {**receiver, "profile": numerical_profile})
+    return local
+
+
+def _admit_contact_refresh(command: dict, installation: dict, receiver: dict,
+                           *, armed: bool, held: bool) -> None:
+    _require(armed is False and held is True, "LOCAL_REFRESH_REQUIRES_HOLD",
+             "Contact profile handoff requires an explicitly disarmed, held service.")
+    _require(command.get("purpose") == "commissioning" and command.get("target") is None
+             and command.get("edge_id") is None, "LOCAL_OPERATION_FORBIDDEN",
+             "Contact profile handoff must contain no movement.")
+    _require(command.get("installation_id") == installation.get("installation_id"),
+             "INSTALLATION_MISMATCH", "Contact handoff must bind the new actual review.")
+    current, candidate = receiver.get("profile"), command.get("profile")
+    scopes = {"local_base_commissioning", "local_contact_commissioning"}
+    _require(type(current) is dict and current.get("scope") in scopes,
+             "PROFILE_SCOPE", "Contact handoff accepts only an existing local teaching or contact profile.")
+    local = validate_contact_profile(installation, {**receiver, "profile": candidate})
+    for key in ("schema", "coordinate_frame", "pose_type", "tcp_id", "payload_kg", "allow_motion"):
+        _require(type(candidate.get(key)) is type(current.get(key)) and candidate.get(key) == current.get(key),
+                 "LOCAL_TOOL_BINDING", f"Contact handoff cannot change current {key}.")
+    binding = current.get("installation_binding")
+    _require(type(binding) is dict and binding.get("scope") == current["scope"]
+             and all(type(binding.get(key)) is type(local[key]) and binding.get(key) == local[key]
+                     for key in ("tcp_id", "tcp_definition_sha256", "tool_id", "payload_kg")),
+             "LOCAL_TOOL_BINDING", "Contact handoff must retain the current TCP definition, tool and payload.")
+    _require(binding.get("installation_id") != local["installation_id"]
+             and binding.get("review_reference") != local["review_reference"],
+             "LOCAL_REFRESH_NEW_REVIEW_REQUIRED", "Contact handoff requires a distinct genuine current site review.")
+    source = _vector(receiver.get("actual_pose"), 6, "ROBOT_POSE_INVALID")
+    joints = _vector(receiver.get("actual_joint"), 6, "ROBOT_JOINT_INVALID")
+    _require(_vector(candidate.get("expected_start_tcp_mm_deg"), 6, "LOCAL_REFRESH_BASELINE_CHANGED") == source
+             and _vector(candidate.get("expected_start_joint_deg"), 6, "LOCAL_REFRESH_BASELINE_CHANGED") == joints
+             and local["fixed_tcp_z_mm"] == source[2] and local["fixed_orientation_deg"] == source[3:],
+             "LOCAL_REFRESH_BASELINE_CHANGED", "Contact handoff requires the exact fresh TCP/joint baseline and fixed Z/orientation.")
+
+
+def _admit_contact(command: dict, installation: dict, receiver: dict) -> None:
+    purpose = command.get("purpose")
+    _require(command.get("kind") == "translate" and purpose in {"commissioning", "contact_trial"},
+             "CONTACT_OPERATION_FORBIDDEN", "Contact scope permits only fixed-height free approaches and explicit experimental contact trials.")
+    local = validate_contact_profile(installation, receiver)
+    _require(command.get("installation_id") == local["installation_id"],
+             "INSTALLATION_MISMATCH", "Trial must bind the current local contact review.")
+    source, target = receiver["actual_pose"], _vector(command.get("target"), 6, "TARGET_INVALID")
+    bounds, margin = receiver["profile"]["tcp_bounds_base_mm"], local["tcp_clearance_margin_mm"]
+    _require(all(bounds[i] + margin <= target[i] <= bounds[i + 3] - margin for i in range(3)),
+             "OUTSIDE_WORKSPACE", "Contact target lies outside the current reviewed BASE envelope.")
+    _require(target[2] == source[2], "LOCAL_Z_CHANGED", "Local contact trials preserve exact current TCP height.")
+    _require(target[3:] == source[3:], "ORIENTATION_CHANGED", "Local contact trials preserve exact literal tool orientation.")
+    limit = min(local["max_step_mm"], receiver["profile"]["max_translation_mm"])
+    if purpose == "contact_trial":
+        _require(type(command.get("expected_visual")) is str and bool(command["expected_visual"].strip()),
+                 "CONTACT_EXPECTED_OUTCOME_REQUIRED", "An experimental contact trial needs an explicit expected outcome.")
+        limit = min(limit, local["trial_max_step_mm"])
+    _require(0 < math.dist(source[:3], target[:3]) <= limit + 1e-9,
+             "STEP_LIMIT", "Use one bounded step within the current approach or contact-trial limit.")
+
+
 def admit(command: dict, installation: dict | None, receiver: dict,
           observation: dict | None, *, armed: bool, now: float,
           require_profile_binding: bool = False, held: bool = False) -> None:
@@ -294,12 +387,19 @@ def admit(command: dict, installation: dict | None, receiver: dict,
             and installation.get("scope") == "local_base_commissioning"):
         _admit_local_profile_refresh(command, installation, receiver, armed=armed, held=held)
         return
+    if (kind == "profile_update" and type(installation) is dict
+            and installation.get("scope") == "local_contact_commissioning"):
+        _admit_contact_refresh(command, installation, receiver, armed=armed, held=held)
+        return
     _require(armed is True and held is False, "NOT_ARMED", "Physical commissioning must be explicitly armed and not held.")
     _require(type(installation) is dict and installation.get("qualified") is True,
              "INSTALLATION_UNQUALIFIED", "A qualified installation is required before physical changes.")
     scope = installation.get("scope", "board")
     if scope == "local_base_commissioning":
         _admit_local(command, installation, receiver)
+        return
+    if scope == "local_contact_commissioning":
+        _admit_contact(command, installation, receiver)
         return
     _require(scope == "board", "INSTALLATION_INVALID", "An explicit supported installation scope is required.")
     lower, upper = _installation_limits(installation)
