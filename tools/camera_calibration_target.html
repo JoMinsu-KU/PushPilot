@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PushPilot · Camera calibration target</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#fff;color:#1b252b;font-family:Arial,sans-serif;overflow:hidden}main{height:100dvh;display:grid;place-items:center;padding:24px}section{max-width:680px;text-align:center}h1{font-size:28px;letter-spacing:-.7px}p{font-size:17px;line-height:1.5}button{border:0;border-radius:18px;background:#263b45;color:#fff;padding:16px 24px;font-size:18px;cursor:pointer}#board{display:none;width:100vw;height:100dvh;background:#fff}svg{display:block;width:100%;height:100%;object-fit:contain}body.active main{display:none}body.active #board{display:block}
+</style>
+<main><section><p>PushPilot / Camera calibration</p><h1>A camera-only calibration target.</h1><p>The robot stays held. Show this screen to the existing camera. Hold each view for about one second, move through the image corners and centre, and tilt the tablet gently around both axes. Keep the complete checkerboard visible.</p><p>Use landscape orientation. Keep the display flat, with automatic brightness and screen colour filters disabled for this capture. Avoid reflections and touching the robot or car.</p><button id="show">Show full-screen target</button><p>The pattern preserves square geometry automatically. No ruler or measured square size is required to estimate camera intrinsics.</p></section></main>
+<div id="board"><svg id="pattern" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 9" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Ten by seven square camera calibration checkerboard with a white border"><rect width="12" height="9" fill="white"/></svg></div>
+<script>
+const svg=document.getElementById('pattern');
+for(let row=0;row<7;row++)for(let col=0;col<10;col++)if((row+col)%2===0){const cell=document.createElementNS('http://www.w3.org/2000/svg','rect');cell.setAttribute('x',String(col+1));cell.setAttribute('y',String(row+1));cell.setAttribute('width','1');cell.setAttribute('height','1');cell.setAttribute('fill','black');svg.appendChild(cell)}
+document.getElementById('show').addEventListener('click',async()=>{document.body.classList.add('active');try{await document.documentElement.requestFullscreen?.()}catch{}try{await navigator.wakeLock?.request('screen')}catch{}});
+</script>
+</html>
