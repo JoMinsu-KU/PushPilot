@@ -28,6 +28,7 @@ The current [visual direction](DESIGN_SYSTEM.md) follows the user's industrial r
 | Use the placed City A3 print | [City A3](CITY_A3.md) | New places and shared Camera/Spatial drawing correspondence; physical geometry remains unqualified |
 | Understand the system | [Architecture](ARCHITECTURE.md) | [Service composition](SERVICE_COMPOSITION.md) |
 | Prepare isolated robot tests | [Robot commissioning](ROBOT_CONTROL.md) | [Dedicated GX10 delivery](../deploy/ROBOT_CONTROL.md); startup disarmed, no motion replay |
+| Collect robot coordinates and fit map registration | [Robot calibration](ROBOT_CALIBRATION.md) | Read-only Native teaching and measured XY fit with a held-out check; physical qualification remains separate |
 | Review voice goal entry | [Voice input](VOICE_INPUT.md) | [Finite-upload backend](VOICE_BACKEND.md); browser capture remains disconnected |
 | Test Meta authentication and goal interpretation | [API connection check](META_API_CHECK.md) | [Meta intelligence](META_INTELLIGENCE.md) |
 | Connect image judgment to a simulated action | [Live intelligence](LIVE_INTELLIGENCE.md) | [Explicit recorded-pair alternative](ACTION_REVIEWS.md) and [verification](VERIFICATION.md) |

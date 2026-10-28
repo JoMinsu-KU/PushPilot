@@ -6,7 +6,7 @@ from pathlib import Path
 import threading
 import time
 
-from .gates import GuardError, admit
+from .gates import GuardError, admit, validate_local_profile
 from .legacy import PrewireRejected
 from .store import ControlError, Journal, encode
 
@@ -80,11 +80,17 @@ class RobotService:
         receiver = self.receiver()
         receiver["session_motion_mode"] = receiver.get("physical_execution", False)
         receiver["physical_execution"] = self.physical and receiver.get("physical_execution", False)
+        installation = self.journal.get_meta("installation")
+        scope = installation.get("scope", "board") if installation else None
         return {"schema_version": "pushpilot.robot-control.v1", "mode": "physical_commissioning" if self.physical else "mock",
                 "armed": self.journal.get_meta("armed", False), "hold": self.journal.get_meta("hold", False),
                 "worker_alive": bool(self.thread and self.thread.is_alive()), "worker_error": self.worker_error,
                 "hardware_connected": self.physical and receiver.get("connected", False), "receiver": receiver,
-                "installation": self.journal.get_meta("installation"), "active_commands": self.journal.active(),
+                "installation": installation, "installation_scope": scope,
+                "permitted_mutations": (["fixed_z_orientation_local_translate"] if scope == "local_base_commissioning"
+                                        else ["translate", "profile_update", "qualified_raised_rotation"] if scope == "board" else []),
+                "local_scope_qualifies_board_registration": False,
+                "active_commands": self.journal.active(),
                 "automatic_replay": False, "hold_is_emergency_stop": False}
 
     def install(self, value):
@@ -106,14 +112,18 @@ class RobotService:
                 raise ControlError("COMMAND_ACTIVE", "Review or reconcile the current operation before arming.")
             probe = {"kind": "inspect_current", "expected_receiver": value["expected_receiver"]}
             try:
-                admit(probe, installation, self.receiver(), None, armed=False, now=self.clock())
+                receiver = self.receiver()
+                admit(probe, installation, receiver, None, armed=False, now=self.clock())
+                if installation.get("scope") == "local_base_commissioning":
+                    validate_local_profile(installation, receiver)
             except GuardError as error:
                 raise ControlError(error.code, str(error)) from None
             with self.journal.transaction():
                 self.journal._meta("armed", True); self.journal._meta("hold", False)
                 self.journal._event(None, "commissioning_armed", value)
         self.wake.set()
-        return {"armed": True, "installation_id": installation["installation_id"]}
+        return {"armed": True, "installation_id": installation["installation_id"],
+                "scope": installation.get("scope", "board"), "local_scope_qualifies_board_registration": False}
 
     def hold(self, reason):
         with self.lock, self.journal.transaction():

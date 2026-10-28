@@ -20,6 +20,7 @@ class ReceiverBinding(StrictModel):
 
 
 class Installation(StrictModel):
+    scope: Literal["board"] = "board"
     installation_id: str = Field(min_length=1, max_length=80)
     map_id: str = Field(min_length=1, max_length=80)
     map_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
@@ -45,6 +46,50 @@ class Installation(StrictModel):
             raise ValueError("Installation bounds must be finite ordered BASE limits.")
         if not self.workspace_min_mm[2] <= self.min_tcp_z_mm < self.raised_tcp_z_mm <= self.workspace_max_mm[2]:
             raise ValueError("Measured work and raised TCP heights must lie inside the installation.")
+        return self
+
+
+class LocalBaseInstallation(StrictModel):
+    """A measured local BASE envelope, explicitly independent of any board.
+
+    Small software ceilings do not qualify this volume. The supplied review
+    must cover the actual tool, arm, cable and surrounding installation.
+    """
+    scope: Literal["local_base_commissioning"]
+    installation_id: str = Field(min_length=1, max_length=80)
+    tcp_id: str = Field(min_length=1, max_length=80)
+    tcp_definition_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    tool_id: str = Field(min_length=1, max_length=80)
+    payload_kg: Number = Field(ge=0, le=10000)
+    review_reference: str = Field(min_length=10, max_length=500)
+    qualified: bool = Field(default=False, strict=True)
+    on_site_review: bool = Field(default=False, strict=True)
+    workspace_min_mm: list[Number] = Field(min_length=3, max_length=3)
+    workspace_max_mm: list[Number] = Field(min_length=3, max_length=3)
+    fixed_tcp_z_mm: Number
+    fixed_orientation_deg: list[Number] = Field(min_length=3, max_length=3)
+    tcp_clearance_margin_mm: Number = Field(default=0, ge=0)
+    inflated_keepout_boxes_base_mm: list[list[Number]] = Field(max_length=16)
+    max_step_mm: Number = Field(default=1, gt=0, le=5)
+    max_speed_mm_s: Number = Field(default=1, gt=0, le=5)
+    max_accel_mm_s2: Number = Field(default=2, gt=0, le=10)
+
+    @model_validator(mode="after")
+    def local_bounds(self):
+        margin = self.tcp_clearance_margin_mm
+        if not all(-10000 <= a < b <= 10000 and b - a <= 20 and a + 2 * margin < b
+                   for a, b in zip(self.workspace_min_mm, self.workspace_max_mm)):
+            raise ValueError("Local BASE bounds must be ordered, span at most 20 mm per axis and retain the reviewed clearance margin.")
+        if not self.workspace_min_mm[2] + margin <= self.fixed_tcp_z_mm <= self.workspace_max_mm[2] - margin:
+            raise ValueError("The measured fixed TCP height must lie inside the reviewed local BASE envelope.")
+        if not all(-180 <= angle <= 180 for angle in self.fixed_orientation_deg):
+            raise ValueError("Use the reviewed literal -180..180 TCP orientation; no normalization is performed.")
+        if any(len(box) != 6 or any(not -10000 <= number <= 10000 for number in box)
+               or any(box[index] > box[index + 3] for index in range(3))
+               for box in self.inflated_keepout_boxes_base_mm):
+            raise ValueError("Local keepouts must be explicit ordered six-number inflated BASE boxes.")
+        if self.qualified and not self.on_site_review:
+            raise ValueError("Local qualification requires explicit actual on-site review.")
         return self
 
 

@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import math
 
+from .models import LocalBaseInstallation
+
 
 class GuardError(RuntimeError):
     def __init__(self, code: str, message: str, retryable: bool = False):
@@ -63,6 +65,8 @@ def _inside(pose: list, installation: dict, lower: list, upper: list) -> None:
 
 def _profile(profile, installation: dict, *, candidate: bool, lower: list, upper: list) -> dict:
     _require(type(profile) is dict, "PROFILE_REQUIRED", "An explicit receiver profile is required.")
+    _require(profile.get("scope", "board") == "board", "PROFILE_SCOPE",
+             "A local BASE commissioning profile cannot authorize board operations.")
     _require(profile.get("tcp_id") == installation["tcp_id"], "TCP_MISMATCH",
              "The receiver profile TCP differs from the reviewed installation.")
     _require(profile.get("allow_motion") is True and profile.get("site_verified") is True,
@@ -119,6 +123,97 @@ def _observation(observation, installation: dict, now: float) -> None:
     # observation; the exact registration identity remains mandatory above.
 
 
+def local_profile_binding(installation: dict) -> dict:
+    """The exact local review identity, carrying no drawing or camera claim."""
+    return {
+        "scope": "local_base_commissioning", "source": "measured_local_base_review",
+        **{key: installation[key] for key in (
+            "installation_id", "tcp_id", "tcp_definition_sha256", "tool_id", "payload_kg",
+            "review_reference", "fixed_tcp_z_mm", "fixed_orientation_deg")},
+        "site_review_explicit": True, "board_registration_qualified": False,
+        "vehicle_control_qualified": False, "rotation_qualified": False, "car_turn_qualified": False,
+    }
+
+
+def validate_local_profile(installation: dict, receiver: dict) -> dict:
+    """Validate the limited local review/profile, including before arming.
+
+    This is additional application admission. The original receiver still
+    performs its independent bounds, Native, kinematic and READY/GO checks.
+    """
+    try:
+        local = LocalBaseInstallation.model_validate(installation).model_dump(mode="json")
+    except (ValueError, TypeError):
+        raise GuardError("LOCAL_INSTALLATION_INVALID", "Use an explicit measured local BASE installation without board identities.") from None
+    _require(local["qualified"] is True and local["on_site_review"] is True,
+             "INSTALLATION_UNQUALIFIED", "The actual local BASE envelope must have an explicit on-site review.")
+    _require(receiver.get("physical_execution") is True, "PHYSICAL_RECEIVER_REQUIRED",
+             "The receiver must explicitly report physical execution enabled.")
+    profile = receiver.get("profile")
+    _require(type(profile) is dict, "PROFILE_REQUIRED", "A local reviewed receiver profile is required.")
+    _require(profile.get("scope") == "local_base_commissioning", "PROFILE_SCOPE",
+             "Local commissioning needs its own current scoped profile.")
+    _require(profile.get("allow_motion") is True and profile.get("site_verified") is True,
+             "PROFILE_UNQUALIFIED", "The local profile must record genuine measured site qualification.")
+    _require(profile.get("tcp_id") == local["tcp_id"], "TCP_MISMATCH",
+             "The local profile TCP differs from the reviewed current TCP.")
+    _require(_number(profile.get("payload_kg")) and profile["payload_kg"] == local["payload_kg"],
+             "LOCAL_TOOL_BINDING", "Local payload differs from the reviewed current payload.")
+    expected = local_profile_binding(local)
+    binding = profile.get("installation_binding")
+    _require(type(binding) is dict and set(binding) == set(expected)
+             and all(type(binding[key]) is type(value) and binding[key] == value for key, value in expected.items()),
+             "PROFILE_INSTALLATION_BINDING", "The profile must exactly bind this local review without claiming board calibration.")
+    _require(not any(key in profile for key in (
+        "map_id", "map_hash", "calibration_id", "camera_epoch", "registration_id", "board_registration_qualified")),
+        "PROFILE_SCOPE", "A local profile cannot include drawing registration or board qualification fields.")
+    lower, upper = local["workspace_min_mm"], local["workspace_max_mm"]
+    bounds = _vector(profile.get("tcp_bounds_base_mm"), 6, "PROFILE_BOUNDS")
+    _require(all(lower[i] <= bounds[i] < bounds[i + 3] <= upper[i] for i in range(3)),
+             "PROFILE_BOUNDS", "The local profile cannot exceed the measured BASE envelope.")
+    _require(profile.get("tcp_clearance_margin_mm") == local["tcp_clearance_margin_mm"]
+             and profile.get("inflated_keepout_boxes_base_mm") == local["inflated_keepout_boxes_base_mm"],
+             "LOCAL_CLEARANCE_BINDING", "The local profile must retain the reviewed margin and inflated keepouts.")
+    for field, key in (("translation_speed_mm_s", "max_speed_mm_s"),
+                       ("translation_accel_mm_s2", "max_accel_mm_s2"), ("max_translation_mm", "max_step_mm")):
+        _require(_number(profile.get(field)) and 0 < profile[field] <= local[key],
+                 "PROFILE_LIMIT", f"Local receiver {field} exceeds its measured commissioning limit.")
+    _require(profile.get("orientations") == [{"id": "measured_current", "rxyz_deg": local["fixed_orientation_deg"]}]
+             and profile.get("rotation_anchors") == [] and profile.get("rotation_edges") == []
+             and type(profile.get("rotation_runtime")) is dict
+             and profile["rotation_runtime"].get("verified") is False,
+             "LOCAL_ROTATION_FORBIDDEN", "Local commissioning permits only the reviewed fixed literal orientation.")
+    source = _vector(receiver.get("actual_pose"), 6, "ROBOT_POSE_INVALID")
+    margin = local["tcp_clearance_margin_mm"]
+    _require(all(bounds[i] + margin <= source[i] <= bounds[i + 3] - margin for i in range(3)),
+             "OUTSIDE_WORKSPACE", "The current TCP lies outside the measured local profile envelope.")
+    _require(abs(source[2] - local["fixed_tcp_z_mm"]) <= 0.01,
+             "LOCAL_Z_CHANGED", "Local commissioning must retain the reviewed current TCP height.")
+    _require(all(abs(a - b) <= 0.01 for a, b in zip(source[3:], local["fixed_orientation_deg"])),
+             "ORIENTATION_CHANGED", "The current literal TCP orientation differs from the local review.")
+    return local
+
+
+def _admit_local(command: dict, installation: dict, receiver: dict) -> None:
+    _require(command.get("kind") == "translate" and command.get("purpose") == "commissioning",
+             "LOCAL_OPERATION_FORBIDDEN", "Local BASE commissioning permits only fixed-height translation trials; no push, route, rotation or profile update.")
+    local = validate_local_profile(installation, receiver)
+    source, target = receiver["actual_pose"], _vector(command.get("target"), 6, "TARGET_INVALID")
+    _require(command.get("installation_id") == local["installation_id"], "INSTALLATION_MISMATCH",
+             "The command must bind the current measured local BASE installation.")
+    bounds = receiver["profile"]["tcp_bounds_base_mm"]
+    margin = local["tcp_clearance_margin_mm"]
+    _require(all(bounds[i] + margin <= target[i] <= bounds[i + 3] - margin for i in range(3)),
+             "OUTSIDE_WORKSPACE", "The target TCP lies outside the measured local profile envelope.")
+    _require(target[2] == source[2] and abs(target[2] - local["fixed_tcp_z_mm"]) <= 0.01,
+             "LOCAL_Z_CHANGED", "Local commissioning does not permit lifting, lowering or combined XYZ travel.")
+    _require(source[3:] == target[3:]
+             and all(abs(a - b) <= 0.01 for a, b in zip(target[3:], local["fixed_orientation_deg"])),
+             "ORIENTATION_CHANGED", "Local trials must preserve the reviewed literal TCP orientation.")
+    _require(0 < math.dist(source[:3], target[:3]) <= min(local["max_step_mm"], receiver["profile"]["max_translation_mm"]) + 1e-9,
+             "STEP_LIMIT", "Local trials need one nonzero bounded step inside the reviewed local volume.")
+
+
 def admit(command: dict, installation: dict | None, receiver: dict,
           observation: dict | None, *, armed: bool, now: float,
           require_profile_binding: bool = False) -> None:
@@ -152,6 +247,11 @@ def admit(command: dict, installation: dict | None, receiver: dict,
     _require(armed is True, "NOT_ARMED", "Physical commissioning must be explicitly armed.")
     _require(type(installation) is dict and installation.get("qualified") is True,
              "INSTALLATION_UNQUALIFIED", "A qualified installation is required before physical changes.")
+    scope = installation.get("scope", "board")
+    if scope == "local_base_commissioning":
+        _admit_local(command, installation, receiver)
+        return
+    _require(scope == "board", "INSTALLATION_INVALID", "An explicit supported installation scope is required.")
     lower, upper = _installation_limits(installation)
     _require(command.get("installation_id") == installation["installation_id"], "INSTALLATION_MISMATCH",
              "The command does not match the current qualified installation.")

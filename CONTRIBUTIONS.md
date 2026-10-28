@@ -47,6 +47,8 @@ The first Git commit, when created, is a truthful snapshot after this work. Do n
 
 ## Record each implemented feature
 
+On October 28, 2026 KST, new robot-commissioning work adds independent read-only Native coordinate acquisition, a standard-library measured planar drawing-to-BASE fit with explicit axis/identity checks and an offline independent-check CLI. The collector reuses the exact hash-verified inherited Native FC03 implementation; its acquisition orchestration, private evidence handling, metrology algorithm and tests are new work. Synthetic tests do not establish physical board calibration, contact geometry, car turning or destination completion. Actual acquisition results and software checks are recorded separately in [verification](docs/VERIFICATION.md).
+
 The signal scenario was clarified by the user on 2026-10-27: MUSE judges signal color from a new image after verified stopping. Documentation now distinguishes that intended color judgment from local stop/provenance/freshness/request validation, without requiring a second local color classifier. This is a design correction only; it does not implement live signal capture, a MUSE signal endpoint or physical stop/continuation. See [the planned boundary](docs/MUSE_SIGNAL_GATE.md).
 
 - Feature and affected paths; contributor(s); actual work interval with timezone.

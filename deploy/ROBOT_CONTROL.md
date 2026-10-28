@@ -47,6 +47,8 @@ This opens the local HTTP service and exclusive mailbox ownership only. With no 
 
 ## Deliberate physical host startup tomorrow
 
+For current-site calibration before a board transform exists, use the separate [local BASE commissioning scope](../docs/ROBOT_CALIBRATION.md). A genuinely reviewed small local volume can establish the unchanged persistent session without fabricating map/camera/calibration IDs. The API must run a release supporting this scope before any local trial; older API source `6cfe6d2` does not. Never load a local profile as if it were a board-qualified pushing installation. Native coordinate collection itself needs neither profile nor persistent session.
+
 ### Keep preparation alive while current measurements are being prepared
 
 ```sh
