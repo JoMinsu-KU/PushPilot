@@ -101,13 +101,18 @@ class Contact:
 
 def contact_geometry(car: CarFootprint) -> tuple[Contact, ...]:
     """Nominal face contacts; torque sign is a geometric proposal, not dynamics."""
-    rear, side = -car.length_mm / 2, car.width_mm / 2
+    half_length, side = car.length_mm / 2, car.width_mm / 2
+    rear = -half_length
     return (
         Contact("rear_center", (rear, 0), (1, 0), 0),
         Contact("rear_left", (rear, side * 0.6), (1, 0), -1),
         Contact("rear_right", (rear, -side * 0.6), (1, 0), 1),
         Contact("left_center", (0, side), (0, -1), 0),
         Contact("right_center", (0, -side), (0, 1), 0),
+        Contact("front_left_side", (half_length * 0.6, side), (0, -1), -1),
+        Contact("front_right_side", (half_length * 0.6, -side), (0, 1), 1),
+        Contact("rear_left_side", (-half_length * 0.6, side), (0, -1), 1),
+        Contact("rear_right_side", (-half_length * 0.6, -side), (0, 1), -1),
     )
 
 

@@ -37,6 +37,24 @@ class EmpiricalPushingTests(unittest.TestCase):
         self.assertEqual(contacts["rear_right"].nominal_torque_sign, 1)
         self.assertEqual(contacts["left_center"].push_direction_body, (0, -1))
 
+    def test_offset_side_contacts_use_vehicle_relative_faces_and_cross_product_sign(self):
+        contacts = {c.name: c for c in contact_geometry(self.car)}
+        expected = {
+            "front_left_side": ((6., 5.), (0, -1)),
+            "front_right_side": ((6., -5.), (0, 1)),
+            "rear_left_side": ((-6., 5.), (0, -1)),
+            "rear_right_side": ((-6., -5.), (0, 1)),
+        }
+        for name, (point, direction) in expected.items():
+            with self.subTest(contact=name):
+                self.assertEqual(contacts[name].point_body_mm, point)
+                self.assertEqual(contacts[name].push_direction_body, direction)
+        for contact in contacts.values():
+            rx, ry = contact.point_body_mm
+            fx, fy = contact.push_direction_body
+            torque = rx * fy - ry * fx
+            self.assertEqual(contact.nominal_torque_sign, 0 if torque == 0 else int(math.copysign(1, torque)))
+
     def test_fit_preserves_supported_range_gains_ids_and_error(self):
         model = self.model("rear_right", (0.7, -0.1, 0.8))
         self.assertAlmostEqual(model.gain_body_x, 0.7)
@@ -106,6 +124,68 @@ class EmpiricalPushingTests(unittest.TestCase):
                               self.model("rear_right", (0.5, 0, 1))))
         self.assertEqual(result.contact, "rear_left")
         self.assertLess(abs(result.expected_car_pose[2]), abs(self.pose.yaw_deg))
+
+    def test_front_side_measured_responses_can_correct_both_heading_signs(self):
+        # These independent synthetic responses include lateral drift; the
+        # nominal torque sign alone never supplies either angular gain.
+        models = (self.model("rear_center"),
+                  self.model("front_left_side", (0., -.1, -2.)),
+                  self.model("front_right_side", (0., .1, 2.)))
+        for yaw, expected in ((7., "front_left_side"), (-7., "front_right_side")):
+            with self.subTest(yaw=yaw):
+                self.pose = replace(self.pose, yaw_deg=yaw)
+                result = self.select(models, waypoint_mm=(30., 30.))
+                self.assertEqual(result.status, "proposal")
+                self.assertEqual(result.contact, expected)
+                self.assertLess(abs(result.expected_car_pose[2]), abs(yaw))
+                self.assertFalse(result.motion_qualified)
+
+    def test_all_side_offsets_need_fitted_responses_without_forced_nominal_yaw(self):
+        for name in ("front_left_side", "front_right_side", "rear_left_side", "rear_right_side"):
+            with self.subTest(contact=name):
+                model = self.model(name, (.2, -.1, .7))
+                self.assertEqual(model.contact, name)
+                self.assertAlmostEqual(model.gain_yaw_deg_per_mm, .7)
+                self.assertEqual(len(model.trial_ids), 3)
+        # This synthetic fitted response intentionally contradicts the nominal
+        # front-left torque. Selection must use measured gain, not force a sign.
+        result = self.select((self.model("front_left_side", (0., 0., 1.)),),
+                             waypoint_mm=(30., 30.), desired_heading_deg=7.)
+        self.assertEqual(result.contact, "front_left_side")
+        self.assertGreater(result.expected_car_pose[2], self.pose.yaw_deg)
+
+    def test_side_contact_point_force_and_response_rotate_with_diagonal_vehicle(self):
+        self.pose = replace(self.pose, yaw_deg=45.)
+        result = self.select((self.model("front_left_side", (0., -.1, -2.)),),
+                             waypoint_mm=(30., 30.), desired_heading_deg=39.,
+                             policy=SelectionPolicy(cross_track_weight=.1))
+        self.assertEqual(result.status, "proposal")
+        angle = math.radians(self.pose.yaw_deg)
+        c, s = math.cos(angle), math.sin(angle)
+        self.assertAlmostEqual(result.contact_point_mm[0], 30. + c * 6. - s * 5.)
+        self.assertAlmostEqual(result.contact_point_mm[1], 30. + s * 6. + c * 5.)
+        self.assertAlmostEqual(result.push_direction[0], s)
+        self.assertAlmostEqual(result.push_direction[1], -c)
+        self.assertAlmostEqual(result.expected_car_pose[0], 30. + s * .1 * result.distance_mm)
+        self.assertAlmostEqual(result.expected_car_pose[1], 30. - c * .1 * result.distance_mm)
+        self.assertAlmostEqual(result.expected_car_pose[2], 45. - 2. * result.distance_mm)
+
+    def test_new_side_geometry_does_not_supply_unmeasured_steering_or_unknown_contacts(self):
+        self.pose = replace(self.pose, yaw_deg=7.)
+        # A known geometry candidate is still absent from the model list;
+        # a measured wrong-sign contact cannot replace the missing response.
+        result = self.select((self.model("front_right_side", (0., .1, 2.)),),
+                             waypoint_mm=(30., 30.))
+        self.assertEqual(result.status, "needs_measurements")
+        self.assertIsNone(result.contact)
+        for name in ("front_left_side", "front_right_side", "rear_left_side", "rear_right_side"):
+            trial = PushTrial("single-" + name, self.identity, name, 1., 0., -.1, -1.)
+            with self.subTest(contact=name), self.assertRaises(ValueError):
+                fit_response((trial,))
+        with self.assertRaisesRegex(ValueError, "Unknown contact"):
+            self.model("unidentified_side")
+        with self.assertRaises(ValueError):
+            self.select((replace(self.model("rear_center"), contact="unidentified_side"),))
 
     def test_wrong_turn_sign_is_not_substituted_for_needed_turn(self):
         result = self.select((self.model("rear_left", (0, 0, -1)),), desired_heading_deg=90)

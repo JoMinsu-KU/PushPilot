@@ -39,6 +39,24 @@ Each pair describes one physical reference point in drawing millimetres and robo
 
 Bind every sample to map ID/version/geometry hash, camera epoch and registration ID, TCP ID/definition hash and tool ID. Paper replacement or an identity change invalidates the old fit. Repeated image frames and old POC slot poses are not new measurements.
 
+### Use printed references instead of repeated broad-pad ruler readings
+
+The operator clarified on October 28 that the broad, nonuniform pusher underside makes repeated ruler estimates inconsistent. The intended acquisition method is now to align one explicitly identified physical tool reference with known printed marker centres, record the actual stationary BASE pose, and calculate intermediate coordinates from that fixed relationship. This is work-frame registration, not a requirement to detect the markers during every motion.
+
+Use widely spaced reachable references. Three non-collinear correspondences can establish a candidate; reserve a fourth reference for an independent check and check additional interior road points before expanding route coverage. The marker centres have their own drawing coordinates and must not be replaced by nominal paper corners. A marker disappearing beneath a broad pad does not establish that the active TCP is over its centre. A clearly identifiable tool point, or a rigid temporary pointer with an accounted-for TCP offset, resolves that alignment ambiguity. Retain the current TCP definition unless a separately measured change is explicitly installed.
+
+For a level print and fixed working height, the model is `b = R F d + t`, where `d` is drawing XY, `b` is BASE XY, and `F = diag(1, -1)` normalizes the drawing's downward Y axis. For a fixed measured start, a displacement can be evaluated as `b_target = b_start + R F (d_target - d_start)`. Do not introduce an empirical image-height scale into this metric displacement. A tilted print needs a measured spatial frame and a contact-height plan rather than silently changing the fixed working Z.
+
+Industrial work-frame teaching uses the same principle: ABB's [TeachSaver guide](https://library.e.abb.com/public/451003a080e2d11bc125766d003a35f9/TeachSaver_PowerPac_1.1_Users_Guide_English.pdf) describes matching three robot-taught points with corresponding workpiece geometry using a calibrated tool. [Horn's absolute-orientation paper](https://people.csail.mit.edu/bkph/papers/Absolute_Orientation_Scanned.pdf) provides the least-squares coordinate-registration foundation. These references support the method, not the accuracy of this particular installation.
+
+### Current physical evidence, October 28
+
+Deliberate commissioning on the final `2026-10-28.4` print has now completed eight free-XY translations: two 2 mm axis trials, five 20 mm trials and one 10 mm trial. Their endpoint receipts use the inherited persistent receiver with independent Native readback. All retained the same literal contact Z and orientation. Two no-motion local-profile renewals retained the same receiver session; no new pendant script or repeated PLAY was required. Five additional IK/FK queries were read-only and establish neither a runnable sweep nor actual wrist rotation.
+
+Four operator ruler pairs were preserved exactly. Their metric inconsistencies were retained as a failed provisional registration; no scale correction, discarded point or relaxed fit threshold was used to create an installation. Six distinct stationary positions spanning a local 20 x 60 mm BASE patch were also recorded with unchanged native images and fixed camera registration. An offline red-contour detector identified the same elevated pad corners across these images. Three images were reserved for checking the feature-motion relationship fitted to the other three. The resulting relative axis direction was consistent near 22 degrees, while feature-height-dependent apparent scale remained separate from physical paper millimetres.
+
+This is evidence of connected coordinate-based robot translation and local relative-axis diagnostics. It is not accepted absolute TCP-to-paper registration, full-sheet accuracy, a learned car-pushing response, a wrist/contact turn, signal operation or arrival at any of the three destinations. Raw robot poses, profiles, ruler readings, endpoint receipts and native images remain private outside the repository. Hardware state must always be inspected freshly; this paragraph is a historical record, not a command or restart instruction.
+
 ## Fit and independently check XY
 
 ```sh
