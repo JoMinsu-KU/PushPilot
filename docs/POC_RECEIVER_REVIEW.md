@@ -66,7 +66,7 @@ The online source sets `ppAllowMotion=true`. Its BEGIN check requires `execute_m
 
 The original POC documentation deliberately retained `allow_motion=false` and `site_verified=false` for a receive-only profile. Its narrow bounds were labelled parser/communication-test geometry, not physically reviewed clearance. A promise by the new host to send no GO cannot turn those limits into measured site qualification.
 
-The operator's paper placement, current stationary readback, photographed TCP offset and suggested approximately ±2 mm clearance are not a reviewed installation, inflated keepout model, contact geometry or swept tool/arm envelope. A proposed true-flag bootstrap profile was rejected because those measurements were missing. **It was not executed, and no true-flag profile or motion command was created for that proposal.** No altered receiver candidate is implemented or installed by this review.
+The operator's paper placement, current stationary readback, photographed TCP offset and confirmed approximately ±2 mm local XY clearance are not a reviewed installation, inflated keepout model, contact geometry or swept tool/arm envelope. A proposed true-flag bootstrap profile was rejected because those measurements were missing. **It was not executed, and no true-flag profile or motion command was created for that proposal.** No altered receiver candidate is implemented or installed by this review.
 
 ## Recovery paths and their proof requirements
 

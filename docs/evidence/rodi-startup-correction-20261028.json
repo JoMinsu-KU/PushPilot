@@ -77,6 +77,20 @@
     "rejected_profile_candidate_executed": false,
     "reason": "Stationary telemetry and local operator-reported clearance do not establish measured installation, keepout/contact geometry or a reviewed swept tool/arm envelope."
   },
+  "post_correction_readonly_baseline": {
+    "captured_at_utc": "2026-10-28T06:06:30.055516+00:00",
+    "source": "native_fc03_readonly",
+    "stationary_samples": 3,
+    "program_state_before_and_after": 6,
+    "all_joint_speeds_zero": true,
+    "tcp_and_joints_equal_to_original_private_baseline": true,
+    "camera_epoch_and_exact_homography_equal_to_original_private_baseline": true,
+    "api_disarmed": true,
+    "tcp_definition_changed": false,
+    "profile_created": false,
+    "motion_issued": false,
+    "raw_coordinates_images_and_register_logs_public": false
+  },
   "limits": [
     "The host process is available for preparation, but the pendant port and persistent idle are deliberately unavailable until a genuine reviewed current profile exists. Do not request manual PLAY while waiting_reviewed_profile/listening:false.",
     "The unchanged online script requires matching motion mode and genuinely reviewed profile flags even for BEGIN into idle. No false qualification or historical profile was substituted.",
