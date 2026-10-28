@@ -41,13 +41,41 @@ test('expected covers of one through all four markers keep the main presentation
   }
 });
 
-test('contradictory visible evidence remains prominent while retaining the truthful detected-marker count', () => {
+test('marker disagreement stays in compact diagnostics without flashing a marker alert', () => {
   const observed = snapshot('locked_occluded', [10, 11], 'marker_disagreement');
   const presentation = liveCameraPresentation(observed, map, true);
   assert.equal(presentation.label, 'Alignment conflict');
   assert.match(presentation.detail, /^2\/4 markers visible\. Visible evidence conflicts/);
-  assert.deepEqual(presentation.alerts.map(alert => alert.kind), ['marker_disagreement']);
-  assert.match(presentation.alerts[0].message, /markers disagree/);
+  assert.deepEqual(presentation.alerts, []);
+  assert.equal(observed.registration.verification, 'marker_disagreement', 'quiet presentation must not promote registration verification');
+  assert.equal(observed.registration.homography, homography);
+});
+
+test('a detection flicker and its recovery never change the alert list or fixed display geometry', () => {
+  const complete = snapshot();
+  const originalBounds = recordedDisplay(complete, map, true);
+  for (const observed of [
+    complete,
+    snapshot('locked_occluded', [10, 11], 'marker_disagreement'),
+    snapshot('locked_partial', [10, 11]),
+    snapshot('locked_occluded', [], 'insufficient_visibility'),
+    snapshot(),
+  ]) {
+    assert.deepEqual(liveCameraPresentation(observed, map, true).alerts, []);
+    assert.deepEqual(recordedDisplay(observed, map, true), originalBounds);
+    assert.equal(observed.registration.homography, homography);
+  }
+  assert.deepEqual(liveCameraPresentation(snapshot('locked_occluded', [10, 11], 'marker_disagreement'), map, false).alerts.map(alert => alert.kind), ['stale'],
+    'a marker conflict must not conceal stale camera input');
+});
+
+test('new-map registration requirements remain visible and cannot reuse an old overlay', () => {
+  const candidate = snapshot('candidate');
+  const presentation = liveCameraPresentation(candidate, map, true);
+  assert.equal(presentation.label, 'Live view is not locked');
+  assert.match(presentation.detail, /valid fixed reference is required/);
+  assert.equal(liveOverlayAllowed(candidate, route, map, true), false);
+  assert.equal(recordedDisplay(candidate, map, true).quad, null);
 });
 
 test('stale pixels and a newly withdrawn view still show large alerts and cannot draw an old route', () => {

@@ -76,7 +76,7 @@ function CameraFrame({ scene, route, map, focused, display, live = false, fresh 
       </g>
     </svg>
     </CameraNavigation>
-    {livePresentation ? livePresentation.alerts.map(alert => <div key={alert.kind} className={`overlay-inhibition${alert.kind === 'view_changed' ? '' : alert.kind === 'marker_disagreement' ? ' partial live-warning' : ' live-warning'}`}><Icon name={alert.kind === 'view_changed' ? 'shield' : alert.kind === 'stale' ? 'clock' : 'eye'} size={17}/>{alert.message}</div>)
+    {livePresentation ? livePresentation.alerts.map(alert => <div key={alert.kind} className={`overlay-inhibition${alert.kind === 'view_changed' ? '' : ' live-warning'}`}><Icon name={alert.kind === 'view_changed' ? 'shield' : 'clock'} size={17}/>{alert.message}</div>)
       : scene.registration.status === 'view_changed' && <div className="overlay-inhibition"><Icon name="shield" size={17}/>View changed. The previous overlay is hidden.</div>}
     {matchesMap && !overlayAllowed && scene.registration.status !== 'view_changed' && (!live || fresh) && <div className="overlay-note">{candidate ? `Lock the ${live ? 'live' : 'test'} view to project the planned route.` : 'Route overlay requires a valid locked test registration.'}</div>}
   </div>;

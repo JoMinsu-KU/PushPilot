@@ -2,11 +2,11 @@ import type { LiveCameraSnapshot } from '../../contracts/live-camera';
 import type { TemporaryMap } from '../../contracts/scene';
 
 export interface LiveCameraAlert {
-  kind: 'view_changed' | 'stale' | 'marker_disagreement';
+  kind: 'view_changed' | 'stale';
   message: string;
 }
 
-/** Keep expected covers quiet; expose visibility only as an on-demand diagnostic. */
+/** Keep marker detection changes in compact diagnostics, separate from withdrawn views and stale images. */
 export function liveCameraPresentation(snapshot: LiveCameraSnapshot | null, map: TemporaryMap | null, fresh: boolean) {
   const status = snapshot?.registration.status;
   const knownIds = new Set(map?.markers.map(marker => marker.id) ?? []);
@@ -23,6 +23,5 @@ export function liveCameraPresentation(snapshot: LiveCameraSnapshot | null, map:
   const alerts: LiveCameraAlert[] = [];
   if (status === 'view_changed') alerts.push({ kind: 'view_changed', message: 'View changed. The previous overlay is hidden.' });
   if (!fresh) alerts.push({ kind: 'stale', message: 'STALE · Last decoded image. Route overlay is hidden.' });
-  else if (disagreement) alerts.push({ kind: 'marker_disagreement', message: 'Visible markers disagree · check camera and map alignment.' });
   return { label, detail, alerts };
 }
