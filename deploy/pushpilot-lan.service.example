@@ -1,0 +1,13 @@
+[Unit]
+Description=PushPilot byte-preserving LAN web proxy
+Requires=pushpilot-lan.socket
+After=pushpilot-lan.socket pushpilot-main.service
+
+[Service]
+Type=simple
+ExecStart=/usr/lib/systemd/systemd-socket-proxyd --connections-max=128 127.0.0.1:8080
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0077

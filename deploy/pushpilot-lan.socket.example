@@ -1,0 +1,12 @@
+# Replace the placeholder with the reviewed GX10 LAN address before installation.
+[Unit]
+Description=PushPilot LAN entry to the existing local web service
+
+[Socket]
+ListenStream=<GX10_LAN_IP>:8080
+Accept=no
+FreeBind=true
+NoDelay=true
+
+[Install]
+WantedBy=sockets.target
