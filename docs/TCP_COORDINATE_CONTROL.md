@@ -2,6 +2,31 @@
 
 # Teach a fixed frame once. Compute the road between endpoints.
 
+## Execute by coordinates. Review after withdrawal.
+
+The latest October 29 operator instruction defines one finite action unit:
+stored BASE/TCP approach and recontact, a bounded contact action, independently
+verified robot completion, stored-coordinate disengagement and observation
+withdrawal, then MUSE vehicle review. Do not require a visible car or a MUSE
+verdict between the internal approach movements. Expected gripper cover is
+not a robot-position failure. Original frames can still be retained as evidence.
+
+Every internal movement retains its exact source/session/profile binding,
+working height, reviewed posture, speed and step limits, sole dispatch attempt
+and Native endpoint checks. A control/coordinate failure stops the unit. After
+withdrawal, missing or contradictory vehicle evidence inhibits the next loaded
+unit and route advancement; it does not justify replaying the preceding push.
+MUSE judges the visible outcome of the whole unit. A covered contact frame
+cannot prove the isolated push displacement or unchanged car pose during
+withdrawal. Keep those narrower results uncertain when they cannot be observed.
+
+Current commissioning helpers have physically completed one such northbound
+unit with a supported post-withdrawal MUSE progress judgment. This is not yet
+an activated reusable city-route adapter, a qualified turn or C/D delivery.
+The reusable executor and private measured registry must preserve this phase
+contract as actual course qualification continues. See the
+[coordinate-unit evidence](evidence/coordinate-unit-north-progress-20261029.json).
+
 ## Current mode: directly taught destinations
 
 On October 29 the operator selected the actual manually taught BASE positions B, C and D as the destination references. This mode uses those controller coordinates directly and does not require a drawing-to-BASE transform. The earlier nominal-map calibration remains rejected: the A/B/C unit-scale fit has a maximum 11.42 mm residual, and its reserved D/E numerical discrepancies are 2.87/6.47 mm. Reusing the records as operator-selected BASE goals does not make the map calibration pass or establish vehicle arrival.
