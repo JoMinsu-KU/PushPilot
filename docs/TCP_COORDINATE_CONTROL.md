@@ -33,6 +33,13 @@ read-only reobservation. A control/Native ambiguity or restart requires
 reconciliation, with no automatic replay. Verified arrival requires empty-tool
 return before asking the operator to reset the car.
 
+The unit review separately requires `car_footprint=WITHIN_ROAD` and
+`heading_matches_expected=true`; a generic progress/PASS statement cannot
+override island overlap, an unreadable boundary or contradictory heading.
+Keep raw provider contradictions. Flat on the paper is not the same as fully
+inside the road. These are visible vehicle-outcome checks after withdrawal,
+never gripper/TCP detection or approach admission.
+
 `CoordinateBinding` records current-site map/tool/car/surface identities without
 inventing a qualified road. The existing physical API still enforces the
 installation/profile, original low-speed limits, fixed posture and Native

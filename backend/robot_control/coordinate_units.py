@@ -98,7 +98,13 @@ class CoordinateUnit:
 
 class CoordinateUnitPorts(ExecutorPorts):
     def review_coordinate_unit(self, unit: CoordinateUnit, completed: tuple[dict, ...],
-                               before: Frame, after: Frame) -> VehicleReview: ...
+                               before: Frame, after: Frame) -> CoordinateUnitReview: ...
+
+
+@dataclass(frozen=True)
+class CoordinateUnitReview(VehicleReview):
+    car_footprint: str = "UNCERTAIN"
+    heading_matches_expected: bool = False
 
 
 class CoordinateUnitExecutor:
@@ -225,11 +231,12 @@ class CoordinateUnitExecutor:
                  "UNIT_FRAMES", "Review fresh same-view originals after the complete withdrawal.")
         self._same(self.last_actual, self._snapshot())
         review = self.ports.review_coordinate_unit(self.unit, tuple(self.completed), self.before, after)
-        _require(review.request_id == self.unit.id and review.provider_receipt
+        _require(isinstance(review, CoordinateUnitReview) and review.request_id == self.unit.id and review.provider_receipt
                  and (review.before_sha256, review.after_sha256) == (self.before.sha256, after.sha256)
                  and review.verdict in {"PASS", "FAIL", "UNCERTAIN"}
                  and all(type(x) is bool for x in (review.car_visible, review.expected_progress,
-                                                  review.excessive_yaw, review.arrived)),
+                                                  review.excessive_yaw, review.arrived, review.heading_matches_expected))
+                 and review.car_footprint in {"WITHIN_ROAD", "OVERLAPS_ISLAND", "UNCERTAIN"},
                  "UNIT_REVIEW", "Preserve the actual whole-unit result and original frame binding.")
         self.ports.append_event("coordinate_unit_review", {"result": asdict(review),
             "scope": "whole_unit", "isolated_push_or_withdrawal_qualified": False})
@@ -238,7 +245,9 @@ class CoordinateUnitExecutor:
         except Exception:
             self.state = "NEEDS_RECONCILIATION"
             raise
-        accepted = review.verdict == "PASS" and review.car_visible and review.expected_progress and not review.excessive_yaw
+        accepted = (review.verdict == "PASS" and review.car_visible and review.expected_progress
+                    and not review.excessive_yaw and review.heading_matches_expected
+                    and review.car_footprint == "WITHIN_ROAD")
         self.state = "ACCEPTED" if accepted else "WAIT_REVIEW"
         result = self._checkpoint()
         result.update(vehicle_arrival_verified=accepted and self.unit.at_goal and review.arrived,

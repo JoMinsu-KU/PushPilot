@@ -6,8 +6,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from backend.robot_control.coordinate_units import CoordinateBinding, CoordinateStage, CoordinateUnit, CoordinateUnitExecutor
-from backend.robot_control.taught_executor import ExecutionBlocked, VehicleReview
+from backend.robot_control.coordinate_units import CoordinateBinding, CoordinateStage, CoordinateUnit, CoordinateUnitExecutor, CoordinateUnitReview
+from backend.robot_control.taught_executor import ExecutionBlocked
 from tests.test_taught_executor import SyntheticPorts, configuration, pose
 from tools.run_coordinate_unit import load_unit, main, unit_geometry
 
@@ -28,6 +28,7 @@ class Ports(SyntheticPorts):
         self.unit_reviews, self.capture_at = [], []
         self.fail_motion_at, self.fail_capture_at = None, None
         self.fail_native_at, self.change_during_capture = None, False
+        self.car_footprint, self.heading_matches_expected = "WITHIN_ROAD", True
 
     def capture(self):
         self.capture_at.append(len(self.motions))
@@ -54,9 +55,10 @@ class Ports(SyntheticPorts):
             raise TimeoutError("Synthetic MUSE timeout.")
         if self.change_during_muse:
             self.sequence += 1
-        return VehicleReview(unit.id, "synthetic-provider", before.sha256, after.sha256,
+        return CoordinateUnitReview(unit.id, "synthetic-provider", before.sha256, after.sha256,
             self.review_verdict, self.visible, self.expected_progress, self.excessive_yaw,
-            True, "Synthetic whole-unit outcome only.")
+            True, "Synthetic whole-unit outcome only.", car_footprint=self.car_footprint,
+            heading_matches_expected=self.heading_matches_expected)
 
 
 class CoordinateUnitTests(unittest.TestCase):
@@ -141,7 +143,9 @@ class CoordinateUnitTests(unittest.TestCase):
 
     def test_uncertain_or_drifted_outcome_never_advances(self):
         for values in ({"review_verdict": "UNCERTAIN"}, {"visible": False},
-                       {"expected_progress": False}, {"excessive_yaw": True}):
+                       {"expected_progress": False}, {"excessive_yaw": True},
+                       {"car_footprint": "OVERLAPS_ISLAND"}, {"car_footprint": "UNCERTAIN"},
+                       {"heading_matches_expected": False}):
             with self.subTest(values=values):
                 ports = Ports()
                 for key, value in values.items():

@@ -251,6 +251,7 @@ class RealTaughtPortsTests(TestCase):
         after = replace(before, id="unit-after", sequence=11)
         value = {"verdict": "UNCERTAIN", "occlusion_cause": "UNKNOWN", "car_visible": False,
                  "expected_progress": False, "signal_region_visible": False, "signal_occlusion_cause": "UNKNOWN",
+                 "car_footprint": "OVERLAPS_ISLAND", "heading_matches_expected": True,
                  "excessive_yaw": False, "arrived": False, "observed": "Synthetic covered result.",
                  "summary": "No inferred car progress.", "limitations": ["Synthetic imagery."]}
         envelope = {"choices": [{"finish_reason": "stop", "message": {"content": json.dumps(value)}}]}
@@ -258,6 +259,7 @@ class RealTaughtPortsTests(TestCase):
         result = self.ports.review_coordinate_unit(unit(), tuple(executor.completed), before, after)
         self.assertEqual(result.request_id, unit().id)
         self.assertEqual(result.verdict, "UNCERTAIN")
+        self.assertEqual(result.car_footprint, "OVERLAPS_ISLAND")
         payload = self.provider.call_args.args[3]
         context = json.loads(payload["messages"][1]["content"][0]["text"])
         self.assertEqual(context["review_scope"], "whole_unit")
