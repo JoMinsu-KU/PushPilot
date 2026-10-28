@@ -2,6 +2,8 @@
 
 # One command. One receipt. No automatic replay.
 
+**Latest operator direction:** [TCP coordinate control](TCP_COORDINATE_CONTROL.md) separates robot execution from vehicle/signal review. Use taught endpoint geometry and Native TCP readback; do not gate ordinary fixed-frame motion on visual gripper-tip detection. Three further noncontact fixed-pose segments completed to sequence 29. This does not qualify a whole road, car transport or contact turning.
+
 **A separate GX10 commissioning service prepares bounded robot tests without converting the tablet's simulated mission into physical execution.** Implemented October 28, 2026 KST under explicit user authorization. A later current-site local profile established the persistent connection, five read-only IK queries and one real 0.5 mm tool retreat. Car pushing, turning and destination completion remain unqualified. See [current scoped evidence](evidence/robot-calibration-20261028.json).
 
 [Source provenance](data/robot-runtime-source.json) · [Control API](../backend/robot_control/api.py) · [Offline tests](../tests/test_robot_control_service.py) · [GX10 delivery](../deploy/ROBOT_CONTROL.md)

@@ -1,5 +1,7 @@
 """Synthetic camera-model evidence only; no capture or physical calibration."""
 from dataclasses import replace
+from contextlib import contextmanager
+import copy
 import hashlib
 import json
 import unittest
@@ -70,6 +72,42 @@ class CameraIntrinsicsTests(unittest.TestCase):
             identity=kwargs.pop("identity", self.identity),
             pattern=kwargs.pop("pattern", self.pattern), **kwargs)
 
+    @contextmanager
+    def frozen_solver_spies(self):
+        """Test separation of inputs, without comparing independent SVD runs."""
+        real_calibrate, real_pose = cv2.calibrateCameraExtended, cv2.solvePnP
+        calls = {"training": [], "pose": []}
+        calibration_result, pose_results = [], {}
+
+        def calibration(*args, **kwargs):
+            calls["training"].append(copy.deepcopy(args[:3]))
+            if not calibration_result:
+                calibration_result.append(real_calibrate(*args, **kwargs))
+            return copy.deepcopy(calibration_result[0])
+
+        def pose(*args, **kwargs):
+            calls["pose"].append(copy.deepcopy(args[:4]))
+            key = tuple((np.asarray(a).shape, np.asarray(a).dtype.str,
+                         np.asarray(a).tobytes()) for a in args[:4])
+            if key not in pose_results:
+                pose_results[key] = real_pose(*args, **kwargs)
+            return copy.deepcopy(pose_results[key])
+
+        with patch("backend.robot_control.camera_intrinsics.cv2.calibrateCameraExtended", side_effect=calibration), \
+                patch("backend.robot_control.camera_intrinsics.cv2.solvePnP", side_effect=pose):
+            yield calls
+
+    def assert_same_training_inputs(self, calls):
+        self.assertEqual(len(calls["training"]), 2)
+        for objects, corners, size in calls["training"]:
+            self.assertEqual(size, (1920, 1080))
+            self.assertEqual(len(objects), len(self.train_ids))
+            self.assertEqual(len(corners), len(self.train_ids))
+            for index, (grid, points) in enumerate(zip(objects, corners)):
+                np.testing.assert_array_equal(grid, self.pattern.object_points())
+                np.testing.assert_array_equal(points, np.array(
+                    self.observations[index].image_points_px, dtype=np.float32))
+
     def test_recovers_known_camera_with_distortion_and_unused_pose_checks(self):
         report = self.calibrate()
         self.assertTrue(report["accepted_image_model"], report["failure_reasons"])
@@ -98,39 +136,46 @@ class CameraIntrinsicsTests(unittest.TestCase):
                                    second["training"][0]["tvec_pattern_units"], atol=.001, rtol=0)
 
     def test_corrupted_heldout_image_fails_without_refitting_training_model(self):
-        clean = self.calibrate()
         observations = list(self.observations)
         points = np.array(observations[13].image_points_px)
         points[::2, 0] += 3
         points[1::2, 0] -= 3
         observations[13] = replace(observations[13], image_points_px=points.tolist())
-        report = self.calibrate(observations)
+        with self.frozen_solver_spies() as calls:
+            clean = self.calibrate()
+            report = self.calibrate(observations)
+        self.assert_same_training_inputs(calls)
         self.assertFalse(report["accepted_image_model"])
         self.assertIn("HELDOUT_VIEW_RMS_EXCEEDED:view-13", report["failure_reasons"])
-        # OpenCV linear algebra can differ at floating-point roundoff between
-        # identical runs; held-out corruption must not alter the fitted model.
-        np.testing.assert_allclose(clean["camera_matrix"], report["camera_matrix"], atol=1e-9, rtol=0)
-        np.testing.assert_allclose(clean["distortion_coefficients"], report["distortion_coefficients"], atol=1e-9, rtol=0)
+        np.testing.assert_array_equal(clean["camera_matrix"], report["camera_matrix"])
+        np.testing.assert_array_equal(clean["distortion_coefficients"], report["distortion_coefficients"])
         self.assertEqual(len(report["heldout"]), 4)
         self.assertEqual(len(report["heldout"][1]["corner_errors_px"]), 54)
         self.assertEqual(report["discarded_observation_ids"], [])
 
     def test_unused_heldout_corruption_cannot_change_subset_fitted_pose(self):
-        clean = self.calibrate()
         observations = list(self.observations)
         points = np.array(observations[14].image_points_px)
         points[1::2] += [2.5, -2]
         observations[14] = replace(observations[14], image_points_px=points.tolist())
-        corrupted = self.calibrate(observations)
+        with self.frozen_solver_spies() as calls:
+            clean = self.calibrate()
+            corrupted = self.calibrate(observations)
+        self.assert_same_training_inputs(calls)
+        self.assertEqual(len(calls["pose"]), 8)
+        for index in range(4):
+            first_inputs, second_inputs = calls["pose"][index], calls["pose"][index + 4]
+            for first_input, second_input in zip(first_inputs, second_inputs):
+                np.testing.assert_array_equal(first_input, second_input)
+            np.testing.assert_array_equal(first_inputs[0], self.pattern.object_points()[::2])
+            np.testing.assert_array_equal(first_inputs[1], np.array(
+                self.observations[index + 12].image_points_px, dtype=np.float64)[::2])
         self.assertFalse(corrupted["accepted_image_model"])
         self.assertIn("HELDOUT_VIEW_RMS_EXCEEDED:view-14", corrupted["failure_reasons"])
         first, second = clean["heldout"][2], corrupted["heldout"][2]
-        # Repeated OpenCV nonlinear solves can stop at slightly different
-        # floating-point iterates. Unused corruption must cause no pose change
-        # beyond that numerical precision, while producing a large check error.
-        np.testing.assert_allclose(first["rvec"], second["rvec"], atol=1e-6, rtol=0)
-        np.testing.assert_allclose(first["tvec_pattern_units"], second["tvec_pattern_units"], atol=1e-6, rtol=0)
-        self.assertLessEqual(abs(first["pose_fit_rms_error_px"] - second["pose_fit_rms_error_px"]), 1e-6)
+        np.testing.assert_array_equal(first["rvec"], second["rvec"])
+        np.testing.assert_array_equal(first["tvec_pattern_units"], second["tvec_pattern_units"])
+        self.assertEqual(first["pose_fit_rms_error_px"], second["pose_fit_rms_error_px"])
         self.assertLess(second["pose_fit_rms_error_px"], .1)
         self.assertGreater(second["unused_rms_error_px"], 3)
         self.assertEqual(second["pose_fit_corner_indices"], list(range(0, 54, 2)))

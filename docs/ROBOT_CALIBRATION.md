@@ -2,6 +2,8 @@
 
 # Measure the relationship before compiling a route.
 
+**Current control direction:** use [TCP coordinate control](TCP_COORDINATE_CONTROL.md): a small taught planar reference set, fixed endpoint/basis interpolation and independent checks. Gripper-image tracking and the tablet calibration route were stopped. Vision verifies vehicle and signal outcomes; it does not supply robot TCP position. Three new fixed-pose TCP steps completed to receiver sequence 29, without establishing a whole-map transform or destination completion.
+
 The user requested agent-driven robot testing, coordinate collection and wheel-less-car pushing to Villa, Hanok and Office Building on October 28, 2026. The fixed Pizza start is a repeatable scenario condition; its printed rectangle is not a measured BASE pose. The existing camera homography supplies image-to-drawing display geometry. This implementation adds a separate measured drawing-to-BASE XY fit and a current-coordinate collector. Neither starts a robot motion or qualifies a contact turn.
 
 ## Acquire current robot coordinates independently
