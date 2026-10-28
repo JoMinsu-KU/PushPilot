@@ -1,0 +1,110 @@
+{
+  "schema": "pushpilot.vision-stability-verification.v1",
+  "date": "2026-10-28",
+  "timezone": "Asia/Seoul",
+  "source_commit": "0a57d22641dd2a4363fb9144620b9334148c28f3",
+  "release": "20261028-vision-stability-0a57d22",
+  "map_id": "seoul-city-a3",
+  "map_version": "2026-10-28.2",
+  "map_geometry_hash_unchanged": "80467be6b9669b839cd29ff9bb430299cad1f8d9b7fd93c1fcb54f21e4512c9d",
+  "diagnosis": {
+    "intermittent_small_upper_marker_decoding": true,
+    "observed_upper_marker_short_side_median_px": 15.09,
+    "failed_first_roi_starved_later_searches": true,
+    "valid_partial_recovery_was_discarded": true,
+    "expected_partial_visibility_mounted_a_large_flashing_banner": true,
+    "fixed_mapping_drift_observed": false,
+    "camera_disconnect_observed": false
+  },
+  "same_original_image_comparison": {
+    "frames": 20,
+    "before_valid_four_marker_candidates": 10,
+    "after_valid_four_marker_candidates": 19,
+    "after_remaining_three_marker_frames": 1,
+    "windows_and_gx10_arm64_counts_agree": true,
+    "native_image_bytes_pixels_and_reference_unchanged": true,
+    "gx10_before_median_detector_ms": 39.802,
+    "gx10_after_median_detector_ms": 11.535,
+    "gx10_before_p95_detector_ms": 61.452,
+    "gx10_after_p95_detector_ms": 40.377,
+    "scope": "Paired development-sample comparison, not a blind recognition-accuracy or end-to-end latency benchmark."
+  },
+  "fresh_live_windows": {
+    "before": {
+      "distinct_frames": 120,
+      "seconds": 30.46,
+      "live": 120,
+      "locked_four_markers": 54,
+      "locked_partial": 66,
+      "marker_sets": {"10,11,12,13": 54, "12,13": 55, "10,12,13": 11},
+      "frame_age_ms_range": [66.2, 217.6]
+    },
+    "after": {
+      "distinct_frames": 120,
+      "seconds": 30.50,
+      "live": 120,
+      "locked_four_markers": 110,
+      "locked_partial_three_markers": 10,
+      "marker_sets": {"10,11,12,13": 110, "10,12,13": 10},
+      "frame_age_ms_range": [39.0, 207.4],
+      "maximum_image_fit_residual_px": 1.8789
+    },
+    "exact_fixed_homography_retained_in_every_sample": true,
+    "exact_fixed_homography_unchanged_across_release": true,
+    "camera_epoch_retained": true,
+    "stale_or_view_changed_samples": 0,
+    "scope": "Two short static-view windows with fresh sequences; host age is not sensor-exposure latency. No physical robot-occlusion trial."
+  },
+  "repair_boundaries": {
+    "missing_roi_targets_searched_independently": true,
+    "best_partial_pool_kept_from_one_profile_only": true,
+    "independent_complete_recovery_attempted_before_partial_fallback": true,
+    "additional_reference_only_native_contour_profile": true,
+    "maximum_reference_roi_decodes": 12,
+    "two_distributed_ordinary_same_frame_anchors_required": true,
+    "same_one_bit_dictionary_correction_limit": true,
+    "same_rms_3px_and_maximum_6px_reference_checks": true,
+    "four_markers_still_required_for_new_registration": true,
+    "partial_recovery_creates_no_candidate_or_transform": true,
+    "no_projected_or_cached_corners_published_as_detections": true,
+    "no_cross_profile_partial_merging": true,
+    "no_source_image_resize_filter_or_reencode": true,
+    "no_automatic_refit": true
+  },
+  "software_checks": {
+    "python_local_passed": 441,
+    "python_gx10_arm64_passed": 441,
+    "frontend_passed": 63,
+    "typescript_and_vite_build": "passed",
+    "expected_partial_and_hidden_visibility_do_not_flash_large_alerts": true,
+    "contradictory_stale_and_changed_view_guards_preserved": true,
+    "source_check_and_dependency_consistency": "passed"
+  },
+  "browser_checks": {
+    "camera_viewports_without_vertical_overflow": [[1194, 834], [1366, 1024], [1024, 768]],
+    "loaded_spatial_viewport_without_vertical_overflow": [1024, 768],
+    "same_five_office_route_segments_in_camera_and_spatial": true,
+    "board_focus_and_front_start_visible": true,
+    "source_plate_reports_actual_marker_counts": true,
+    "large_warning_banners_in_inspected_fresh_agreeing_views": 0,
+    "camera_svg_filter": "none",
+    "console_warnings_or_errors_observed": 0,
+    "independent_ipad_safari_hardware_test": false
+  },
+  "muse_scope_check": {
+    "first_request": "Clarification: physical car absent; retained as genuine provider evidence",
+    "explicit_drawing_only_request": "HTTP_200_PLAN_READY",
+    "node_ids": ["PIZZA", "S", "C", "OFFICE_BUILDING"],
+    "approved": false,
+    "motion_authority": false,
+    "physical_car_or_signal_recognition_accuracy_measured": false
+  },
+  "operational_preservation": {
+    "camera_helper_restarted": false,
+    "camera_hardware_settings_changed": false,
+    "rodi_restarted": false,
+    "robot_control_api_process_retained": true,
+    "robot_motion_issued": false
+  },
+  "private_evidence": "Original frames, exact reference identities, detailed provider records and activation receipts remain outside Git."
+}

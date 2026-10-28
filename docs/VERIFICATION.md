@@ -2,6 +2,16 @@
 
 Initial software verification on **2026-10-27, Asia/Seoul**; the GX10 deployment follow-up on **2026-10-28** is recorded below. This record covers replaceable-map live-image planning, bound native-image action/signal services, finite voice uploads, execution-aware route display, recorded reviews and native preview. Execution remains simulated; this is not a physical mission report.
 
+## Live marker stability repair, October 28
+
+A read-only 120-frame check found fresh video and the exact fixed homography throughout, while only 54 frames decoded all four markers. The upper markers have an observed short side around 15 pixels. Missing-target search also stopped at the first failed ROI and discarded otherwise valid partial observations. Expected partial visibility repeatedly mounted a large warning banner, making stable geometry look unstable.
+
+The repair preserves the same map and transform, searches each missing target independently, keeps a genuine single-profile partial fallback and adds one bounded reference-only native contour profile. All full-registration, dictionary correction, reference matching, identity and stale/view-change guards remain. Expected coverage changes now update compact source counts; actual contradictions and expired/changed views retain prominent alerts.
+
+On the same twenty original images, valid four-marker recovery increased from 10 to 19 on both Windows and GX10 ARM64. A new 120-frame live window had 110 complete and 10 three-marker frames; every frame retained the exact mapping and remained fresh. These are short static-view checks, not long-run accuracy or a physical robot-occlusion demonstration. Python passed 441 tests locally and on GX10; the frontend passed 63 tests and its production build. [Scoped evidence](evidence/vision-stability-20261028.json) records timing, partial counts and preserved boundaries.
+
+The actual provider first requested clarification because no physical car was present. A subsequent explicitly drawing-only QA request accepted the configured front-start Office preview. Both records remain preserved; no provider result was replaced with a demo or treated as car/traffic-signal recognition. No plan was approved, camera settings changed, hardware service restarted or robot moved.
+
 ## Front-of-Pizza correction, October 28
 
 The user corrected the Pizza start to the road in front of its south-facing red storefront. Active city version `2026-10-28.2` now requires `PIZZA → S → C`: east departure, then left/north at South Junction before Main Junction. This supersedes the rear-start geometry and west-facing central approach in the earlier city verification below. The [new scoped record](evidence/city-pizza-front-20261028.json) preserves the distinction.

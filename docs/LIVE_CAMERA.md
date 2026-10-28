@@ -111,6 +111,8 @@ When markers return, compare them with the same transform. Agreement restores ve
 
 Car and signal visibility are independent: an obscured car outcome can require `REOBSERVE`, and an unreadable signal remains `UNKNOWN`. Retaining board registration cannot convert either into `PASS` or `GREEN`. Any future observation pose must be a separately qualified bounded robot action, not an automatic retreat triggered by missing board markers.
 
+The [October 28 stability recheck](evidence/vision-stability-20261028.json) records the actual small-marker failure and repair. In a paired twenty-image comparison, complete recovery increased from 10 to 19 frames on both local and GX10 runtimes. A subsequent fresh 120-frame window retained the exact mapping in all frames, with 110 complete and ten three-marker observations. These short checks cover marker decoding and display continuity, not physical car/signal recognition or a moving-robot trial.
+
 ## API and capability meaning
 
 The contract is [`contracts/live-camera.ts`](../contracts/live-camera.ts), schema `pushpilot.live-camera.v1`.
