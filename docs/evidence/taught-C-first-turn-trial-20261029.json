@@ -1,0 +1,63 @@
+{
+  "schema": "pushpilot.scoped-physical-contact-turn-progress.v1",
+  "date_kst": "2026-10-29",
+  "destination_reference": "C",
+  "evidence_cutoff": "After the first corner trial and withdrawal at receiver sequence 65. Subsequent experiments are excluded.",
+  "preceding_B_course": "taught-B-course-20261029.json",
+  "approach": {
+    "physical_straight_strokes": 7,
+    "tcp_translation_per_stroke_mm": 17.717237029,
+    "total_tcp_translation_mm": 124.020659203,
+    "endpoint": "Proposed south junction approach from the taught BASE geometry.",
+    "final_receiver_sequence": 59,
+    "robot_endpoints_verified": true,
+    "muse_original_pair_reviews": 7,
+    "muse_status_each": "SUPPORTED",
+    "muse_translation_direction_each": "RIGHT",
+    "muse_yaw_change_each": "NONE_VISIBLE",
+    "precision_car_translation_measured": false,
+    "initial_auxiliary_car_pixel_diagnostic": {
+      "status": "UNCERTAIN",
+      "threshold_spread_px": 3.435,
+      "unchanged_rejection_threshold_px": 3,
+      "original_uncertainty_preserved": true,
+      "used_as_metric_car_motion_proof": false
+    }
+  },
+  "first_corner_trial": {
+    "profile_handoff_receiver_sequence": 60,
+    "same_original_east_pushing_face": true,
+    "literal_working_z_and_orientation_preserved": true,
+    "actions": [
+      {"id": "W1", "role": "Withdraw", "tcp_translation_mm": 17, "completed_receiver_sequence": 61},
+      {"id": "W2", "role": "Shift south", "tcp_translation_mm": 14, "completed_receiver_sequence": 62},
+      {"id": "W3", "role": "Approach east", "tcp_translation_mm": 17, "completed_receiver_sequence": 63},
+      {"id": "W4", "role": "Experimental east corner push", "tcp_translation_mm": 3, "completed_receiver_sequence": 64},
+      {"id": "W5", "role": "Withdraw for observation", "tcp_translation_mm": 17, "completed_receiver_sequence": 65}
+    ],
+    "robot_endpoints_verified": true,
+    "muse_turn_review": {
+      "source": "meta",
+      "input": "Original actual image pair",
+      "status": "REOBSERVE",
+      "yaw_change_visible": "NONE_VISIBLE",
+      "turn_success_claimed": false
+    },
+    "subsequent_stationary_pair": {
+      "input": "A new unchanged-original stationary image pair",
+      "status": "SUPPORTED",
+      "translation_image_direction": "UNCHANGED",
+      "yaw_change_visible": "NONE_VISIBLE",
+      "car_flat_on_road": true,
+      "relabels_original_turn_review_as_success": false
+    }
+  },
+  "what_this_establishes": "The straight approach and five experimental robot movements completed. The first attempted corner contact did not establish a visible car turn.",
+  "ninety_degree_car_turn_completed": false,
+  "C_completed": false,
+  "D_completed": false,
+  "contact_turn_qualified": false,
+  "production_signal_behavior_qualified": false,
+  "private_media_coordinates_and_joint_vectors_published": false,
+  "state_warning": "Historical progress only. Preserve uncertain observations and request bindings; read current state before further commands and never replay this trial."
+}

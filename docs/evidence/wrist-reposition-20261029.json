@@ -1,0 +1,62 @@
+{
+  "schema": "pushpilot.scoped-physical-wrist-evidence.v1",
+  "date_kst": "2026-10-29",
+  "scope": "Three actual withdrawn-tool wrist repositioning trials, not vehicle contact turns.",
+  "physical_execution": true,
+  "primitive": "moveJoint_wrist",
+  "tcp_definition_changed": false,
+  "target_xyz_held_constant": true,
+  "inherited_fk_tcp_radius_limit_mm": 0.5,
+  "trials": [
+    {
+      "planned_delta_j6_deg": -5,
+      "command_sequence": 41,
+      "completed_receiver_sequence": 42,
+      "ready_side_fk_samples": 19,
+      "go_side_fk_samples": 19,
+      "ready_side_maximum_fk_tcp_radius_mm": 0.0032670654463058334,
+      "go_side_maximum_fk_tcp_radius_mm": 0.002316472712729606,
+      "robot_endpoint_verified": true
+    },
+    {
+      "planned_delta_j6_deg": -85,
+      "command_sequence": 45,
+      "completed_receiver_sequence": 46,
+      "ready_side_fk_samples": 19,
+      "go_side_fk_samples": 19,
+      "ready_side_maximum_fk_tcp_radius_mm": 0.0014459694936276688,
+      "go_side_maximum_fk_tcp_radius_mm": 0.0014459694935187097,
+      "robot_endpoint_verified": true
+    },
+    {
+      "planned_delta_j6_deg": 90,
+      "command_sequence": 49,
+      "completed_receiver_sequence": 50,
+      "ready_side_fk_samples": 19,
+      "go_side_fk_samples": 19,
+      "ready_side_maximum_fk_tcp_radius_mm": 0.00248720086298356,
+      "go_side_maximum_fk_tcp_radius_mm": 0.00248720086298356,
+      "robot_endpoint_verified": true,
+      "role": "Restore the original east pushing orientation."
+    }
+  ],
+  "total_original_controller_fk_samples": 114,
+  "sample_provenance": "Original durable receiver journal reports: READY-side before GO, and GO-side ENTERING before MoveJ. Samples were copied from actual controller reports, never regenerated from nominal poses.",
+  "measurement_limit": "These are controller-computed FK checks of reported joint paths, not independent physical metrology or proof of exact fixed Z throughout motion.",
+  "unchanged_inherited_wrist_validation": {
+    "all_six_reports_passed": true,
+    "original_failure_events_in_trial_windows": 0,
+    "tolerances_changed": false,
+    "initial_post_hoc_checker_error_preserved": true,
+    "correction": "The first post-hoc checker incorrectly required measured servo readings to equal planned joints exactly. The corrected audit used the unchanged inherited planned-edge limits and 0.05-degree measured-source tolerance; original reports and the initial audit were retained."
+  },
+  "private_original_archive_sha256": "9d9722b8d92279446d886be8a4bb394396e8ba37042532865cf78cadc814ae79",
+  "private_archive_and_original_file_hashes_verified_locally": true,
+  "original_socket_encoding_retained": false,
+  "byte_hash_scope": "Original durable journal bytes, existing Native records and API receipts; the transport did not retain the original received socket JSON encoding.",
+  "whole_tool_sweep_qualified": false,
+  "car_contact_turn_completed": false,
+  "car_turn_qualified": false,
+  "private_media_coordinates_and_joint_vectors_published": false,
+  "state_warning": "Historical evidence only. Read current state before further commands; never restore these profiles or replay the trials."
+}

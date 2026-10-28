@@ -19,8 +19,8 @@ import urllib.parse
 import urllib.request
 from uuid import uuid4
 
-from .gates import validate_contact_profile
-from .legacy import load_runtime
+from .gates import admit, validate_contact_profile, validate_contact_turn_profile
+from .legacy import load_runtime, verify_runtime
 from .service import ProcessLock
 from .taught_executor import (ExecutionBlocked, Frame, MotionIntent, MotionReceipt,
                               Snapshot, TaughtAdapter, VehicleReview, _require)
@@ -173,6 +173,186 @@ class NativeObservation:
     sha256: str
 
 
+def prove_host_journal_cycle(state, raw, *, now_monotonic_ns, expected_receiver=None,
+                             publication_after_ns=None, max_age_s=5.):
+    """Pure proof of one host-completed heartbeat/Native guard cycle.
+
+    A native_readonly event precedes validation, so it is not sufficient alone.
+    server.exchange publishes idle only after the prior heartbeat's stationary
+    guard and sleep returned. A later publication, matching idle_ok and two
+    post-reset eligible Native rows together establish the completed cycle.
+    This function never creates a Native client or reads a socket.
+    """
+    _require(isinstance(raw, bytes) and raw and raw.endswith(b"\n"), "HOST_JOURNAL_INCOMPLETE",
+             "Read a bounded complete original journal segment.")
+    _require(type(max_age_s) in (int, float) and math.isfinite(max_age_s) and 0 < max_age_s <= 5,
+             "HOST_AGE_LIMIT", "Keep the original host source freshness ceiling of five seconds.")
+    identity = {key: state.get(key) for key in ("session_id", "seq", "profile_id")}
+    stamp = state.get("updated_monotonic_ns")
+    _require(state.get("stage") == "idle" and state.get("physical_execution") is True
+             and state.get("schema") == "pushpilot.hcr1-pose.experimental-v1"
+             and type(identity["seq"]) is int and identity["seq"] >= 1
+             and isinstance(identity["session_id"], str) and identity["session_id"]
+             and isinstance(identity["profile_id"], str) and identity["profile_id"]
+             and type(stamp) is int and 0 <= now_monotonic_ns-stamp <= max_age_s*1e9,
+             "HOST_STATE_STALE", "Use a current physically executing idle publication from the persistent host.")
+    _require(expected_receiver is None or identity == expected_receiver, "HOST_BINDING_CHANGED",
+             "The host publication differs from the expected current receiver binding.")
+    _require(publication_after_ns is None or stamp > publication_after_ns, "HOST_PUBLICATION_NOT_NEW",
+             "Wait for a genuinely new completed publication; a file read cannot refresh old evidence.")
+    rows = []
+    for line in raw.splitlines():
+        item = json.loads(line)
+        _require(type(item) is dict and type(item.get("monotonic_ns")) is int
+                 and isinstance(item.get("kind"), str) and isinstance(item.get("data"), dict),
+                 "HOST_JOURNAL_INVALID", "Every original event needs its source monotonic time, kind and data.")
+        _require(not rows or item["monotonic_ns"] >= rows[-1]["monotonic_ns"], "HOST_JOURNAL_ORDER",
+                 "Host journal timestamps are out of order.")
+        rows.append(item)
+    completed = [row for row in rows if row["monotonic_ns"] < stamp]
+    starts = [index for index, row in enumerate(completed)
+              if row["kind"] == "rx" and row["data"].get("type") == "idle_ok"]
+    _require(bool(starts), "HOST_CYCLE_INCOMPLETE", "No completed heartbeat receipt precedes this publication.")
+    begin = starts[-1]
+    packet = completed[begin]["data"]
+    tx_positions = [index for index in range(begin) if completed[index]["kind"] == "tx_intent"]
+    _require(bool(tx_positions), "HOST_CYCLE_INCOMPLETE", "The source idle_ok must follow its actual idle request.")
+    tx_index = tx_positions[-1]
+    tx = completed[tx_index]
+    _require(tx["monotonic_ns"] < completed[begin]["monotonic_ns"]
+             and (publication_after_ns is None or publication_after_ns < tx["monotonic_ns"])
+             and tx["data"].get("type") == "idle"
+             and all(tx["data"].get(key) == value for key, value in identity.items())
+             and tx["data"].get("schema") == state["schema"] and tx["data"].get("robot_id") == "HCR1"
+             and tx["data"].get("execute_motion") is True
+             and all(row["kind"] == "control_owner_check" for row in completed[tx_index+1:begin]),
+             "HOST_CYCLE_CONFLICT", "Require the exact bound idle TX then idle_ok RX after the initial publication.")
+    _require(all(packet.get(key) == value for key, value in identity.items())
+             and packet.get("schema") == state["schema"] and packet.get("robot_id") == "HCR1"
+             and packet.get("execute_motion") is True,
+             "HOST_BINDING_CHANGED", "The last completed idle_ok must bind this exact session, sequence and profile.")
+    cycle = completed[begin:]
+    samples, timeout_records = [], []
+    for row in cycle[1:]:
+        if row["kind"] == "stationary_read_timeout":
+            samples.clear()  # The inherited guard resets consecutive samples.
+            timeout_records.append(row)
+        elif row["kind"] == "native_readonly":
+            value = validate_snapshot(row["data"])
+            _require(value["program_before"] == value["program_after"] == [2]
+                     and value["flags"] == [1, 1, 0, 0, 0, 0] and value["speed"] == [0]*6,
+                     "HOST_NATIVE_INVALID", "Retain exact running-program, servo/manual/stop and stationary Native requirements.")
+            for key in ("actual_pose", "planned_pose"):
+                expected = state.get(key)
+                _require(type(expected) is list and len(expected) == 6
+                         and all(type(a) in (int, float) and math.isfinite(a)
+                                 and abs(a-b) <= .100001 for a, b in zip(expected, value["pose"])),
+                         "HOST_NATIVE_DISAGREEMENT", "Measured Native pose must agree with current actual/planned TCP at its quantization allowance.")
+            samples.append(row)
+        elif row["kind"] not in {"control_owner_check"}:
+            raise ExecutionBlocked("HOST_CYCLE_CONFLICT", "Another wire/command/lifecycle event interrupts the selected guard cycle.")
+    _require(len(samples) == 2 and samples[0]["monotonic_ns"] < samples[1]["monotonic_ns"],
+             "HOST_CYCLE_INCOMPLETE", "Two fresh consecutive Native rows after the last timeout must precede publication.")
+    accepted, reason = assess_samples([{"snapshot": row["data"]} for row in samples])
+    _require(accepted, "HOST_NATIVE_INVALID", reason)
+    last = samples[-1]
+    _require(0 <= now_monotonic_ns-last["monotonic_ns"] <= max_age_s*1e9
+             and state.get("actual_joint") == last["data"]["joint"],
+             "HOST_NATIVE_STALE", "Retain source-sample age and actual joint agreement; publication alone is not a measurement.")
+    # A fresh newer incomplete heartbeat is normal, but contradicting measured
+    # evidence, a timeout, command or close after publication invalidates reuse.
+    for row in rows:
+        if row["monotonic_ns"] < stamp:
+            continue
+        _require(row["kind"] in {"tx_intent", "rx", "native_readonly", "control_owner_check"},
+                 "HOST_NEWER_FAILURE", "A newer lifecycle/failure/rejection event requires a fresh completed guard publication.")
+        if row["kind"] == "native_readonly":
+            value = validate_snapshot(row["data"])
+            _require(value["program_before"] == value["program_after"] == [2]
+                     and value["flags"] == [1, 1, 0, 0, 0, 0] and value["speed"] == [0]*6
+                     and all(abs(a-b) <= .100001 for a, b in zip(state["actual_pose"], value["pose"])),
+                     "HOST_NEWER_CONFLICT", "Newer actual Native evidence contradicts the completed cycle.")
+        if row["kind"] in {"tx_intent", "rx"}:
+            kind = "idle" if row["kind"] == "tx_intent" else "idle_ok"
+            _require(row["data"].get("type") == kind
+                     and all(row["data"].get(key) == value for key, value in identity.items())
+                     and row["data"].get("schema") == state["schema"]
+                     and row["data"].get("robot_id") == "HCR1" and row["data"].get("execute_motion") is True,
+                     "HOST_NEWER_CONFLICT", "A newer command or changed receiver binding invalidates this stationary observation.")
+    return {"schema": "pushpilot.host-journal-native-proof.v1", "source": "persistent_host_native_fc03_journal",
+            "receiver": identity, "publication_monotonic_ns": stamp,
+            "source_sample_monotonic_ns": last["monotonic_ns"], "idle_ok": completed[begin],
+            "idle_tx": tx,
+            "native_rows": samples, "timeout_reset_events": timeout_records,
+            "source_journal_sha256": hashlib.sha256(raw).hexdigest(), "pose": last["data"]["pose"],
+            "joint": last["data"]["joint"], "motion_issued": False, "extra_fc03_queries": 0}
+
+
+def host_journal_native_capture(runtime, journal, *, expected_receiver=None, publication_after_ns=None,
+                                max_wait_s=4., verifier=verify_runtime, clock=time.time,
+                                monotonic=time.monotonic, monotonic_ns=time.monotonic_ns, sleep=time.sleep):
+    """Read only current host files; wait boundedly for completed source evidence."""
+    if not 0 <= max_wait_s <= 8:
+        raise ValueError("Use a finite zero-to-eight-second journal observation budget.")
+    runtime = Path(runtime)
+    verified = verifier(runtime)  # Byte verification only; no runtime execution.
+    code_hashes = {name: hashlib.sha256(data).hexdigest() for name, data in verified.items()}
+    deadline, last_error = monotonic()+max_wait_s, None
+    initial_publication = publication_after_ns
+    while True:
+        pointer_raw = state_raw = raw = None
+        try:
+            pointer_path = runtime / "current_session.json"
+            _require(not pointer_path.is_symlink() and pointer_path.stat().st_size <= 65536,
+                     "HOST_POINTER_INVALID", "Use the actual bounded current-session pointer.")
+            pointer_raw = pointer_path.read_bytes()
+            name = json.loads(pointer_raw)["path"]
+            _require(isinstance(name, str) and bool(name) and Path(name).name == name,
+                     "HOST_POINTER_INVALID", "The current session must be one relative run basename.")
+            run = runtime / "runs" / name
+            state_path, events_path = run / "state.json", run / "events.jsonl"
+            _require(not any(path.is_symlink() for path in (runtime / "runs", run, state_path, events_path))
+                     and state_path.stat().st_size <= 65536, "HOST_SOURCE_INVALID", "Retain ordinary current host source files.")
+            state_raw = state_path.read_bytes()
+            state = json.loads(state_raw)
+            if initial_publication is None:
+                initial_publication = state.get("updated_monotonic_ns")
+            _require(not (run / "command.json").exists(), "HOST_COMMAND_PENDING", "A pending mailbox is not an idle observation window.")
+            with events_path.open("rb") as stream:
+                size = stream.seek(0, os.SEEK_END)
+                offset = max(0, size-2_000_000)
+                stream.seek(offset)
+                if offset:
+                    stream.readline()  # The retained segment starts on a source line boundary.
+                    offset = stream.tell()
+                raw = stream.read(2_000_001)
+            _require(len(raw) <= 2_000_000 and pointer_path.read_bytes() == pointer_raw
+                     and state_path.read_bytes() == state_raw and not (run / "command.json").exists(),
+                     "HOST_SOURCE_CHANGED", "Reobserve a coherent pointer/publication/journal read with no pending command.")
+            proof = prove_host_journal_cycle(state, raw, now_monotonic_ns=monotonic_ns(),
+                expected_receiver=expected_receiver, publication_after_ns=initial_publication)
+            proof.update(source_offset_bytes=offset, source_code_sha256=code_hashes,
+                source_pointer_bytes_base64=base64.b64encode(pointer_raw).decode("ascii"),
+                source_state_bytes_base64=base64.b64encode(state_raw).decode("ascii"),
+                source_journal_bytes_base64=base64.b64encode(raw).decode("ascii"))
+            _, digest = journal.artifact("host-native", proof)
+            source_age = (monotonic_ns()-proof["source_sample_monotonic_ns"])/1e9
+            return NativeObservation(tuple(proof["pose"]), tuple(proof["joint"]), clock()-source_age, digest)
+        except (ExecutionBlocked, OSError, ValueError, KeyError, TypeError) as error:
+            last_error = error
+            if monotonic() >= deadline:
+                failure = {"source": "persistent_host_native_fc03_journal",
+                    "error_type": type(last_error).__name__, "code": getattr(last_error, "code", "HOST_SOURCE_UNAVAILABLE"),
+                    "motion_issued": False, "extra_fc03_queries": 0}
+                for label, data in (("pointer", pointer_raw), ("state", state_raw), ("journal", raw)):
+                    if isinstance(data, bytes):
+                        failure["source_"+label+"_bytes_base64"] = base64.b64encode(data).decode("ascii")
+                        failure["source_"+label+"_sha256"] = hashlib.sha256(data).hexdigest()
+                journal.artifact("host-native-failed", failure)
+                raise
+            sleep(.05)
+
+
 def quiet_native_capture(runtime, journal, *, loader=load_runtime, monotonic=time.monotonic,
                          monotonic_ns=time.monotonic_ns, sleep=time.sleep, clock=time.time):
     """Three distinct idle heartbeat windows; one failed FC03 read aborts.
@@ -250,6 +430,7 @@ class RealTaughtPorts:
                  token_file, meta_env_file, camera_epoch, registration_id, expected_visual,
                  robot_origin="http://127.0.0.1:8897", camera_origin="http://127.0.0.1:8080",
                  command_timeout_s=60., api=None, camera=None, native_capture=None,
+                 native_observation_source="quiet_query",
                  provider_request=request_json, provider_opener=None, clock=time.time,
                  monotonic=time.monotonic, sleep=time.sleep):
         if (not 1 <= command_timeout_s <= 180 or not camera_epoch or not registration_id
@@ -260,7 +441,9 @@ class RealTaughtPorts:
         self.expected_visual, self.command_timeout_s = expected_visual, command_timeout_s
         self.api = api or LocalHTTP(robot_origin, token_file)
         self.camera = camera or LocalHTTP(camera_origin)
-        self.native_capture = native_capture or (lambda: quiet_native_capture(self.runtime, self.journal))
+        if native_observation_source not in {"quiet_query", "host_journal"}:
+            raise ValueError("Select the explicit quiet_query or host_journal Native observation source.")
+        self.native_capture, self.native_observation_source = native_capture, native_observation_source
         self.provider_request = provider_request
         self.provider_opener = provider_opener or urllib.request.build_opener(NoRedirect())
         self.clock, self.monotonic, self.sleep = clock, monotonic, sleep
@@ -285,11 +468,12 @@ class RealTaughtPorts:
                  and status.get("armed") is False and status.get("hold") is True and status.get("active_commands") == []
                  and receiver.get("connected") is True and receiver.get("idle") is True
                  and receiver.get("physical_execution") is True
-                 and installation.get("scope") == "local_contact_commissioning",
+                 and installation.get("scope") in {"local_contact_commissioning", "local_contact_turn_commissioning"},
                  "PHYSICAL_STATUS_REQUIRED", "Require the actual held, disarmed physical contact service and idle receiver.")
         # Reuse the existing schema/profile/tool/site/limit checks, rather than
         # independently loosening their meaning in the runner.
-        validate_contact_profile(installation, receiver)
+        validator = validate_contact_turn_profile if installation["scope"] == "local_contact_turn_commissioning" else validate_contact_profile
+        validator(installation, receiver)
         return status
 
     def snapshot(self):
@@ -300,7 +484,13 @@ class RealTaughtPorts:
         if self._native_cache and self._native_cache[0] == identity and self.now()-self._native_cache[1].observed_at <= .5:
             native = self._native_cache[1]
         else:
-            native = self.native_capture()
+            if self.native_capture is not None:
+                native = self.native_capture()
+            elif self.native_observation_source == "host_journal":
+                native = host_journal_native_capture(self.runtime, self.journal,
+                    expected_receiver={key: receiver[key] for key in ("session_id", "seq", "profile_id")})
+            else:
+                native = quiet_native_capture(self.runtime, self.journal)
             self._native_cache = identity, native
         after = self._status()
         ar = after["receiver"]
@@ -308,11 +498,20 @@ class RealTaughtPorts:
                               tuple(ar["actual_joint"]), after["installation"]["installation_id"]),
                  "NATIVE_BASELINE_CHANGED", "Receiver/installation changed while independent coordinates were collected.")
         self.journal.artifact("robot-status", {"before": before, "after": after, "native_sha256": native.sha256})
+        _require(len(native.joint) == 6 and all(abs(a-b) <= .100000001 for a, b in zip(native.joint, receiver["actual_joint"])),
+                 "NATIVE_JOINT_DISAGREEMENT", "Independent Native joints must agree with the current receiver joint baseline.")
         limit = min(installation["max_step_mm"], installation["trial_max_step_mm"], receiver["profile"]["max_translation_mm"])
+        edges, runtime_hash = (), None
+        if installation["scope"] == "local_contact_turn_commissioning":
+            orientations = {item["id"]: item["rxyz_deg"] for item in receiver["profile"]["orientations"]}
+            edges = tuple({**edge, "source_orientation_deg": orientations[edge["from"]],
+                           "target_orientation_deg": orientations[edge["to"]]}
+                          for edge in receiver["profile"]["rotation_edges"])
+            runtime_hash = hashlib.sha256(encoded(receiver["profile"]["rotation_runtime"])).hexdigest()
         return Snapshot(receiver["session_id"], receiver["seq"], receiver["profile_id"], installation["installation_id"],
             tuple(receiver["actual_pose"]), tuple(receiver["actual_joint"]), native.pose, native.sha256,
             native.observed_at, True, installation["scope"], installation["tcp_definition_sha256"], installation["tool_id"],
-            installation["car_id"], installation["surface_id"], limit)
+            installation["car_id"], installation["surface_id"], limit, edges, runtime_hash)
 
     def _camera_status(self):
         value = self.camera.call("/api/v1/live-camera")
@@ -355,10 +554,26 @@ class RealTaughtPorts:
                  "INTENT_SUPERSEDED", "The durable one-shot intent no longer matches the current receiver.")
         # Record the complete exact API payload before arming. Existing gates
         # decide admission; this runner never labels contact as free movement.
-        command = {"request_id": intent.request_id, "kind": "translate", "purpose": "contact_trial",
+        expected_purpose = "contact_turn_trial" if status["installation"]["scope"] == "local_contact_turn_commissioning" else "contact_trial"
+        _require(intent.purpose == expected_purpose and intent.kind in {"translate", "rotate"},
+                 "INTENT_SCOPE", "Preserve the exact physical scope and experimental purpose of this measured operation.")
+        if intent.kind == "rotate":
+            profile = receiver["profile"]
+            edges = [edge for edge in profile.get("rotation_edges", []) if edge["id"] == intent.edge_id]
+            _require(len(edges) == 1 and intent.expected_source_joint_deg is not None
+                     and intent.expected_target_joint_deg is not None
+                     and tuple(edges[0]["expected_source_joint_deg"]) == intent.expected_source_joint_deg
+                     and tuple(edges[0]["expected_target_joint_deg"]) == intent.expected_target_joint_deg
+                     and hashlib.sha256(encoded(profile["rotation_runtime"])).hexdigest() == intent.rotation_runtime_sha256,
+                     "ROTATION_EDGE", "Bind the actual installed wrist runtime and measured directed joint edge.")
+        command = {"request_id": intent.request_id, "kind": intent.kind, "purpose": intent.purpose,
                    "installation_id": intent.installation_id, "expected_receiver": intent.expected_receiver,
                    "target": list(intent.target_base), "timeout_seconds": float(self.command_timeout_s),
-                   "admission_timeout_seconds": 10., "expected_visual": self.expected_visual}
+                   "admission_timeout_seconds": 10., "expected_visual": intent.expected_visual or self.expected_visual}
+        if intent.edge_id is not None:
+            command["edge_id"] = intent.edge_id
+        admit(command, status["installation"], receiver, None, armed=True, now=self.now(),
+              require_profile_binding=True, held=False)
         self.journal.artifact("command-payload", command)
         try:
             self.api.call("/v1/arm", {"installation_id": intent.installation_id,
@@ -381,10 +596,11 @@ class RealTaughtPorts:
                     _require(job["id"] == intent.request_id and original["request_id"] == intent.request_id
                              and original["expected_receiver"] == intent.expected_receiver
                              and original["installation_id"] == intent.installation_id
-                             and original["kind"] == "translate" and original["purpose"] == "contact_trial"
+                             and original["kind"] == intent.kind and original["purpose"] == intent.purpose
+                             and original.get("edge_id") == intent.edge_id
                              and original["target"] == list(intent.target_base)
                              and event["kind"] == "motion_endpoint_verified"
-                             and data.get("physical_execution") is True and data.get("operation") == "translate"
+                             and data.get("physical_execution") is True and data.get("operation") == intent.kind
                              and data.get("previous") == list(intent.start_base)
                              and isinstance(data.get("request_id"), str) and len(data["request_id"]) == 32
                              and data["session_id"] == intent.expected_receiver["session_id"]
@@ -402,13 +618,16 @@ class RealTaughtPorts:
     def review(self, intent, before, after, *, at_goal):
         self._camera_status()  # Do not send a stale/changed camera view to MUSE.
         context = {"request_id": intent.request_id, "route_edge": [intent.source, intent.target],
+                   "operation": intent.kind, "transition_id": intent.transition_id,
+                   "transition_action_id": intent.transition_action_id,
                    "distance_mm": math.dist(intent.start_base[:2], intent.target_base[:2]),
-                   "expected_visible_result": self.expected_visual, "goal_arrival_check": at_goal,
+                   "expected_visible_result": intent.expected_visual or self.expected_visual, "goal_arrival_check": at_goal,
                    "robot_endpoint_verified_separately": True, "original_frames": [before.metadata(), after.metadata()]}
         prompt = ("Compare BEFORE and AFTER original photographs of one real PushPilot surface-pushing action, not a simulation. "
                   "Judge the physical model car, not printed artwork, UI, robot motion or a decorative object. "
                   "Report PASS only if visible car evidence supports the provided expected result; otherwise FAIL or UNCERTAIN. "
-                  "car_visible requires the physical car to be readable in both frames. expected_progress requires supported visible car movement. "
+                  "car_visible requires the physical car to be readable in both frames. expected_progress means the action-specific expected outcome is visibly supported: "
+                  "for a push this requires expected car motion; for a free wrist reorientation/reposition it may require the car to remain stationary. "
                   "excessive_yaw means visible deviation that contradicts this action's expected direction. "
                   "arrived is true only during the requested goal check when the images visibly support arrival at the specified destination/contact reference; "
                   "a robot TCP endpoint or telemetry does not by itself prove vehicle arrival. "

@@ -4,6 +4,36 @@
 port contract. It is not connected to the web application's simulated action
 runner, and its tests do not qualify any physical road or destination.
 
+## Actual commissioning evidence
+
+One physical B / Office-frontage course is complete, with an independent robot
+endpoint receipt and separate original-image MUSE arrival review. This remains
+one demonstrated pass, rather than a repeatability or full-city qualification.
+[B course evidence](evidence/taught-B-course-20261029.json).
+
+Three withdrawn-tool wrist experiments completed: planned J6 changes of -5,
+-85 and +90 degrees restored the original orientation. Original READY-side and
+GO-side reports retain nineteen controller FK samples each, 114 in total. The
+largest reported TCP radius is 0.003267 mm against the unchanged inherited
+0.5 mm bound. This is a controller FK check, not physical metrology, whole-tool
+clearance qualification or a car turn.
+[Wrist evidence](evidence/wrist-reposition-20261029.json).
+
+The first C attempt then completed seven straight strokes of 17.717237 mm
+(124.020659 mm total TCP travel) to the proposed south-junction approach. Each
+original-pair MUSE review supported rightward car progress with no yaw visible.
+The first auxiliary car-pixel diagnostic remained UNCERTAIN: its 3.435 px
+threshold spread exceeded the unchanged 3 px limit. That diagnostic was not
+promoted to metric car-motion evidence.
+
+A same-orientation first corner experiment completed withdrawal, a 14 mm south
+shift, reapproach, a 3 mm east stroke and observation withdrawal. The turn review
+returned REOBSERVE with no visible yaw. A later stationary original pair
+supported an unchanged car, flat on the road; it did not turn the earlier
+uncertain result into a successful turn. C/D arrival and a 90-degree car turn
+remain incomplete. Later experiments are excluded from this evidence cutoff.
+[First C trial evidence](evidence/taught-C-first-turn-trial-20261029.json).
+
 ## Route ownership
 
 The input is one `ApprovedRoute`: the exact MUSE-selected `node_ids`, destination,
@@ -33,12 +63,48 @@ Proposed intersections from `taught_roads.py` remain proposals until physically
 reviewed. One successful short push does not qualify a whole corridor.
 
 Current `LocalContactInstallation` permits fixed-Z, fixed-orientation translation
-only. This coordinator therefore rejects a changed direction, changed face,
-changed orientation or discontinuous road anchor with `CONTACT_TURN_REQUIRED`.
-It cannot disguise a turn as free commissioning, call the noncontact teaching
-scope with a car present, or assume an unmeasured face-to-TCP offset. A later
-measured contact-turn runtime must add explicit turn/recontact primitives and
-tests before those paths can be admitted.
+only. A changed direction, face, orientation or discontinuous contact anchor
+requires a separately measured `MeasuredTransition`; absent that record the
+coordinator rejects the route with `CONTACT_TURN_REQUIRED`. The deployed separate
+`LocalContactTurnInstallation` scope supports explicit experimental translation
+and reviewed fixed-XYZ wrist edges. That experimental capability alone does not
+qualify a car turn. The executor consumes actual measured transition evidence;
+it never disguises a turn as free commissioning, calls the car-removed teaching
+scope with a car present, or assumes an unmeasured face-to-TCP offset.
+
+Each transition is keyed by its exact directed `incoming` and `outgoing` graph
+edges, such as `["PIZZA", "S"]` followed by `["S", "C"]`. It has a review hash
+and a continuous sequence of `MeasuredTransitionAction` entries. The first full
+pose must equal the incoming road's endpoint; the last must equal the outgoing
+road's contact start. A transition recorded for a different junction/approach
+cannot silently be reused.
+
+Every action supplies `id`, `kind`, measured `start_base`/`end_base`, an actual
+`qualification_sha256` and its own `expected_visual`:
+
+- `translate` is one <=20 mm measured contact/recontact/reposition action, with
+  literal Z and orientation unchanged. A smaller installed limit rejects it;
+  it is not silently subdivided into a different unmeasured procedure.
+- `rotate` retains exact current XYZ and supplies `edge_id`, actual
+  `expected_source_joint_deg`, `expected_target_joint_deg` and
+  `rotation_runtime_sha256`. The latter is SHA-256 of the actual installed
+  `rotation_runtime` object encoded as sorted compact JSON using
+  `taught_ports.encoded()`. The full reviewed Euler endpoint and directed joint
+  vectors must match the installed edge; current source joints retain the
+  existing 0.5-degree comparison limit. The target joints are checked after
+  completion. A measured wrist edge can cross an Euler representation branch;
+  the supplied full literal endpoint is preserved and direction comes from its
+  reviewed joint edge. No wrapped angle, shortcut or pure-RZ approximation is
+  invented from the displayed Euler values.
+
+The runner issues each action separately as `contact_turn_trial` under the actual
+validated contact-turn installation/profile. Ordinary road strokes in that scope
+also keep that purpose. Every action gets one endpoint receipt, independent
+Native evidence and its own original-pair MUSE review before the next. A free
+wrist/reposition action may correctly expect the car to remain stationary;
+`expected_progress` then means that specific expected outcome was supported.
+Final vehicle heading/alignment is a separate visible expectation of the
+measured contact-turn action, not inferred from wrist rotation.
 
 ## IO integration
 
@@ -71,7 +137,8 @@ API, persistent receiver, independent Native checks and camera process intact.
    progress, excessive yaw and explicit goal arrival separately from the robot
    receipt. A provider error must never become a demo result.
 
-`advance()` attempts one bounded straight stroke, then reviews it. The distance
+`advance()` attempts one bounded straight stroke or one measured transition
+action, then reviews it. For road strokes the distance
 is the minimum of the requested cadence, currently configured installation
 limit, demonstrated primitive limit and remaining segment. The default cadence
 is 10 mm; the software ceiling remains 20 mm. Literal current Z and orientation
@@ -177,8 +244,12 @@ The adapter bundle has `schema=pushpilot.taught-physical-adapter.v1`, `adapter`
 with all `TaughtAdapter` fields and `MeasuredRoad` entries, and
 `qualification_evidence` containing original path/hash references. Every road's
 qualification hash and the adapter review hash must resolve to a retained
-source. The actual overall review uses schema
-`pushpilot.taught-course-qualification.v1`, `scope=fixed_pose_contact_corridor`,
+source. Optional `adapter.transitions` entries use the fields described above;
+their transition and individual action qualification hashes must also resolve
+to retained originals. The actual overall review uses schema
+`pushpilot.taught-course-qualification.v1`, with `scope=fixed_pose_contact_corridor`
+for a straight adapter or `scope=measured_contact_route_with_transitions` for an
+adapter containing transitions,
 `qualification=accepted`, `physical_execution=true` and a matching
 `map_identity` object with `id`, `version`, `hash`. Those labels must summarize
 actual independent evidence; writing them is not itself qualification.
@@ -195,6 +266,7 @@ The IO configuration contains only paths and fixed reviewed view/context values:
   "expected_visual": "Describe the actual physical car, expected image-space progress and visible destination reference.",
   "robot_origin": "http://127.0.0.1:8897",
   "camera_origin": "http://127.0.0.1:8080",
+  "native_observation_source": "host_journal",
   "command_timeout_s": 60
 }
 ```
@@ -217,6 +289,49 @@ artifacts. The append-only journal has a verified hash chain, one owner lock,
 `fsync` writes and atomic durable checkpoints. Existing evidence is never cleared
 to obtain a fresh run.
 
+`native_observation_source=host_journal` is an optional file-only observation
+adapter for installations where an additional FC03 client interferes with the
+persistent host's existing client. The compatibility default is `quiet_query`;
+select the reviewed source explicitly. The host-journal adapter opens no robot
+socket and does not replace the host's mandatory READY/GO/endpoint guards.
+
+The inherited source ordering establishes the proof: `server.exchange()`
+publishes idle P1, sends idle TX, receives idle_ok RX, calls the stationary
+Native guard, sleeps one second, then publishes idle P2 on the next loop.
+`transport.read_stationary()` returns only after two consecutive eligible
+Native reads; `stationary_read_timeout` resets that pair. Individual
+`native_readonly` rows are logged before validation, so two rows without the
+later publication cannot themselves prove the guard completed.
+
+`prove_host_journal_cycle()` is pure and requires
+`P1 < TX < RX < N1 < N2 < P2`, matching session/sequence/profile/schema/robot and
+physical-execution flags, program before/after `[2]`, exact flags
+`[1,1,0,0,0,0]`, six finite zero speeds and literal pose agreement within
+0.100001 units to both current actual and planned TCP. P2's `actual_joint` must
+equal N2's measured joints exactly because publication copies that returned
+guard row. `planned_joint` is never substituted. Timeout resets require two
+new rows; missing, stale, conflicting, interrupted or newer failed cycles are
+withheld. A new incomplete idle heartbeat may coexist with an already completed
+fresh proof only if it contains no contradicting measurement or failure.
+
+`host_journal_native_capture()` verifies runtime bytes without executing them,
+reads only the current-session pointer/current run state and a bounded original
+journal segment, waits at most four seconds for a new completed publication,
+then coherently rereads pointer/state and requires no pending mailbox. The real
+ports additionally recheck authenticated API held/disarmed/idle/no-active state
+around collection. Native sample age uses the GX10 host monotonic clock and
+retains the actual source sample time; reading the file does not refresh it.
+Exact pointer/state/journal bytes are retained as base64 with hashes and the
+journal byte offset, together with selected rows, timeout records and verified
+source hashes. Failed observations also retain the available original bytes.
+
+The helper is independently callable from an explicitly controlled private
+runner. Its `journal` argument only needs `artifact(label, value)` returning an
+archived path/hash. `publication_after_ns` can bind a previously observed P1;
+when omitted the helper records the initial publication and requires a newer
+completed one. This recovery observes existing actual host Native evidence and
+never resends a physical command or performs an additional FC03 query.
+
 ## Validation
 
 `tests/test_taught_executor.py` uses synthetic BASE coordinates, JPEG byte
@@ -230,3 +345,8 @@ adapters with fake transports only, including distinct API/wire IDs, one-shot
 POST failure behavior, exact original image bytes, provider uncertainty/errors,
 quiet-window read failure without retry, token confinement, journal integrity
 and rejection of simulated approval as physical authorization.
+Mixed-route tests cover directed junction selection, full pose/joint/runtime
+binding, unchanged Z, action-specific stationary-car expectations, per-action
+reviews, uncertainty without repeating a wrist action, and a failed/unknown
+rotation outcome. These remain synthetic tests; no physical turn registry is
+bundled or declared qualified by this implementation.

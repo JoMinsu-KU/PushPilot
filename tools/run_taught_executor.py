@@ -19,7 +19,8 @@ if str(ROOT) not in sys.path:
 
 from backend.maps import MapDefinition
 from backend.robot_control.taught_executor import (
-    ApprovedRoute, ExecutionBlocked, MeasuredRoad, TaughtAdapter, TaughtExecutor, compile_taught_route,
+    ApprovedRoute, ExecutionBlocked, MeasuredRoad, MeasuredTransition, MeasuredTransitionAction,
+    TaughtAdapter, TaughtExecutor, compile_taught_route,
 )
 from backend.robot_control.taught_ports import PrivateJournal, RealTaughtPorts
 
@@ -82,16 +83,24 @@ def load_adapter(path):
         raise ValueError("Use the exact privately reviewed taught adapter bundle schema.")
     data = dict(value["adapter"])
     data["roads"] = tuple(MeasuredRoad(**road) for road in data["roads"])
+    transitions = []
+    for item in data.get("transitions", []):
+        transition = dict(item)
+        transition["actions"] = tuple(MeasuredTransitionAction(**action) for action in transition["actions"])
+        transitions.append(MeasuredTransition(**transition))
+    data["transitions"] = tuple(transitions)
     adapter = TaughtAdapter(**data)
     sources = {item["sha256"]: reference(item, path.parent) for item in value["qualification_evidence"]}
     required = {adapter.review_sha256} | {road.qualification_sha256 for road in adapter.roads}
+    required |= {item.qualification_sha256 for item in adapter.transitions}
+    required |= {action.qualification_sha256 for item in adapter.transitions for action in item.actions}
     if not required <= sources.keys():
         raise ValueError("Retain the original actual review and qualification record for every selected corridor.")
     review = sources[adapter.review_sha256]
     if (review.get("schema") != "pushpilot.taught-course-qualification.v1"
             or review.get("qualification") != "accepted" or review.get("physical_execution") is not True
             or review.get("map_identity") != {"id": adapter.map_id, "version": adapter.map_version, "hash": adapter.map_hash}
-            or review.get("scope") != "fixed_pose_contact_corridor"):
+            or review.get("scope") != ("measured_contact_route_with_transitions" if adapter.transitions else "fixed_pose_contact_corridor")):
         raise ValueError("A proposed geometry or synthetic test is not an accepted actual contact-corridor review.")
     return adapter
 
@@ -130,7 +139,7 @@ def main(argv=None):
             raise ValueError("Keep real operating evidence outside the source repository.")
         config = read_json(args.config_file)
         allowed = {"runtime", "token_file", "meta_env_file", "camera_epoch", "registration_id", "expected_visual",
-                   "robot_origin", "camera_origin", "command_timeout_s"}
+                   "robot_origin", "camera_origin", "command_timeout_s", "native_observation_source"}
         if not isinstance(config, dict) or set(config)-allowed:
             raise ValueError("Use only reviewed private IO path/view settings; no injected executable callbacks.")
         journal = PrivateJournal(output)

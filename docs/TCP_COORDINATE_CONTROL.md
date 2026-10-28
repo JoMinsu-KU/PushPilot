@@ -12,7 +12,7 @@ Run `python tools/preview_taught_roads.py <private-input.json>` for geometry and
 
 The operator then placed the car and selected its actual rear-contact START as the fixed reference. Three identical manual-mode Native reads captured that pose, and an unchanged original live frame documented the car/tool setup. Manual-control flags remain explicitly labelled; a stationary coordinate record is not controller execution readiness. START and the five taught coordinates are stored privately. Recheck the current actual pose before motion; selecting a fixed start never authorizes replay of interrupted commands or automatic recovery to it.
 
-`next_fixed_pose_target` proposes one bounded point from the latest actual TCP toward a fixed-pose endpoint. It does not queue or replay an entire road. The execution service still requires a current installation/profile, low-speed limits, exact receiver binding and measured endpoint receipts. The first car test is a separately reviewed short straight contact trial from the actual start. Reaching B with a car, recovering drift, and pushing through the two turns needed for C/D remain physical tests. Geometric direction changes are not gripper rotation commands: changed yaw needs a measured contact-face/TCP offset, reviewed rotation/recontact paths and observed car response.
+`next_fixed_pose_target` proposes one bounded point from the latest actual TCP toward a fixed-pose endpoint. It does not queue or replay an entire road. The execution service still requires a current installation/profile, low-speed limits, exact receiver binding and measured endpoint receipts. One actual car course subsequently reached B with separate robot and MUSE arrival evidence; repeatability, drift recovery and the two turns needed for C/D remain physical tests. The first C approach and corner experiment did not establish a visible car turn. Geometric direction changes are not gripper rotation commands: changed yaw needs measured contact geometry, reviewed rotation/recontact paths and observed car response. [B course](evidence/taught-B-course-20261029.json) · [First C trial](evidence/taught-C-first-turn-trial-20261029.json).
 
 The taught endpoints currently describe the TCP at one tool orientation. Keep robot-reference completion and vehicle task completion separate. A lost/occluded car result waits for a new outcome observation; it must neither terminate the independent receiver heartbeat nor advance a destination as successful.
 
@@ -46,6 +46,17 @@ Expected gripper occlusion must not break the persistent robot session, trigger 
 Vehicle yaw/cross-track error can inform the next qualified contact correction, remaining turn or route decision. The selected pushing face, approach/repositioning envelope, actual slip/rotation response and stopping geometry still need separate contact tests. No contact or rotation is authorized by this noncontact teaching result.
 
 ## Current physical evidence
+
+The October 29 records separate one completed B car course, three actual
+withdrawn-tool wrist repositioning trials and an incomplete first C corner
+trial. The wrist journal retains 114 actual controller FK samples; the first
+C trial retains its REOBSERVE/no-visible-yaw outcome. These records establish
+their scoped robot movements and qualitative car observations; they do not
+accept the rejected map fit or qualify a 90-degree vehicle turn. See
+[the actual executor evidence](TAUGHT_EXECUTOR.md#actual-commissioning-evidence).
+
+The following noncontact results are earlier checkpoints, retained with their
+original scope.
 
 After stopping the tablet-checkerboard approach, three new noncontact movements completed: BASE X +10 mm, then Y +10 mm and Y +10 mm. Each stayed on previously traversed segments with unchanged literal Z/orientation, profile and low-speed limits. Native readback and `motion_endpoint_verified` receipts confirmed the endpoints; the receiver advanced from sequence 26 to 29 and finished held/disarmed/idle. Original frames, full poses and receipts remain private.
 

@@ -66,6 +66,71 @@ class MeasuredRoad:
 
 
 @dataclass(frozen=True)
+class MeasuredTransitionAction:
+    """One actually measured contact/recontact or free wrist-reorientation step.
+
+    Wrist rotation is not a car-turn success: its expected visual outcome can be
+    a stationary car. Each action has separate observed vehicle evidence.
+    """
+    id: str
+    kind: str
+    start_base: Pose
+    end_base: Pose
+    qualification_sha256: str
+    expected_visual: str
+    edge_id: str | None = None
+    expected_source_joint_deg: tuple[float, ...] | None = None
+    expected_target_joint_deg: tuple[float, ...] | None = None
+    rotation_runtime_sha256: str | None = None
+
+    def __post_init__(self):
+        a, b = _pose(self.start_base), _pose(self.end_base)
+        if (not self.id or self.kind not in {"translate", "rotate"} or a[2] != b[2]
+                or not _hash(self.qualification_sha256) or not isinstance(self.expected_visual, str)
+                or not 10 <= len(self.expected_visual) <= 700):
+            raise ValueError("A transition action requires measured fixed-Z poses, evidence and its actual expected car outcome.")
+        if self.kind == "translate":
+            if (a[3:] != b[3:] or not 0 < math.dist(a[:2], b[:2]) <= 20
+                    or self.edge_id is not None or self.expected_source_joint_deg is not None
+                    or self.expected_target_joint_deg is not None or self.rotation_runtime_sha256 is not None):
+                raise ValueError("One recontact/push translation retains literal orientation and its <=20 mm measured length.")
+        else:
+            if (a[:3] != b[:3] or a[3:] == b[3:] or not self.edge_id or not _hash(self.rotation_runtime_sha256)
+                    or any(abs(x) > 180 for x in a[3:]+b[3:])):
+                raise ValueError("One measured wrist edge retains exact XYZ and bounded literal full Euler endpoints.")
+            source, target = _pose(self.expected_source_joint_deg), _pose(self.expected_target_joint_deg)
+            if (source[:5] != target[:5] or not 0 < abs(target[5]-source[5]) <= 90
+                    or any(abs(x) > 360 for x in source+target)):
+                raise ValueError("Bind the actual directed wrist-only source/target joint vectors and finite increment.")
+            object.__setattr__(self, "expected_source_joint_deg", source)
+            object.__setattr__(self, "expected_target_joint_deg", target)
+        object.__setattr__(self, "start_base", a)
+        object.__setattr__(self, "end_base", b)
+
+
+@dataclass(frozen=True)
+class MeasuredTransition:
+    id: str
+    incoming: tuple[str, str]
+    outgoing: tuple[str, str]
+    qualification_sha256: str
+    actions: tuple[MeasuredTransitionAction, ...]
+
+    def __post_init__(self):
+        incoming, outgoing, actions = tuple(self.incoming), tuple(self.outgoing), tuple(self.actions)
+        if (not self.id or len(incoming) != 2 or len(outgoing) != 2 or incoming[1] != outgoing[0]
+                or not all(isinstance(x, str) and x for x in incoming+outgoing)
+                or not _hash(self.qualification_sha256) or not 1 <= len(actions) <= 64
+                or not all(isinstance(x, MeasuredTransitionAction) for x in actions)
+                or len({a.id for a in actions}) != len(actions)
+                or any(a.end_base != b.start_base for a, b in zip(actions, actions[1:]))):
+            raise ValueError("A measured transition binds one directed junction approach/exit and a continuous reviewed action sequence.")
+        object.__setattr__(self, "incoming", incoming)
+        object.__setattr__(self, "outgoing", outgoing)
+        object.__setattr__(self, "actions", actions)
+
+
+@dataclass(frozen=True)
 class TaughtAdapter:
     map_id: str
     map_version: str
@@ -76,16 +141,20 @@ class TaughtAdapter:
     car_id: str
     surface_id: str
     roads: tuple[MeasuredRoad, ...]
+    transitions: tuple[MeasuredTransition, ...] = ()
 
     def __post_init__(self):
-        roads = tuple(self.roads)
+        roads, transitions = tuple(self.roads), tuple(self.transitions)
         if (not all(_hash(x) for x in (self.map_hash, self.review_sha256, self.tcp_definition_sha256))
                 or not all(isinstance(x, str) and x for x in
                            (self.map_id, self.map_version, self.tool_id, self.car_id, self.surface_id))
                 or not roads or not all(isinstance(x, MeasuredRoad) for x in roads)
-                or len({(x.source, x.target) for x in roads}) != len(roads)):
+                or len({(x.source, x.target) for x in roads}) != len(roads)
+                or not all(isinstance(x, MeasuredTransition) for x in transitions)
+                or len({(x.incoming, x.outgoing) for x in transitions}) != len(transitions)):
             raise ValueError("Use one reviewed adapter with unique directed measured road primitives.")
         object.__setattr__(self, "roads", roads)
+        object.__setattr__(self, "transitions", transitions)
 
 
 @dataclass(frozen=True)
@@ -116,8 +185,8 @@ def compile_taught_route(route: ApprovedRoute, adapter: TaughtAdapter, drawing: 
     """Validate the exact symbolic path; no shortest-path replacement or XY fit.
 
     A changed direction requires a separately measured contact-turn primitive.
-    Current LocalContactInstallation supports fixed-pose translation only, so
-    this coordinator refuses those routes until a real turn runtime is added.
+    The optional transition is a separately measured action sequence, never
+    generated from drawing coordinates or an arbitrary MUSE numeric output.
     """
     identity = drawing.id, drawing.version, drawing.geometry_hash
     _require((route.map_id, route.map_version, route.map_hash) == identity
@@ -127,21 +196,26 @@ def compile_taught_route(route: ApprovedRoute, adapter: TaughtAdapter, drawing: 
     _require(not selected["junction_ids"] or route.commissioning_without_signals,
              "SIGNAL_RUNTIME_REQUIRED", "Production junctions require qualified physical stop/signal/crossing primitives.")
     indexed = {(road.source, road.target): road for road in adapter.roads}
+    transitions = {(item.incoming, item.outgoing): item for item in adapter.transitions}
     roads = []
     for edge in zip(route.node_ids, route.node_ids[1:]):
         _require(edge in indexed, "ROAD_UNQUALIFIED", f"The exact selected directed road {edge} has no measured primitive.")
         road = indexed[edge]
         if roads:
             prior = roads[-1]
-            _require(prior.end_base == road.start_base, "CONTACT_TURN_REQUIRED",
-                     "Recontact, a changed TCP orientation or a discontinuous anchor requires a measured transition.")
+            transition = transitions.get(((prior.source, prior.target), (road.source, road.target)))
             u = tuple(b-a for a, b in zip(prior.start_base[:2], prior.end_base[:2]))
             v = tuple(b-a for a, b in zip(road.start_base[:2], road.end_base[:2]))
             # A small survey discrepancy is not a qualified steering primitive.
             collinear = abs(u[0]*v[1]-u[1]*v[0]) <= 1e-9 * math.hypot(*u)*math.hypot(*v)
-            _require(collinear and sum(a*b for a, b in zip(u, v)) > 0
-                     and prior.contact_face_id == road.contact_face_id,
-                     "CONTACT_TURN_REQUIRED", "A changed road direction/face requires a measured contact-turn primitive.")
+            if transition is None:
+                _require(prior.end_base == road.start_base and collinear
+                         and sum(a*b for a, b in zip(u, v)) > 0 and prior.contact_face_id == road.contact_face_id,
+                         "CONTACT_TURN_REQUIRED", "A changed road direction/face requires a measured contact-turn primitive.")
+            else:
+                _require(transition.actions[0].start_base == prior.end_base
+                         and transition.actions[-1].end_base == road.start_base,
+                         "TRANSITION_ANCHOR", "The measured transition must join this exact incoming endpoint and outgoing contact start.")
         roads.append(road)
     return tuple(roads)
 
@@ -177,6 +251,8 @@ class Snapshot:
     car_id: str
     surface_id: str
     configured_stroke_mm: float
+    reviewed_rotation_edges: tuple[dict, ...] = ()
+    rotation_runtime_sha256: str | None = None
 
 
 @dataclass(frozen=True)
@@ -194,6 +270,22 @@ class MotionIntent:
     before_frame: dict
     kind: str = "translate"
     purpose: str = "contact_trial"
+    edge_id: str | None = None
+    expected_visual: str = ""
+    expected_source_joint_deg: tuple[float, ...] | None = None
+    expected_target_joint_deg: tuple[float, ...] | None = None
+    transition_id: str | None = None
+    transition_action_id: str | None = None
+    rotation_runtime_sha256: str | None = None
+
+
+@dataclass(frozen=True)
+class _CourseStep:
+    source: str
+    target: str
+    road: MeasuredRoad | None = None
+    action: MeasuredTransitionAction | None = None
+    transition_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -256,6 +348,16 @@ class TaughtExecutor:
                  ports: ExecutorPorts, *, stroke_mm=10., endpoint_tolerance_mm=.15,
                  corridor_tolerance_mm=1., native_max_age_s=5., frame_max_age_s=2.):
         self.roads = compile_taught_route(route, adapter, drawing)
+        transitions = {(item.incoming, item.outgoing): item for item in adapter.transitions}
+        schedule = []
+        for previous, road in zip((None,)+self.roads, self.roads):
+            if previous is not None:
+                transition = transitions.get(((previous.source, previous.target), (road.source, road.target)))
+                if transition is not None:
+                    schedule.extend(_CourseStep(previous.source, road.target, action=action,
+                                                transition_id=transition.id) for action in transition.actions)
+            schedule.append(_CourseStep(road.source, road.target, road=road))
+        self.schedule = tuple(schedule)
         if (not all(_finite(x) and x > 0 for x in (stroke_mm, endpoint_tolerance_mm,
                     corridor_tolerance_mm, native_max_age_s, frame_max_age_s))
                 or stroke_mm > 20 or endpoint_tolerance_mm > 1 or corridor_tolerance_mm > 5):
@@ -274,8 +376,13 @@ class TaughtExecutor:
             ports.append_event("restart_requires_reconciliation", {"prior_checkpoint": prior})
 
     def _checkpoint(self):
+        step = self.schedule[self.index]
         value = {"plan_id": self.route.plan_id, "revision": self.route.revision,
-                 "adapter_sha256": self.adapter.review_sha256, "road_index": self.index,
+                 "adapter_sha256": self.adapter.review_sha256,
+                 "road_index": sum(item.road is not None for item in self.schedule[:self.index+1])-1,
+                 "primitive_index": self.index,
+                 "transition_id": step.transition_id,
+                 "transition_action_id": step.action.id if step.action is not None else None,
                  "state": self.state, "automatic_replay": False,
                  "pending_request_id": self.pending[0].request_id if self.pending else None}
         self.ports.save_checkpoint(value)
@@ -284,7 +391,7 @@ class TaughtExecutor:
     def _snapshot(self):
         state = self.ports.snapshot()
         age = self.ports.now()-state.native_observed_at
-        _require(state.held_disarmed_idle is True and state.scope == "local_contact_commissioning"
+        _require(state.held_disarmed_idle is True and state.scope in {"local_contact_commissioning", "local_contact_turn_commissioning"}
                  and type(state.sequence) is int and state.sequence >= 1
                  and state.session_id and state.profile_id and state.installation_id
                  and _hash(state.native_evidence_sha256) and _finite(age) and 0 <= age <= self.native_max_age_s,
@@ -330,16 +437,40 @@ class TaughtExecutor:
         try:
             _require(self.state == "READY", "NOT_READY", "Review, reconcile or reset the existing operation first.")
             before_state = self._snapshot()
-            road = self.roads[self.index]
+            step = self.schedule[self.index]
+            road, action = step.road, step.action
+            start = road.start_base if road is not None else action.start_base
             if self.last_actual is None:
-                _require(math.dist(before_state.tcp_base[:3], road.start_base[:3]) <= self.endpoint_tolerance_mm,
+                _require(math.dist(before_state.tcp_base[:3], start[:3]) <= self.endpoint_tolerance_mm,
                          "START_NOT_AT_ANCHOR", "A new course starts at its freshly reviewed physical contact anchor.")
             else:
                 _require(before_state.tcp_base == self.last_actual,
                          "BASELINE_CHANGED", "Reconcile manual/external movement since the last accepted vehicle review.")
-            self._on_road(before_state.tcp_base, road)
-            limit = min(self.stroke_mm, before_state.configured_stroke_mm, road.qualified_stroke_mm)
-            target = next_fixed_pose_target(before_state.tcp_base, (*road.end_base[:2], *before_state.tcp_base[2:]), limit)
+            if road is not None:
+                self._on_road(before_state.tcp_base, road)
+                limit = min(self.stroke_mm, before_state.configured_stroke_mm, road.qualified_stroke_mm)
+                target = next_fixed_pose_target(before_state.tcp_base, (*road.end_base[:2], *before_state.tcp_base[2:]), limit)
+            else:
+                _require(before_state.scope == "local_contact_turn_commissioning", "CONTACT_TURN_SCOPE_REQUIRED",
+                         "A measured transition needs the currently installed explicit contact-turn review.")
+                _require(all(abs(a-b) <= self.endpoint_tolerance_mm for a, b in zip(before_state.tcp_base, action.start_base)),
+                         "TRANSITION_SOURCE", "The actual full TCP must match this one measured action's source.")
+                if action.kind == "translate":
+                    target = (*action.end_base[:2], *before_state.tcp_base[2:])
+                    _require(math.dist(target[:2], before_state.tcp_base[:2]) <= before_state.configured_stroke_mm,
+                             "TRANSITION_STEP_LIMIT", "A measured action cannot be silently split or expanded beyond the current contact limit.")
+                else:
+                    edges = [edge for edge in before_state.reviewed_rotation_edges if edge.get("id") == action.edge_id]
+                    _require(len(edges) == 1 and before_state.rotation_runtime_sha256 == action.rotation_runtime_sha256,
+                             "ROTATION_EDGE", "Bind this actual reviewed directed wrist edge and installed runtime.")
+                    edge = edges[0]
+                    _require(tuple(edge.get("expected_source_joint_deg", ())) == action.expected_source_joint_deg
+                             and tuple(edge.get("expected_target_joint_deg", ())) == action.expected_target_joint_deg
+                             and tuple(edge.get("source_orientation_deg", ())) == action.start_base[3:]
+                             and tuple(edge.get("target_orientation_deg", ())) == action.end_base[3:]
+                             and all(abs(a-b) <= .5 for a, b in zip(before_state.joints_deg, action.expected_source_joint_deg)),
+                             "ROTATION_SOURCE_CHANGED", "Actual/source/target joints must match the independently reviewed directed edge.")
+                    target = (*before_state.tcp_base[:3], *action.end_base[3:])
             _require(target is not None, "ANCHOR_WITHOUT_VEHICLE_REVIEW", "A TCP at its anchor alone does not prove car progress or arrival.")
             before = self._frame()
             # Capture can take time: bind immediately before dispatch as well.
@@ -350,9 +481,17 @@ class TaughtExecutor:
                          before_state.installation_id, before_state.tcp_base, before_state.joints_deg,
                          before_state.configured_stroke_mm),
                      "BASELINE_CHANGED", "The receiver/profile/Native baseline changed during capture.")
-            intent = MotionIntent(str(uuid4()), self.route.plan_id, self.route.revision, road.source, road.target,
+            purpose = "contact_turn_trial" if current.scope == "local_contact_turn_commissioning" else "contact_trial"
+            intent = MotionIntent(str(uuid4()), self.route.plan_id, self.route.revision, step.source, step.target,
                 {"session_id": current.session_id, "seq": current.sequence, "profile_id": current.profile_id},
-                current.installation_id, current.tcp_base, target, road.qualification_sha256, before.metadata())
+                current.installation_id, current.tcp_base, target,
+                road.qualification_sha256 if road is not None else action.qualification_sha256, before.metadata(),
+                kind=action.kind if action else "translate", purpose=purpose,
+                edge_id=action.edge_id if action else None, expected_visual=action.expected_visual if action else "",
+                expected_source_joint_deg=action.expected_source_joint_deg if action else None,
+                expected_target_joint_deg=action.expected_target_joint_deg if action else None,
+                transition_id=step.transition_id, transition_action_id=action.id if action else None,
+                rotation_runtime_sha256=action.rotation_runtime_sha256 if action else None)
             # Durable intent precedes the sole dispatch attempt. An exception from
             # execute_once has an unknown outcome and is never automatically retried.
             self.pending = intent, before, None
@@ -386,7 +525,9 @@ class TaughtExecutor:
         _require((after.session_id, after.profile_id, after.installation_id, after.sequence)
                  == (receipt.session_id, receipt.profile_id, receipt.installation_id, receipt.sequence)
                  and math.dist(after.tcp_base[:3], intent.target_base[:3]) <= self.endpoint_tolerance_mm
-                 and after.tcp_base[2:] == intent.start_base[2:],
+                 and after.tcp_base[2:] == intent.target_base[2:]
+                 and (intent.expected_target_joint_deg is None
+                      or all(abs(a-b) <= .5 for a, b in zip(after.joints_deg, intent.expected_target_joint_deg))),
                  "ENDPOINT_CONFIRMATION_REQUIRED", "The separately collected actual endpoint must agree with this existing receipt.")
         self.state = "WAIT_REVIEW"
         self.ports.append_event("robot_endpoint", {"receipt": asdict(receipt), "native_after": asdict(after),
@@ -420,7 +561,7 @@ class TaughtExecutor:
         _require((actual.session_id, actual.sequence, actual.profile_id, actual.installation_id)
                  == (receipt.session_id, receipt.sequence, receipt.profile_id, receipt.installation_id)
                  and math.dist(actual.tcp_base[:3], intent.target_base[:3]) <= self.endpoint_tolerance_mm
-                 and actual.tcp_base[2:] == intent.start_base[2:],
+                 and actual.tcp_base[2:] == intent.target_base[2:],
                  "REVIEW_BASELINE_CHANGED", "The robot must remain at this receipt while new vehicle imagery is reviewed.")
         after = self._frame()
         _require(after.epoch == before.epoch and after.sequence > before.sequence
@@ -428,9 +569,12 @@ class TaughtExecutor:
                  "FRAME_REUSED", "A completed action requires a newer frame from the unchanged camera epoch.")
         self.ports.append_event("vehicle_review_input", {"request_id": intent.request_id,
             "before": before.metadata(), "after": after.metadata(), "physical_action": True})
-        road = self.roads[self.index]
-        at_end = math.dist(actual.tcp_base[:2], road.end_base[:2]) <= self.endpoint_tolerance_mm
-        at_goal = at_end and self.index == len(self.roads)-1
+        step = self.schedule[self.index]
+        end = step.road.end_base if step.road is not None else step.action.end_base
+        at_end = math.dist(actual.tcp_base[:2], end[:2]) <= self.endpoint_tolerance_mm
+        if step.action is not None:
+            at_end = at_end and all(abs(a-b) <= self.endpoint_tolerance_mm for a, b in zip(actual.tcp_base[2:], end[2:]))
+        at_goal = at_end and self.index == len(self.schedule)-1
         review = self.ports.review(intent, before, after, at_goal=at_goal)
         _require(review.request_id == intent.request_id and review.provider_receipt
                  and review.before_sha256 == before.sha256 and review.after_sha256 == after.sha256
