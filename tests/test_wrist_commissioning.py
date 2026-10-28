@@ -1,5 +1,6 @@
 """Synthetic geometry and evidence-boundary checks; no hardware commands."""
 from copy import deepcopy
+import math
 import unittest
 
 from backend.robot_control.wrist_commissioning import (
@@ -66,6 +67,54 @@ class WristCommissioningTests(unittest.TestCase):
                         {"solution_joint": self.joints[:5]+[285.]}):
             with self.assertRaises(ValueError):
                 verify_endpoint_ik(candidate, {**inspection, **changes})
+
+    def test_actual_negative_ninety_float_boundary_stays_inside_original_guard(self):
+        source = -231.19340651106128
+        requested = -90.
+        rounded_target = source+requested
+        self.assertGreater(abs(rounded_target-source), 90.)
+        joints = self.joints[:5]+[source]
+        candidate = propose_wrist_turn(self.pose, joints, requested)
+        self.assertEqual(candidate["source_joint"], joints)
+        self.assertEqual(candidate["target_joint"][:5], joints[:5])
+        self.assertEqual(candidate["target_joint"][5], math.nextafter(rounded_target, source))
+        actual = candidate["target_joint"][5]-source
+        self.assertLessEqual(abs(actual), 90.)
+        self.assertLess(actual, 0.)
+        self.assertEqual(candidate["requested_delta_j6_deg"], requested)
+        self.assertEqual(candidate["delta_j6_deg"], actual)
+        self.assertEqual(candidate["representable_delta_j6_deg"], actual)
+        self.assertTrue(candidate["target_j6_nextafter_applied"])
+        self.assertEqual(candidate["target_pose"], local_wrist_pose(self.pose, actual))
+        self.assertEqual(candidate["ik_query_targets"][-1], candidate["target_pose"])
+
+    def test_both_ninety_directions_and_near_joint_winding_bounds_use_actual_increment(self):
+        cases = ((-231.19340651106128, -90.), (231.19340651106128, 90.),
+                 (-231.19340651106128, 90.), (231.19340651106128, -90.),
+                 (math.nextafter(270., 0.), 90.), (math.nextafter(-270., 0.), -90.),
+                 (math.nextafter(360., 0.), 360.-math.nextafter(360., 0.)),
+                 (math.nextafter(-360., 0.), -360.-math.nextafter(-360., 0.)))
+        for source, requested in cases:
+            with self.subTest(source=source, requested=requested):
+                joints = self.joints[:5]+[source]
+                candidate = propose_wrist_turn(self.pose, joints, requested)
+                effective = candidate["target_joint"][5]-source
+                self.assertEqual(candidate["source_joint"], joints)
+                self.assertLessEqual(abs(candidate["target_joint"][5]), 360.)
+                self.assertTrue(0 < abs(effective) <= min(abs(requested), 90.))
+                self.assertGreater(effective*requested, 0.)
+                self.assertEqual(candidate["delta_j6_deg"], effective)
+                self.assertEqual(candidate["target_pose"], local_wrist_pose(self.pose, effective))
+                self.assertEqual(candidate["ik_query_targets"][-1], candidate["target_pose"])
+                for i, query in enumerate(candidate["ik_query_targets"][:-1]):
+                    self.assertEqual(query, local_wrist_pose(self.pose, effective*(i/18)))
+
+    def test_joint_bound_and_unrepresentable_zero_still_reject_without_relaxation(self):
+        for source, requested in ((math.nextafter(270., math.inf), 90.),
+                                  (math.nextafter(-270., -math.inf), -90.),
+                                  (360., 1.), (-360., -1.), (-231.19340651106128, 1e-20)):
+            with self.subTest(source=source, requested=requested), self.assertRaises(ValueError):
+                propose_wrist_turn(self.pose, self.joints[:5]+[source], requested)
 
 
 if __name__ == "__main__":

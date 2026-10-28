@@ -131,6 +131,52 @@ class MeasuredTransition:
 
 
 @dataclass(frozen=True)
+class MeasuredObservationClearance:
+    """One finite measured side-withdrawal path for a stopped junction view.
+
+    Optional recontact is retained as reviewed metadata, never an automatic
+    reversal. A visible, supported car state is required before it is eligible.
+    """
+    id: str
+    junction_id: str
+    incoming: tuple[str, str]
+    contact_pose: Pose
+    qualification_sha256: str
+    withdrawal: MeasuredTransitionAction | None = None
+    recontact: MeasuredTransitionAction | None = None
+    withdrawal_actions: tuple[MeasuredTransitionAction, ...] = ()
+    transition_id: str | None = None
+    transition_action_id: str | None = None
+    contact_direction_base_xy: tuple[float, float] | None = None
+
+    def __post_init__(self):
+        incoming, contact = tuple(self.incoming), _pose(self.contact_pose)
+        actions = tuple(self.withdrawal_actions) or ((self.withdrawal,) if self.withdrawal is not None else ())
+        if (not self.id or not self.junction_id or len(incoming) != 2 or incoming[1] != self.junction_id
+                or not _hash(self.qualification_sha256) or not 1 <= len(actions) <= 8
+                or not all(isinstance(action, MeasuredTransitionAction) and action.kind == "translate" for action in actions)
+                or actions[0].start_base != contact
+                or self.withdrawal is not None and self.withdrawal != actions[0]
+                or any(a.end_base != b.start_base for a, b in zip(actions, actions[1:]))
+                or len({action.id for action in actions}) != len(actions)
+                or (self.transition_id is None) != (self.transition_action_id is None)):
+            raise ValueError("Bind a measured fixed-pose junction contact anchor and one reviewed finite observation path.")
+        if self.recontact is not None and (not isinstance(self.recontact, MeasuredTransitionAction)
+                or self.recontact.kind != "translate" or self.recontact.start_base != actions[-1].end_base
+                or self.recontact.end_base != contact):
+            raise ValueError("Optional measured recontact must join the observation endpoint and stored contact anchor.")
+        if self.contact_direction_base_xy is not None:
+            direction = tuple(self.contact_direction_base_xy)
+            if len(direction) != 2 or not all(_finite(x) for x in direction) or math.hypot(*direction) == 0:
+                raise ValueError("An explicitly measured contact direction needs two finite nonzero XY components.")
+            object.__setattr__(self, "contact_direction_base_xy", direction)
+        object.__setattr__(self, "incoming", incoming)
+        object.__setattr__(self, "contact_pose", contact)
+        object.__setattr__(self, "withdrawal", actions[0])
+        object.__setattr__(self, "withdrawal_actions", actions)
+
+
+@dataclass(frozen=True)
 class TaughtAdapter:
     map_id: str
     map_version: str
@@ -142,19 +188,25 @@ class TaughtAdapter:
     surface_id: str
     roads: tuple[MeasuredRoad, ...]
     transitions: tuple[MeasuredTransition, ...] = ()
+    observation_clearances: tuple[MeasuredObservationClearance, ...] = ()
 
     def __post_init__(self):
-        roads, transitions = tuple(self.roads), tuple(self.transitions)
+        roads, transitions, clearances = tuple(self.roads), tuple(self.transitions), tuple(self.observation_clearances)
         if (not all(_hash(x) for x in (self.map_hash, self.review_sha256, self.tcp_definition_sha256))
                 or not all(isinstance(x, str) and x for x in
                            (self.map_id, self.map_version, self.tool_id, self.car_id, self.surface_id))
                 or not roads or not all(isinstance(x, MeasuredRoad) for x in roads)
                 or len({(x.source, x.target) for x in roads}) != len(roads)
                 or not all(isinstance(x, MeasuredTransition) for x in transitions)
-                or len({(x.incoming, x.outgoing) for x in transitions}) != len(transitions)):
+                or len({(x.incoming, x.outgoing) for x in transitions}) != len(transitions)
+                or len({x.id for x in transitions}) != len(transitions)
+                or not all(isinstance(x, MeasuredObservationClearance) for x in clearances)
+                or len({x.id for x in clearances}) != len(clearances)
+                or len({(x.incoming, x.transition_id, x.transition_action_id) for x in clearances}) != len(clearances)):
             raise ValueError("Use one reviewed adapter with unique directed measured road primitives.")
         object.__setattr__(self, "roads", roads)
         object.__setattr__(self, "transitions", transitions)
+        object.__setattr__(self, "observation_clearances", clearances)
 
 
 @dataclass(frozen=True)
@@ -201,6 +253,28 @@ def compile_taught_route(route: ApprovedRoute, adapter: TaughtAdapter, drawing: 
     for edge in zip(route.node_ids, route.node_ids[1:]):
         _require(edge in indexed, "ROAD_UNQUALIFIED", f"The exact selected directed road {edge} has no measured primitive.")
         road = indexed[edge]
+        for clearance in adapter.observation_clearances:
+            if clearance.incoming == edge:
+                targeted = None
+                if clearance.transition_id is not None:
+                    transition = next((item for item in adapter.transitions if item.id == clearance.transition_id
+                                       and item.incoming == edge), None)
+                    _require(transition is not None, "OBSERVATION_ACTION_BINDING", "Bind the actual directed junction transition.")
+                    targeted = next((item for item in transition.actions if item.id == clearance.transition_action_id), None)
+                    _require(targeted is not None, "OBSERVATION_ACTION_BINDING", "Bind one exact measured transition action endpoint.")
+                anchor = targeted.end_base if targeted is not None else road.end_base
+                _require(clearance.contact_pose == anchor, "OBSERVATION_ANCHOR",
+                         "The observation path must start at this exact measured triggering action endpoint.")
+                direction = clearance.contact_direction_base_xy
+                if direction is None:
+                    first, last = (targeted.start_base, targeted.end_base) if targeted is not None else (road.start_base, road.end_base)
+                    direction = (last[0]-first[0], last[1]-first[1])
+                _require(math.hypot(*direction) > 0, "OBSERVATION_DIRECTION_REQUIRED",
+                         "A wrist-only action needs an explicit measured contact direction; do not infer it from Euler yaw.")
+                offset = (clearance.withdrawal_actions[-1].end_base[0]-clearance.contact_pose[0],
+                          clearance.withdrawal_actions[-1].end_base[1]-clearance.contact_pose[1])
+                _require(abs(direction[0]*offset[1]-direction[1]*offset[0]) > 1e-9,
+                         "OBSERVATION_NOT_LATERAL", "A side-observation path must include its explicitly reviewed lateral offset.")
         if roads:
             prior = roads[-1]
             transition = transitions.get(((prior.source, prior.target), (road.source, road.target)))
@@ -277,6 +351,8 @@ class MotionIntent:
     transition_id: str | None = None
     transition_action_id: str | None = None
     rotation_runtime_sha256: str | None = None
+    observation_clearance_id: str | None = None
+    observation_junction_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -312,6 +388,21 @@ class VehicleReview:
     excessive_yaw: bool
     arrived: bool
     summary: str
+    occlusion_cause: str = "UNKNOWN"
+
+
+@dataclass(frozen=True)
+class ClearanceReview:
+    request_id: str
+    original_request_id: str
+    provider_receipt: str
+    frame_sha256: tuple[str, str, str]
+    verdict: str
+    car_visible: bool
+    original_action_supported: bool
+    car_unchanged_during_withdrawal: bool
+    recontact_eligible: bool
+    summary: str
 
 
 class ExecutorPorts(Protocol):
@@ -331,6 +422,9 @@ class ExecutorPorts(Protocol):
     def capture(self) -> Frame: ...
     def execute_once(self, intent: MotionIntent) -> MotionReceipt: ...
     def review(self, intent: MotionIntent, before: Frame, after: Frame, *, at_goal: bool) -> VehicleReview: ...
+    def review_clearance(self, original: MotionIntent, withdrawal: MotionIntent,
+                         original_before: Frame, withdrawal_before: Frame, clear_after: Frame,
+                         *, path_evidence: tuple[dict, ...] = ()) -> ClearanceReview: ...
     def hold(self, reason: str) -> None: ...
     def append_event(self, kind: str, payload: dict) -> None: ...
     def save_checkpoint(self, value: dict) -> None: ...
@@ -358,6 +452,7 @@ class TaughtExecutor:
                                                 transition_id=transition.id) for action in transition.actions)
             schedule.append(_CourseStep(road.source, road.target, road=road))
         self.schedule = tuple(schedule)
+        self.first_junction = next(iter(drawing.route_from_nodes(route.destination, list(route.node_ids))["junction_ids"]), None)
         if (not all(_finite(x) and x > 0 for x in (stroke_mm, endpoint_tolerance_mm,
                     corridor_tolerance_mm, native_max_age_s, frame_max_age_s))
                 or stroke_mm > 20 or endpoint_tolerance_mm > 1 or corridor_tolerance_mm > 5):
@@ -368,6 +463,7 @@ class TaughtExecutor:
         self.native_max_age_s, self.frame_max_age_s = native_max_age_s, frame_max_age_s
         self.index, self.state, self.pending = 0, "READY", None
         self.last_actual = None
+        self.clearance_context, self.clearance_used = None, set()
         self.lock = threading.Lock()
         prior = ports.load_checkpoint()
         if prior is not None:
@@ -385,6 +481,16 @@ class TaughtExecutor:
                  "transition_action_id": step.action.id if step.action is not None else None,
                  "state": self.state, "automatic_replay": False,
                  "pending_request_id": self.pending[0].request_id if self.pending else None}
+        if self.clearance_context is not None:
+            context = self.clearance_context
+            value["observation_clearance"] = {"id": context["policy"].id,
+                "original_request_id": context["original_pending"][0].request_id,
+                "contact_pose": list(context["contact_pose"]), "recontact_eligible": context.get("recontact_eligible", False),
+                "original_action_supported": context.get("original_action_supported", False),
+                "measured_recontact_available": context["policy"].recontact is not None,
+                "withdrawal_index": context.get("withdrawal_index", 0),
+                "completed_withdrawal_request_ids": [row["request_id"] for row in context.get("path_records", [])],
+                "path_before_sha256": context["path_before"].sha256 if context.get("path_before") else None}
         self.ports.save_checkpoint(value)
         return value
 
@@ -435,6 +541,8 @@ class TaughtExecutor:
     def advance(self):
         _require(self.lock.acquire(blocking=False), "BUSY", "Only one physical operation may run at a time.")
         try:
+            if self.state == "CLEARANCE_READY":
+                return self._withdraw_for_observation()
             _require(self.state == "READY", "NOT_READY", "Review, reconcile or reset the existing operation first.")
             before_state = self._snapshot()
             step = self.schedule[self.index]
@@ -492,32 +600,71 @@ class TaughtExecutor:
                 expected_target_joint_deg=action.expected_target_joint_deg if action else None,
                 transition_id=step.transition_id, transition_action_id=action.id if action else None,
                 rotation_runtime_sha256=action.rotation_runtime_sha256 if action else None)
-            # Durable intent precedes the sole dispatch attempt. An exception from
-            # execute_once has an unknown outcome and is never automatically retried.
-            self.pending = intent, before, None
-            self.state = "DISPATCH_UNRESOLVED"
-            self.ports.append_event("motion_intent", {"intent": asdict(intent), "native_before": asdict(current)})
-            self._checkpoint()
-            try:
-                receipt = self.ports.execute_once(intent)
-                self.ports.hold("Complete one bounded stroke before any vehicle review or later command.")
-                _require(receipt.request_id == intent.request_id and receipt.endpoint_verified is True
-                         and (receipt.session_id, receipt.profile_id, receipt.installation_id)
-                         == (current.session_id, current.profile_id, current.installation_id)
-                         and receipt.sequence == current.sequence+1
-                         and tuple(receipt.target_base) == target and _hash(receipt.receipt_sha256),
-                         "ROBOT_OUTCOME_UNKNOWN", "The bound endpoint receipt and independent Native result must agree.")
-                self.pending = intent, before, receipt
-                self.state = "WAIT_ENDPOINT_CONFIRMATION"
-                self.ports.append_event("robot_receipt", {"receipt": asdict(receipt), "vehicle_arrival_verified": False})
-                self._checkpoint()
-                return self._confirm_endpoint()
-            except Exception:
-                self.ports.hold("No additional motion after an unverified outcome or failed review.")
-                self._checkpoint()
-                raise
+            return self._dispatch_once(intent, before, current)
         finally:
             self.lock.release()
+
+    def _dispatch_once(self, intent, before, current):
+        # Durable intent precedes the sole dispatch attempt. Outcome uncertainty
+        # never causes another motion POST, including an observation withdrawal.
+        self.pending = intent, before, None
+        self.state = "DISPATCH_UNRESOLVED"
+        self.ports.append_event("motion_intent", {"intent": asdict(intent), "native_before": asdict(current)})
+        self._checkpoint()
+        try:
+            receipt = self.ports.execute_once(intent)
+            self.ports.hold("Complete one bounded stroke before any vehicle review or later command.")
+            _require(receipt.request_id == intent.request_id and receipt.endpoint_verified is True
+                     and (receipt.session_id, receipt.profile_id, receipt.installation_id)
+                     == (current.session_id, current.profile_id, current.installation_id)
+                     and receipt.sequence == current.sequence+1
+                     and tuple(receipt.target_base) == intent.target_base and _hash(receipt.receipt_sha256),
+                     "ROBOT_OUTCOME_UNKNOWN", "The bound endpoint receipt and independent Native result must agree.")
+            self.pending = intent, before, receipt
+            self.state = "WAIT_ENDPOINT_CONFIRMATION"
+            self.ports.append_event("robot_receipt", {"receipt": asdict(receipt), "vehicle_arrival_verified": False})
+            self._checkpoint()
+            return self._confirm_endpoint()
+        except Exception:
+            self.ports.hold("No additional motion after an unverified outcome or failed review.")
+            self._checkpoint()
+            raise
+
+    def _withdraw_for_observation(self):
+        context = self.clearance_context
+        _require(context is not None, "OBSERVATION_CONTEXT", "Preserve the original verified contact action before clearing the view.")
+        policy, original = context["policy"], context["original_pending"][0]
+        current = self._snapshot()
+        expected = context.get("path_snapshot", context["contact_snapshot"])
+        _require((current.session_id, current.sequence, current.profile_id, current.installation_id, current.tcp_base)
+                 == (expected.session_id, expected.sequence, expected.profile_id, expected.installation_id, expected.tcp_base)
+                 and all(abs(a-b) <= .100001 for a, b in zip(current.joints_deg, expected.joints_deg)),
+                 "OBSERVATION_BASELINE_CHANGED", "Do not withdraw from an unreviewed or changed contact pose/profile.")
+        index = context.get("withdrawal_index", 0)
+        action = policy.withdrawal_actions[index]
+        _require(all(abs(a-b) <= self.endpoint_tolerance_mm for a, b in zip(current.tcp_base, action.start_base)),
+                 "OBSERVATION_BASELINE_CHANGED", "The current pose must match this exact measured observation-path action source.")
+        target = (*action.end_base[:2], *current.tcp_base[2:])
+        _require(math.dist(target[:2], current.tcp_base[:2]) <= current.configured_stroke_mm,
+                 "OBSERVATION_STEP_LIMIT", "The current reviewed profile must already allow this measured observation path.")
+        before = self._frame()
+        fresh = self._snapshot()
+        _require((fresh.session_id, fresh.sequence, fresh.profile_id, fresh.installation_id, fresh.tcp_base)
+                 == (current.session_id, current.sequence, current.profile_id, current.installation_id, current.tcp_base)
+                 and all(abs(a-b) <= .100001 for a, b in zip(fresh.joints_deg, current.joints_deg)),
+                 "OBSERVATION_BASELINE_CHANGED", "The contact baseline changed during fresh observation capture.")
+        if index == 0 and context.get("path_before") is None:
+            context["path_before"] = before
+        intent = MotionIntent(str(uuid4()), original.plan_id, original.revision, original.source, original.target,
+            {"session_id": current.session_id, "seq": current.sequence, "profile_id": current.profile_id},
+            current.installation_id, current.tcp_base, target, action.qualification_sha256, before.metadata(),
+            purpose="contact_turn_trial" if current.scope == "local_contact_turn_commissioning" else "contact_trial",
+            expected_visual=action.expected_visual, observation_clearance_id=policy.id,
+            observation_junction_id=policy.junction_id)
+        self.ports.append_event("observation_withdrawal", {"original_request_id": original.request_id,
+            "clearance_id": policy.id, "contact_pose": list(context["contact_pose"]),
+            "path_index": index, "measured_action_id": action.id, "automatic_return": False})
+        return self._dispatch_once(intent, before, current)
 
     def _confirm_endpoint(self):
         intent, _, receipt = self.pending
@@ -533,6 +680,10 @@ class TaughtExecutor:
         self.ports.append_event("robot_endpoint", {"receipt": asdict(receipt), "native_after": asdict(after),
                                                    "vehicle_arrival_verified": False})
         self._checkpoint()
+        if intent.observation_clearance_id is not None:
+            self.state = "WAIT_CLEARANCE_REVIEW"
+            self._checkpoint()
+            return self._complete_observation_step(after)
         return self._review(after)
 
     def recheck_endpoint(self):
@@ -550,8 +701,13 @@ class TaughtExecutor:
         """A new after-frame may resolve occlusion; the completed move is not sent again."""
         _require(self.lock.acquire(blocking=False), "BUSY", "Only one operation may run at a time.")
         try:
-            _require(self.state == "WAIT_REVIEW" and self.pending and self.pending[2] is not None,
+            _require(self.state in {"WAIT_REVIEW", "WAIT_CLEARANCE_REVIEW"} and self.pending and self.pending[2] is not None,
                      "NO_REVIEW_PENDING", "An unresolved robot command requires explicit reconciliation, not a vision retry.")
+            if self.state == "WAIT_CLEARANCE_REVIEW":
+                completed = self.clearance_context.get("path_records", [])
+                if not any(row["request_id"] == self.pending[0].request_id for row in completed):
+                    return self._complete_observation_step(self._snapshot())
+                return self._review_clearance(self._snapshot())
             return self._review(self._snapshot())
         finally:
             self.lock.release()
@@ -580,7 +736,8 @@ class TaughtExecutor:
                  and review.before_sha256 == before.sha256 and review.after_sha256 == after.sha256
                  and review.verdict in {"PASS", "FAIL", "UNCERTAIN"}
                  and all(type(v) is bool for v in (review.car_visible, review.expected_progress,
-                                                  review.excessive_yaw, review.arrived)),
+                                                  review.excessive_yaw, review.arrived))
+                 and review.occlusion_cause in {"NONE", "TOOL", "OTHER", "UNKNOWN"},
                  "REVIEW_BINDING", "Preserve the original physical action/image-pair MUSE result and exact request binding.")
         self.ports.append_event("vehicle_review", {"result": asdict(review), "robot_endpoint_verified": True})
         # Provider latency cannot authorize a transition on a changed robot
@@ -593,6 +750,26 @@ class TaughtExecutor:
             self.state = "NEEDS_RECONCILIATION"
         elif review.verdict != "PASS" or not review.car_visible or not review.expected_progress:
             self.state = "WAIT_REVIEW"
+            incoming, junction = (step.source, step.target), step.target
+            if step.action is not None:
+                transition = next(item for item in self.adapter.transitions if item.id == step.transition_id)
+                incoming, junction = transition.incoming, transition.incoming[1]
+            policy = next((item for item in self.adapter.observation_clearances
+                           if item.incoming == incoming and item.transition_id == step.transition_id
+                           and item.transition_action_id == (step.action.id if step.action is not None else None)), None)
+            if (policy is not None and at_end and review.occlusion_cause == "TOOL"
+                    and (review.verdict == "UNCERTAIN" or not review.car_visible)
+                    and junction == self.first_junction and policy.id not in self.clearance_used
+                    and all(abs(a-b) <= self.endpoint_tolerance_mm for a, b in zip(current.tcp_base, policy.contact_pose))):
+                self.clearance_used.add(policy.id)
+                self.clearance_context = {"policy": policy, "original_pending": self.pending,
+                    "contact_pose": current.tcp_base, "contact_snapshot": current, "original_review": review,
+                    "occluded_after": after, "recontact_eligible": False,
+                    "withdrawal_index": 0, "path_records": [], "path_before": None}
+                self.state = "CLEARANCE_READY"
+                self.ports.append_event("observation_clearance_triggered", {"clearance_id": policy.id,
+                    "junction_id": policy.junction_id, "original_request_id": intent.request_id,
+                    "original_review": asdict(review), "contact_pose": list(current.tcp_base)})
         elif at_goal:
             # Actual car arrival is separate from reaching the taught TCP anchor.
             self.state = "WAIT_HUMAN_RESET" if review.arrived else "WAIT_REVIEW"
@@ -605,3 +782,72 @@ class TaughtExecutor:
         result["vehicle_arrival_verified"] = self.state == "WAIT_HUMAN_RESET"
         result["human_reset_required"] = self.state == "WAIT_HUMAN_RESET"
         return result
+
+    def _check_clearance_endpoint(self, actual):
+        context = self.clearance_context
+        intent, before, receipt = self.pending
+        _require(context is not None and intent.observation_clearance_id == context["policy"].id
+                 and (actual.session_id, actual.sequence, actual.profile_id, actual.installation_id)
+                 == (receipt.session_id, receipt.sequence, receipt.profile_id, receipt.installation_id)
+                 and actual.tcp_base == intent.target_base,
+                 "OBSERVATION_REVIEW_BINDING", "A clear-view review must bind the existing verified withdrawal endpoint.")
+        return context, intent, before, receipt
+
+    def _complete_observation_step(self, actual):
+        context, intent, before, receipt = self._check_clearance_endpoint(actual)
+        after = self._frame()
+        _require(after.epoch == before.epoch and after.sequence > before.sequence and after.captured_at > before.captured_at,
+                 "OBSERVATION_FRAMES", "Each completed observation-path action needs a newer original frame.")
+        record = {"request_id": intent.request_id, "receipt_sha256": receipt.receipt_sha256,
+                  "native_after": asdict(actual), "before": before.metadata(), "after": after.metadata(),
+                  "measured_action_id": context["policy"].withdrawal_actions[context["withdrawal_index"]].id,
+                  "expected_visual": intent.expected_visual}
+        self.ports.append_event("observation_path_endpoint", record)
+        # Publish in-memory completion only after the durable endpoint event.
+        # A failed append must not make reobserve skip an unfinished path step.
+        context["path_records"].append(record)
+        context["path_snapshot"] = actual
+        if context["withdrawal_index"]+1 < len(context["policy"].withdrawal_actions):
+            context["withdrawal_index"] += 1
+            self.state = "CLEARANCE_READY"
+            return self._checkpoint()
+        return self._review_clearance(actual, after_frame=after)
+
+    def _review_clearance(self, actual, *, after_frame=None):
+        context, intent, _, receipt = self._check_clearance_endpoint(actual)
+        self.state = "WAIT_CLEARANCE_REVIEW"
+        self._checkpoint()
+        after = after_frame if after_frame is not None else self._frame()
+        original, original_before, original_receipt = context["original_pending"]
+        before = context["path_before"]
+        frames = (original_before, before, after)
+        _require(all(frame.epoch == original_before.epoch for frame in frames)
+                 and original_before.sequence < before.sequence < after.sequence
+                 and original_before.captured_at < before.captured_at < after.captured_at,
+                 "OBSERVATION_FRAMES", "Use original-action before, fresh covered contact view and newer clear view from the same camera.")
+        self.ports.append_event("observation_sequence_input", {"original_request_id": original.request_id,
+            "withdrawal_request_id": intent.request_id, "original_receipt_sha256": original_receipt.receipt_sha256,
+            "frames": [frame.metadata() for frame in frames], "completed_path": context["path_records"]})
+        review = self.ports.review_clearance(original, intent, *frames, path_evidence=tuple(context["path_records"]))
+        _require(review.request_id == intent.request_id and review.original_request_id == original.request_id
+                 and review.provider_receipt and tuple(review.frame_sha256) == tuple(frame.sha256 for frame in frames)
+                 and review.verdict in {"PASS", "FAIL", "UNCERTAIN"}
+                 and all(type(value) is bool for value in (review.car_visible, review.original_action_supported,
+                         review.car_unchanged_during_withdrawal, review.recontact_eligible)),
+                 "OBSERVATION_REVIEW_BINDING", "Preserve the exact physical sequence result; neither receipt implies car visibility or safe recontact.")
+        self.ports.append_event("observation_sequence_review", {"result": asdict(review), "automatic_return": False})
+        fresh = self._snapshot()
+        _require((fresh.session_id, fresh.sequence, fresh.profile_id, fresh.installation_id, fresh.tcp_base)
+                 == (actual.session_id, actual.sequence, actual.profile_id, actual.installation_id, actual.tcp_base),
+                 "OBSERVATION_BASELINE_CHANGED", "The observation endpoint changed during the provider review.")
+        context["original_action_supported"] = review.original_action_supported
+        context["recontact_eligible"] = (review.verdict == "PASS" and review.car_visible
+            and review.original_action_supported and review.car_unchanged_during_withdrawal
+            and review.recontact_eligible and context["policy"].recontact is not None)
+        if review.verdict == "FAIL":
+            self.state = "NEEDS_RECONCILIATION"
+        elif review.verdict != "PASS" or not review.car_visible:
+            self.state = "WAIT_CLEARANCE_REVIEW"
+        else:
+            self.state = "WAIT_RECONTACT"
+        return self._checkpoint()

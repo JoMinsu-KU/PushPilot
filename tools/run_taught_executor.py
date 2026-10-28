@@ -20,7 +20,7 @@ if str(ROOT) not in sys.path:
 from backend.maps import MapDefinition
 from backend.robot_control.taught_executor import (
     ApprovedRoute, ExecutionBlocked, MeasuredRoad, MeasuredTransition, MeasuredTransitionAction,
-    TaughtAdapter, TaughtExecutor, compile_taught_route,
+    MeasuredObservationClearance, TaughtAdapter, TaughtExecutor, compile_taught_route,
 )
 from backend.robot_control.taught_ports import PrivateJournal, RealTaughtPorts
 
@@ -89,11 +89,25 @@ def load_adapter(path):
         transition["actions"] = tuple(MeasuredTransitionAction(**action) for action in transition["actions"])
         transitions.append(MeasuredTransition(**transition))
     data["transitions"] = tuple(transitions)
+    clearances = []
+    for item in data.get("observation_clearances", []):
+        clearance = dict(item)
+        if clearance.get("withdrawal") is not None:
+            clearance["withdrawal"] = MeasuredTransitionAction(**clearance["withdrawal"])
+        clearance["withdrawal_actions"] = tuple(MeasuredTransitionAction(**action)
+                                                 for action in clearance.get("withdrawal_actions", []))
+        if clearance.get("recontact") is not None:
+            clearance["recontact"] = MeasuredTransitionAction(**clearance["recontact"])
+        clearances.append(MeasuredObservationClearance(**clearance))
+    data["observation_clearances"] = tuple(clearances)
     adapter = TaughtAdapter(**data)
     sources = {item["sha256"]: reference(item, path.parent) for item in value["qualification_evidence"]}
     required = {adapter.review_sha256} | {road.qualification_sha256 for road in adapter.roads}
     required |= {item.qualification_sha256 for item in adapter.transitions}
     required |= {action.qualification_sha256 for item in adapter.transitions for action in item.actions}
+    required |= {item.qualification_sha256 for item in adapter.observation_clearances}
+    required |= {action.qualification_sha256 for item in adapter.observation_clearances for action in item.withdrawal_actions}
+    required |= {item.recontact.qualification_sha256 for item in adapter.observation_clearances if item.recontact is not None}
     if not required <= sources.keys():
         raise ValueError("Retain the original actual review and qualification record for every selected corridor.")
     review = sources[adapter.review_sha256]
@@ -156,20 +170,20 @@ def main(argv=None):
             try:
                 result = executor.advance()
             except (TimeoutError, urllib.error.URLError):
-                if executor.state != "WAIT_REVIEW":
+                if executor.state not in {"WAIT_REVIEW", "WAIT_CLEARANCE_REVIEW"}:
                     raise
-                result = {"state": "WAIT_REVIEW"}
+                result = {"state": executor.state}
             attempts = 0
-            while result["state"] == "WAIT_REVIEW" and attempts < args.max_reobservations:
+            while result["state"] in {"WAIT_REVIEW", "WAIT_CLEARANCE_REVIEW"} and attempts < args.max_reobservations:
                 time.sleep(1)
                 try:
                     result = executor.reobserve()
                 except (TimeoutError, urllib.error.URLError):
-                    if executor.state != "WAIT_REVIEW":
+                    if executor.state not in {"WAIT_REVIEW", "WAIT_CLEARANCE_REVIEW"}:
                         raise
-                    result = {"state": "WAIT_REVIEW"}
+                    result = {"state": executor.state}
                 attempts += 1
-            if result["state"] != "READY":
+            if result["state"] not in {"READY", "CLEARANCE_READY"}:
                 break
         if result and result["state"] == "WAIT_HUMAN_RESET":
             print(json.dumps({"status": "vehicle_goal_verified_wait_human_reset", "destination": route.destination,

@@ -211,7 +211,7 @@ class RealTaughtPortsTests(TestCase):
     def test_real_provider_gets_both_unchanged_originals_and_uncertainty_is_retained(self):
         before = self.ports.capture()
         after = replace(before, id="newer-frame", sequence=11)
-        value = {"verdict": "UNCERTAIN", "car_visible": True, "expected_progress": False,
+        value = {"verdict": "UNCERTAIN", "occlusion_cause": "UNKNOWN", "car_visible": True, "expected_progress": False,
                  "excessive_yaw": False, "arrived": False, "observed": "Synthetic ambiguous movement.",
                  "summary": "Movement not resolved.", "limitations": ["Synthetic imagery."]}
         envelope = {"choices": [{"finish_reason": "stop", "message": {"content": json.dumps(value)}}]}
@@ -239,6 +239,64 @@ class RealTaughtPortsTests(TestCase):
         self.provider.return_value = 200, {"choices": [{"finish_reason": "stop", "message": {"content": '{"verdict":"PASS"}'}}]}, 1
         with self.assertRaises(ExecutionBlocked):
             self.ports.review(self.intent(), before, before, at_goal=False)
+
+    def test_clearance_review_sends_three_originals_and_separates_visibility_from_stationarity(self):
+        before = self.ports.capture()
+        covered_bytes, clear_bytes = b"\xff\xd8covered-original\xff\xd9", b"\xff\xd8clear-original\xff\xd9"
+        covered = replace(before, id="covered", sequence=11, original_jpeg=covered_bytes,
+                          sha256=hashlib.sha256(covered_bytes).hexdigest())
+        clear = replace(before, id="clear", sequence=12, original_jpeg=clear_bytes,
+                        sha256=hashlib.sha256(clear_bytes).hexdigest())
+        withdrawal = replace(self.intent(), request_id="synthetic-clearance-uuid", observation_clearance_id="synthetic-side-policy",
+                             expected_visual="Only the physical tool withdraws sideways; inspect the stationary car.")
+        value = {"verdict": "PASS", "car_visible": True, "original_action_supported": True,
+                 "car_unchanged_during_withdrawal": False, "recontact_eligible": False,
+                 "observed": "The car is now readable, but earlier occlusion prevents a stationarity comparison.",
+                 "summary": "Visible car; recontact remains unverified.", "limitations": ["Earlier contact view was occluded."]}
+        envelope = {"choices": [{"finish_reason": "stop", "message": {"content": json.dumps(value)}}]}
+        self.provider.return_value = 200, envelope, 1000
+        result = self.ports.review_clearance(self.intent(), withdrawal, before, covered, clear)
+        self.assertTrue(result.car_visible)
+        self.assertFalse(result.car_unchanged_during_withdrawal or result.recontact_eligible)
+        self.assertEqual(result.original_request_id, self.intent().request_id)
+        payload = self.provider.call_args.args[3]
+        import base64
+        images = [item["image_url"]["url"] for item in payload["messages"][1]["content"] if item["type"] == "image_url"]
+        self.assertEqual([base64.b64decode(value.split(",", 1)[1]) for value in images],
+                         [before.original_jpeg, covered_bytes, clear_bytes])
+        saved = json.loads(next(self.journal.root.glob("clearance-muse-result-*.json")).read_bytes())
+        self.assertEqual(saved["provider_envelope"], envelope)
+        self.assertEqual(saved["context"]["automatic_return"], False)
+
+    def test_clearance_provider_failure_is_saved_without_recontact_or_demo_pass(self):
+        before = self.ports.capture()
+        withdrawal = replace(self.intent(), observation_clearance_id="synthetic-side-policy")
+        self.provider.side_effect = TimeoutError("Synthetic three-frame provider timeout.")
+        with self.assertRaises(TimeoutError):
+            self.ports.review_clearance(self.intent(), withdrawal, before, before, before)
+        self.assertEqual(self.provider.call_count, 1)
+        record = json.loads(next(self.journal.root.glob("clearance-muse-failed-*.json")).read_bytes())
+        self.assertIsNone(record["result"])
+        self.assertFalse(self.api.command)
+
+    def test_failed_clearance_finish_or_content_retains_full_original_provider_response(self):
+        before = self.ports.capture()
+        withdrawal = replace(self.intent(), observation_clearance_id="synthetic-side-policy")
+        envelopes = [
+            {"id": "synthetic-truncated", "choices": [{"finish_reason": "length", "message": {"content": '{"partial":"original'}}],
+             "usage": {"completion_tokens": 650}},
+            {"id": "synthetic-malformed", "choices": [{"finish_reason": "stop", "message": {"content": "not valid JSON"}}]},
+        ]
+        for envelope in envelopes:
+            self.provider.return_value = 200, envelope, 1234
+            with self.subTest(envelope=envelope), self.assertRaises((ExecutionBlocked, ValueError)):
+                self.ports.review_clearance(self.intent(), withdrawal, before, before, before)
+        records = [json.loads(path.read_bytes()) for path in self.journal.root.glob("clearance-muse-response-*.json")]
+        self.assertEqual(len(records), 2)
+        for envelope in envelopes:
+            self.assertTrue(any(record["provider_envelope"] == envelope and record["http_status"] == 200
+                                and record["latency_ms"] == 1234 for record in records))
+        self.assertFalse(list(self.journal.root.glob("clearance-muse-result-*.json")))
 
     def test_local_http_confines_token_to_numeric_loopback_and_no_retry(self):
         for origin in ("http://example.com:8897", "http://127.0.0.1:8897/path", "https://127.0.0.1:8897", "http://user:pass@127.0.0.1:8897"):

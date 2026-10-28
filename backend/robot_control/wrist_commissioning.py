@@ -47,16 +47,33 @@ def propose_wrist_turn(source_pose, source_joint, delta_deg: float) -> dict:
     """Return an unqualified candidate and optional read-only query targets."""
     pose = _vector(source_pose, 6, 10000, "BASE TCP pose")
     joints = _vector(source_joint, 6, 360, "joint vector")
-    target = local_wrist_pose(pose, delta_deg)
-    if not 0 < abs(delta_deg) <= 90 or abs(joints[5]+delta_deg) > 360:
+    if (type(delta_deg) not in (int, float) or not math.isfinite(delta_deg)
+            or not 0 < abs(delta_deg) <= 90):
         raise ValueError("A nonzero bounded wrist joint target is required.")
+    requested = delta_deg
+    target_j6 = joints[5]+requested
+    effective = target_j6-joints[5]
+    adjusted = abs(effective) > abs(requested) or abs(effective) > 90
+    if adjusted:
+        # Preserve the measured source exactly. Floating addition/subtraction
+        # can represent source +/-90 as an effective 90.00000000000003 step.
+        # Select the adjacent inward target, never widen a guard or round source.
+        target_j6 = math.nextafter(target_j6, joints[5])
+        effective = target_j6-joints[5]
+    if (not 0 < abs(effective) <= min(abs(requested), 90)
+            or (effective > 0) != (requested > 0) or abs(target_j6) > 360):
+        raise ValueError("A nonzero representable bounded wrist joint target is required.")
+    target = local_wrist_pose(pose, effective)
     return {
         "schema": "pushpilot.wrist-turn-candidate.v1",
         "source_pose": pose, "target_pose": target,
         "source_joint": joints,
-        "target_joint": joints[:5]+[joints[5]+delta_deg],
-        "delta_j6_deg": delta_deg,
-        "ik_query_targets": [local_wrist_pose(pose, delta_deg*i/18) for i in range(19)],
+        "target_joint": joints[:5]+[target_j6],
+        "delta_j6_deg": effective,
+        "requested_delta_j6_deg": requested,
+        "representable_delta_j6_deg": effective,
+        "target_j6_nextafter_applied": adjusted,
+        "ik_query_targets": [local_wrist_pose(pose, effective*(i/18)) for i in range(18)]+[target[:]],
         "query_targets_are_measured_fk": False,
         "receiver_nineteen_joint_fk_samples_still_required": True,
         "tool_sweep_qualified": False, "car_turn_qualified": False,

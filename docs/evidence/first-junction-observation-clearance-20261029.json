@@ -1,0 +1,73 @@
+{
+  "schema": "pushpilot.first-junction-observation-clearance-evidence.v1",
+  "date_kst": "2026-10-29",
+  "status": "partial_physical_commissioning",
+  "source": "actual_persistent_receiver_native_and_original_camera_evidence",
+  "operator_request": "Automatically move the tool slightly aside at the first junction to observe the car.",
+  "physical_scope": {
+    "working_z_preserved": true,
+    "current_north_tool_orientation_preserved": true,
+    "tcp_definition_changed": false,
+    "linear_speed_mm_s": 5,
+    "linear_acceleration_mm_s2": 10,
+    "per_action_limit_mm": 20,
+    "receiver_or_camera_restart": false
+  },
+  "observations": [
+    {
+      "contact_endpoint_sequence": 118,
+      "withdrawal_endpoint_sequences": [119, 120],
+      "withdrawal_steps_mm": [12.5, 12.5],
+      "direction": "EAST in the directly taught local road basis",
+      "robot_endpoints_and_native_verified": true,
+      "original_sequence_muse_result": "SUPPORTED_COUNTERCLOCKWISE_FLAT_ON_ROAD",
+      "withdrawal_stationarity_separately_assessed": false,
+      "clear_original_sha256": "8c6187e9db5757da1a9d961a1af1044eb8ed2d2d6ec92d9bf1e72b6bb330dba5"
+    },
+    {
+      "contact_endpoint_sequence": 127,
+      "contact_stroke_mm": 17,
+      "withdrawal_endpoint_sequences": [128, 129],
+      "withdrawal_steps_mm": [12.5, 12.5],
+      "robot_endpoints_and_native_verified": true,
+      "muse_original_images": 3,
+      "muse_result": "SUPPORTED_COUNTERCLOCKWISE_FLAT_ON_ROAD",
+      "muse_car_unchanged_during_withdrawal": "YES",
+      "clear_original_sha256": "0b0663babf4a8c8ba313e4527afa4024941098bbeb8a7ea21a24c68a883a228c"
+    },
+    {
+      "contact_endpoint_sequence": 136,
+      "contact_stroke_mm": 10,
+      "withdrawal_endpoint_sequences": [137, 138],
+      "withdrawal_steps_mm": [12.5, 12.5],
+      "robot_endpoints_and_native_verified": true,
+      "muse_original_images": 3,
+      "muse_result": "SUPPORTED_COUNTERCLOCKWISE_NEAR_NORTH_FLAT_ON_ROAD",
+      "muse_car_unchanged_during_withdrawal": "YES"
+    }
+  ],
+  "preserved_failures": [
+    "Earlier rear-corner probes did not resolve visible yaw.",
+    "Covered post-contact images produced UNCERTAIN reviews; they were not promoted to successful turns.",
+    "A nominal 20 mm recontact target calculated as 20.00000000000003 mm and was rejected before wire publication by unchanged inherited policy. A separate 19.9 mm plus 5.1 mm intent followed; no guard was widened and the rejected command was not replayed."
+  ],
+  "software": {
+    "explicit_tool_occlusion_required": true,
+    "exact_first_junction_transition_action_binding": true,
+    "finite_measured_withdrawal_actions": true,
+    "each_action_native_verified": true,
+    "three_original_sequence_review": true,
+    "raw_provider_envelopes_preserved_before_parsing": true,
+    "unknown_commands_replayed": false,
+    "automatic_blind_recontact": false,
+    "public_course_runner_live_recipe_bundled": false,
+    "clear_view_terminal_state": "WAIT_RECONTACT"
+  },
+  "limits": [
+    "MUSE judgments are qualitative image evidence, not independently calibrated physical yaw or contact force.",
+    "A precise 90 degree vehicle turn and subsequent stable northbound pushing are not established by this record.",
+    "C and D vehicle deliveries and a complete physical web mission remain incomplete at this evidence cutoff.",
+    "The active experiments use directly taught BASE geometry; the previously rejected drawing-to-BASE fit remains rejected.",
+    "Exact poses, joints, profiles, Native journal bytes, original photos, provider responses and credentials remain private."
+  ]
+}

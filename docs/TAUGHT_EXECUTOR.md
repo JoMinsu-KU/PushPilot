@@ -150,14 +150,92 @@ must match the prior accepted result; external/manual displacement is not car
 progress. Every operation rechecks current binding and original image evidence.
 MUSE latency is followed by a fresh Native/receiver baseline check.
 
+## Conditional junction observation clearance
+
+The operator requested one small automatic side withdrawal when the car is
+occluded at the first intersection. `TaughtAdapter.observation_clearances` is an
+optional registry of actual measured `MeasuredObservationClearance` records;
+none is bundled or inferred from camera pixels. Each record contains `id`,
+`junction_id`, exact directed `incoming`, measured `contact_pose`, its actual
+`qualification_sha256`, `withdrawal_actions` and optional independently measured
+`recontact` metadata. The withdrawal path contains one to eight explicit bounded
+translations, each <=20 mm, retaining literal Z/orientation and joining the
+previous endpoint exactly. The legacy single `withdrawal` field remains
+compatible. Every action has a separately reviewed tool-clearance path and an
+expectation that the car remains stationary. Every policy/action/recontact
+qualification hash must resolve to retained original private evidence.
+
+By default, `contact_pose` is the incoming road's actual taught endpoint. A policy
+may instead bind `transition_id` and `transition_action_id` together to the exact
+completed action inside that junction; the stored contact pose must match its
+endpoint. The actual junction is resolved from that transition's incoming edge,
+not its spanning course labels. The path must have a measured lateral component
+relative to the triggering contact translation. An optional measured
+`contact_direction_base_xy` supplies that direction explicitly; it is required
+for a wrist-only target because Euler yaw does not establish contact direction.
+Transition IDs and clearance IDs are globally unique within the adapter.
+
+The trigger requires an already verified robot endpoint, explicit validated MUSE
+`occlusion_cause=TOOL` together with `UNCERTAIN` or `car_visible=false`, the first
+configured junction on this exact selected route and the matching full contact
+pose. Generic uncertainty, unrelated loss of visibility and PASS without expected
+progress do not authorize withdrawal. FAIL/excessive yaw, a provider failure, a
+changed receiver/profile/pose, a later junction, a missing measured path or a
+smaller installed limit never cause an inferred side movement. The same
+clearance cannot be retriggered in the course.
+
+`CLEARANCE_READY` retains the original action/receipt/images/review and stored
+contact pose. The finite runner automatically calls `advance()` for that one
+measured action at a time. After each completed path action, it saves the new
+UUID, original receipt, Native endpoint and original before/after image metadata
+before allowing the next `advance()`. The current low-speed profile and exact
+Z/orientation remain binding; the path does not expand the workspace, change
+safety settings, rotate or disguise contact as free commissioning. A read-only
+`recheck_endpoint()` or `reobserve()` can finish evidence/bookkeeping and return
+`CLEARANCE_READY`, but cannot dispatch the next withdrawal action itself.
+
+A dedicated real MUSE sequence then receives three unchanged originals:
+original-action before, the fresh covered contact view immediately before the
+FIRST withdrawal action, and the newer clear view after the FINAL path endpoint.
+All intermediate receipt/frame records are retained. The prompt explicitly
+separates current car visibility, evidence supporting the original action and
+whether the car remained unchanged during the ENTIRE withdrawal path; comparing
+only the last short segment could miss an earlier unintended nudge. Native
+endpoint proof alone does not prove car stationarity. A tool movement cannot
+be counted as vehicle progress. Current visibility refers to the new clear
+image; it does not require the earlier covered image to expose the car, nor
+permit unseen stationarity to be invented.
+
+Missing/stale/reused frames or model failure retain `WAIT_CLEARANCE_REVIEW` and
+can obtain newer images without repeating withdrawal or losing the first path
+view and completed step receipts. A failed durable endpoint-record write also
+retains the known receipt for read-only bookkeeping recovery. A known robot receipt
+followed by supplementary Native failure retains `WAIT_ENDPOINT_CONFIRMATION`
+and its existing read-only recovery. An ambiguous withdrawal cannot be replayed
+or followed by an automatic reverse command. Restart never resumes it.
+
+A supported clear view leaves `WAIT_RECONTACT`, preserving the exact stored
+contact pose. `recontact_eligible` requires a PASS, readable car, separately
+supported original action, supported unchanged car pose, the model's visual
+consistency flag and an independently measured recontact action. The model flag
+alone grants no movement authority. This implementation deliberately issues no
+return from `WAIT_RECONTACT`; the hardware owner must independently bind that
+next physical operation to the current state. The route index is not advanced
+while the pusher remains withdrawn. These are explicit integration limits;
+fresh visible evidence does not silently qualify a missing recontact path or
+claim that a destination/turn completed.
+
 ## State and recovery
 
 | State | Meaning | Next permitted operation |
 | --- | --- | --- |
 | `READY` | No pending physical action | One `advance()` |
+| `CLEARANCE_READY` | First junction has an eligible TOOL-occluded review and an unfinished measured side path | One next measured withdrawal action via `advance()` |
 | `DISPATCH_UNRESOLVED` | A dispatch may have occurred; endpoint not proved | Explicit robot reconciliation; no replay or vision-only release |
 | `WAIT_ENDPOINT_CONFIRMATION` | The original verified API/wire receipt is saved, but supplemental Native endpoint evidence failed | Explicit read-only `recheck_endpoint()`; never send the motion again |
 | `WAIT_REVIEW` | Robot endpoint proved; car outcome is missing/uncertain | `reobserve()` with a newer original after-frame, without moving again |
+| `WAIT_CLEARANCE_REVIEW` | A withdrawal endpoint is proved; its frame/bookkeeping or final sequence judgment is missing/uncertain | Read-only `reobserve()`; no next waypoint dispatch |
+| `WAIT_RECONTACT` | Clear-view judgment stored with contact pose and explicit eligibility | Independently bound measured recontact; no automatic return |
 | `NEEDS_RECONCILIATION` | Car failure/excessive yaw or process restart | Independent review and a newly established course instance |
 | `WAIT_HUMAN_RESET` | Goal TCP and separate MUSE car-arrival check accepted | Notify the operator and wait for manual car/reset setup |
 
@@ -276,7 +354,10 @@ proxies and redirects disabled. MUSE loads `META_API_KEY` from the existing
 private environment file and uses the documented fixed Meta origin without
 redirects. No key is printed or included in prompts/logs. The provider receives
 the two original JPEGs and a physical action prompt; its exact original envelope,
-schema and parsed result are archived. Failed inference never becomes a demo
+HTTP status and latency are archived immediately after the response, before
+finish-reason/schema/content parsing. Malformed content and truncated responses
+therefore retain the full original failed provider envelope. The schema and any
+validated parsed result are archived separately. Failed inference never becomes a demo
 PASS. An after-motion provider timeout may use a bounded new-image reobservation;
 an ambiguous command POST or endpoint error never causes another motion POST.
 
@@ -334,6 +415,16 @@ never resends a physical command or performs an additional FC03 query.
 
 ## Validation
 
+Actual first-junction commissioning is recorded separately in
+[the October 29 evidence summary](evidence/first-junction-observation-clearance-20261029.json).
+Front-side NORTH/NW pushing produced visible counterclockwise rotation toward
+NORTH. After the actual 17 mm and 10 mm pushes, two 12.5 mm EAST observation
+withdrawals each had separate Native endpoint records; three-original MUSE
+reviews supported flat-road rotation and unchanged car pose during withdrawal.
+These current-site experiments do not establish a precise physical 90 degree
+turn, stable northbound pushing, C/D delivery or an already connected physical
+web mission. No actual private coordinate registry is bundled with this code.
+
 `tests/test_taught_executor.py` uses synthetic BASE coordinates, JPEG byte
 fixtures and fake ports only. It checks exact route/adapter identity, rejection
 of unmeasured turns/signals, per-review stroke limits, durable one-shot intent,
@@ -350,3 +441,12 @@ binding, unchanged Z, action-specific stationary-car expectations, per-action
 reviews, uncertainty without repeating a wrist action, and a failed/unknown
 rotation outcome. These remain synthetic tests; no physical turn registry is
 bundled or declared qualified by this implementation.
+Observation-clearance tests cover first-junction-only triggering, measured
+lateral paths/current scope limits, explicit tool-occlusion causes, exact
+transition/action and junction identities, globally unique registry IDs,
+multi-step per-endpoint bookkeeping and preserved first-path/receipt provenance,
+three-original provider requests, current visibility versus unknown stationarity,
+fresh frames, failed model queries, unknown withdrawal outcomes, known-receipt
+Native recovery without dispatching a following step, durable-write failure
+recovery, full malformed/truncated provider response retention and the absence
+of automatic or blind return.
