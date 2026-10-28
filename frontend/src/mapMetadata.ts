@@ -6,6 +6,18 @@ export function nodeLabel(map: TemporaryMap | null, id: string | null | undefine
   return map?.nodes.find(node => node.id === id)?.label ?? id;
 }
 
+/** Round nominal drawing distances for presentation; retain full geometry in the API. */
+export function drawingDistance(value: number | null | undefined): string {
+  return value == null || !Number.isFinite(value) ? '—' : Math.round(value).toLocaleString('en-US');
+}
+
+export function planStepLabel(map: TemporaryMap | null, step: { label: string; node_id?: string }): string {
+  const suffix = step.node_id ? ` ${step.node_id}` : '';
+  return suffix && step.label.endsWith(suffix)
+    ? `${step.label.slice(0, -suffix.length)} ${nodeLabel(map, step.node_id)}`
+    : step.label;
+}
+
 export function destinationOptions(map: TemporaryMap | null): { id: string; label: string }[] {
   return map?.destinations.map(id => ({ id, label: nodeLabel(map, id) })) ?? [];
 }
