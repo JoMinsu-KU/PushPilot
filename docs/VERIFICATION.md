@@ -1,5 +1,11 @@
 # Workspace verification
 
+## Final A3 print and quiet marker presentation, October 28
+
+The final toy-style A3 PDF now supplies the native 7016 × 4961 drawing geometry for `seoul-city-a3` version `2026-10-28.4`. Pizza starts at the printed pink rectangle. The prior sheet's plan and reference were discarded, with the evidence ledger retained. A fresh actually observed four-marker frame was explicitly locked; 40 distinct live frames retained the exact homography while two to four markers were detected. This is a short display check, not robot calibration or a recognition-rate benchmark.
+
+Transient missing/disagreeing markers no longer create large camera banners. Contradictory evidence remains visible in compact diagnostics and retains its backend admission checks; stale imagery and confirmed view changes retain prominent notices. Camera and Spatial showed the same five segments and S/C stop geometry for an unapproved demo Villa plan. Workspace had no vertical page overflow at 1366 × 1024, 1376 × 1032 and 1024 × 768; Plan and Replay were also inspected at the first size. GX10 passed 613 Python tests; the frontend passed 78 tests and its build. Only the web process restarted. Camera epoch, persistent receiver session and robot API were retained; the robot stayed disarmed/held with no command sent. See the [scoped final-print evidence](evidence/final-print-20261028.json).
+
 Initial software verification on **2026-10-27, Asia/Seoul**; the GX10 deployment follow-up on **2026-10-28** is recorded below. This record covers replaceable-map live-image planning, bound native-image action/signal services, finite voice uploads, execution-aware route display, recorded reviews and native preview. Execution remains simulated; this is not a physical mission report.
 
 ## Actual persistent connection and initial local commissioning, October 28

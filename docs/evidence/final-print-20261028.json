@@ -1,0 +1,76 @@
+{
+  "schema": "pushpilot.scoped-verification.v1",
+  "checked_date_kst": "2026-10-28",
+  "scope": "Final A3 print display adapter and quiet marker presentation",
+  "source_commit": "9af1779603b9c42b608f0a2714b68fd3b316795c",
+  "gx10_web_release": "20261028-final-map-9af1779",
+  "map_id": "seoul-city-a3",
+  "map_version": "2026-10-28.4",
+  "map_hash": "9fea848ee172ea6779edda861ddb15c51ba562117d77a3558eb8a85811aefb50",
+  "source_pdf_sha256": "193e8243ee3e624645dcef4e0c827b70729b9591c4bc7fba26207f5adc59af07",
+  "native_drawing_image_size_px": [7016, 4961],
+  "nominal_page_size_mm": [420, 297],
+  "start_anchor": "Printed pink rectangle in front of Pizza; drawing anchor, not measured vehicle pose",
+  "automated_checks": {
+    "source_check": "passed",
+    "gx10_python_tests_passed": 613,
+    "frontend_tests_passed": 78,
+    "frontend_typescript_and_production_build": "passed",
+    "directed_map_audit": "passed",
+    "physical_execution_enabled": false
+  },
+  "registration": {
+    "previous_sheet_reference_discarded": true,
+    "fresh_observed_four_marker_frame_explicitly_locked": true,
+    "distinct_post_lock_frames": 40,
+    "observed_marker_counts": [2, 3, 4],
+    "observed_statuses": ["locked", "locked_partial"],
+    "verification_modes": ["visible_markers"],
+    "exact_homography_retained": true,
+    "maximum_frame_age_ms": 205.0,
+    "marker_corner_residual_px_range": [0.9078, 1.7159],
+    "original_native_jpeg_hash_verified": true,
+    "resolution_px": [1920, 1080],
+    "qualification": "Short display observation only; residuals are not physical metric accuracy or recognition-rate measurements"
+  },
+  "presentation": {
+    "automatic_marker_visibility_and_disagreement_banners": false,
+    "compact_alignment_conflict_and_tooltip_retained": true,
+    "stale_and_confirmed_view_changed_banners_retained": true,
+    "backend_admission_and_overlay_guards_changed": false,
+    "camera_pixels_and_perspective_changed": false,
+    "same_camera_and_spatial_segment_ids_phases_and_stops": true,
+    "inspected_plan": {
+      "source": "demo",
+      "node_ids": ["PIZZA", "S", "C", "VILLA"],
+      "route_segments": 5,
+      "junction_ids": ["S", "C"],
+      "approved": false
+    },
+    "workspace_viewports_without_vertical_page_overflow": [[1366, 1024], [1376, 1032], [1024, 768]],
+    "plan_and_replay_document_overflow_checked_at": [1366, 1024],
+    "browser_console_warnings_or_errors_observed": 0,
+    "tablet_hardware_safari_test": false
+  },
+  "operating_boundaries": {
+    "web_restarted": true,
+    "camera_restarted": false,
+    "camera_epoch_retained": true,
+    "rodi_restarted": false,
+    "rodi_session_retained": true,
+    "robot_api_restarted": false,
+    "robot_pose_and_sequence_unchanged_during_activation": true,
+    "robot_disarmed_and_held": true,
+    "robot_commands_sent": 0,
+    "provider_requests_sent": 0,
+    "old_plan_invalidated_with_evidence_ledger_retained": true,
+    "robot_base_registration_established": false,
+    "physical_push_turn_or_destination_verified": false
+  },
+  "limitations": [
+    "The upper physical markers remain foreshortened and intermittently undecodable; quiet presentation does not improve detector accuracy.",
+    "Transient disagreement is still an admission guard; removing its large banner does not promote contradictory evidence.",
+    "No post-replacement robot start, tool/contact, BASE transform, signal region or physical route qualification was inferred.",
+    "Raw PDF artwork, native frames, private registration and operating state remain outside Git."
+  ]
+}
