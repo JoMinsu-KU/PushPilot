@@ -90,6 +90,9 @@ class RobotService:
                 "permitted_mutations": (["fixed_z_orientation_local_translate"] if scope == "local_base_commissioning"
                                         else ["translate", "profile_update", "qualified_raised_rotation"] if scope == "board" else []),
                 "local_scope_qualifies_board_registration": False,
+                "permitted_held_mutations": ["local_profile_update"] if scope == "local_base_commissioning" else [],
+                "local_profile_refresh_requires": (["disarmed", "hold", "current_review", "fresh_exact_baseline"]
+                                                    if scope == "local_base_commissioning" else []),
                 "active_commands": self.journal.active(),
                 "automatic_replay": False, "hold_is_emergency_stop": False}
 
@@ -166,7 +169,7 @@ class RobotService:
                 if job["cancel_requested"] or self.stopping.is_set() or job["state"] != "dispatching":
                     raise PrewireRejected("Admission was withdrawn before publication.")
                 admit(job["payload"], self.journal.get_meta("installation"), self.receiver(), self.journal.get_observation(),
-                      armed=self.journal.get_meta("armed", False) and not self.journal.get_meta("hold", False), now=self.clock(),
+                      armed=self.journal.get_meta("armed", False), held=self.journal.get_meta("hold", False), now=self.clock(),
                       require_profile_binding=self.physical)
                 if self.clock() >= job["expires"]:
                     raise PrewireRejected("Admission deadline expired before publication.")
@@ -211,7 +214,7 @@ class RobotService:
             observation = self.journal.get_observation()
             try:
                 admit(job["payload"], self.journal.get_meta("installation"), self.receiver(), observation,
-                      armed=self.journal.get_meta("armed", False) and not self.journal.get_meta("hold", False), now=self.clock(),
+                      armed=self.journal.get_meta("armed", False), held=self.journal.get_meta("hold", False), now=self.clock(),
                       require_profile_binding=self.physical)
             except GuardError as error:
                 next_state = "waiting_observation" if error.retryable else "rejected"

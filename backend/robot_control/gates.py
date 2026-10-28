@@ -219,9 +219,50 @@ def _admit_local(command: dict, installation: dict, receiver: dict) -> None:
              "STEP_LIMIT", "Local trials need one nonzero bounded step inside the reviewed local volume.")
 
 
+def _admit_local_profile_refresh(command: dict, installation: dict, receiver: dict,
+                                *, armed: bool, held: bool) -> None:
+    """Refresh a genuinely reviewed local envelope without issuing motion.
+
+    This is the only local mutation admitted while held. It cannot change the
+    tool, establish a board installation or arm the subsequent translation.
+    The inherited receiver independently applies its idle profile handshake.
+    """
+    _require(armed is False and held is True, "LOCAL_REFRESH_REQUIRES_HOLD",
+             "A local profile refresh requires an explicitly disarmed, held service.")
+    _require(command.get("purpose") == "commissioning"
+             and command.get("target") is None and command.get("edge_id") is None,
+             "LOCAL_OPERATION_FORBIDDEN", "A local profile refresh must contain no movement or contact operation.")
+    _require(command.get("installation_id") == installation.get("installation_id"),
+             "INSTALLATION_MISMATCH", "Refresh must bind the newly reviewed current local installation.")
+    current, candidate = receiver.get("profile"), command.get("profile")
+    _require(type(current) is dict and current.get("scope") == "local_base_commissioning",
+             "PROFILE_SCOPE", "Local refresh cannot import a board or unscoped receiver profile.")
+    _require(type(candidate) is dict, "PROFILE_REQUIRED", "A complete newly reviewed local profile is required.")
+    local = validate_local_profile(installation, {**receiver, "profile": candidate})
+    for key in ("schema", "coordinate_frame", "pose_type", "tcp_id", "payload_kg", "allow_motion"):
+        _require(type(candidate.get(key)) is type(current.get(key)) and candidate.get(key) == current.get(key),
+                 "LOCAL_TOOL_BINDING", f"Local refresh cannot change the current {key}.")
+    binding = current.get("installation_binding")
+    _require(type(binding) is dict and binding.get("scope") == "local_base_commissioning"
+             and all(type(binding.get(key)) is type(local[key]) and binding.get(key) == local[key]
+                     for key in ("tcp_id", "tcp_definition_sha256", "tool_id", "payload_kg")),
+             "LOCAL_TOOL_BINDING", "The current and renewed review must describe the same physical TCP, tool and payload.")
+    _require(binding.get("installation_id") != local["installation_id"]
+             and binding.get("review_reference") != local["review_reference"],
+             "LOCAL_REFRESH_NEW_REVIEW_REQUIRED", "Renewal requires a distinct current installation and explicit new site review.")
+    source = _vector(receiver.get("actual_pose"), 6, "ROBOT_POSE_INVALID")
+    joints = _vector(receiver.get("actual_joint"), 6, "ROBOT_JOINT_INVALID")
+    _require(_vector(candidate.get("expected_start_tcp_mm_deg"), 6, "LOCAL_REFRESH_BASELINE_CHANGED") == source
+             and _vector(candidate.get("expected_start_joint_deg"), 6, "LOCAL_REFRESH_BASELINE_CHANGED") == joints,
+             "LOCAL_REFRESH_BASELINE_CHANGED", "Refresh needs the current full-precision TCP and joint baseline.")
+    _require(local["fixed_tcp_z_mm"] == source[2] and local["fixed_orientation_deg"] == source[3:],
+             "LOCAL_REFRESH_BASELINE_CHANGED", "Renewed local review must retain the exact current TCP height and literal orientation.")
+    _require(candidate != current, "LOCAL_REFRESH_NO_CHANGE", "Do not publish an unchanged local profile.")
+
+
 def admit(command: dict, installation: dict | None, receiver: dict,
           observation: dict | None, *, armed: bool, now: float,
-          require_profile_binding: bool = False) -> None:
+          require_profile_binding: bool = False, held: bool = False) -> None:
     """Raise a structured guard error unless this one command can be admitted.
 
     Inspection uses only receiver readiness and binding. Physical mutation also
@@ -249,7 +290,11 @@ def admit(command: dict, installation: dict | None, receiver: dict,
         if kind == "inspect_ik":
             _vector(command.get("target"), 6, "TARGET_INVALID")
         return
-    _require(armed is True, "NOT_ARMED", "Physical commissioning must be explicitly armed.")
+    if (kind == "profile_update" and type(installation) is dict
+            and installation.get("scope") == "local_base_commissioning"):
+        _admit_local_profile_refresh(command, installation, receiver, armed=armed, held=held)
+        return
+    _require(armed is True and held is False, "NOT_ARMED", "Physical commissioning must be explicitly armed and not held.")
     _require(type(installation) is dict and installation.get("qualified") is True,
              "INSTALLATION_UNQUALIFIED", "A qualified installation is required before physical changes.")
     scope = installation.get("scope", "board")

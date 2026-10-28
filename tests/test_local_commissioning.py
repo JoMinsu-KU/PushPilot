@@ -87,9 +87,10 @@ class LocalCommissioningTests(unittest.TestCase):
 
     def test_local_scope_cannot_push_reposition_rotate_or_update_profile(self):
         for changes in ({"purpose": "push"}, {"purpose": "tool_reposition"},
-                        {"kind": "rotate", "purpose": "tool_reposition"}, {"kind": "profile_update"}):
+                        {"kind": "rotate", "purpose": "tool_reposition"}):
             with self.subTest(changes=changes):
                 self.assert_guard("LOCAL_OPERATION_FORBIDDEN", command={**self.command, **changes})
+        self.assert_guard("LOCAL_REFRESH_REQUIRES_HOLD", command={**self.command, "kind": "profile_update"})
 
     def test_every_vertical_change_and_literal_orientation_change_is_rejected(self):
         for target in ([1., 0., 100.1, 180., 0., 0.], [0., 0., 100.1, 180., 0., 0.],
@@ -233,6 +234,87 @@ class LocalCommissioningTests(unittest.TestCase):
             prepare.build_profile(local.model_dump(mode="json"), self.state, on_site_review=True)
 
 
+class LocalProfileRefreshTests(unittest.TestCase):
+    def setUp(self):
+        self.old = synthetic_installation()
+        self.state = synthetic_robot_state()
+        self.local = {**self.old, "installation_id": "synthetic-renewed-review",
+                      "review_reference": "Synthetic new physical review following a paper replacement.",
+                      "workspace_min_mm": [-5., -5., 99.], "workspace_max_mm": [5., 5., 101.]}
+        self.current = prepare.build_profile(self.old, self.state, on_site_review=True)
+        self.candidate = prepare.build_profile(self.local, self.state, on_site_review=True)
+        self.receiver = {**self.state, "connected": True, "idle": True, "physical_execution": True,
+                         "session_id": "synthetic-existing-session", "seq": 7,
+                         "profile_id": "synthetic-current-profile", "profile": self.current}
+        self.command = {"kind": "profile_update", "purpose": "commissioning", "profile": self.candidate,
+                        "installation_id": self.local["installation_id"],
+                        "expected_receiver": {key: self.receiver[key] for key in ("session_id", "seq", "profile_id")}}
+
+    def gate(self, *, command=None, installation=None, receiver=None, armed=False, held=True):
+        return admit(command or self.command, installation or self.local, receiver or self.receiver, None,
+                     armed=armed, held=held, now=100., require_profile_binding=True)
+
+    def rejects(self, code, **kwargs):
+        with self.assertRaises(GuardError) as error:
+            self.gate(**kwargs)
+        self.assertEqual(error.exception.code, code)
+
+    def test_distinct_review_can_refresh_held_idle_session_without_arming(self):
+        before = deepcopy(self.receiver)
+        self.gate()
+        self.assertEqual(self.receiver, before)
+        self.assertNotEqual(self.current["installation_binding"], self.candidate["installation_binding"])
+        for armed, held in ((True, True), (True, False), (False, False)):
+            self.rejects("LOCAL_REFRESH_REQUIRES_HOLD", armed=armed, held=held)
+
+    def test_fresh_exact_pose_and_joints_are_required_even_below_native_quantization(self):
+        for key, index in (("expected_start_tcp_mm_deg", 0), ("expected_start_tcp_mm_deg", 2),
+                           ("expected_start_tcp_mm_deg", 5), ("expected_start_joint_deg", 2)):
+            candidate = deepcopy(self.candidate)
+            candidate[key][index] += .000001
+            self.rejects("LOCAL_REFRESH_BASELINE_CHANGED", command={**self.command, "profile": candidate})
+        local = {**self.local, "fixed_tcp_z_mm": 100.01}
+        candidate = prepare.build_profile(local, self.state, on_site_review=True)
+        self.rejects("LOCAL_REFRESH_BASELINE_CHANGED", installation=local,
+                     command={**self.command, "profile": candidate})
+
+    def test_binding_and_actual_idle_are_rechecked(self):
+        self.rejects("RECEIVER_NOT_READY", receiver={**self.receiver, "idle": False})
+        for key, value in (("seq", 8), ("session_id", "superseded"), ("profile_id", "superseded")):
+            self.rejects("RECEIVER_BINDING", receiver={**self.receiver, key: value})
+        self.rejects("PHYSICAL_RECEIVER_REQUIRED", receiver={**self.receiver, "physical_execution": False})
+        self.rejects("INSTALLATION_MISMATCH", command={**self.command, "installation_id": "old-review"})
+
+    def test_profile_refresh_does_not_import_board_authority_or_change_tool(self):
+        for changes in ({"scope": "board"}, {"map_id": "forged-map"},
+                        {"calibration_id": "forged-calibration"}):
+            self.rejects("PROFILE_SCOPE", command={**self.command, "profile": {**self.candidate, **changes}})
+        for key, value in (("tcp_id", "different-tcp"), ("tool_id", "different-tool"),
+                           ("payload_kg", .3), ("tcp_definition_sha256", "b" * 64)):
+            local = {**self.local, key: value}
+            candidate = prepare.build_profile(local, self.state, on_site_review=True)
+            self.rejects("LOCAL_TOOL_BINDING", installation=local,
+                         command={**self.command, "profile": candidate})
+        self.rejects("PROFILE_SCOPE", receiver={**self.receiver, "profile": {**self.current, "scope": "board"}})
+
+    def test_unreviewed_or_stale_review_and_excessive_limits_remain_forbidden(self):
+        self.rejects("INSTALLATION_UNQUALIFIED", installation={**self.local, "qualified": False})
+        self.rejects("LOCAL_INSTALLATION_INVALID", installation={**self.local, "qualified": True, "on_site_review": False})
+        self.rejects("LOCAL_REFRESH_NEW_REVIEW_REQUIRED", installation=self.old,
+                     command={**self.command, "installation_id": self.old["installation_id"], "profile": self.current})
+        for key, value in (("translation_speed_mm_s", 5.1), ("max_translation_mm", 5.1),
+                           ("translation_accel_mm_s2", 10.1)):
+            self.rejects("PROFILE_LIMIT", command={**self.command, "profile": {**self.candidate, key: value}})
+        local = {**self.local, "workspace_max_mm": [16., 5., 101.]}
+        self.rejects("LOCAL_INSTALLATION_INVALID", installation=local)
+
+    def test_refresh_cannot_carry_a_motion_or_enable_rotation(self):
+        for changes in ({"target": self.state["actual_pose"]}, {"edge_id": "rotation"}, {"purpose": "tool_reposition"}):
+            self.rejects("LOCAL_OPERATION_FORBIDDEN", command={**self.command, **changes})
+        candidate = {**self.candidate, "rotation_edges": [{"id": "forged-turn"}]}
+        self.rejects("LOCAL_ROTATION_FORBIDDEN", command={**self.command, "profile": candidate})
+
+
 class LocalCommissioningApiTests(unittest.TestCase):
     def setUp(self):
         self.directory = TemporaryDirectory()
@@ -290,6 +372,70 @@ class LocalCommissioningApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "PROFILE_INSTALLATION_BINDING")
         self.assertFalse(self.service.status()["armed"])
+
+    def refresh_command(self, local):
+        return {"request_id": str(uuid4()), "kind": "profile_update", "purpose": "commissioning",
+                "installation_id": local["installation_id"], "expected_receiver": self.binding(),
+                "profile": prepare.build_profile(local, {
+                    key: self.receiver.state[key] for key in ("actual_pose", "actual_joint")}, on_site_review=True),
+                "timeout_seconds": 3., "admission_timeout_seconds": 5.}
+
+    def await_terminal(self, request_id):
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline:
+            job = self.client.get("/v1/commands/" + request_id, headers=self.headers).json()
+            if job["state"] in {"complete", "rejected", "outcome_unknown"}:
+                return job
+            time.sleep(.01)
+        self.fail("Synthetic profile refresh failed to terminate.")
+
+    def test_refresh_keeps_same_session_pose_and_hold_then_requires_separate_arm(self):
+        self.service.start()
+        self.addCleanup(self.service.stop)
+        local = {**self.installation, "installation_id": "renewed-current-review",
+                 "review_reference": "Synthetic new local review after replacing the printed map."}
+        before = deepcopy(self.receiver.state)
+        self.assertEqual(self.post("/v1/installation", local).status_code, 200)
+        self.assertEqual(self.post("/v1/hold", {"reason": "Synthetic deliberate no-motion local review refresh."}).status_code, 200)
+        command = self.refresh_command(local)
+        self.assertEqual(self.post("/v1/commands", command).status_code, 202)
+        job = self.await_terminal(command["request_id"])
+        self.assertEqual(job["state"], "complete", job)
+        self.assertEqual(len(self.receiver.calls), 1)
+        self.assertEqual(self.receiver.calls[0]["kind"], "profile_update")
+        self.assertEqual(self.receiver.state["actual_pose"], before["actual_pose"])
+        self.assertEqual(self.receiver.state["actual_joint"], before["actual_joint"])
+        self.assertEqual(self.receiver.state["session_id"], before["session_id"])
+        self.assertEqual(self.receiver.state["seq"], before["seq"] + 1)
+        self.assertNotEqual(self.receiver.state["profile_id"], before["profile_id"])
+        status = self.service.status()
+        self.assertFalse(status["armed"])
+        self.assertTrue(status["hold"])
+        self.assertEqual(self.post("/v1/arm", {"installation_id": local["installation_id"],
+                             "expected_receiver": self.binding(), "reason": "Synthetic separate current local arm."}).status_code, 200)
+
+    def test_refresh_rechecks_baseline_before_publication_without_dispatch_retry(self):
+        self.service.start()
+        self.addCleanup(self.service.stop)
+        local = {**self.installation, "installation_id": "renewed-current-review",
+                 "review_reference": "Synthetic current local review before a baseline race."}
+        self.post("/v1/installation", local)
+        self.post("/v1/hold", {"reason": "Synthetic deliberate no-motion local review refresh."})
+        command = self.refresh_command(local)
+        execute = self.receiver.execute
+
+        def changed_before_publication(value, on_event):
+            self.receiver.state["actual_joint"][0] += .01
+            return execute(value, on_event)
+
+        with patch.object(self.receiver, "execute", side_effect=changed_before_publication):
+            self.assertEqual(self.post("/v1/commands", command).status_code, 202)
+            job = self.await_terminal(command["request_id"])
+        self.assertEqual(job["state"], "rejected", job)
+        self.assertEqual(job["error"], "LOCAL_REFRESH_BASELINE_CHANGED")
+        self.assertEqual(self.receiver.calls, [])
+        self.assertFalse(self.service.status()["armed"])
+        self.assertTrue(self.service.status()["hold"])
 
     def test_api_arm_submit_and_complete_one_local_trial_without_board_registration(self):
         self.service.start()
