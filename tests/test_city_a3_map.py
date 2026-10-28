@@ -61,23 +61,37 @@ class CityA3MapTests(unittest.TestCase):
                 self.assertAlmostEqual(value, pixels[index] * ([420 / 2400, 297 / 1697][index % 2]), places=8)
         self.assertFalse({"BAKERY", "BOOKSTORE", "SCHOOL"} & {row["id"] for row in self.data["nodes"]})
 
-    def test_all_directed_routes_depart_east_and_visit_main_junction_first(self):
+    def test_start_is_in_front_of_the_south_facing_pizza_storefront(self):
+        pizza = next(row for row in self.data["nodes"] if row["id"] == "PIZZA")
+        panel = next(row for row in self.data["building_panels"] if row["id"] == "PIZZA")
+        self.assertEqual(self.data["version"], "2026-10-28.2")
+        self.assertEqual(self.data["source"]["geometry_derivation"]["place_waypoints_px"]["PIZZA"], [534, 1472])
+        self.assertEqual(pizza["x_mm"], 534 * 420 / 2400)
+        self.assertAlmostEqual(pizza["y_mm"], 1472 * 297 / 1697, places=8)
+        self.assertGreater(pizza["y_mm"], panel["bounds_mm"][3])
+        # The blue storefront occupies the west side of the Pizza/park panel.
+        self.assertLess(pizza["x_mm"], (panel["bounds_mm"][0] + panel["bounds_mm"][2]) / 2)
+
+    def test_all_directed_routes_depart_east_then_turn_north_to_main_junction(self):
         graph = {row["id"]: [] for row in self.data["nodes"]}
         for edge in self.data["edges"]:
             graph[edge["from"]].append(edge["to"])
             if edge["bidirectional"]:
                 graph[edge["to"]].append(edge["from"])
-        self.assertEqual(graph["PIZZA"], ["C"])
-        self.assertIn("PIZZA", graph["W"])
+        self.assertEqual(graph["PIZZA"], ["S"])
+        self.assertEqual(set(graph["S"]), {"PIZZA", "C"})
+        self.assertIn("C", graph["W"])
         seen_destinations = set()
 
         def visit(path):
             if path[-1] in self.data["destinations"]:
                 seen_destinations.add(path[-1])
                 route = self.definition.route_from_nodes(path[-1], path)
-                self.assertEqual(route["node_ids"][:2], ["PIZZA", "C"])
+                self.assertEqual(route["node_ids"][:3], ["PIZZA", "S", "C"])
                 self.assertEqual(route["directions"]["departure"]["map_direction"], "east")
-                self.assertEqual(route["junction_ids"][0], "C")
+                self.assertEqual(route["junction_ids"][:2], ["S", "C"])
+                first = route["directions"]["maneuvers"][0]
+                self.assertEqual((first["node_id"], first["turn"], first["outgoing_direction"]), ("S", "left", "north"))
                 self.assertFalse(route["physical_execution_enabled"])
             for neighbor in graph[path[-1]]:
                 if neighbor not in path:
@@ -87,11 +101,23 @@ class CityA3MapTests(unittest.TestCase):
         self.assertEqual(seen_destinations, set(self.data["destinations"]))
         self.assertEqual(self.definition.planning_audit()["status"], "passed")
 
+    def test_old_back_road_and_signal_bypass_paths_are_rejected(self):
+        for path in (["PIZZA", "C", "OFFICE_BUILDING"],
+                     ["PIZZA", "S", "SE", "E", "OFFICE_BUILDING"],
+                     ["PIZZA", "SW", "W", "NW", "VILLA"]):
+            with self.assertRaises(ValueError):
+                self.definition.route_from_nodes(path[-1], path)
+        route = self.definition.route("OFFICE_BUILDING")
+        constraints = {"departure": "east", "first_turn": "left", "via_nodes": ["S", "C"], "avoid_nodes": []}
+        self.assertEqual(self.definition.validate_route_constraints(route, constraints), constraints)
+        with self.assertRaises(ValueError):
+            self.definition.validate_route_constraints(route, {**constraints, "first_turn": "straight"})
+
     def test_default_and_selected_route_segments_stay_continuous_on_roads(self):
         alternatives = {
-            "VILLA": ["PIZZA", "C", "S", "SW", "W", "NW", "VILLA"],
-            "HANOK": ["PIZZA", "C", "OFFICE_BUILDING", "E", "NE", "HANOK"],
-            "OFFICE_BUILDING": ["PIZZA", "C", "N", "HANOK", "NE", "E", "OFFICE_BUILDING"],
+            "VILLA": ["PIZZA", "S", "C", "W", "NW", "VILLA"],
+            "HANOK": ["PIZZA", "S", "C", "OFFICE_BUILDING", "E", "NE", "HANOK"],
+            "OFFICE_BUILDING": ["PIZZA", "S", "C", "N", "HANOK", "NE", "E", "OFFICE_BUILDING"],
         }
         for destination in self.data["destinations"]:
             for route in (self.definition.route(destination),
@@ -116,6 +142,7 @@ class CityA3MapTests(unittest.TestCase):
     def test_signal_regions_and_physical_qualification_are_not_inferred(self):
         self.assertEqual(self.data["signal_targets"], [])
         self.assertIsNone(self.definition.signal_target("C", "PIZZA"))
+        self.assertIsNone(self.definition.signal_target("C", "S"))
         self.assertIn("not a measured installation", self.data["source"]["adaptation"])
         for public in (self.definition.snapshot(), self.definition.planning_context(), self.definition.planning_audit()):
             self.assertFalse(public["physical_execution_enabled"])
@@ -130,14 +157,15 @@ class CityA3MapTests(unittest.TestCase):
         self.assertEqual(self.data["board"]["road_width_mm"], 42.175)
         for destination in self.data["destinations"]:
             route = self.definition.route(destination)
-            main = route["visualization"]["junctions"][0]
+            main = next(row for row in route["visualization"]["junctions"] if row["node_id"] == "C")
             self.assertEqual(main["node_id"], "C")
-            self.assertAlmostEqual(main["stop_point_mm"][0], 160.4125)
-            self.assertEqual(main["stop_point_mm"][1], center["y_mm"])
+            self.assertEqual(route["node_ids"][route["node_ids"].index("C") - 1], "S")
+            self.assertEqual(main["stop_point_mm"][0], center["x_mm"])
+            self.assertAlmostEqual(main["stop_point_mm"][1], 198)
             self.assertAlmostEqual(math.dist(*main["stop_line_mm"]), 63.525)
-            self.assertAlmostEqual(main["stop_point_mm"][0], 917 * 420 / 2400, delta=0.1)
-            # The west crosswalk begins at source x945; its drawing stop remains outside it.
-            self.assertLess(main["stop_point_mm"][0], 945 * 420 / 2400)
+            self.assertAlmostEqual(main["stop_point_mm"][1], 1131.5 * 297 / 1697, delta=0.1)
+            # The south crosswalk ends before source y1110; stop on its south side.
+            self.assertGreater(main["stop_point_mm"][1], 1110 * 297 / 1697)
         data = self.definition.data
         c = next(row for row in data["nodes"] if row["id"] == "C")
         c["junction_size_mm"] = 98

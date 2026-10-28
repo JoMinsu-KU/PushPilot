@@ -16,6 +16,8 @@ The current design intent starts every mission at PIZZA, initially travels east 
 
 Explicitly identify both the controlling junction and incoming approach. One visible signal must not silently control all four incoming roads. Initial eastbound departure alone does not determine whether the eventual central-junction approach is from the west or south; finalize the actual start position and approach path before assigning those map nodes or a stop line.
 
+The October 28 front-of-Pizza correction now declares the drawing-only route prefix `PIZZA → S → C`: start below the south-facing storefront, travel east, then turn north at South Junction. In city map version `2026-10-28.2`, the central incoming binding is therefore `junction_id=C, approach_from=S`. This replaces the earlier rear-start `C`-from-`PIZZA` preview. It still supplies no reviewed paper-signal ROI, physical start pose or verified stop receipt. Register the actual signal face for this current approach before any signal request; do not reuse the rear-start target or infer green from a decorative printed light.
+
 Proposed English presentation labels:
 
 | Item | Display label | Binding |

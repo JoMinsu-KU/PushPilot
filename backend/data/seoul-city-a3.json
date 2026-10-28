@@ -1,7 +1,7 @@
 {
   "schema_version": "pushpilot.temporary-map.v1",
   "id": "seoul-city-a3",
-  "version": "2026-10-28.1",
+  "version": "2026-10-28.2",
   "title": "Seoul City",
   "temporary": true,
   "physical_execution_enabled": false,
@@ -80,8 +80,8 @@
       },
       "place_waypoints_px": {
         "PIZZA": [
-          682.5,
-          848.5
+          534,
+          1472
         ],
         "VILLA": [
           682.5,
@@ -102,7 +102,7 @@
         "north": [1018, 554, 364, 24],
         "south": [1018, 1120, 364, 23]
       },
-      "review": "Road centerlines, panel bounds and central yellow stop-line components were read from the reference image. Main Junction uses a drawing-only 49.5 mm approach offset and 63.525 mm crossing width, separately from narrower outer roads. Place nodes are provisional road approach waypoints, not measured storefront entrances. The declared Pizza eastbound departure is encoded by the directed graph. No paper signal region has been reviewed."
+      "review": "Road centerlines, panel bounds and central yellow stop-line components were read from the reference image. The user corrected Pizza to start in front of its south-facing red storefront, on the south road at source [534,1472], rather than the central road behind the building. This is an authored nominal start, not a measured car pose. Main Junction uses a drawing-only 49.5 mm approach offset and 63.525 mm crossing width, separately from narrower outer roads. Directed scenario edges force PIZZA to S to C: eastbound departure, then a left turn north toward Main Junction. They are demo route restrictions, not inferred printed traffic rules. No paper signal region has been reviewed."
     }
   },
   "board": {
@@ -202,8 +202,8 @@
         "pizza",
         "pizzeria"
       ],
-      "x_mm": 119.4375,
-      "y_mm": 148.5,
+      "x_mm": 93.45,
+      "y_mm": 257.621685327,
       "kind": "destination"
     },
     {
@@ -305,14 +305,14 @@
     },
     {
       "from": "W",
-      "to": "PIZZA",
-      "length_mm": 79.8,
-      "bidirectional": false
+      "to": "C",
+      "length_mm": 170.275,
+      "bidirectional": true
     },
     {
       "from": "PIZZA",
-      "to": "C",
-      "length_mm": 90.475,
+      "to": "S",
+      "length_mm": 116.4625,
       "bidirectional": true
     },
     {
@@ -329,15 +329,15 @@
     },
     {
       "from": "SW",
-      "to": "S",
-      "length_mm": 170.275,
-      "bidirectional": true
+      "to": "PIZZA",
+      "length_mm": 53.8125,
+      "bidirectional": false
     },
     {
-      "from": "S",
-      "to": "SE",
+      "from": "SE",
+      "to": "S",
       "length_mm": 170.0125,
-      "bidirectional": true
+      "bidirectional": false
     }
   ],
   "markers": [
@@ -419,8 +419,9 @@
     "A3 page dimensions and marker sizes are nominal drawing values; actual print scaling and installation dimensions have not been measured.",
     "Drawing coordinates support display registration and simulation only; no board-to-BASE, TCP, contact height or robot motion targets are provided.",
     "Place nodes are provisional road approach waypoints, not qualified physical destination entrances or car poses.",
-    "The Pizza start and initial eastbound departure are scenario declarations, not observations of the current car position or orientation.",
-    "Every route from Pizza first reaches Main Junction; the graph does not establish a reviewed signal approach or paper signal target.",
+    "The Pizza start is on the south road in front of the south-facing red storefront, not the road behind the building. Its nominal position and initial eastbound departure are scenario declarations, not observations of the current car pose.",
+    "Every route starts PIZZA to S to C, turning left at South Junction before approaching Main Junction from the south. Directed restrictions enforce this demo sequence and are not printed lane rules or physical turning qualification.",
+    "The Main Junction incoming node is S, not PIZZA. No reviewed paper signal target or physical stop is established by this graph.",
     "No active paper signal region is configured. MUSE signal queries must remain unavailable until a current approach-specific region is explicitly registered.",
     "Road centerlines and nominal junction size do not qualify swept car/tool clearance, physical stop lines or pushing turns.",
     "The optional Spatial correspondence is display metadata only and supplies no camera registration or robot coordinate authority."
