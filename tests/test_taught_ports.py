@@ -518,6 +518,25 @@ class HostJournalNativeProofTests(TestCase):
         self.assertEqual(proof["source_journal_sha256"], hashlib.sha256(journal_bytes(rows)).hexdigest())
         self.assertEqual(proof["extra_fc03_queries"], 0)
 
+    def test_new_session_text_environment_is_preserved_only_before_observation_anchor(self):
+        identity, state, rows = host_cycle_fixture()
+        environment = {"monotonic_ns": 900_000_000, "kind": "environment",
+                       "data": "Synthetic host startup environment diagnostic"}
+        original = journal_bytes([environment]+rows)
+        proof = self.prove(state, [environment]+rows, expected_receiver=identity)
+        self.assertEqual(proof["source_journal_sha256"], hashlib.sha256(original).hexdigest())
+        self.assertEqual(proof["native_rows"], rows[-2:])
+        invalid = [
+            [{**environment, "kind": "pose_session_closed"}]+rows,
+            [{**environment, "monotonic_ns": 1_005_000_000}]+rows,
+            rows[:2]+[{**environment, "monotonic_ns": 1_023_000_000}]+rows[2:],
+            rows+[{**environment, "monotonic_ns": 2_150_000_000}],
+            [environment, environment]+rows,
+        ]
+        for candidate in invalid:
+            with self.subTest(candidate=candidate), self.assertRaises(ExecutionBlocked):
+                self.prove(state, candidate, expected_receiver=identity)
+
     def test_timeout_resets_pair_and_needs_two_new_native_rows_before_publication(self):
         _, state, rows = host_cycle_fixture()
         timeout = {"monotonic_ns": 1_050_000_000, "kind": "stationary_read_timeout",

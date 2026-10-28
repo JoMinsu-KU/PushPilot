@@ -204,8 +204,16 @@ def prove_host_journal_cycle(state, raw, *, now_monotonic_ns, expected_receiver=
     for line in raw.splitlines():
         item = json.loads(line)
         _require(type(item) is dict and type(item.get("monotonic_ns")) is int
-                 and isinstance(item.get("kind"), str) and isinstance(item.get("data"), dict),
+                 and isinstance(item.get("kind"), str),
                  "HOST_JOURNAL_INVALID", "Every original event needs its source monotonic time, kind and data.")
+        # The inherited host writes its first environment diagnostic as text.
+        # Retain those original bytes, but accept this metadata only before the
+        # observation anchor. Operational/cycle events still require objects.
+        initial_environment = (not rows and item["kind"] == "environment"
+            and isinstance(item.get("data"), str) and publication_after_ns is not None
+            and item["monotonic_ns"] <= publication_after_ns)
+        _require(isinstance(item.get("data"), dict) or initial_environment,
+                 "HOST_JOURNAL_INVALID", "Only the initial pre-observation environment diagnostic may contain text.")
         _require(not rows or item["monotonic_ns"] >= rows[-1]["monotonic_ns"], "HOST_JOURNAL_ORDER",
                  "Host journal timestamps are out of order.")
         rows.append(item)
