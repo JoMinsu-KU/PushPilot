@@ -1,37 +1,37 @@
 # One city route, two projections
 
-The user placed the supplied city drawing on October 28, 2026 and confirmed **A3 landscape**. The active replacement adapter is [`backend/data/seoul-city-a3.json`](../backend/data/seoul-city-a3.json). It has a new map identity/version/hash and leaves the historical Little Town definition untouched.
+The user installed the final toy-style A3 print on October 28, 2026. The active adapter [`backend/data/seoul-city-a3.json`](../backend/data/seoul-city-a3.json), version `2026-10-28.4`, derives its nominal geometry from `PushPilot_map2d_toy_A3_100pct.pdf`. The previous sheet's camera reference, route approvals and robot installation do not transfer to this replacement. The historical Little Town definition remains unchanged.
 
-## Drawing and places
+## Final PDF and drawing anchors
 
 | Fact | Source and limit |
 |---|---|
-| Page and drawing frame | Nominal 420 × 297 mm, full-page upper-left origin; printer scale has not been independently measured |
-| Source artwork | User-supplied 2400 × 1697 PNG; exact SHA-256 and pixel-derived geometry in the adapter; image remains private |
-| Four print markers | IDs 10–13, clockwise from upper-left; centers and black-square dimensions derived from this source, not reused from Little Town |
-| Start | Pizza, on the south road in front of its south-facing red storefront/blue-roof building; initial printed-map-east departure |
-| Destinations | Villa (northwest block), Hanok (northeast), Office Building (southeast) |
-| Approach waypoints | On the road south/in front of each block: Villa/Hanok use the central road, Pizza/Office Building the south road; not measured entrances or physical arrival tolerances |
-| Main Junction | Central crossing on the default Villa/Hanok routes, approached from S after a left/north turn at South Junction; the direct Office Building route continues east at S |
-| Signal | No active paper-signal region has been placed/reviewed; `signal_targets` stays empty |
+| Page and drawing frame | One landscape A3 page, nominal 420 × 297 mm, upper-left drawing origin; the PDF MediaBox and CropBox agree, with no rotation |
+| Source artwork | The unchanged 7016 × 4961 embedded JPEG stream covers the entire page; exact JPEG and PDF SHA-256 values are in the adapter; both media files remain private |
+| Four print markers | `DICT_4X4_50`, IDs 10–13 clockwise from upper-left; native subpixel centers, with an approximate 8.45 mm square model |
+| Marker-size limit | The native lower markers are about one source pixel taller; square-only dimensions are a drawing approximation, not surveyed print metrology |
+| Start | The center of Pizza's printed pink start rectangle, source [1600,4299.5], nominal [95.781072,257.398004] mm; initial printed-map-east departure |
+| Destinations | Villa (northwest), Hanok (northeast), Office Building (southeast), each on the road south/in front of its block |
+| Main Junction | On the default Villa/Hanok routes, approached from S; the direct Office route continues east at S |
+| Signal | No current approach-specific paper-signal region has been reviewed; `signal_targets` remains empty |
 
-The road graph uses thirteen named points, explicit directed connectivity, three destinations and per-junction display dimensions. The central yellow-line/crosswalk artwork needs a wider display stop region than the outer roads. Main Junction uses 99 mm with a 63.525 mm stop-line width. An incoming destination does not consume another junction's half-edge allocation; adjacent junctions still share limited road space. These values position a **drawing overlay**, not a robot stopping target.
+Source geometry is converted using 420/7016 and 297/4961 mm per native pixel. Panel edges and plain-road midpoints have approximately two source pixels of reading uncertainty, roughly 0.12 mm at nominal A3 scale. Printer scaling, mounting, camera error, car dimensions and contact geometry require separate measurements; the raster precision does not establish those tolerances.
 
-Version `2026-10-28.3` corrects the remaining rear-road destination waypoints. All four building frontages and their sidewalks face south in the supplied artwork. Pizza remains at source pixel [534,1472], nominal [93.45,257.621685327] mm, in front of its storefront. Villa and Hanok move to source y848.5 / drawing y148.5 mm, and Office Building moves to source y1472 / drawing y257.621685327 mm. Their source x values remain unchanged. The artwork, board frame, print markers and Spatial correspondence are unchanged.
+The pink outline spans source [1056,3980,2144,4619], about 65.13 × 38.25 mm on the nominal page. Its center anchors the scenario's start node. It does not measure the actual car center, yaw, pusher contact point, contact Z or robot BASE coordinates. Fixing the car at this area is an operator setup convention; completion after a push still needs its own outcome evidence.
 
-Pizza's only departure remains east to S. The earlier blanket `PIZZA → S → C` restriction caused Office Building to take a northward detour and finish behind its building; that restriction is removed. The corrected default paths are:
+The graph retains thirteen named points and explicit directed connectivity. Main Junction uses a rounded 99 mm display stop region and 63.7 mm crossing width; outer roads use a nominal 42.4 mm width. The central stop point from S lies inside the south yellow band, before entering the central crosswalk. These values position drawing overlays and simulated actions, with no claim of physical swept clearance or stopping accuracy.
+
+Pizza's only departure is east to S. The default paths preserve the prior frontage correction:
 
 | Destination | Default drawing route | Nominal drawing distance |
 |---|---|---|
-| Office Building | `PIZZA → S → OFFICE_BUILDING`, straight east along the south road | 206.7625 mm |
-| Villa | `PIZZA → S → C → VILLA`, north at S and west at C | 316.059185327 mm |
-| Hanok | `PIZZA → S → C → HANOK`, north at S and east at C | 315.884185327 mm |
+| Office Building | `PIZZA → S → OFFICE_BUILDING`, straight east | 204.732041 mm |
+| Villa | `PIZZA → S → C → VILLA`, north at S, west at C | 313.600114 mm |
+| Hanok | `PIZZA → S → C → HANOK`, north at S, east at C | 313.630045 mm |
 
-All drawing roads remain connected, with explicit graph points splitting roads at each registered place. A requested longer directed route remains valid when its exact node sequence and constraints pass validation; the default route is not silently substituted. These are authored demonstration roads and waypoints, not inferred printed one-way lanes or measured robot targets.
+A valid requested alternative keeps its exact node sequence. Every traversed junction retains its simulated stop and signal gate. The direct Office route visits S rather than C, so a signal registered only at Main Junction does not cover it. No central detour is silently added to a direct Office request.
 
-Each traversed junction retains its mandatory simulated stop and signal gate. The direct Office Building path traverses S, not C, so a signal registered only at Main Junction would not cover that route. The default Villa/Hanok central incoming binding remains `C` from `S`; its drawing stop is on the south side of the central crosswalk. Physical start pose, contact turning, stopping and actual approach-specific signal regions still require qualification. Old route/reference identities must not authorize this corrected map version.
-
-This correction changes the route graph on the same physical print. A deliberate deployment can derive a new display-reference identity only after the unchanged-print checks and fresh distributed-marker agreement described in [Live camera](LIVE_CAMERA.md). It retains the exact fixed homography, without fitting around the robot, and preserves private derivation provenance. This exception does not apply to a replaced or moved print, reuse old route approval or authorize motion.
+The final artwork changes source pixels, marker positions, road envelope, building bounds and the Pizza anchor. It therefore has a new version and geometry hash. Explicitly register the actual new print; the unchanged-print route-revision exception cannot reuse the previous sheet's homography. Do not restore prior robot poses, profiles, BASE transforms or pending commands.
 
 ## Shared path contract
 
@@ -50,7 +50,7 @@ python tools/validate_map.py backend/data/seoul-city-a3.json
 python tools/serve.py --map-path backend/data/seoul-city-a3.json --state-path <new-private-workspace.sqlite3>
 ```
 
-Use a new isolated workspace for this print and preserve prior evidence separately. Select the map when starting the web application; the camera helper, Rodi and robot-control API need no restart. Inspect the actual current print and deliberately lock a fresh four-marker view. Do not restore a Little Town reference, route, approval or historical robot command.
+Use dedicated application state for this print and preserve prior evidence. When retaining the current simulation ledger, the map-version/hash checks must invalidate prior plans and discard old display references; no approval or command may resume. Select the map when starting the web application; the camera helper, Rodi and robot-control API need no restart. Inspect the actual current print and deliberately lock a fresh four-marker view. Do not restore a Little Town reference, route, approval or historical robot command.
 
 Check all three destination paths and at least one longer alternative using the same node sequence in Camera and Spatial. Actual native-image MUSE planning remains unapproved simulation; a missing physical car must be disclosed. Confirm fresh camera frames, stable fixed registration, original image bytes, route/stop-line consistency and tablet viewport fit.
 

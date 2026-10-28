@@ -6,11 +6,17 @@
 
 The user replaced the Little Town print with the supplied Seoul City artwork on October 28, confirming nominal A3 landscape. The separate [`seoul-city-a3.json`](../backend/data/seoul-city-a3.json) adapter records the reviewed drawing and exact source hash. It is selected explicitly on GX10; the historical Little Town file/default remains a compatibility fixture. See [City A3 registration](CITY_A3.md) for drawing provenance, intended waypoints and shared Camera/Spatial display correspondence. No drawing establishes robot BASE geometry, measured car pose or a qualified signal region.
 
+## Final A3 print, October 28
+
+Version `2026-10-28.4` binds the installed `PushPilot_map2d_toy_A3_100pct.pdf`: one nominal 420 × 297 mm page and its unchanged 7016 × 4961 JPEG stream. Source PDF/JPEG hashes and native pixel derivation are recorded in the city adapter. The pink rectangle is the nominal Pizza start anchor; all three logical destinations and east-first frontage routes are retained. See [City A3](CITY_A3.md).
+
+This is a replaced physical sheet. Explicitly register a fresh four-marker view and establish a new robot start/installation before further physical motion. Retain camera and persistent Rodi services, the disarmed/held robot API and private historical evidence. No final-map car push, turn or destination is qualified by the drawing update.
+
 ## Spatial-only map definitions
 
 An optional `camera_registration_supported` boolean separates spatial drawing geometry from a camera-registerable print. Omitted or explicitly `true` retains the existing requirement for at least four declared, unique markers and preserves the legacy geometry hash. Explicit `false` joins the geometry hash and permits `markers: []`. The retained `marker_dictionary` names the file format's supported dictionary; it does not claim that physical markers exist or are in use.
 
-The separately supplied 3D asset uses an A2 594 × 420 mm model frame; it is currently a display reference, not the active mission graph. Planning continues to use the separate 400 × 250 mm 2D print until a reviewed replacement is installed. These identities and dimensions must remain distinct. A spatial-only model may supply a validated graph, labels and drawing geometry without guessed marker placements. Its `camera_registration_supported: false` appears in the public map snapshot, planning graph, audit and validation preview. The validation preview warns that live camera registration and live-image planning are unavailable for that candidate.
+The separately supplied 3D asset uses an A2 594 × 420 mm model frame and remains a display reference. Planning now uses the final A3 420 × 297 mm city adapter; the older Little Town 400 × 250 mm print remains a historical fixture. These identities and dimensions must remain distinct. A spatial-only model may supply a validated graph, labels and drawing geometry without guessed marker placements. Its `camera_registration_supported: false` appears in the public map snapshot, planning graph, audit and validation preview. The validation preview warns that live camera registration and live-image planning are unavailable for that candidate.
 
 This flag does not relax graph connectivity, metric drawing lengths, page bounds, signal-target metadata or the requirement for `physical_execution_enabled: false`. It does not install the map, change the current camera source or authorize camera registration. Camera and live-operation endpoints must reject a spatial-only map until an explicitly reviewed camera-compatible definition exists.
 

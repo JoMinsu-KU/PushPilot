@@ -10,7 +10,7 @@ from backend.maps import DEFAULT_MAP, MapDefinition
 
 
 CITY_MAP = Path(__file__).resolve().parents[1] / "backend" / "data" / "seoul-city-a3.json"
-SOURCE_HASH = "87c06c120864965ad85fb4653e375058db28307db40af47ef4c00d29b8368003"
+SOURCE_HASH = "a9e97b298e2e5a0bd572eadde71d263872278768fcab8e424b45df0849acc8ce"
 
 
 class CityA3MapTests(unittest.TestCase):
@@ -21,7 +21,7 @@ class CityA3MapTests(unittest.TestCase):
     def test_replacement_is_separate_nominal_a3_and_preserves_legacy_default(self):
         self.assertEqual(self.definition.id, "seoul-city-a3")
         self.assertEqual(self.data["source"]["sha256"], SOURCE_HASH)
-        self.assertEqual(self.data["source"]["image_size_px"], [2400, 1697])
+        self.assertEqual(self.data["source"]["image_size_px"], [7016, 4961])
         self.assertEqual(self.data["page"], {"width_mm": 420, "height_mm": 297,
                                              "board_origin_page_mm": [0, 0]})
         self.assertEqual([self.data["board"]["width_mm"], self.data["board"]["height_mm"]], [420, 297])
@@ -33,23 +33,37 @@ class CityA3MapTests(unittest.TestCase):
         self.assertNotEqual(self.definition.geometry_hash, legacy.geometry_hash)
         self.assertEqual([legacy.data["board"]["width_mm"], legacy.data["board"]["height_mm"]], [400, 250])
 
+    def test_final_pdf_identity_requires_a_new_view_and_keeps_artwork_private(self):
+        source = self.data["source"]
+        container = source["container_pdf"]
+        self.assertEqual(container["filename"], "PushPilot_map2d_toy_A3_100pct.pdf")
+        self.assertEqual(container["sha256"],
+                         "193e8243ee3e624645dcef4e0c827b70729b9591c4bc7fba26207f5adc59af07")
+        self.assertEqual(container["page_count"], 1)
+        self.assertEqual(container["image_placement"], "full_page_without_crop_or_rotation")
+        self.assertEqual(source["embedded_object"], "/Im0")
+        # The previous sheet's geometry cannot be mistaken for the final PDF.
+        self.assertNotEqual(self.definition.geometry_hash,
+                            "9690544d510f2d69366cae2556e880cd86f0ac09bfae1edebf3eda40e4770a90")
+        self.assertFalse((CITY_MAP.parent / source["filename"]).exists())
+
     def test_declared_markers_convert_exact_source_centers_without_old_offset(self):
-        centers = {10: [72.25, 54], 11: [2326.75, 54],
-                   12: [2326.75, 1642], 13: [72.25, 1642]}
+        centers = {10: [212, 159], 11: [6803, 159],
+                   12: [6803, 4800.5], 13: [212, 4800.5]}
         self.assertEqual(self.data["marker_dictionary"], "DICT_4X4_50")
         self.assertTrue(self.definition.camera_registration_supported)
         self.assertEqual({row["id"] for row in self.data["markers"]}, set(centers))
         for marker in self.data["markers"]:
             expected = centers[marker["id"]]
-            self.assertAlmostEqual(marker["center_mm"][0], expected[0] * 420 / 2400, places=8)
-            self.assertAlmostEqual(marker["center_mm"][1], expected[1] * 297 / 1697, places=8)
-            self.assertEqual(marker["size_mm"], 8.356)
+            self.assertAlmostEqual(marker["center_mm"][0], expected[0] * 420 / 7016, delta=0.0001)
+            self.assertAlmostEqual(marker["center_mm"][1], expected[1] * 297 / 4961, delta=0.0001)
+            self.assertEqual(marker["size_mm"], 8.45)
             self.assertTrue(0 < marker["center_mm"][0] < 420)
             self.assertTrue(0 < marker["center_mm"][1] < 297)
 
     def test_building_names_and_panels_match_user_reference(self):
-        expected = {"VILLA": [347, 349, 1018, 667], "HANOK": [1381, 349, 2050, 667],
-                    "PIZZA": [347, 1030, 1018, 1348], "OFFICE_BUILDING": [1381, 1030, 2050, 1348]}
+        expected = {"VILLA": [1015, 1015, 2976, 1950], "HANOK": [4039, 1015, 6001, 1950],
+                    "PIZZA": [1015, 3011, 2976, 3947], "OFFICE_BUILDING": [4039, 3011, 6001, 3947]}
         self.assertEqual(self.data["start"], "PIZZA")
         self.assertEqual(set(self.data["destinations"]), {"VILLA", "HANOK", "OFFICE_BUILDING"})
         self.assertEqual({row["id"]: row["label"] for row in self.data["nodes"] if row["kind"] == "destination"},
@@ -58,31 +72,40 @@ class CityA3MapTests(unittest.TestCase):
         for panel in self.data["building_panels"]:
             pixels = expected[panel["id"]]
             for index, value in enumerate(panel["bounds_mm"]):
-                self.assertAlmostEqual(value, pixels[index] * ([420 / 2400, 297 / 1697][index % 2]), places=8)
+                self.assertAlmostEqual(value, pixels[index] * ([420 / 7016, 297 / 4961][index % 2]), places=8)
         self.assertFalse({"BAKERY", "BOOKSTORE", "SCHOOL"} & {row["id"] for row in self.data["nodes"]})
 
     def test_start_is_in_front_of_the_south_facing_pizza_storefront(self):
         pizza = next(row for row in self.data["nodes"] if row["id"] == "PIZZA")
         panel = next(row for row in self.data["building_panels"] if row["id"] == "PIZZA")
-        self.assertEqual(self.data["version"], "2026-10-28.3")
-        self.assertEqual(self.data["source"]["geometry_derivation"]["place_waypoints_px"]["PIZZA"], [534, 1472])
-        self.assertEqual(pizza["x_mm"], 534 * 420 / 2400)
-        self.assertAlmostEqual(pizza["y_mm"], 1472 * 297 / 1697, places=8)
+        self.assertEqual(self.data["version"], "2026-10-28.4")
+        self.assertEqual(self.data["source"]["geometry_derivation"]["place_waypoints_px"]["PIZZA"], [1600, 4299.5])
+        self.assertAlmostEqual(pizza["x_mm"], 1600 * 420 / 7016, places=8)
+        self.assertAlmostEqual(pizza["y_mm"], 4299.5 * 297 / 4961, places=8)
         self.assertGreater(pizza["y_mm"], panel["bounds_mm"][3])
         # The blue storefront occupies the west side of the Pizza/park panel.
         self.assertLess(pizza["x_mm"], (panel["bounds_mm"][0] + panel["bounds_mm"][2]) / 2)
 
+    def test_pink_start_box_is_a_drawing_anchor_rather_than_a_vehicle_measurement(self):
+        area = self.data["source"]["geometry_derivation"]["printed_start_area"]
+        self.assertEqual(area["bounds_px_xyxy"], [1056, 3980, 2144, 4619])
+        x0, y0, x1, y1 = area["bounds_px_xyxy"]
+        self.assertEqual(area["center_px"], [(x0 + x1) / 2, (y0 + y1) / 2])
+        self.assertIn("not an observed car pose", area["meaning"])
+        self.assertFalse(self.definition.planning_context()["declared_start"]["measured_pose"])
+        self.assertFalse(self.data["physical_execution_enabled"])
+
     def test_all_destination_waypoints_are_on_their_south_frontage_roads(self):
-        expected = {"VILLA": [682.5, 848.5], "HANOK": [1715.5, 848.5],
-                    "OFFICE_BUILDING": [1715.5, 1472], "PIZZA": [534, 1472]}
+        expected = {"VILLA": [1995.5, 2480.5], "HANOK": [5020, 2480.5],
+                    "OFFICE_BUILDING": [5020, 4299.5], "PIZZA": [1600, 4299.5]}
         waypoints = self.data["source"]["geometry_derivation"]["place_waypoints_px"]
         nodes = {row["id"]: row for row in self.data["nodes"]}
         panels = {row["id"]: row["bounds_mm"] for row in self.data["building_panels"]}
         for identifier, point in expected.items():
             self.assertEqual(waypoints[identifier], point)
             node = nodes[identifier]
-            self.assertAlmostEqual(node["x_mm"], point[0] * 420 / 2400, places=8)
-            self.assertAlmostEqual(node["y_mm"], point[1] * 297 / 1697, places=8)
+            self.assertAlmostEqual(node["x_mm"], point[0] * 420 / 7016, places=8)
+            self.assertAlmostEqual(node["y_mm"], point[1] * 297 / 4961, places=8)
             self.assertGreater(node["y_mm"], panels[identifier][3])
             self.assertTrue(panels[identifier][0] < node["x_mm"] < panels[identifier][2])
         self.assertEqual(nodes["VILLA"]["y_mm"], nodes["C"]["y_mm"])
@@ -120,10 +143,10 @@ class CityA3MapTests(unittest.TestCase):
         route = self.definition.route_from_nodes("OFFICE_BUILDING", self.definition.route("OFFICE_BUILDING")["node_ids"])
         self.assertEqual(route["node_ids"], ["PIZZA", "S", "OFFICE_BUILDING"])
         self.assertNotIn("C", route["node_ids"])
-        self.assertAlmostEqual(route["distance_mm"], 206.7625)
+        self.assertAlmostEqual(route["distance_mm"], (5020 - 1600) * 420 / 7016)
         self.assertEqual(route["junction_ids"], ["S"])
         points = [point for segment in route["visualization"]["segments"] for point in segment["points_mm"]]
-        self.assertTrue(all(point[1] == 257.621685327 for point in points))
+        self.assertTrue(all(math.isclose(point[1], 4299.5 * 297 / 4961, abs_tol=1e-8) for point in points))
         self.assertEqual([point[0] for point in points], sorted(point[0] for point in points))
         first = route["directions"]["maneuvers"][0]
         self.assertEqual((first["node_id"], first["turn"], first["outgoing_direction"]), ("S", "straight", "east"))
@@ -204,9 +227,9 @@ class CityA3MapTests(unittest.TestCase):
     def test_main_junction_display_stops_before_crosswalk_at_yellow_line(self):
         center = next(row for row in self.data["nodes"] if row["id"] == "C")
         self.assertEqual(center["junction_size_mm"], 99)
-        self.assertEqual(center["road_width_mm"], 63.525)
+        self.assertEqual(center["road_width_mm"], 63.7)
         self.assertEqual(self.data["board"]["junction_size_mm"], 42)
-        self.assertEqual(self.data["board"]["road_width_mm"], 42.175)
+        self.assertEqual(self.data["board"]["road_width_mm"], 42.4)
         for destination in ("VILLA", "HANOK"):
             route = self.definition.route(destination)
             main = next(row for row in route["visualization"]["junctions"] if row["node_id"] == "C")
@@ -214,10 +237,11 @@ class CityA3MapTests(unittest.TestCase):
             self.assertEqual(route["node_ids"][route["node_ids"].index("C") - 1], "S")
             self.assertEqual(main["stop_point_mm"][0], center["x_mm"])
             self.assertAlmostEqual(main["stop_point_mm"][1], 198)
-            self.assertAlmostEqual(math.dist(*main["stop_line_mm"]), 63.525)
-            self.assertAlmostEqual(main["stop_point_mm"][1], 1131.5 * 297 / 1697, delta=0.1)
-            # The south crosswalk ends before source y1110; stop on its south side.
-            self.assertGreater(main["stop_point_mm"][1], 1110 * 297 / 1697)
+            self.assertAlmostEqual(math.dist(*main["stop_line_mm"]), 63.7)
+            self.assertAlmostEqual(main["stop_point_mm"][1], 3306.5 * 297 / 4961, delta=0.1)
+            # The south yellow bar starts at y3272; the stop lies inside that printed band.
+            self.assertGreater(main["stop_point_mm"][1], 3272 * 297 / 4961)
+            self.assertLess(main["stop_point_mm"][1], 3342 * 297 / 4961)
         data = self.definition.data
         c = next(row for row in data["nodes"] if row["id"] == "C")
         c["junction_size_mm"] = 98
@@ -228,7 +252,7 @@ class CityA3MapTests(unittest.TestCase):
         self.assertEqual(preview["schema_version"], "pushpilot.spatial-preview.v1")
         self.assertEqual(preview["model_id"], "pushpilot-seoul-city-web-clean-roads")
         self.assertEqual(preview["model_sha256"], "f5fb0b2524d6bee45f5b939f121b29d5eac274ea34e670895dada3a2b70b39d7")
-        self.assertEqual(preview["drawing_rect_mm"], [39.6375, 40.3408956982911, 379.925, 257.6216853270477])
+        self.assertEqual(preview["drawing_rect_mm"], [39.539623717, 39.542128603, 380.340649943, 257.398004435])
         self.assertEqual(preview["model_rect_xz"], [-236, -149, 236, 149])
         self.assertEqual(preview["elevation"], 2)
         self.assertEqual(preview["alignment"], "drawing_correspondence")
