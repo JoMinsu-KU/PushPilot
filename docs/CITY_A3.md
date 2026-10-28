@@ -39,3 +39,11 @@ Use a new isolated workspace for this print and preserve prior evidence separate
 Check all three destination paths and at least one longer alternative using the same node sequence in Camera and Spatial. Actual native-image MUSE planning remains unapproved simulation; a missing physical car must be disclosed. Confirm fresh camera frames, stable fixed registration, original image bytes, route/stop-line consistency and tablet viewport fit.
 
 Live registration failures now preserve their specific error code/message so `view_changed` does not masquerade as a revision conflict. A real revision conflict still requires refreshing the workspace. Neither condition triggers automatic re-registration, provider fallback or robot movement.
+
+## Verified rollout, October 28
+
+The isolated GX10 release `20261028-city-a3-88331e6` serves this selected adapter. Actual unchanged native-camera MUSE requests accepted Villa, Hanok, Office Building and a longer northern/eastern Office route. A new four-marker city reference replaced the prior-map display setup; the final web-only update explicitly resumed that exact current-city transform and requested a fresh MUSE plan. All plans remain unapproved simulation. No physical car was visible.
+
+The initial 24-frame marker check and 24 post-lock checks passed. A final 60-frame window retained the exact transform throughout: 59 `locked` frames and one `locked_partial` frame with three visible markers. Camera and Spatial rendered the same ten selected route segments and four junction stop geometries. Both views fit 1194 × 834, 1366 × 1024 and 1024 × 768 browser viewports without vertical overflow; the bounded route dialog also fit the smallest size. Nominal distances are rounded only in UI copy, and step headings use the selected map's display names.
+
+Python suites passed 431 tests locally and on GX10; the final frontend passed 59 tests and its production build. The camera helper, Rodi and robot-control API were not restarted. See the scoped [machine-readable verification](evidence/city-a3-20261028.json). These short display/planning checks do not establish long-run recognition rates, iPad Safari hardware behavior, physical coordinates, paper-signal recognition or robot motion.

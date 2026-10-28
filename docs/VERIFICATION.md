@@ -2,6 +2,25 @@
 
 Initial software verification on **2026-10-27, Asia/Seoul**; the GX10 deployment follow-up on **2026-10-28** is recorded below. This record covers replaceable-map live-image planning, bound native-image action/signal services, finite voice uploads, execution-aware route display, recorded reviews and native preview. Execution remains simulated; this is not a physical mission report.
 
+## City A3 replacement, October 28
+
+The placed nominal A3 landscape city print now has a separate selected adapter, `seoul-city-a3`, and an isolated GX10 workspace/release. This follow-up supersedes the older active-map, helper-only deployment and untested alternative-route statuses below; historical records retain their original evidence scope. [City A3 implementation](CITY_A3.md) and the [scoped verification record](evidence/city-a3-20261028.json) contain the geometry identity and limits.
+
+| Current check | Observed result |
+|---|---|
+| Python suites | 431 passed locally and on GX10 ARM64; final UI polish leaves backend source unchanged |
+| Final frontend | 59 tests passed; TypeScript/Vite production build passed |
+| Actual replacement print | Initial 24 native frames all fitted four markers; 24 post-lock checks passed |
+| Final fixed-reference window | 60 distinct frames: 59 locked, one three-marker partial; exact homography retained throughout, no automatic refit |
+| Actual MUSE image/graph planning | Villa, Hanok, Office and northern/eastern Office alternative accepted; repeated outer route accepted after final web-only restart |
+| Camera/Spatial correspondence | Same ten canonical route segments/phases, arrows and four junction stop geometries; authored display correspondence only |
+| Browser fit | Camera and Spatial fit 1194 × 834, 1366 × 1024 and 1024 × 768 without vertical page overflow; paged route dialog fits 1024 × 768 |
+| Existing runtime | Camera epoch and robot-control process retained; no camera/Rodi restart or robot movement |
+
+The current plan is unapproved simulation, and no physical car was visible in these planning requests. Print scale, board-to-BASE/contact geometry, pushing/turning/stopping, reviewed paper-signal targets and actual MUSE signal classification remain separate physical checks. Tablet-sized browser verification is not an independent iPad Safari hardware test.
+
+## Initial software checks, October 27
+
 | Check | Result | Boundary |
 |---|---|---|
 | `python tools/dev.py check` | Passed | Python and JSON source syntax; no credentials loaded |

@@ -1,0 +1,105 @@
+{
+  "schema": "pushpilot.city-a3-verification.v1",
+  "date": "2026-10-28",
+  "timezone": "Asia/Seoul",
+  "source_commit": "88331e6c6e0385b0d48aec74128226b2089fddd6",
+  "map_implementation_commit": "6ab5a92bb6cd6fc598089e3c91a161de6f720f91",
+  "release": "20261028-city-a3-88331e6",
+  "map": {
+    "id": "seoul-city-a3",
+    "version": "2026-10-28.1",
+    "geometry_hash": "3a158a015f9703b0f3c7afa1364405d1bcc598704d6934066627a18657a10a02",
+    "nominal_page_mm": [420, 297],
+    "printer_scale_independently_measured": false,
+    "start": "PIZZA",
+    "destinations": ["VILLA", "HANOK", "OFFICE_BUILDING"]
+  },
+  "software_checks": {
+    "local_python_tests_passed": 431,
+    "gx10_arm64_python_tests_passed": 431,
+    "python_test_source_commit": "6ab5a92bb6cd6fc598089e3c91a161de6f720f91",
+    "final_ui_release_backend_source_unchanged": true,
+    "frontend_tests_passed": 59,
+    "typescript_and_vite_build": "passed",
+    "final_gx10_source_check": "passed",
+    "final_gx10_dependency_consistency": "passed",
+    "equipment_contacted_by_software_tests": false
+  },
+  "actual_print_registration": {
+    "input": "unchanged_native_1920x1080_jpeg",
+    "initial_check": {
+      "distinct_frames": 24,
+      "all_frames_marker_ids": [10, 11, 12, 13],
+      "valid_fits": 24,
+      "maximum_image_fit_residual_px": 1.1162
+    },
+    "after_explicit_new_map_lock": {
+      "samples": 24,
+      "locked": 24,
+      "maximum_image_fit_residual_px": 1.1862
+    },
+    "final_web_release_check": {
+      "distinct_frames": 60,
+      "locked": 59,
+      "locked_partial": 1,
+      "partial_frame_marker_ids": [10, 12, 13],
+      "maximum_image_fit_residual_px": 1.4797,
+      "exact_fixed_homography_retained_in_all_frames": true,
+      "automatic_refits": 0,
+      "view_changed_samples": 0,
+      "current_city_reference_explicitly_resumed_after_web_restart": true
+    },
+    "scope": "Short observed display-registration windows; not long-duration recognition accuracy, metric calibration or physical car localization."
+  },
+  "actual_muse_planning": {
+    "model": "muse-spark-1.3",
+    "prompt_version": "pushpilot.live-route.prompt.v2",
+    "result_schema": "pushpilot.live-route.result.v1",
+    "input_scope": "live_native_frame_and_graph",
+    "cases": [
+      {"destination": "VILLA", "http_status": 200, "seconds": 6.70, "node_ids": ["PIZZA", "C", "N", "VILLA"]},
+      {"destination": "HANOK", "http_status": 200, "seconds": 5.52, "node_ids": ["PIZZA", "C", "N", "HANOK"]},
+      {"destination": "OFFICE_BUILDING", "http_status": 200, "seconds": 4.26, "node_ids": ["PIZZA", "C", "OFFICE_BUILDING"]},
+      {"destination": "OFFICE_BUILDING", "constraint": "north_and_east_outer_roads", "http_status": 200, "seconds": 4.01, "node_ids": ["PIZZA", "C", "N", "HANOK", "NE", "E", "OFFICE_BUILDING"]}
+    ],
+    "post_ui_restart_same_outer_route_recheck": "HTTP_200_PLAN_READY",
+    "all_results_approved": false,
+    "simulation_only": true,
+    "motion_authority": false,
+    "physical_car_visible": false,
+    "scope": "Image/graph-grounded symbolic-start route planning; no action review or paper-signal classification."
+  },
+  "deployed_browser_checks": {
+    "browser": "Codex in-app browser",
+    "camera_and_spatial_share_exact_segment_ids_and_phases": true,
+    "long_route_segments_compared": 10,
+    "junction_stop_geometries_compared": 4,
+    "same_direction_arrows_and_stop_geometry": true,
+    "spatial_correspondence": "drawing_correspondence_display_only",
+    "camera_perspective_and_original_pixels_preserved": true,
+    "existing_glass_material_layout_and_pretendard_preserved": true,
+    "nominal_distance_rounded_for_display_only": true,
+    "steps_use_selected_map_display_labels": true,
+    "camera_and_spatial_workspace_viewports_without_vertical_overflow": [[1194, 834], [1366, 1024], [1024, 768]],
+    "route_plan_dialog_check": {"viewport": [1024, 768], "client_height": 689, "scroll_height": 689, "paging_available": true},
+    "observed_console_warnings_or_errors": 0,
+    "independent_ipad_safari_hardware_test": false
+  },
+  "operational_preservation": {
+    "old_little_town_workspace_and_adapter_preserved": true,
+    "old_map_plan_or_reference_migrated": false,
+    "old_robot_profile_or_command_replayed": false,
+    "camera_epoch_retained": true,
+    "camera_helper_restarted": false,
+    "rodi_restarted": false,
+    "robot_control_api_process_retained": true,
+    "robot_motion_issued": false
+  },
+  "remaining_physical_checks": [
+    "Measured print scale and fixtures",
+    "Board-to-BASE and tool/contact geometry",
+    "Physical pushing, contact turning and stopping qualification",
+    "Reviewed approach-specific paper-signal target and actual MUSE color tests"
+  ],
+  "private_evidence": "Original images, detailed activation receipts, provider records and operating identities remain outside Git."
+}
