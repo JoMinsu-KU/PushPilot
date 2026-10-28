@@ -71,8 +71,7 @@ function CameraFrame({ scene, route, map, focused, display, live = false, fresh 
       </g>
     </svg>
     {livePresentation ? livePresentation.alerts.map(alert => <div key={alert.kind} className={`overlay-inhibition${alert.kind === 'view_changed' ? '' : alert.kind === 'marker_disagreement' ? ' partial live-warning' : ' live-warning'}`}><Icon name={alert.kind === 'view_changed' ? 'shield' : alert.kind === 'stale' ? 'clock' : 'eye'} size={17}/>{alert.message}</div>)
-      : scene.registration.status === 'view_changed' ? <div className="overlay-inhibition"><Icon name="shield" size={17}/>View changed. The previous overlay is hidden.</div>
-      : scene.registration.status === 'locked_partial' && <div className="overlay-inhibition partial"><Icon name="eye" size={17}/>{scene.detection.marker_ids.filter(id => map?.markers.some(marker => marker.id === id)).length}/{map?.markers.length ?? 4} markers detected · fixed mapping retained.</div>}
+      : scene.registration.status === 'view_changed' && <div className="overlay-inhibition"><Icon name="shield" size={17}/>View changed. The previous overlay is hidden.</div>}
     {matchesMap && !overlayAllowed && scene.registration.status !== 'view_changed' && (!live || fresh) && <div className="overlay-note">{candidate ? `Lock the ${live ? 'live' : 'test'} view to project the planned route.` : 'Route overlay requires a valid locked test registration.'}</div>}
   </div>;
 }
@@ -309,7 +308,7 @@ export function MapScene({ workspace, readOnly = false, onSnapshot, onPreviewSou
     && ['candidate', 'view_changed'].includes(liveScene.registration.status) && !active && !readOnly && !lockingLive);
   const resumeAvailable = Boolean(live.status?.saved_reference_available && changedLiveScene?.registration.status === 'unregistered');
   const canResumeLive = Boolean(usingLive && liveScene?.frame && liveFresh && resumeAvailable && !active && !readOnly && !lockingLive);
-  const liveRegistrationLabel = liveCameraPresentation(changedLiveScene, map, liveFresh).label;
+  const livePresentation = liveCameraPresentation(changedLiveScene, map, liveFresh);
   const previewSourceLabel = view === 'spatial' ? 'Spatial city preview' : usingLive
     ? liveScene?.frame ? liveFresh ? 'Live camera' : 'Live camera · stale' : 'Live camera · connecting'
     : scene?.frame ? scene.frame.source === 'recorded' ? 'Recorded image' : 'Uploaded image' : 'No image';
@@ -347,7 +346,7 @@ export function MapScene({ workspace, readOnly = false, onSnapshot, onPreviewSou
     </div>
     <div className={`scene-source-plate ${usingLive && view === 'camera' ? liveFresh ? 'live-source' : 'stale-source' : ''}`}>
       <span className="scene-source-dot"/>
-      <div><strong>{view === 'spatial' ? 'Spatial city preview' : usingLive ? liveScene?.frame ? `Live camera${liveFresh ? '' : ' · STALE'} · ${Number.isFinite(liveAge) ? `${(liveAge / 1000).toFixed(1)} s` : 'age unknown'}` : 'Live camera · connecting' : scene?.frame ? `${scene.frame.source === 'recorded' ? 'Recorded' : 'Uploaded'} camera frame` : 'Camera not connected'}</strong><span>{view === 'spatial' ? routeDisplay ? cityPreviewLabel(cityPreviewFit(map)) : 'City model · awaiting a 2D plan' : usingLive ? `${hasBoardMask ? 'Board focus' : 'Full frame'} · ${liveRegistrationLabel}` : hasBoardMask ? 'Board focus · background masked' : scene?.frame ? `${scene.frame.width} × ${scene.frame.height} · full frame` : 'Load a recorded image to inspect the scene'}</span></div>
+      <div><strong>{view === 'spatial' ? 'Spatial city preview' : usingLive ? liveScene?.frame ? `Live camera${liveFresh ? '' : ' · STALE'} · ${Number.isFinite(liveAge) ? `${(liveAge / 1000).toFixed(1)} s` : 'age unknown'}` : 'Live camera · connecting' : scene?.frame ? `${scene.frame.source === 'recorded' ? 'Recorded' : 'Uploaded'} camera frame` : 'Camera not connected'}</strong><span title={view === 'camera' && usingLive ? livePresentation.detail : undefined}>{view === 'spatial' ? routeDisplay ? cityPreviewLabel(cityPreviewFit(map)) : 'City model · awaiting a 2D plan' : usingLive ? `${hasBoardMask ? 'Board focus' : 'Full frame'} · ${livePresentation.label}` : hasBoardMask ? 'Board focus · background masked' : scene?.frame ? `${scene.frame.width} × ${scene.frame.height} · full frame` : 'Load a recorded image to inspect the scene'}</span></div>
       {view === 'spatial' ? <span className="live-motion-note"><Icon name="eye" size={14}/>Preview only</span> : usingLive && view === 'camera' && (resumeAvailable || ['candidate', 'view_changed'].includes(liveScene?.registration.status ?? ''))
         ? <button className="live-lock-button" disabled={!(resumeAvailable ? canResumeLive : canLockLive)} onClick={() => void lockLiveView(resumeAvailable)} title={resumeAvailable ? 'Explicitly reuse the saved fixed display mapping after server validation. No refit.' : active ? 'Lock a live view during mission preparation.' : 'Explicitly lock the current live camera-to-board test mapping.'}><Icon name="check" size={14}/>{lockingLive ? 'Checking…' : resumeAvailable ? 'Resume fixed view' : 'Lock live view'}</button>
         : usingLive && view === 'camera' ? <span className="live-motion-note" title="Live preview and its test mapping have no robot motion authority."><Icon name="shield" size={14}/>Preview only</span>

@@ -18,17 +18,21 @@ const snapshot = (status = 'locked', ids = [10, 11, 12, 13], verification = 'vis
   registration: { id: 'fixed-view', status, homography, verification },
 });
 
-test('intermittent marker visibility updates the compact diagnostic without changing the fixed camera presentation', () => {
+test('expected covers of one through all four markers keep the main presentation quiet and fixed', () => {
   const complete = snapshot();
   const originalBounds = recordedDisplay(complete, map, true);
-  for (const [observed, label] of [
-    [complete, 'Fixed mapping · 4/4 markers'],
-    [snapshot('locked_partial', [10, 13]), 'Fixed mapping · 2/4 markers'],
-    [snapshot('locked_occluded', [], 'insufficient_visibility'), 'Alignment unverified · 0/4 markers'],
-    [snapshot(), 'Fixed mapping · 4/4 markers'],
+  for (const [observed, count] of [
+    [complete, 4],
+    [snapshot('locked_partial', [11, 12, 13]), 3],
+    [snapshot('locked_partial', [10, 13]), 2],
+    [snapshot('locked_occluded', [13], 'insufficient_visibility'), 1],
+    [snapshot('locked_occluded', [], 'insufficient_visibility'), 0],
+    [snapshot(), 4],
   ]) {
     const presentation = liveCameraPresentation(observed, map, true);
-    assert.equal(presentation.label, label);
+    assert.equal(presentation.label, 'Fixed mapping');
+    assert.match(presentation.detail, new RegExp(`^${count}/4 markers visible\\.`));
+    if (count < 2) assert.match(presentation.detail, /current alignment is unverified/);
     assert.deepEqual(presentation.alerts, [], 'expected visibility changes must not flash a full-width warning');
     assert.equal(liveOverlayAllowed(observed, route, map, true), true);
     assert.deepEqual(recordedDisplay(observed, map, true), originalBounds, 'the same original-pixel board viewport stays fixed');
@@ -40,7 +44,8 @@ test('intermittent marker visibility updates the compact diagnostic without chan
 test('contradictory visible evidence remains prominent while retaining the truthful detected-marker count', () => {
   const observed = snapshot('locked_occluded', [10, 11], 'marker_disagreement');
   const presentation = liveCameraPresentation(observed, map, true);
-  assert.equal(presentation.label, 'Alignment conflict · 2/4 markers');
+  assert.equal(presentation.label, 'Alignment conflict');
+  assert.match(presentation.detail, /^2\/4 markers visible\. Visible evidence conflicts/);
   assert.deepEqual(presentation.alerts.map(alert => alert.kind), ['marker_disagreement']);
   assert.match(presentation.alerts[0].message, /markers disagree/);
 });
@@ -57,7 +62,8 @@ test('stale pixels and a newly withdrawn view still show large alerts and cannot
   assert.deepEqual(liveCameraPresentation(changed, map, false).alerts.map(alert => alert.kind), ['view_changed', 'stale']);
 });
 
-test('the compact diagnostic counts only distinct known markers rather than unrelated detections', () => {
-  assert.equal(liveCameraPresentation(snapshot('locked_partial', [10, 10, 13, 49]), map, true).label,
-    'Fixed mapping · 2/4 markers');
+test('the on-demand diagnostic counts only distinct known markers rather than unrelated detections', () => {
+  const presentation = liveCameraPresentation(snapshot('locked_partial', [10, 10, 13, 49]), map, true);
+  assert.equal(presentation.label, 'Fixed mapping');
+  assert.match(presentation.detail, /^2\/4 markers visible\./);
 });
