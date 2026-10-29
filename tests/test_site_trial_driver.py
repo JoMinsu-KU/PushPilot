@@ -12,7 +12,8 @@ from unittest.mock import patch
 
 from backend.robot_control.coordinate_units import CoordinateBinding
 from backend.robot_control.mission_catalog import content_hash
-from backend.robot_control.mission_policy import SiteBinding
+from backend.robot_control.mission_policy import SiteBinding, MissionPolicy, Phase, DecisionKind
+from backend.robot_control.mission_profile import resolve_wrist_descriptor
 from backend.robot_control.site_trial_driver import SiteTrialMissionDriver, packet_primitive
 from backend.robot_control.taught_executor import ExecutionBlocked, Frame, MotionReceipt
 from backend.robot_control.taught_ports import PrivateJournal
@@ -270,7 +271,7 @@ class SiteTrialTests(unittest.TestCase):
                 driver, _ = self.driver(edit=edit)
                 ready = driver.readiness()
                 self.assertFalse(ready["ready"])
-                self.assertIn("PHYSICAL_CONFIGURATION_INVALID", ready["reasons"])
+                self.assertIn("PHYSICAL_CONFIGURATION_INVALID", ready["reasons"], ready)
                 self.assertIsNone(driver.ports)
 
     def test_wrong_route_never_opens_profile_or_motion_commands(self):
@@ -340,6 +341,53 @@ class SiteTrialTests(unittest.TestCase):
         self.assertFalse(driver.readiness()["ready"])
         self.assertIsNone(driver.ports)
         self.assertIn("artifact changed", driver._configuration_error)
+
+    def test_return_wrist_chain_uses_clear_posture_contexts_without_assuming_initial_start_clear(self):
+        def edit(config, packet, supplied):
+            east_park = packet["contexts"]["PARK"]["pose_base"]
+            north_park = propose_wrist_turn(east_park, JOINTS, 89.999)["target_pose"]
+            north_start = [*SOURCE[:3], *north_park[3:]]
+            packet["contexts"].update(NORTH_PARK={"pose_base": north_park, "tool_clear": True},
+                                      NORTH_START={"pose_base": north_start, "tool_clear": True})
+            packet["primitives"]["return"].update(source_context_id="NORTH_PARK", target_context_id="NORTH_START")
+            packet["primitives"]["return"]["stages"][0].update(start_base=north_park, target_base=north_start)
+            for pid, source, target, first, last in (
+                    ("return-turn", "PARK", "NORTH_PARK", east_park, north_park),
+                    ("restore", "NORTH_START", "START", north_start, list(SOURCE))):
+                packet["primitives"][pid] = {"id": pid, "kind": "wrist_edge", "source_context_id": source,
+                    "target_context_id": target, "empty_tool": True,
+                    "expected_visual": "The delivered car remains at its destination during unloaded orientation restoration.",
+                    "stages": [{"id": pid, "phase": "wrist", "start_base": first, "target_base": last}]}
+            packet["routes"]["B"]["empty_return"] = ["return-turn", "return", "restore"]
+            config["wrist_intents"] = {"return-turn": wrist_intent(),
+                "restore": {**wrist_intent(), "edge_id": "restore", "delta_j6_deg": -89.999}}
+            supplied["unloaded_wrist_authorized"] = True
+            supplied["wrist_descriptor_sha256s"] = [content_hash(v) for v in config["wrist_intents"].values()]
+            supplied["allowed_geometry_sha256"] = [packet_primitive(row, config["packet"]).geometry_sha256
+                for row in packet["primitives"].values()]
+        driver, request = self.driver(edit=edit)
+        plan = driver.prepare(request)
+        self.assertFalse(driver.context().tool_clear)
+        driver.execute("push", "delivery-before-return")
+        policy = MissionPolicy(plan)
+        state = replace(policy.initial_state(driver.context().session_id), phase=Phase.RETURNING,
+                        start_verified=True, vehicle_delivered=True)
+        for number, primitive in enumerate(plan.empty_return):
+            context = driver.context()
+            self.assertTrue(context.tool_clear)
+            decision = policy.decide(state, context, command_id="return-test-" + str(number))
+            self.assertEqual(decision.kind, DecisionKind.DISPATCH, decision.reason)
+            if primitive.id in driver.config["wrist_intents"]:
+                snapshot = driver._snapshot()
+                driver.raw_api.wrist = resolve_wrist_descriptor(driver.measured[primitive.id], driver.profile_review,
+                    snapshot.tcp_base, snapshot.joints_deg, driver.config["wrist_intents"][primitive.id])
+            receipt = driver.execute(decision.primitive_id, decision.command_id)
+            state = policy.accept_receipt(decision.state, receipt)
+        context = driver.context()
+        self.assertEqual(context.context_id, "START")
+        self.assertFalse(context.tool_clear)
+        self.assertEqual(policy.decide(state, context).kind, DecisionKind.COMPLETE)
+        self.assertFalse(driver.config["contexts"]["START"]["tool_clear"])
 
     def test_active_or_stopped_plan_and_unresolved_journal_cannot_be_replaced_by_reload(self):
         driver, request = self.driver()

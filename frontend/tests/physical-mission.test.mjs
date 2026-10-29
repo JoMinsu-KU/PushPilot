@@ -243,3 +243,18 @@ test('current-site testing is explicitly labeled and grants no route capability'
   assert.equal(physicalModeLabel(status({ capabilities: { release_mode: 'qualified' } })), 'Robot');
   assert.throws(() => parsePhysicalStatus(status({ capabilities: { release_mode: 'pretend_ready' } })));
 });
+
+test('pending initial physical status leaves all execution surfaces unavailable despite completed simulator data', () => {
+  const w = workspace();
+  Object.assign(w, { current_step: 42, progress: { completed: 42, total: 42 },
+    review: { source: 'demo', verdict: 'PASS' }, signal: { source: 'simulation', color: 'GREEN' },
+    events: [{ title: 'Simulated arrival', source: 'simulation' }] });
+  const actual = physicalTelemetry(null, w, false);
+  assert.equal(actual, null);
+  assert.equal(physicalProgress(null, actual), null);
+  assert.deepEqual(physicalRouteContext(actual).steps, []);
+  assert.equal(physicalReviewLabel(null, actual, false), 'Review unavailable');
+  assert.equal(physicalSignalLabel(null, false), 'Status unavailable');
+  assert.equal(physicalTitle(null, false), 'Robot status unavailable');
+  assert.throws(() => physicalStartCommand(w, null, 'unavailable-start'));
+});

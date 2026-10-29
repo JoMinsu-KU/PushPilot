@@ -54,7 +54,8 @@ export function App() {
   const [localVisionRequest, setLocalVisionRequest] = useState<'plan' | 'car' | 'signal' | null>(null);
   const [imageToolsRequest, setImageToolsRequest] = useState(0);
   const physical = usePhysicalMission();
-  const [executionMode, setExecutionMode] = useState<ExecutionMode>('simulation');
+  // An unavailable first status must not opt the tablet into simulated data.
+  const [executionMode, setExecutionMode] = useState<ExecutionMode>('physical');
   const [physicalBusy, setPhysicalBusy] = useState(false);
   const [physicalUnconfirmed, setPhysicalUnconfirmed] = useState<'start' | 'stop' | null>(null);
   const modeChosen = useRef(false);
