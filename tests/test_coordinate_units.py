@@ -6,7 +6,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from backend.robot_control.coordinate_units import CoordinateBinding, CoordinateStage, CoordinateUnit, CoordinateUnitExecutor, CoordinateUnitReview
+from backend.robot_control.coordinate_units import CoordinateBinding, CoordinateStage, CoordinateUnit, CoordinateUnitExecutor, CoordinateUnitReview, validate_normal_disengagement
 from backend.robot_control.taught_executor import ExecutionBlocked
 from tests.test_taught_executor import SyntheticPorts, configuration, pose, right_signal_target
 from tools.run_coordinate_unit import load_unit, main, unit_geometry
@@ -214,6 +214,23 @@ class CoordinateUnitTests(unittest.TestCase):
         failures = [payload for kind, payload in self.ports.events if kind == "coordinate_unit_interrupted"]
         self.assertEqual(failures[-1]["error_code"], "UNIT_STAGE_LIMIT")
 
+    def test_normal_backoff_precedes_lateral_observation_without_force_claim(self):
+        result = validate_normal_disengagement(unit(), (1., 0.), 5.)
+        self.assertTrue(result["normal_backoff_geometry_verified"])
+        self.assertFalse(result["physical_contact_release_verified"])
+        self.assertEqual(result["last_normal_stage_id"], "disengage")
+        for normal, release in [((0., 1.), 5.), ((1., 0.), 10.), ((2., 0.), 5.), ((0., 0.), 5.)]:
+            with self.subTest(normal=normal, release=release), self.assertRaises(ValueError):
+                validate_normal_disengagement(unit(), normal, release)
+
+    def test_lateral_drag_candidate_is_rejected_before_normal_clearance(self):
+        original = unit()
+        lateral = replace(original, stages=(*original.stages[:2],
+            CoordinateStage("side", "withdraw", pose(20), pose(20, 5), "c"*64),
+            CoordinateStage("late-release", "withdraw", pose(20, 5), pose(15, 5), "d"*64)))
+        with self.assertRaises(ValueError):
+            validate_normal_disengagement(lateral, (1., 0.), 5.)
+
     def test_cli_preserves_primary_guard_code_when_hold_also_fails(self):
         from contextlib import redirect_stderr
         from io import StringIO
@@ -305,6 +322,32 @@ class CoordinateUnitTests(unittest.TestCase):
             (root/"target.json").write_text("{}"); path.write_text(json.dumps(bundle))
             with self.assertRaises(ValueError):
                 load_unit(path)
+
+    def test_loader_enforces_hashed_normal_backoff_policy(self):
+        with TemporaryDirectory() as folder:
+            root = Path(folder)
+            binding = CoordinateBinding(self.adapter.map_id, self.adapter.map_version, self.adapter.map_hash,
+                self.adapter.tcp_definition_sha256, self.adapter.tool_id, self.adapter.car_id, self.adapter.surface_id)
+            for clearance in (5., 10.):
+                planned = unit()
+                review = {"schema": "pushpilot.operator-coordinate-unit-review.v1", "source": "operator",
+                          "on_site_review": True, "experimental_contact_authorized": True,
+                          "operator_instruction_reference": "Synthetic face-normal backoff fixture; no hardware authority.",
+                          "binding": asdict(binding), "unit_geometry": unit_geometry(planned),
+                          "normal_disengagement": {"contact_normal_base_xy": [1., 0.], "minimum_release_mm": clearance}}
+                raw = json.dumps(review).encode()
+                (root/"review.json").write_bytes(raw)
+                digest = hashlib.sha256(raw).hexdigest()
+                planned = replace(planned, stages=tuple(replace(s, review_sha256=digest) for s in planned.stages))
+                bundle = {"schema": "pushpilot.experimental-coordinate-unit.v1", "binding": asdict(binding),
+                          "unit": asdict(planned), "site_review": {"path": "review.json", "sha256": digest}}
+                path = root/"unit.json"
+                path.write_text(json.dumps(bundle))
+                if clearance == 5.:
+                    self.assertEqual(load_unit(path)[1], planned)
+                else:
+                    with self.assertRaises(ValueError):
+                        load_unit(path)
 
 
 if __name__ == "__main__":

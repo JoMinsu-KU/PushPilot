@@ -123,6 +123,30 @@ without further acquisition or command retry. This changes observation
 acquisition, not physical limits, motion authority, replay policy or receiver
 scripts. It is not a recovery path for an unknown command outcome.
 
+For a contact recipe with a reviewed pushing-face normal, the private site
+review can bind `normal_disengagement` with `contact_normal_base_xy` and
+`minimum_release_mm`. Offline loading then requires a reverse-normal backoff
+before any lateral observation travel. This normal is explicit; an eccentric
+turn chord is not assumed to equal the tool-face normal. The check validates
+coordinate geometry only, not contact force or actual separation. A later D
+straight unit moved the car north but left it diagonally oriented, so its MUSE
+FAIL remains preserved. Lateral travel while rubber contact remained loaded
+is a hypothesis, not a proven cause. A distinct corrective trial uses a10mm
+normal backoff before lateral withdrawal. All 17 robot stages subsequently
+completed with Native endpoint evidence; its final image review stopped at
+`CAMERA_VIEW_CHANGED`. This is neither a successful car correction nor an
+unknown robot-motion result. The operator then reported possible print motion
+and secured the map. Preserve the failure and establish the current reference
+before another contact; display relocking alone does not update taught BASE
+coordinates or accept the previously rejected map-to-BASE calibration.
+
+The operator identifies the car's physical front as LEFT/WEST and requests
+pushing that front RIGHT/EAST. A long axis aligned EAST/WEST cannot establish
+the requested nose direction: keep the operator's front identity in the next
+recipe and outcome expectation. The preceding SE-end NORTH trial intentionally
+did not assert nose direction; do not rewrite its original intent as a passed
+front-direction correction. No D/Hanok arrival is established at this cutoff.
+
 On October 29 the operator selected the actual manually taught BASE positions B, C and D as the destination references. This mode uses those controller coordinates directly and does not require a drawing-to-BASE transform. The earlier nominal-map calibration remains rejected: the A/B/C unit-scale fit has a maximum 11.42 mm residual, and its reserved D/E numerical discrepancies are 2.87/6.47 mm. Reusing the records as operator-selected BASE goals does not make the map calibration pass or establish vehicle arrival.
 
 `backend/robot_control/taught_roads.py` constructs route proposals from the taught lower A–B and upper C–D frontage lines. E locates a proposed perpendicular connecting road. This perpendicularity is an explicit layout assumption; proposed junctions and complete tool/arm/hose sweeps need actual review. B uses the lower frontage. C/D use the connector and their respective upper frontage. The algorithm uses no image coordinates, map artwork or printer scale. Every proposal preserves the observation hashes, fixed taught Z/orientation and missing physical qualifications.

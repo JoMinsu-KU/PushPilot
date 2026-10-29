@@ -108,6 +108,33 @@ class CoordinateUnitPorts(ExecutorPorts):
                                before: Frame, after: Frame) -> CoordinateUnitReview: ...
 
 
+def validate_normal_disengagement(unit: CoordinateUnit, contact_normal_base_xy, minimum_release_mm):
+    """Validate stored geometry, without asserting measured loss of contact.
+
+    The pushing-face normal is supplied explicitly from the reviewed tool
+    model; it is not inferred from an eccentric contact chord or camera pixels.
+    No tangential withdrawal may precede the requested normal backoff.
+    """
+    normal = tuple(contact_normal_base_xy)
+    if (len(normal) != 2 or not all(_finite(v) for v in normal)
+            or abs(math.hypot(*normal)-1) > 1e-6
+            or not _finite(minimum_release_mm) or not 0 < minimum_release_mm <= 20):
+        raise ValueError("Use an explicit unit face normal and a bounded positive normal backoff.")
+    contact_index = next(i for i, stage in enumerate(unit.stages) if stage.phase == "contact")
+    release = 0.
+    for stage in unit.stages[contact_index+1:]:
+        delta = tuple(b-a for a,b in zip(stage.start_base[:2], stage.target_base[:2]))
+        projection = sum(a*b for a,b in zip(delta, normal))
+        tangent = math.hypot(*(delta[i]-projection*normal[i] for i in range(2)))
+        if projection >= 0 or tangent > 1e-6:
+            raise ValueError("Complete the reviewed normal backoff before any tangential observation withdrawal.")
+        release -= projection
+        if release+1e-6 >= minimum_release_mm:
+            return {"normal_backoff_geometry_verified": True, "backoff_mm": release,
+                    "last_normal_stage_id": stage.id, "physical_contact_release_verified": False}
+    raise ValueError("The stored withdrawal does not complete the reviewed normal backoff.")
+
+
 @dataclass(frozen=True)
 class CoordinateUnitReview(VehicleReview):
     car_footprint: str = "UNCERTAIN"

@@ -1,0 +1,48 @@
+{
+  "schema": "pushpilot.scoped-physical-course-evidence.v1",
+  "date_kst": "2026-10-29",
+  "scope": "D central approach heading failure, separate correction trial and reported print movement",
+  "vehicle_arrival_verified": false,
+  "north_contact": {
+    "three_actual_contact_strokes_mm_each": 19.9,
+    "loaded_TCP_total_mm": 59.7,
+    "TCP_distance_is_vehicle_distance": false,
+    "first_two_whole_unit_reviews": "PASS",
+    "third_whole_unit_review": "FAIL",
+    "third_failure": "Visible NORTH progress and WITHIN_ROAD, but excessive yaw and expected NORTH heading not met",
+    "third_after_original_sha256": "4e708ffc6a623c4119765a5c6f00501c3a90220a0556e1b74264614ed18d4064",
+    "failure_preserved": true
+  },
+  "separate_axis_alignment_trial": {
+    "original_intent": "One nominal SE-end NORTH push toward an EAST/WEST body axis; nose direction was not asserted",
+    "contact_TCP_mm": 19.9,
+    "normal_backoff_before_lateral_mm": 10,
+    "actual_robot_stages": 17,
+    "all_endpoints_Native_verified": true,
+    "final_receiver_sequence": 196,
+    "temporarily_pending_request_reconciled_from_original_receipt": true,
+    "request_replayed": false,
+    "final_checkpoint": "WAIT_REVIEW",
+    "final_observation_error": "CAMERA_VIEW_CHANGED",
+    "car_correction_success_claimed": false,
+    "lateral_rubber_drag_cause": "Hypothesis only; not isolated or force measured"
+  },
+  "operator_correction": {
+    "physical_car_front": "LEFT/WEST",
+    "requested_front_push": "RIGHT/EAST",
+    "unoriented_axis_alignment_is_sufficient": false,
+    "reported_map_may_have_moved": true,
+    "operator_subsequently_secured_map": true,
+    "display_registration_alone_updates_taught_BASE_coordinates": false,
+    "rejected_map_to_BASE_fit_remains_rejected": true,
+    "next_contact_requires_current_reference_review": true
+  },
+  "software": {
+    "normal_disengagement_policy": "Optional hashed private recipe: explicit face normal and minimum reverse-normal clearance before lateral travel",
+    "geometry_check_measures_physical_contact_release": false,
+    "offline_tests_passed": 822,
+    "offline_tests_skipped": 2,
+    "new_policy_physically_activated": false,
+    "services_camera_or_original_persist_restarted": false
+  }
+}

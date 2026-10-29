@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from backend.robot_control.coordinate_units import CoordinateBinding, CoordinateStage, CoordinateUnit, CoordinateUnitExecutor
+from backend.robot_control.coordinate_units import CoordinateBinding, CoordinateStage, CoordinateUnit, CoordinateUnitExecutor, validate_normal_disengagement
 from backend.robot_control.taught_ports import PrivateJournal, RealTaughtPorts
 from backend.robot_control.taught_executor import ExecutionBlocked, SignalObservationTarget
 from tools.run_taught_executor import read_json, reference
@@ -65,6 +65,11 @@ def load_unit(path):
             or review.get("unit_geometry") != unit_geometry(unit)
             or any(stage.review_sha256 != bundle["site_review"]["sha256"] for stage in unit.stages)):
         raise ValueError("Bind every stage, actual identity and experimental unit geometry to the explicit site review.")
+    normal = review.get("normal_disengagement")
+    if normal is not None:
+        if not isinstance(normal, dict) or set(normal) != {"contact_normal_base_xy", "minimum_release_mm"}:
+            raise ValueError("Bind exact normal-disengagement geometry without inferring physical contact release.")
+        validate_normal_disengagement(unit, **normal)
     return binding, unit
 
 
