@@ -271,7 +271,11 @@ class PhysicalMissionService:
                 return prior
             # A stop remains available while status revisions advance during a move.
             self.stopping.set()
-            self.status.update(state="HOLD", available=False, error="OPERATOR_STOP", stage_label="Stop requested")
+            # Stop is still delivered, but must not erase the failure that
+            # already ended this mission (for example a displaced vehicle).
+            prior_error = self.status.get("error") if self.status["state"] == "HOLD" else None
+            self.status.update(state="HOLD", available=False, error=prior_error or "OPERATOR_STOP",
+                stage_label=self.status["stage_label"] if prior_error else "Stop requested")
             active_id = self.status["telemetry"]["current_step_id"]
             if active_id:
                 self._sequence_status(active_id, "held", "Stop requested; endpoint not yet confirmed")

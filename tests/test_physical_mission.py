@@ -149,6 +149,14 @@ class PhysicalMissionTests(unittest.IsolatedAsyncioTestCase):
         await asyncio.wait_for(self.service.task, 3.)
         return self.service.snapshot()
 
+    async def test_stop_preserves_existing_held_failure_and_still_delivers_stop(self):
+        self.service.status.update(state="HOLD",error="CAR_MOVED_DURING_SIGNAL_WAIT",
+            stage_label="Vehicle changed during wait")
+        result = await self.service.stop({"request_id":str(uuid4()),"expected_revision":0})
+        self.assertEqual(result["error"],"CAR_MOVED_DURING_SIGNAL_WAIT")
+        self.assertEqual(result["stage_label"],"Vehicle changed during wait")
+        self.assertIn("OPERATOR_STOP",self.driver.holds)
+
     async def test_full_product_loop_qualifies_delivery_then_empty_return(self):
         response = await self.service.start(command_for(self.service, self.store))
         self.assertEqual(response["state"], "STARTING")

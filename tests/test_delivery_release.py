@@ -72,9 +72,31 @@ class DeliveryReleaseTests(unittest.TestCase):
         self.assertEqual([s["phase"] for s in recontact["stages"]],["approach"])
         self.assertEqual([s["phase"] for s in following["stages"]],["contact","withdraw"])
         self.assertFalse(gate["seating_replay_allowed"])
-        self.assertTrue(gate["entry_recheck_required"])
+        self.assertFalse(gate["entry_recheck_required"])
+        self.assertEqual(gate["entry_policy"],"single_departure")
         self.assertEqual(recontact["target_context_id"],gate["last_contact_context_id"])
         self.assertEqual(following["source_context_id"],gate["last_contact_context_id"])
+
+    def test_recontact_reverses_withdrawal_including_final_normal_approach(self):
+        data = bundle()
+        data["shared_C_D_prefix"][0]["stages"][1:] = [
+            stage("normal-backoff","withdraw",pose(20),pose(15)),
+            stage("lateral-clear","withdraw",pose(15),pose(15,10)),
+            stage("park","withdraw",pose(15,10),pose(10,10))]
+        # The historical approach has the same endpoints but an unsafe lateral
+        # finish. It must not become the recontact path after a signal wait.
+        data["shared_after_green_north"][0]["stages"][:1] = [
+            stage("old-lateral","approach",pose(10,10),pose(20))]
+        packet = self.compile(data)
+        gate = packet["routes"]["C"]["steps"][0]["signal_gate"]
+        release = packet["primitives"][gate["release_to_wait_primitive_id"]]
+        recontact = packet["primitives"][gate["recontact_primitive_id"]]
+        self.assertEqual(len(recontact["stages"]),3)
+        for reverse, original in zip(recontact["stages"],reversed(release["stages"]),strict=True):
+            self.assertEqual(reverse["start_base"],original["target_base"])
+            self.assertEqual(reverse["target_base"],original["start_base"])
+            self.assertIsNone(reverse["original"]["evidence"])
+        self.assertEqual(recontact["stages"][-1]["start_base"],pose(15))
 
     def test_original_receipt_and_original_posture_survive_explicit_rebinding(self):
         data = bundle()
@@ -251,7 +273,7 @@ class DeliveryReleaseTests(unittest.TestCase):
         original[0] += 1e-10
         packet=self.compile(data)
         row=packet["primitives"]["north/signal-recontact"]
-        s=row["stages"][0]
+        s=row["superseded_approach_stages"][0]
         self.assertEqual(s["original"]["start_base"],original)
         self.assertNotEqual(s["start_base"],original)
         self.assertEqual(s["start_base"],packet["contexts"][row["source_context_id"]]["pose_base"])

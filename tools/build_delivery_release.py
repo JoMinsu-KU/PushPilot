@@ -474,11 +474,63 @@ def compile_delivery_packet(bundle, source_sha256, *, posture_binding=None):
                 for s in route["steps"] if s.get("signal_gate")),
             "return_stages":sum(len(packet["primitives"][pid]["stages"]) for pid in route["empty_return"])}
         packet["routes"][code] = route
+    repair_signal_departures(packet)
     packet["geometry_manifest_sha256"] = content_hash({
         "primitives":packet["primitives"],
         "routes":packet["routes"],"contexts":packet["contexts"],
         "posture_binding_sha256":packet["posture_binding_sha256"]})
     return packet
+
+
+def repair_signal_departures(packet):
+    """Prepare one-departure candidates; never activate or move hardware.
+
+    Reverse the actual withdrawal rather than borrowing the next historical
+    unit's lateral approach. Reversed geometry is a candidate, not an executed
+    reverse-motion receipt. Preserve the source hash for independent review.
+    """
+    repaired = {}
+    for route in packet["routes"].values():
+        for step in route["steps"]:
+            gate = step.get("signal_gate")
+            if not gate:
+                continue
+            pid = gate["recontact_primitive_id"]
+            release = packet["primitives"][gate["release_to_wait_primitive_id"]]
+            row = packet["primitives"][pid]
+            if pid not in repaired:
+                stages = []
+                for index, source in enumerate(reversed(release["stages"]), 1):
+                    start, end = source["target_base"], source["start_base"]
+                    if (source["phase"] != "withdraw" or start[2:] != end[2:]
+                            or not 0 < math.dist(start[:2], end[:2]) <= 20 + 1e-9
+                            or stages and stages[-1]["target_base"] != start):
+                        raise ValueError("Signal recontact needs an exact bounded fixed-pose withdrawal inverse.")
+                    stages.append({"id":pid+"/inverse-withdraw-"+str(index), "phase":"approach",
+                        "start_base":deepcopy(start), "target_base":deepcopy(end),
+                        "geometry_basis":"current_site_candidate",
+                        "derivation":{"method":"reverse_withdrawal", "source_primitive_id":release["id"],
+                            "source_geometry_sha256":release["geometry_sha256"], "source_stage_id":source["id"]},
+                        "original":{"request_id":None,"evidence":None,"supporting_segments":[]}})
+                if (not stages or stages[0]["start_base"] != packet["contexts"][gate["right_wait_context_id"]]["pose_base"]
+                        or stages[-1]["target_base"] != packet["contexts"][gate["last_contact_context_id"]]["pose_base"]):
+                    raise ValueError("Signal withdrawal inverse must preserve exact WAIT and CONTACT endpoints.")
+                row["superseded_approach_geometry_sha256"] = row["geometry_sha256"]
+                row["superseded_approach_stages"] = deepcopy(row["stages"])
+                row["stages"] = stages
+                row["original_verdict"] = None
+                row["repeatability_qualified"] = False
+                row["candidate_reason"] = "Exact inverse of withdrawal, including final normal approach; reverse direction needs physical validation."
+                row["geometry_sha256"] = content_hash({"kind":row["kind"],
+                    "stages":[{k:s[k] for k in ("phase","start_base","target_base")} for s in stages],
+                    "contact_travel_limit_mm":row["contact_travel_limit_mm"]})
+                repaired[pid] = release["id"]
+            elif repaired[pid] != release["id"]:
+                raise ValueError("A shared recontact cannot reverse different withdrawals.")
+            gate.update(entry_policy="single_departure", entry_recheck_required=False,
+                        seating_replay_allowed=False)
+        route["counts"]["recontact_stages"] = sum(len(packet["primitives"][s["signal_gate"]["recontact_primitive_id"]]["stages"])
+            for s in route["steps"] if s.get("signal_gate"))
 
 
 def policy_plan(packet, route_code, site_binding, review_sha256, *, plan_id):
@@ -506,7 +558,8 @@ def policy_plan(packet, route_code, site_binding, review_sha256, *, plan_id):
             gate = row["signal_gate"]
             step["signal_gate"] = {k:gate[k] for k in ("id","right_wait_context_id","last_contact_context_id","green_valid_for_s")}
             step["signal_gate"].update(recontact=reference(gate["recontact_primitive_id"]),
-                release_to_wait=reference(gate["release_to_wait_primitive_id"]))
+                release_to_wait=reference(gate["release_to_wait_primitive_id"]),
+                entry_policy=gate.get("entry_policy", "fresh_entry"))
         steps.append(step)
     return {"id":plan_id,"destination":route["destination"],"binding":site_binding,
         "steps":steps,"parking":route["parking"],"empty_return":[reference(p) for p in route["empty_return"]],

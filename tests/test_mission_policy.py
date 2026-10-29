@@ -438,6 +438,48 @@ class MissionPolicyTests(unittest.TestCase):
         second = policy.decide(first.state, at2, signal=signal(at2, image="6"), command_id="cross-1")
         self.assertEqual(second.primitive_id, "crossing-unit")
 
+    def _single_departure(self):
+        policy, state, at, observation = self._wait_at_signal()
+        steps = list(policy.plan.steps)
+        steps[0] = replace(steps[0], signal_gate=replace(steps[0].signal_gate, entry_policy="single_departure"))
+        policy = MissionPolicy(replace(policy.plan, steps=tuple(steps)))
+        first = policy.decide(state, at, car=observation, signal=signal(at), command_id="unused")
+        self.assertEqual(first.kind, DecisionKind.WAIT)
+        at2 = context("RIGHT_WAIT", 13., 2)
+        dispatch = policy.decide(first.state, at2, car=replace(observation,captured_at_s=13.),
+            signal=signal(at2,image="4"),command_id="recontact-1")
+        return policy, dispatch
+
+    def test_single_departure_has_one_wait_then_crossing_and_fresh_car_review(self):
+        policy, dispatch = self._single_departure()
+        state = completed(policy,dispatch,233.)
+        self.assertEqual(state.phase,Phase.ADMITTED_ENTRY)
+        at = context("LAST_CONTACT",234.,3,tool_clear=False)
+        for ignored in (None, signal(at,color="RED"), signal(at,color="UNKNOWN"),
+                        signal(at,signal_visible=False,car_visible=False)):
+            crossing = policy.decide(state,at,signal=ignored,command_id="cross-1")
+            self.assertEqual(crossing.primitive_id,"crossing-unit")
+            self.assertIsNone(crossing.state.admitted_signal_step_index)
+            after = completed(policy,crossing,240.)
+            self.assertEqual(after.phase,Phase.OBSERVE)
+            check = policy.decide(after,context("GOAL_PARK",241.,4),command_id="unused")
+            self.assertEqual(check.reason,"FRESH_BOUND_CAR_OBSERVATION_REQUIRED")
+
+    def test_single_departure_cannot_survive_bad_receipt_restart_or_delayed_handoff(self):
+        policy, dispatch = self._single_departure()
+        receipt = MotionReceipt(dispatch.command_id,dispatch.primitive_id,"session",
+            dispatch.state.pending_target_context_id,233.,True,"COMPLETED")
+        for changes in ({"outcome":"UNKNOWN"},{"native_verified":False},{"session_id":"other"}):
+            state = policy.accept_receipt(dispatch.state,replace(receipt,**changes))
+            self.assertEqual(policy.decide(state,context("LAST_CONTACT",234.,3),command_id="x").kind,DecisionKind.HOLD)
+        state = policy.accept_receipt(dispatch.state,receipt)
+        for changed, at in ((policy.restart(state),context("LAST_CONTACT",234.,3)),
+                (replace(state,admitted_signal_step_index=None),context("LAST_CONTACT",234.,3)),
+                (state,context("LAST_CONTACT",240.,3)),
+                (state,context("LAST_CONTACT",234.,3,session_id="other")),
+                (state,context("LAST_CONTACT",234.,3,control_fault="fault"))):
+            self.assertEqual(policy.decide(changed,at,command_id="x").kind,DecisionKind.HOLD)
+
     def test_red_after_recontact_uses_reviewed_release_to_right_not_crossing(self):
         policy, state, at = self._at_last_contact()
         decision = policy.decide(state, at, signal=signal(at, color="RED"), command_id="release-1")

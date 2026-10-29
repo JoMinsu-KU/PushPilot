@@ -42,6 +42,7 @@ class Phase(StrEnum):
     OBSERVE = "OBSERVE"
     WAIT_SIGNAL = "WAIT_SIGNAL"
     ENTRY_SIGNAL = "ENTRY_SIGNAL"
+    ADMITTED_ENTRY = "ADMITTED_ENTRY"
     RETURNING = "RETURNING"
     COMPLETE = "COMPLETE"
     FAILED = "FAILED"
@@ -104,11 +105,14 @@ class SignalGate:
     recontact: TaughtPrimitive
     release_to_wait: TaughtPrimitive
     green_valid_for_s: float = 15.
+    entry_policy: str = "fresh_entry"
 
     def __post_init__(self):
         for value in (self.id, self.right_wait_context_id, self.last_contact_context_id):
             _name(value)
         _number(self.green_valid_for_s, minimum=.1, maximum=30.)
+        if self.entry_policy not in {"fresh_entry", "single_departure"}:
+            raise ValueError("Select an explicit signal admission policy.")
         if (self.right_wait_context_id == self.last_contact_context_id
                 or (self.recontact.source_context_id, self.recontact.target_context_id) !=
                     (self.right_wait_context_id, self.last_contact_context_id)
@@ -449,6 +453,7 @@ class MissionState:
     nonimproving_corrections: int = 0
     signal_step_index: int | None = None
     green_expires_at_s: float | None = None
+    admitted_signal_step_index: int | None = None
     green_expirations: int = 0
     green_image_sha256s: tuple[str, ...] = ()
     green_last_captured_at_s: float = 0.
@@ -533,7 +538,9 @@ class MissionPolicy:
         if role == "RETURN":
             return replace(next_state, phase=Phase.RETURNING, return_index=state.return_index + 1)
         if role == "RECONTACT":
-            return replace(next_state, phase=Phase.ENTRY_SIGNAL, step_index=state.step_index + 1,
+            gate = self.plan.steps[state.step_index].signal_gate
+            phase = Phase.ADMITTED_ENTRY if gate.entry_policy == "single_departure" else Phase.ENTRY_SIGNAL
+            return replace(next_state, phase=phase, step_index=state.step_index + 1,
                            green_image_sha256s=(), green_last_captured_at_s=0.)
         if role == "RELEASE_EXPIRED_GREEN":
             return replace(next_state, phase=Phase.WAIT_SIGNAL, step_index=state.signal_step_index,
@@ -664,6 +671,23 @@ class MissionPolicy:
         return self._dispatch(state, context, gate.release_to_wait, "RELEASE_EXPIRED_GREEN", command_id,
             green_expirations=state.green_expirations + 1, green_image_sha256s=(), green_last_captured_at_s=0.)
 
+    def _admitted_entry(self, state, context, command_id):
+        # Explicit one-stop scenario: fresh GREEN admits the finite coordinate
+        # recontact + next push/withdrawal. It is not a continuously fresh color.
+        # Only the exact completed recontact can reach this phase. No grant
+        # survives a restart, ambiguous receipt, delayed handoff or session change.
+        index = state.admitted_signal_step_index
+        if (index is None or index != state.signal_step_index or index + 1 != state.step_index
+                or not 0 <= index < len(self.plan.steps) - 1):
+            return self._fail(state, "SIGNAL_DEPARTURE_GRANT_MISSING", reconcile=True)
+        gate = self.plan.steps[index].signal_gate
+        if (not gate or gate.entry_policy != "single_departure"
+                or context.context_id != gate.last_contact_context_id
+                or not 0 <= context.now_s - state.last_motion_completed_at_s <= self.plan.native_max_age_s):
+            return self._fail(state, "SIGNAL_DEPARTURE_HANDOFF_UNCONFIRMED", reconcile=True)
+        return self._dispatch(state, context, self.plan.steps[state.step_index].primitive, "ROUTE", command_id,
+            admitted_signal_step_index=None, green_expires_at_s=None, green_image_sha256s=())
+
     def _signal(self, state, context, car, signal, command_id):
         step = self.plan.steps[state.step_index]
         gate = step.signal_gate
@@ -690,7 +714,8 @@ class MissionPolicy:
         if not stable:
             return self._decision(DecisionKind.WAIT, state, "WAIT_SECOND_EXCLUSIVE_GREEN_FRAME")
         return self._dispatch(state, context, gate.recontact, "RECONTACT", command_id,
-            signal_step_index=state.step_index, green_expires_at_s=signal.captured_at_s + gate.green_valid_for_s)
+            signal_step_index=state.step_index, green_expires_at_s=signal.captured_at_s + gate.green_valid_for_s,
+            admitted_signal_step_index=state.step_index if gate.entry_policy == "single_departure" else None)
 
     def decide(self, state: MissionState, context: RuntimeContext, *, car: CarObservation | None = None,
                signal: SignalObservation | None = None, command_id: str | None = None,
@@ -733,6 +758,8 @@ class MissionPolicy:
             return self._signal(state, context, car, signal, command_id)
         if state.phase == Phase.ENTRY_SIGNAL:
             return self._entry_signal(state, context, signal, command_id)
+        if state.phase == Phase.ADMITTED_ENTRY:
+            return self._admitted_entry(state, context, command_id)
         if not context.tool_clear:
             return self._fail(state, "OUTCOME_REQUIRES_COMPLETED_WITHDRAWAL")
         if not self._valid_car(state, context, car):
