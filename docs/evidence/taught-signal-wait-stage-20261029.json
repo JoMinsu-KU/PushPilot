@@ -1,0 +1,52 @@
+{
+  "schema": "pushpilot.operator-selected-wait-stage-evidence.v1",
+  "date_kst": "2026-10-29",
+  "id": "SOUTH_JUNCTION_NORTHBOUND_SIGNAL_WAIT",
+  "applies_to_routes": [
+    "C_VILLA",
+    "D_HANOK"
+  ],
+  "operator_selected": true,
+  "receiver_sequence": 478,
+  "rear_seating_motion_stages": 17,
+  "all_Native_endpoints_verified": true,
+  "whole_unit_MUSE_verdict": "PASS",
+  "car_visible": true,
+  "car_footprint": "WITHIN_ROAD",
+  "MUSE_provider_receipt": "8c724ebd676c26f7244ce19e64a859383b62d9b1b1b4ab521fc2e534da4cf406",
+  "car_stop_contact_and_observation_pose_stored_separately": true,
+  "fresh_stationary_Native_verified": true,
+  "operator_frame_sha256": "de9b1931e9c300e90e57e21dde6392d6d5951627c9bb4a894e2c2280c83f7719",
+  "independent_current_MUSE_visibility": {
+    "actual_signal_face_readable": false,
+    "actual_standing_paper_signal_face_present": false,
+    "car_fully_visible": true,
+    "limitations": [
+      "Single viewpoint with gripper occlusion on lower-right island",
+      "Printed map art can resemble structures"
+    ],
+    "observed": "White wheel-less block car on dark road just south of central intersection fully visible; right central-junction corner at upper-left of lower-right building island visible and not covered by gripper; no standing paper traffic-signal face seen, only printed map, buildings, and robot hardware",
+    "right_junction_region_unobstructed": "YES"
+  },
+  "future_policy": {
+    "RED": "WAIT",
+    "UNKNOWN_OR_OCCLUDED_OR_STALE": "WAIT",
+    "fresh_current_MUSE_GREEN_plus_local_checks": "RECONTACT_THEN_BOUNDED_CROSS",
+    "observation_pose_alone_grants_entry": false
+  },
+  "physical_signal_target_configured": false,
+  "actual_signal_color_qualified": false,
+  "GREEN_admission_granted": false,
+  "map_to_BASE_calibration_accepted": false,
+  "raw_operating_coordinates_public": false,
+  "services_restarted": false,
+  "static_private_backup_through478": {
+    "files_verified": 3859,
+    "motion_checkpoints": 291,
+    "event_journals_hash_verified": 33,
+    "whole_unit_reviews": 28,
+    "archive_sha256": "48cdb62799e289dec1f65e39be10f5d2f7860734348638be7dc6feb184e388ce",
+    "local_and_GX10_copies": true,
+    "registry_hardware_calls": 0
+  }
+}

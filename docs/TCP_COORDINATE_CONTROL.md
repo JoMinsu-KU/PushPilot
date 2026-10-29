@@ -258,6 +258,11 @@ MUSE reviews, with 23 Native-confirmed robot stages through452. They used a
 qualitative turn progress and road containment from the reset, without
 measuring an exact 90-degree vehicle rotation or qualifying D arrival.
 
+The following rear-seating unit passed through478. The operator selected its
+actual withdrawn pose as the C/D northbound signal-wait observation reference.
+Its last contact endpoint and observation pose are stored separately, with
+fresh stationary Native evidence. See [the signal-wait reference](ROBOT_SIGNAL_WAIT.md).
+
 ## Current physical evidence
 
 The October 29 records separate one completed B car course, three actual
