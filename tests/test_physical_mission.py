@@ -326,6 +326,41 @@ class PhysicalMissionTests(unittest.IsolatedAsyncioTestCase):
             await self.service.start(command_for(self.service, self.store))
         self.assertEqual(self.driver.commands, [])
 
+    async def test_installed_driver_promotes_persisted_disabled_only_after_actual_readiness(self):
+        await self.service.close()
+        self.service = PhysicalMissionService(self.store, self.temp.name)
+        self.assertEqual(self.service.snapshot()["state"], "DISABLED")
+        await self.service.close()
+        self.service = PhysicalMissionService(self.store, self.temp.name, driver=self.driver,
+                                             poll_interval_s=.001, clock=lambda: self.driver.now)
+        self.assertEqual(self.service.snapshot()["state"], "DISABLED")
+        self.driver.status_available = False
+        unavailable = await self.service.refresh_readiness()
+        self.assertTrue(unavailable["enabled"])
+        self.assertFalse(unavailable["available"])
+        self.assertEqual(unavailable["state"], "DISABLED")
+        self.assertEqual(unavailable["stage_label"], "Physical setup required")
+        self.driver.status_available = True
+        ready = await self.service.refresh_readiness()
+        self.assertTrue(ready["available"])
+        self.assertEqual(ready["state"], "READY")
+        self.assertEqual(ready["stage_label"], "Robot ready")
+        self.assertIsNone(ready["mission_id"])
+        self.assertEqual(self.driver.commands, [])
+
+    async def test_readiness_poll_does_not_clear_hold_or_promote_disabled_recovery(self):
+        self.service.status.update(state="HOLD", available=False, error="RESTART_REQUIRES_RECONCILIATION",
+                                   stage_label="Previous mission requires reconciliation", mission_id="interrupted")
+        held = self.service.snapshot()
+        self.assertEqual(await self.service.refresh_readiness(), held)
+        for changes in ({"mission_id": "old-mission", "error": None},
+                        {"mission_id": None, "error": "RESTART_REQUIRES_RECONCILIATION"}):
+            self.service.status.update(state="DISABLED", stage_label="Retained recovery state", **changes)
+            result = await self.service.refresh_readiness()
+            self.assertEqual(result["state"], "DISABLED")
+            self.assertEqual(result["stage_label"], "Retained recovery state")
+        self.assertEqual(self.driver.commands, [])
+
     async def test_removed_release_preserves_completed_delivery_history(self):
         await self.service.start(command_for(self.service, self.store))
         completed = await self.finish()

@@ -1,12 +1,15 @@
 """Synthetic guarded profile preparation; no hardware, sockets or approvals."""
 from copy import deepcopy
 from dataclasses import replace
+from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 import unittest
 
 from backend.robot_control.gates import admit
 from backend.robot_control.mission_catalog import EvidenceReference, MeasuredPrimitive, MeasuredStage, content_hash
+from backend.robot_control.mission_driver import ConfigBackedMissionDriver
+from backend.robot_control.legacy import load_runtime
 from backend.robot_control.mission_profile import ReviewedProfilePreparer, build_unit_profile, resolve_wrist_descriptor, validate_site_review
 from backend.robot_control.taught_executor import ExecutionBlocked, Snapshot
 from backend.robot_control.taught_ports import PrivateJournal
@@ -29,6 +32,11 @@ def installation():
 
 SOURCE = (0., 0., 100., 180., 0., 0.)
 JOINTS = (0., -20., 40., 0., 10., 0.)
+# Actual mixed-precision numbers from the stationary inspect_current failure.
+# They test representation matching, not physical motion or qualification.
+NATIVE_JOINTS = (-85.6, -138.1, -57.9, -74., 90., -150.8)
+INSPECTED_JOINTS = (-85.5573356, -138.0590941, -57.9153533,
+                    -74.0365389, 89.9933647, -150.8881884)
 EVIDENCE = EvidenceReference("SYNTHETIC", "not-real-evidence", "b"*64)
 
 
@@ -81,6 +89,8 @@ class FakeGuardedAPI:
                 "connected": True, "idle": True, "physical_execution": True}}
         self.jobs, self.calls = {}, []
         self.wrist, self.failure, self.after_call = wrist, None, None
+        self.inspected_joints, self.target_inspection_joints = None, None
+        self.query_validator, self.ik_baseline = None, False
 
     def __call__(self, path, payload=None):
         self.calls.append((path, deepcopy(payload)))
@@ -96,10 +106,24 @@ class FakeGuardedAPI:
             if payload["kind"] == "profile_update":
                 receiver["profile"] = deepcopy(payload["profile"])
                 receiver["profile_id"] = content_hash(payload["profile"])
+                self.ik_baseline = False
                 data, kind = {}, "profile_applied_verified"
             else:
+                if self.query_validator:
+                    self.query_validator(receiver["profile"], {
+                        "read_only": True, "frame": "base", "pose_type": "tcp",
+                        "mode": "current" if payload["kind"] == "inspect_current" else "target",
+                        "check_runnable": False, "previous": receiver["actual_pose"],
+                        "expected_actual": receiver["actual_pose"], "expected_joint": receiver["actual_joint"],
+                        "target": payload.get("target", receiver["actual_pose"])},
+                        receiver["actual_pose"], receiver["actual_pose"], receiver["actual_joint"], self.ik_baseline)
+                if payload["kind"] == "inspect_current":
+                    self.ik_baseline = True
                 data = {"status": "ok", "motion_issued": False, "source_pose": receiver["actual_pose"],
-                    "source_joint": receiver["actual_joint"], "target_fk": payload.get("target", receiver["actual_pose"]),
+                    "source_joint": (self.target_inspection_joints if payload["kind"] == "inspect_ik"
+                        and self.target_inspection_joints is not None else
+                        self.inspected_joints if self.inspected_joints is not None else receiver["actual_joint"]),
+                    "target_fk": payload.get("target", receiver["actual_pose"]),
                     "solution_joint": self.wrist["expected_target_joint_deg"] if self.wrist else list(JOINTS)}
                 kind = "ik_result_verified"
             if self.failure == "bad-ik" and payload["kind"] == "inspect_ik":
@@ -165,13 +189,102 @@ class MissionProfileTests(unittest.TestCase):
     def commands(self):
         return [payload for path, payload in self.api.calls if path == "/v1/commands"]
 
-    def test_translation_inspects_every_target_then_hands_off_without_motion(self):
+    def assert_failed_preparation_remains_held_without_motion(self):
+        self.assertTrue(self.api.status["hold"])
+        self.assertFalse(self.api.status["armed"])
+        self.assertEqual(self.api.status["receiver"]["actual_pose"], list(SOURCE))
+        self.assertFalse(any(c["kind"] in {"translate", "rotate"} for c in self.commands()))
+        self.assertEqual(self.journal.load()["state"], "PROFILE_PREPARATION_FAILED")
+        count = len(self.commands())
+        with self.assertRaises(ExecutionBlocked):
+            self.preparer()
+        self.assertEqual(len(self.commands()), count)
+
+    def mixed_precision_source(self):
+        receiver = self.api.status["receiver"]
+        receiver["actual_joint"] = list(NATIVE_JOINTS)
+        self.api.inspected_joints = list(INSPECTED_JOINTS)
+        profile = build_profile(self.api.status["installation"],
+            {"actual_pose": list(SOURCE), "actual_joint": list(NATIVE_JOINTS)}, on_site_review=True)
+        receiver.update(profile=profile, profile_id=content_hash(profile))
+
+    def test_actual_native_quantization_accepts_stationary_inspection_without_widening_profile(self):
+        self.mixed_precision_source()
         result = self.prepare()
-        self.assertEqual([c["kind"] for c in self.commands()], ["inspect_current", "inspect_ik", "inspect_ik", "inspect_ik", "profile_update"])
+        self.assertEqual(result["inspected_source_joint_deg"], list(INSPECTED_JOINTS))
+        self.assertEqual(result["profile"]["expected_start_joint_deg"], list(NATIVE_JOINTS))
+        self.assertEqual(result["profile"]["tcp_bounds_base_mm"], [-.6, -.6, 99.85, 20.6, .6, 100.15])
+        self.assertFalse(result["motion_issued"])
+        self.assertTrue(self.api.status["hold"])
+        self.assertFalse(self.api.status["armed"])
+
+    def test_actual_native_wrist_resolves_full_precision_and_passes_unchanged_driver_preflight(self):
+        measured, intent = unit(wrist=True), wrist_intent()
+        self.mixed_precision_source()
+        resolved = resolve_wrist_descriptor(measured, review(measured, intent), SOURCE, INSPECTED_JOINTS, intent)
+        self.api.wrist = resolved
+        result = self.prepare(measured=measured, wrist=intent)
+        self.assertEqual(result["wrist"], resolved)
+        self.assertEqual(result["wrist"]["expected_source_joint_deg"], list(INSPECTED_JOINTS))
+        self.assertEqual(result["wrist"]["expected_target_joint_deg"][:5], list(INSPECTED_JOINTS[:5]))
+        self.assertAlmostEqual(result["wrist"]["expected_target_joint_deg"][5], INSPECTED_JOINTS[5]+89.999)
+        self.assertEqual(result["profile"]["expected_start_joint_deg"], list(NATIVE_JOINTS))
+        self.assertTrue(result["receiver_nineteen_joint_fk_samples_still_required"])
+        self.assertFalse(result["exact_joint_path_fk_verified"])
+        edge = {**result["profile"]["rotation_edges"][0],
+            "source_orientation_deg": list(measured.stages[0].start_base[3:]),
+            "target_orientation_deg": list(measured.stages[0].target_base[3:])}
+        runtime_hash = content_hash(result["profile"]["rotation_runtime"])
+        snapshot = replace(self.api.native(), reviewed_rotation_edges=(edge,), rotation_runtime_sha256=runtime_hash)
+        ConfigBackedMissionDriver._validate_wrist(snapshot, measured.stages[0],
+            {**result["wrist"], "rotation_runtime_sha256": runtime_hash})
+
+    def test_inspection_beyond_native_register_quantization_is_rejected_before_install(self):
+        self.mixed_precision_source()
+        self.api.inspected_joints[5] = NATIVE_JOINTS[5]-.10001
+        with self.assertRaises(ExecutionBlocked) as caught:
+            self.prepare()
+        self.assertEqual(caught.exception.code, "CURRENT_IK_INSPECTION_FAILED")
+        self.assertEqual([c["kind"] for c in self.commands()], ["inspect_current"])
+        self.assertFalse(any(path == "/v1/installation" for path, _ in self.api.calls))
+
+    def test_full_precision_source_stability_remains_point_zero_five(self):
+        self.mixed_precision_source()
+        self.api.target_inspection_joints = list(INSPECTED_JOINTS)
+        # Both readings fit the same Native register; a real 0.06-degree change
+        # between full-precision inspections still fails the tighter check.
+        self.api.target_inspection_joints[5] += .06
+        with self.assertRaises(ExecutionBlocked):
+            self.prepare()
+        self.assertEqual([c["kind"] for c in self.commands()], ["inspect_current", "profile_update", "inspect_current", "inspect_ik"])
+        self.assert_failed_preparation_remains_held_without_motion()
+
+    def test_full_precision_wrist_target_ik_tolerance_is_not_quantization_allowance(self):
+        measured, intent = unit(wrist=True), wrist_intent()
+        self.mixed_precision_source()
+        self.api.wrist = resolve_wrist_descriptor(measured, review(measured, intent), SOURCE, INSPECTED_JOINTS, intent)
+        self.api.wrist["expected_target_joint_deg"][5] += .06
+        with self.assertRaises(ValueError):
+            self.prepare(measured=measured, wrist=intent)
+        self.assert_failed_preparation_remains_held_without_motion()
+
+    def test_explicit_stationary_no_motion_reconciliation_allows_new_operation_only(self):
+        self.journal.checkpoint({"state": "RECONCILED_STATIONARY_NO_MOTION",
+            "original_failed_operation": "synthetic-prior", "evidence_sha256": "e"*64,
+            "automatic_replay": False})
+        preparer = self.preparer()
+        self.assertEqual(self.api.calls, [])
+        result = self.prepare(preparer=preparer, operation="synthetic-new-after-reconciliation")
+        self.assertFalse(result["motion_issued"])
+        self.assertEqual(self.commands()[0]["kind"], "inspect_current")
+
+    def test_translation_installs_reviewed_profile_then_inspects_every_target_without_motion(self):
+        result = self.prepare()
+        self.assertEqual([c["kind"] for c in self.commands()], ["inspect_current", "profile_update", "inspect_current", "inspect_ik", "inspect_ik", "inspect_ik"])
         self.assertEqual(result["profile"]["tcp_bounds_base_mm"], [-.6, -.6, 99.85, 20.6, .6, 100.15])
         self.assertEqual(result["profile"]["translation_speed_mm_s"], 5.)
         self.assertEqual(result["profile"]["translation_accel_mm_s2"], 10.)
-        self.assertEqual(result["expected_receiver"]["seq"], 6)
+        self.assertEqual(result["expected_receiver"]["seq"], 7)
         self.assertFalse(result["motion_issued"] or result["vehicle_control_qualified"] or result["board_registration_qualified"])
         self.assertEqual(result["status"]["receiver"]["actual_pose"], list(SOURCE))
         self.assertTrue(self.api.status["hold"])
@@ -184,7 +297,45 @@ class MissionProfileTests(unittest.TestCase):
         two = self.prepare(operation="synthetic-next")
         self.assertNotEqual(one["installation"]["installation_id"], two["installation"]["installation_id"])
         self.assertNotEqual(one["installation"]["review_reference"], two["installation"]["review_reference"])
-        self.assertEqual(two["expected_receiver"]["seq"], 11)
+        self.assertEqual(two["expected_receiver"]["seq"], 13)
+
+    def test_real_receiver_query_bounds_and_profile_reset_require_correct_preflight_order(self):
+        runtime_path = Path(__file__).resolve().parents[1]/"runtime/robot-control/receiver"
+        if not runtime_path.exists():
+            self.skipTest("Optional private installed runtime is not distributed.")
+        runtime = load_runtime(runtime_path)
+        old = self.api.status["installation"]
+        old.update(workspace_min_mm=[-1., -1., 99.], workspace_max_mm=[1., 1., 101.])
+        old_profile = build_profile(old, {"actual_pose": list(SOURCE), "actual_joint": list(JOINTS)}, on_site_review=True)
+        self.api.status["receiver"].update(profile=old_profile, profile_id=content_hash(old_profile))
+        target = list(unit().stages[0].target_base)
+        # Exercise the actual unchanged receiver guards, not only API admission.
+        with self.assertRaisesRegex(ValueError, "Outside TCP bounds"):
+            runtime["policy"].inside(old_profile, target)
+        self.api.query_validator = runtime["ik"].validate
+        result = self.prepare()
+        commands = self.commands()
+        self.assertEqual([c["kind"] for c in commands],
+            ["inspect_current", "profile_update", "inspect_current", "inspect_ik", "inspect_ik", "inspect_ik"])
+        for command in commands[2:]:
+            self.assertEqual(command["installation_id"], result["installation"]["installation_id"])
+            self.assertEqual(command["expected_receiver"]["profile_id"], content_hash(result["profile"]))
+        self.assertFalse(result["motion_issued"])
+        self.assertTrue(self.api.status["hold"])
+        self.assertFalse(self.api.status["armed"])
+
+    def test_post_profile_current_roundtrip_failure_blocks_target_queries(self):
+        self.mixed_precision_source()
+        def after(payload):
+            if payload["kind"] == "profile_update":
+                self.api.inspected_joints[5] += .06
+        self.api.after_call = after
+        with self.assertRaises(ExecutionBlocked) as caught:
+            self.prepare()
+        self.assertEqual(caught.exception.code, "APPLIED_PROFILE_CURRENT_IK_FAILED")
+        self.assertEqual([c["kind"] for c in self.commands()],
+            ["inspect_current", "profile_update", "inspect_current"])
+        self.assert_failed_preparation_remains_held_without_motion()
 
     def test_geometry_site_identity_and_bounds_cannot_be_inferred(self):
         cases = []
@@ -202,7 +353,7 @@ class MissionProfileTests(unittest.TestCase):
         wrist = wrist_descriptor()
         self.api = FakeGuardedAPI(wrist)
         result = self.prepare(measured=unit(wrist=True), wrist=wrist)
-        self.assertEqual([c["kind"] for c in self.commands()], ["inspect_current", "inspect_ik", "profile_update"])
+        self.assertEqual([c["kind"] for c in self.commands()], ["inspect_current", "profile_update", "inspect_current", "inspect_ik"])
         self.assertTrue(result["receiver_nineteen_joint_fk_samples_still_required"])
         self.assertFalse(result["exact_joint_path_fk_verified"] or result["car_turn_qualified"])
         anchor = result["profile"]["rotation_anchors"][0]
@@ -210,13 +361,13 @@ class MissionProfileTests(unittest.TestCase):
         self.assertEqual(result["wrist"], wrist)
         self.assertEqual(result["profile"]["rotation_runtime"]["primitive"], "moveJoint_wrist")
 
-    def test_wrong_ik_winding_or_loaded_wrist_never_installs_profile(self):
+    def test_wrong_ik_winding_never_permits_motion_and_loaded_wrist_never_builds(self):
         wrist = wrist_descriptor()
         self.api = FakeGuardedAPI(wrist)
         self.api.failure = "wrong-winding"
         with self.assertRaises(ValueError):
             self.prepare(measured=unit(wrist=True), wrist=wrist)
-        self.assertFalse(any(path == "/v1/installation" for path, _ in self.api.calls))
+        self.assert_failed_preparation_remains_held_without_motion()
         loaded = {**wrist, "unloaded": False}
         with self.assertRaises(ExecutionBlocked):
             build_unit_profile(unit(wrist=True), review(unit(wrist=True), loaded), self.api.status,
@@ -261,7 +412,7 @@ class MissionProfileTests(unittest.TestCase):
         self.api.failure = "wrong-winding"
         with self.assertRaises(ValueError):
             self.prepare(measured=measured, wrist=intent)
-        self.assertFalse(any(path == "/v1/installation" for path, _ in self.api.calls))
+        self.assert_failed_preparation_remains_held_without_motion()
 
     def test_profile_reply_loss_is_not_resent_and_blocks_new_preparer(self):
         self.api.failure = "lost-profile-reply"
@@ -303,12 +454,12 @@ class MissionProfileTests(unittest.TestCase):
                     journal.close()
                     self.journal, self.stop = original, False
 
-    def test_bad_ik_or_changed_source_blocks_before_handoff(self):
+    def test_bad_ik_after_profile_handoff_never_admits_motion_or_replay(self):
         self.api.failure = "bad-ik"
         with self.assertRaises(ExecutionBlocked):
             self.prepare()
-        self.assertEqual([c["kind"] for c in self.commands()], ["inspect_current", "inspect_ik"])
-        self.assertFalse(any(path == "/v1/installation" for path, _ in self.api.calls))
+        self.assertEqual([c["kind"] for c in self.commands()], ["inspect_current", "profile_update", "inspect_current", "inspect_ik"])
+        self.assert_failed_preparation_remains_held_without_motion()
 
     def test_stale_native_and_existing_active_or_unresolved_receiver_are_rejected(self):
         native = replace(self.api.native(), native_observed_at=990.)

@@ -416,6 +416,25 @@ class SiteTrialTests(unittest.TestCase):
         self.assertEqual(restarted.binding.calibration_id, "must-not-load")
         self.assertIsNone(restarted.ports)
 
+    def test_explicit_no_motion_reconciliation_permits_config_reload_without_replay(self):
+        driver, request = self.driver()
+        self.assertTrue(driver.readiness()["ready"])
+        driver.journal.checkpoint({"state": "RECONCILED_STATIONARY_NO_MOTION",
+            "original_failed_operation": "synthetic-inspection-only-failure",
+            "evidence_sha256": "e"*64, "automatic_replay": False})
+        old_api = driver.raw_api
+        config = json.loads(driver.config_file.read_bytes())
+        config["site_binding"]["calibration_id"] = "reconciled-registration"
+        config["ports"]["registration_id"] = "reconciled-registration"
+        driver.config_file.write_text(json.dumps(config))
+        self.assertTrue(driver.readiness()["ready"])
+        self.assertEqual(driver.binding.calibration_id, "reconciled-registration")
+        self.assertTrue(driver.stop_latch.is_set())
+        self.assertIsNone(driver.currentplan)
+        for api in (old_api, driver.raw_api):
+            self.assertFalse(any(path in {"/v1/arm", "/v1/commands"} for path, _ in api.calls))
+        self.assertEqual(driver.journal.load()["state"], "RECONCILED_STATIONARY_NO_MOTION")
+
 
 if __name__ == "__main__":
     unittest.main()

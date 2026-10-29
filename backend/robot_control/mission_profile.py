@@ -18,6 +18,7 @@ import time
 from uuid import uuid4
 
 from .mission_catalog import MeasuredPrimitive, content_hash
+from .gates import NATIVE_BASELINE_COMPARISON_QUANTIZATION
 from .models import LocalContactInstallation
 from .taught_executor import ExecutionBlocked, Snapshot
 from .taught_ports import write_new, sync_directory
@@ -116,7 +117,8 @@ def _native_identity(native, installation):
                 ("tcp_definition_sha256", "tool_id", "car_id", "surface_id")))
 
 
-def build_unit_profile(measured, review, status, native, *, installation_id, wrist=None, review_reference=None):
+def build_unit_profile(measured, review, status, native, *, installation_id, wrist=None, review_reference=None,
+                       inspected_source_joint=None):
     """Pure construction from a fresh baseline and an already reviewed unit.
 
     ``wrist`` is an exact joint descriptor or reviewed semantic joint-6 intent.
@@ -129,8 +131,10 @@ def build_unit_profile(measured, review, status, native, *, installation_id, wri
     old, receiver = status["installation"], status["receiver"]
     source, joints = receiver["actual_pose"], receiver["actual_joint"]
     _require(_pose(source) and _pose(joints) and isinstance(native, Snapshot), "FRESH_NATIVE_SOURCE_REQUIRED")
-    _require(tuple(source) == measured.stages[0].start_base and _near(native.native_tcp_base, source)
-        and tuple(native.tcp_base) == tuple(source) and _near(native.joints_deg, joints)
+    _require(tuple(source) == measured.stages[0].start_base
+        and _near(native.native_tcp_base, source, NATIVE_BASELINE_COMPARISON_QUANTIZATION)
+        and tuple(native.tcp_base) == tuple(source)
+        and _near(native.joints_deg, joints, NATIVE_BASELINE_COMPARISON_QUANTIZATION)
         and native.held_disarmed_idle, "EXACT_CURRENT_UNIT_SOURCE_REQUIRED")
     _require(_native_identity(native, old), "CURRENT_NATIVE_IDENTITY_CHANGED")
     _require(old.get("qualified") is True and old.get("on_site_review") is True
@@ -159,12 +163,21 @@ def build_unit_profile(measured, review, status, native, *, installation_id, wri
     robot = {"actual_pose": list(source), "actual_joint": list(joints)}
     if not is_wrist:
         return local, contact_profile(local, robot, on_site_review=True)
-    wrist = resolve_wrist_descriptor(measured, review, source, joints, wrist)
+    if inspected_source_joint is not None:
+        _require(_near(inspected_source_joint, joints, NATIVE_BASELINE_COMPARISON_QUANTIZATION)
+            and _near(inspected_source_joint, native.joints_deg, NATIVE_BASELINE_COMPARISON_QUANTIZATION),
+            "INSPECTED_JOINT_NATIVE_DISAGREEMENT")
+    # Native FC03 joints are quantized to 0.1 degree. Preserve their exact
+    # baseline in the wire profile, but derive directed wrist targets from the
+    # fresh full-precision inspect_current result whenever preparation has it.
+    wrist = resolve_wrist_descriptor(measured, review, source,
+        inspected_source_joint if inspected_source_joint is not None else joints, wrist)
     target = list(measured.stages[0].target_base)
     sj, tj = wrist["expected_source_joint_deg"], wrist["expected_target_joint_deg"]
     _require(target[:3] == list(source[:3]) and _pose(sj) and _pose(tj)
         and all(abs(v) <= 360 for v in (*sj, *tj)) and list(sj[:5]) == list(tj[:5])
-        and 0 < abs(tj[5]-sj[5]) <= 90. and _near(sj, joints, .05), "DIRECTED_WRIST_WINDING_REQUIRED")
+        and 0 < abs(tj[5]-sj[5]) <= 90.
+        and _near(sj, joints, NATIVE_BASELINE_COMPARISON_QUANTIZATION), "DIRECTED_WRIST_WINDING_REQUIRED")
     runtime = deepcopy(wrist["rotation_runtime"])
     _require(runtime.get("verified") is True and runtime.get("primitive") == "moveJoint_wrist"
         and runtime.get("speed_argument") == 5. and runtime.get("accel_argument") == 10.
@@ -217,7 +230,7 @@ class ReviewedProfilePreparer:
     def _same_source(self, status, source, joints, session):
         receiver = status["receiver"]
         _require(receiver["session_id"] == session and tuple(receiver["actual_pose"]) == tuple(source)
-            and _near(receiver["actual_joint"], joints, .1), "PROFILE_SOURCE_CHANGED")
+            and _near(receiver["actual_joint"], joints, NATIVE_BASELINE_COMPARISON_QUANTIZATION), "PROFILE_SOURCE_CHANGED")
 
     def _query(self, kind, installation_id, expected, source, joints, *, target=None, profile=None):
         current = self._idle()
@@ -275,8 +288,7 @@ class ReviewedProfilePreparer:
                 and (native.session_id, native.sequence, native.profile_id) ==
                     tuple(expected_receiver[k] for k in ("session_id", "seq", "profile_id")), "FRESH_NATIVE_SOURCE_REQUIRED")
             source, joints = before["receiver"]["actual_pose"], before["receiver"]["actual_joint"]
-            resolved_wrist = (resolve_wrist_descriptor(measured, review, source, joints, wrist)
-                if measured.kind == "wrist_edge" else None)
+            resolved_wrist = None
             installation_id = "mission-unit-"+uuid4().hex
             review_path, _ = self.journal.artifact("unit-current-site-review", {
                 "supplied_site_review": review, "actual_native_source": asdict(native),
@@ -284,29 +296,29 @@ class ReviewedProfilePreparer:
                 "new_physical_clearance_measurement": False, "motion_issued": False})
             local, profile = build_unit_profile(measured, review, before, native,
                 installation_id=installation_id, wrist=wrist, review_reference=str(review_path))
+            current, status = self._query("inspect_current", before["installation"]["installation_id"],
+                expected_receiver, source, joints)
+            _require(current.get("status") == "ok" and current.get("motion_issued") is False
+                and _near(current.get("source_pose"), source, NATIVE_BASELINE_COMPARISON_QUANTIZATION)
+                and _near(current.get("source_joint"), joints, NATIVE_BASELINE_COMPARISON_QUANTIZATION),
+                "CURRENT_IK_INSPECTION_FAILED")
+            if measured.kind == "wrist_edge":
+                resolved_wrist = resolve_wrist_descriptor(measured, review, source, current["source_joint"], wrist)
+                local, profile = build_unit_profile(measured, review, before, native,
+                    installation_id=installation_id, wrist=wrist, review_reference=str(review_path),
+                    inspected_source_joint=current["source_joint"])
             self.receiver_policy.valid(profile, True)
             _require(len(json.dumps(profile, ensure_ascii=True, allow_nan=False).encode("ascii")) <=
                 self.receiver_policy.MAX_PROFILE_BYTES, "RECEIVER_PROFILE_SIZE_EXCEEDED")
             self.journal.artifact("profile-preparation-source", {"review": review, "native": asdict(native),
-                "installation": local, "profile": profile, "geometry_sha256": measured.geometry_sha256,
+                "current_inspection": current, "installation": local, "profile": profile,
+                "geometry_sha256": measured.geometry_sha256,
                 "vehicle_control_qualified": False, "board_registration_qualified": False})
-            current, status = self._query("inspect_current", before["installation"]["installation_id"],
-                expected_receiver, source, joints)
-            _require(current.get("status") == "ok" and current.get("motion_issued") is False
-                and _near(current.get("source_pose"), source) and _near(current.get("source_joint"), joints, .05),
-                "CURRENT_IK_INSPECTION_FAILED")
-            for stage in measured.stages:
-                checked, status = self._query("inspect_ik", before["installation"]["installation_id"],
-                    self._binding(status), source, joints, target=stage.target_base)
-                _require(checked.get("status") == "ok" and checked.get("motion_issued") is False
-                    and _near(checked.get("source_pose"), source) and _near(checked.get("source_joint"), joints, .05)
-                    and _near(checked.get("target_fk"), stage.target_base)
-                    and _pose(checked.get("solution_joint")), "TARGET_IK_INSPECTION_FAILED")
-                if measured.kind == "wrist_edge":
-                    verify_endpoint_ik({"schema": "pushpilot.wrist-turn-candidate.v1", "motion_authority": False,
-                        "source_pose": source, "target_pose": list(stage.target_base),
-                        "source_joint": resolved_wrist["expected_source_joint_deg"],
-                        "target_joint": resolved_wrist["expected_target_joint_deg"]}, checked)
+            # The receiver also bounds read-only IK query targets against its
+            # installed profile. Apply this exact reviewed unit while held and
+            # disarmed before inspecting targets outside the previous unit.
+            # Profile application grants no motion; every IK and final Native
+            # check must still pass before the caller can dispatch anything.
             latest = self._idle()
             _require(self._binding(latest) == self._binding(status), "PROFILE_INSTALL_BASELINE_CHANGED")
             self._same_source(latest, source, joints, expected_receiver["session_id"])
@@ -316,14 +328,43 @@ class ReviewedProfilePreparer:
             installed = self._idle()
             _require(installed.get("installation") == local and self._binding(installed) == self._binding(latest),
                      "INSTALLATION_READBACK_MISMATCH")
-            _, after = self._query("profile_update", installation_id, self._binding(installed), source, joints, profile=profile)
+            _, status = self._query("profile_update", installation_id, self._binding(installed), source, joints, profile=profile)
+            # A profile update invalidates the receiver's read-only IK baseline.
+            # Re-establish it under the installed profile; retain the original
+            # precise inspection as an independent stationary-source check.
+            applied_current, status = self._query("inspect_current", installation_id,
+                self._binding(status), source, joints)
+            _require(applied_current.get("status") == "ok" and applied_current.get("motion_issued") is False
+                and _near(applied_current.get("source_pose"), source, NATIVE_BASELINE_COMPARISON_QUANTIZATION)
+                and _near(applied_current.get("source_joint"), joints, NATIVE_BASELINE_COMPARISON_QUANTIZATION)
+                and _near(applied_current.get("source_joint"), current["source_joint"], .05),
+                "APPLIED_PROFILE_CURRENT_IK_FAILED")
+            for stage in measured.stages:
+                checked, status = self._query("inspect_ik", installation_id,
+                    self._binding(status), source, joints, target=stage.target_base)
+                _require(checked.get("status") == "ok" and checked.get("motion_issued") is False
+                    and _near(checked.get("source_pose"), source, NATIVE_BASELINE_COMPARISON_QUANTIZATION)
+                    and _near(checked.get("source_joint"), joints, NATIVE_BASELINE_COMPARISON_QUANTIZATION)
+                    and _near(checked.get("source_joint"), current["source_joint"], .05)
+                    and _near(checked.get("target_fk"), stage.target_base)
+                    and _pose(checked.get("solution_joint")), "TARGET_IK_INSPECTION_FAILED")
+                if measured.kind == "wrist_edge":
+                    verify_endpoint_ik({"schema": "pushpilot.wrist-turn-candidate.v1", "motion_authority": False,
+                        "source_pose": source, "target_pose": list(stage.target_base),
+                        "source_joint": resolved_wrist["expected_source_joint_deg"],
+                        "target_joint": resolved_wrist["expected_target_joint_deg"]}, checked)
+            after = self._idle()
+            _require(self._binding(after) == self._binding(status), "PROFILE_FINAL_BASELINE_CHANGED")
+            self._same_source(after, source, joints, expected_receiver["session_id"])
             final_native = self.native_snapshot()
             _require(isinstance(final_native, Snapshot) and _sha(final_native.native_evidence_sha256)
                 and 0 <= self.clock()-final_native.native_observed_at <= 5.
                 and (final_native.session_id, final_native.sequence, final_native.profile_id) ==
                     tuple(self._binding(after)[k] for k in ("session_id", "seq", "profile_id"))
-                and final_native.held_disarmed_idle and _near(final_native.native_tcp_base, source)
-                and tuple(final_native.tcp_base) == tuple(source) and _near(final_native.joints_deg, joints),
+                and final_native.held_disarmed_idle
+                and _near(final_native.native_tcp_base, source, NATIVE_BASELINE_COMPARISON_QUANTIZATION)
+                and tuple(final_native.tcp_base) == tuple(source)
+                and _near(final_native.joints_deg, joints, NATIVE_BASELINE_COMPARISON_QUANTIZATION),
                 "PROFILE_FINAL_NATIVE_UNCONFIRMED")
             _require(_native_identity(final_native, local), "PROFILE_FINAL_NATIVE_IDENTITY_CHANGED")
             result = {"operation_id": operation_id, "installation": local, "profile": profile,
@@ -332,6 +373,7 @@ class ReviewedProfilePreparer:
                 "car_turn_qualified": False, "vehicle_control_qualified": False, "board_registration_qualified": False,
                 "receiver_nineteen_joint_fk_samples_still_required": measured.kind == "wrist_edge",
                 "exact_joint_path_fk_verified": False, "native": asdict(final_native),
+                "inspected_source_joint_deg": current["source_joint"],
                 "status": after, "wrist": resolved_wrist,
                 "wrist_intent_sha256": content_hash(wrist) if wrist is not None else None}
             self.journal.artifact("profile-preparation-complete", result)

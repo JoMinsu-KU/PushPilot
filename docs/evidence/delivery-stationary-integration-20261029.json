@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-29",
+  "scope": "delivery-only current-site trial; stationary integration verification",
+  "destinations": ["OFFICE_BUILDING", "VILLA", "HANOK"],
+  "backend_tests": {"run": 1081, "skipped": 2, "result": "passed"},
+  "frontend_tests": {"run": 98, "result": "passed"},
+  "actual_checks": {
+    "receiver_connected_held_disarmed_at_start": true,
+    "muse_original_image_fixed_start": "PASS",
+    "current_profile_handoff": "verified_without_motion",
+    "first_delivery_unit_target_ik": "verified_without_motion",
+    "fresh_native_stationary_endpoint": "verified",
+    "motion_issued": false
+  },
+  "repairs": [
+    "Compare quantized Native registers against precise controller inspection using the existing protocol quantization bound.",
+    "Apply the reviewed narrow unit profile before target IK and refresh the current IK baseline after that profile update.",
+    "Default tablet telemetry to Robot mode; simulation data requires explicit selection.",
+    "Promote a previously disabled service to READY only after fresh readiness and with no retained mission or recovery error."
+  ],
+  "limits": [
+    "No complete autonomous B/C/D route was executed during this deployment check.",
+    "Historical vehicle deliveries do not qualify repeatability of newly composed route connections.",
+    "Parallel parking and learned vehicle-straightening corrections are deferred.",
+    "Actual red-to-green physical crossing remains to be exercised through the tablet mission."
+  ],
+  "private_evidence": "Original images, provider receipts, Native records and failed-preflight reconciliations remain in the private deployment journal outside Git."
+}

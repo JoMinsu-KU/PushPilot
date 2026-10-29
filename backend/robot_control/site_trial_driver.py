@@ -162,7 +162,8 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
                 if old_root.exists():
                     temporary = journal = self.journal_factory(old_root)
             previous = journal.load() if journal else None
-            if previous and previous.get("state") not in {"STATIONARY_COMMAND_COMPLETE", "PROFILE_PREPARATION_COMPLETE"}:
+            if previous and previous.get("state") not in {"STATIONARY_COMMAND_COMPLETE", "PROFILE_PREPARATION_COMPLETE",
+                                                         "RECONCILED_STATIONARY_NO_MOTION"}:
                 raise ExecutionBlocked("SITE_TRIAL_RECONCILIATION_REQUIRED", "An unresolved journal prohibits deployment replacement.")
             if self.journal:
                 self.journal.close()  # Release file ownership only; no device IO.

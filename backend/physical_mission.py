@@ -169,6 +169,9 @@ class PhysicalMissionService:
             self.status["robot"] = {"connected": ready.get("connected") is True,
                                     "stationary": ready.get("stationary") is True,
                                     "at_start": ready.get("at_start") is True}
+            if (self.status["state"] == "DISABLED" and self.status["available"]
+                    and self.status["mission_id"] is None and self.status["error"] is None):
+                self.status.update(state="READY", stage_label="Robot ready")
         except Exception:
             self.status.update(available=False, blockers=["Physical driver readiness is unavailable."])
             self.status["robot"]["connected"] = False
