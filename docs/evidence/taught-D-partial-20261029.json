@@ -1,0 +1,69 @@
+{
+  "schema": "pushpilot.scoped-physical-course-evidence.v1",
+  "date_kst": "2026-10-29",
+  "destination": "D",
+  "display_destination": "Hanok",
+  "vehicle_arrival_verified": false,
+  "operator_reset": "Car reset at original Pizza START after C acceptance and verified empty-tool return.",
+  "incoming_course": {
+    "loaded_units": 6,
+    "total_loaded_TCP_translation_mm": 116.52065920327513,
+    "max_internal_translation_mm": 20,
+    "speed_mm_s": 5,
+    "acceleration_mm_s2": 10,
+    "fixed_literal_Z_and_EAST_posture": true,
+    "all_actual_robot_endpoints_verified": true,
+    "all_six_post_withdrawal_MUSE_reviews": "PASS with visible progress, WITHIN_ROAD and expected EAST heading",
+    "final_incoming_receiver_sequence": 230,
+    "Hanok_arrival_inferred": false
+  },
+  "unloaded_reposition": {
+    "fixed_pose_translation_stages": 7,
+    "final_receiver_sequence": 241,
+    "wrist_edges": 1,
+    "requested_J6_delta_deg": -89.999,
+    "wrist_endpoint_sequence": 245,
+    "target_XYZ_fixed": true,
+    "original_19_sample_FK_path_guards_retained": true,
+    "robot_endpoint_verified": true,
+    "vehicle_turn_executed": false
+  },
+  "preserved_preflight_failures": {
+    "first_unit": "HOST_PUBLICATION_NOT_NEW before any command intent. Original journal retained; two new stationary Native captures and explicit no-dispatch reconciliation preceded a distinct new unit. No request replay or guard change.",
+    "first_free_plan": "Target IK rejected before wire because current-pose roundtrip was omitted after profile handoff. Preparation order corrected; original failure retained. Seven actual free stages followed successful current/target read-only IK.",
+    "latest_target_IK": {
+      "client_request_id": "7ef86a5e-ff1f-4c4f-aa5e-aad70a1cc587",
+      "read_only": true,
+      "motion_issued_by_query": false,
+      "last_completed_inspection_sequence": 249,
+      "interrupted_inspection_sequence": 250,
+      "result": "Rodi disconnected after intermediate FK/IK stages; no terminal target-IK result. API outcome_unknown remains blocking new submissions.",
+      "pendant_error_text_observed": false,
+      "exact_failure_cause_confirmed": false,
+      "first_contact_turn_translation_dispatched": false
+    }
+  },
+  "current_recovery": {
+    "additional_commands_stopped": true,
+    "fresh_independent_stationary_Native_samples_after_disconnect": 3,
+    "current_coordinates_match_last_motion_within_native_resolution": true,
+    "old_mailbox_empty": true,
+    "existing_host_service_running": true,
+    "existing_port_19507_listening": true,
+    "existing_persist_unchanged": true,
+    "camera_and_services_restarted": false,
+    "current_stationary_reconnect_profile_prepared": true,
+    "manual_error_clear_and_PLAY_requested": true,
+    "reconnected_READY_verified": false,
+    "old_request_profile_or_mailbox_replayed": false
+  },
+  "private_checkpoint_count": 25,
+  "private_original_files": 520,
+  "private_original_archive_sha256": "5762b209f50504034412c9f0d84d8ed578e5f0ea7fcae43ad9156d58af65e751",
+  "private_originals_verified_locally": true,
+  "map_to_BASE_calibration_accepted": false,
+  "reusable_city_route_adapter_activated": false,
+  "physical_signal_gate_tested": false,
+  "private_media_and_coordinates_published": false,
+  "state_warning": "Historical cutoff only. C was operator-accepted separately; this is not D arrival or a qualified repeatable turn recipe. Never replay a pending journal or restore the closed session profile. Verify a fresh current session and reconcile the interrupted read-only request before further work."
+}
