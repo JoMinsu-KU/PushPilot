@@ -211,6 +211,29 @@ class CoordinateUnitTests(unittest.TestCase):
         with self.assertRaises(ExecutionBlocked):
             self.executor.run()
         self.assertEqual(len(self.ports.motions), 0)
+        failures = [payload for kind, payload in self.ports.events if kind == "coordinate_unit_interrupted"]
+        self.assertEqual(failures[-1]["error_code"], "UNIT_STAGE_LIMIT")
+
+    def test_cli_preserves_primary_guard_code_when_hold_also_fails(self):
+        from contextlib import redirect_stderr
+        from io import StringIO
+        from unittest.mock import MagicMock, patch
+        journal, ports, executor = MagicMock(), MagicMock(), MagicMock()
+        executor.run.side_effect = ExecutionBlocked("NATIVE_BASELINE_CHANGED", "Synthetic private diagnostic.")
+        ports.hold.side_effect = TimeoutError("Synthetic private hold endpoint.")
+        with TemporaryDirectory() as folder, redirect_stderr(StringIO()) as error_output, \
+                patch("tools.run_coordinate_unit.load_unit", return_value=(self.adapter, unit())), \
+                patch("tools.run_coordinate_unit.read_json", return_value={}), \
+                patch("tools.run_coordinate_unit.PrivateJournal", return_value=journal), \
+                patch("tools.run_coordinate_unit.RealTaughtPorts", return_value=ports), \
+                patch("tools.run_coordinate_unit.CoordinateUnitExecutor", return_value=executor):
+            self.assertEqual(main(["--unit-file", "synthetic.json", "--config-file", "synthetic-config.json",
+                                   "--output-dir", folder, "--execute"]), 3)
+        failure = json.loads(error_output.getvalue())
+        self.assertEqual(failure["error_code"], "NATIVE_BASELINE_CHANGED")
+        self.assertEqual(failure["hold_error_type"], "TimeoutError")
+        self.assertNotIn("private", error_output.getvalue())
+        self.assertFalse(failure["automatic_replay"])
 
     def test_reject_discontinuity_missing_withdrawal_and_double_contact(self):
         original = unit()

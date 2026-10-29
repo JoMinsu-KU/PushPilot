@@ -236,7 +236,14 @@ class CoordinateUnitExecutor:
                 self.state = "NEEDS_RECONCILIATION"
             if self.state not in {"READY", "WAIT_REVIEW", "ACCEPTED", "NEEDS_RECONCILIATION"}:
                 self.state = "NEEDS_RECONCILIATION"
-            self.ports.hold("Coordinate unit stopped; no automatic replay or next loaded action.")
+            self.ports.append_event("coordinate_unit_interrupted", {
+                "error_type": type(error).__name__,
+                "error_code": error.code if isinstance(error, ExecutionBlocked) else "IO_OR_RUNTIME_ERROR",
+                "automatic_replay": False})
+            try:
+                self.ports.hold("Coordinate unit stopped; no automatic replay or next loaded action.")
+            except Exception as hold_error:
+                self.ports.append_event("coordinate_unit_hold_failed", {"error_type": type(hold_error).__name__})
             self._checkpoint()
             raise
         finally:

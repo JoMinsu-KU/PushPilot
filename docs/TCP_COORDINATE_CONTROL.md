@@ -101,6 +101,15 @@ Final vehicle arrival and its provider receipt are now persisted together
 in the coordinate-unit checkpoint, only after all outcome and Native checks.
 Operator arrival acceptance remains a distinct evidence source.
 
+Unit interruptions retain a bounded guard code in the private event journal
+and CLI output. A secondary failure while requesting HOLD does not replace
+the original error; neither error authorizes a retry. An explicit reconciliation
+may finish only never-issued withdrawal stages after proving all existing
+intents have original Native-confirmed endpoints, a matching current source
+and fresh stationary evidence. It must preserve the original interruption and
+review the original whole-unit image pair after withdrawal; never repeat a
+completed contact to recover an observation.
+
 On October 29 the operator selected the actual manually taught BASE positions B, C and D as the destination references. This mode uses those controller coordinates directly and does not require a drawing-to-BASE transform. The earlier nominal-map calibration remains rejected: the A/B/C unit-scale fit has a maximum 11.42 mm residual, and its reserved D/E numerical discrepancies are 2.87/6.47 mm. Reusing the records as operator-selected BASE goals does not make the map calibration pass or establish vehicle arrival.
 
 `backend/robot_control/taught_roads.py` constructs route proposals from the taught lower A–B and upper C–D frontage lines. E locates a proposed perpendicular connecting road. This perpendicularity is an explicit layout assumption; proposed junctions and complete tool/arm/hose sweeps need actual review. B uses the lower frontage. C/D use the connector and their respective upper frontage. The algorithm uses no image coordinates, map artwork or printer scale. Every proposal preserves the observation hashes, fixed taught Z/orientation and missing physical qualifications.

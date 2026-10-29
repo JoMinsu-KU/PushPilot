@@ -18,7 +18,7 @@ if str(ROOT) not in sys.path:
 
 from backend.robot_control.coordinate_units import CoordinateBinding, CoordinateStage, CoordinateUnit, CoordinateUnitExecutor
 from backend.robot_control.taught_ports import PrivateJournal, RealTaughtPorts
-from backend.robot_control.taught_executor import SignalObservationTarget
+from backend.robot_control.taught_executor import ExecutionBlocked, SignalObservationTarget
 from tools.run_taught_executor import read_json, reference
 
 
@@ -96,11 +96,18 @@ def main(argv=None):
         print(json.dumps(result))
         return 0 if result["state"] == "ACCEPTED" else 2
     except Exception as error:
+        code = error.code if isinstance(error, ExecutionBlocked) else "CONFIGURATION_OR_IO_ERROR"
+        cleanup_error_type = None
         if ports:
-            ports.hold("Experimental coordinate unit stopped; no replay, route advance or automatic recovery.")
+            try:
+                ports.hold("Experimental coordinate unit stopped; no replay, route advance or automatic recovery.")
+            except Exception as hold_error:
+                cleanup_error_type = type(hold_error).__name__
         if journal:
-            journal.append("coordinate_unit_failed", {"error_type": type(error).__name__, "automatic_replay": False})
-        print(json.dumps({"status": "stopped", "error_type": type(error).__name__, "automatic_replay": False}), file=sys.stderr)
+            journal.append("coordinate_unit_failed", {"error_type": type(error).__name__, "error_code": code,
+                           "hold_error_type": cleanup_error_type, "automatic_replay": False})
+        print(json.dumps({"status": "stopped", "error_type": type(error).__name__, "error_code": code,
+                          "hold_error_type": cleanup_error_type, "automatic_replay": False}), file=sys.stderr)
         return 3
     finally:
         if journal:
