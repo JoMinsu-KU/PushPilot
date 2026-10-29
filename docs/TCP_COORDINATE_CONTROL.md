@@ -82,8 +82,18 @@ front-side turn units and a rear seating unit had Native-confirmed endpoints
 and post-withdrawal MUSE progress/road/heading support. D arrival remained
 incomplete. [Common-turn evidence](evidence/taught-D-common-turn-20261029.json).
 
-Observation withdrawal must expose the vehicle and the configured right-side
-paper signal together. `CoordinateUnit.required_signal_observation` optionally
+Observation withdrawal follows the current junction's requirement. The operator
+clarified that the current central turning location has no signal: a reviewed
+LEFT park with a readable car is sufficient there. Do not inherit the first
+signal-bearing junction's far-RIGHT observation path everywhere. Verify the
+left candidate's actual car visibility before treating it as a reusable park;
+native TCP completion alone cannot establish visibility. This changes the
+physical observation recipe, not an installed signal gate or the simulation's
+separate scenario assumptions.
+
+At an approach with a configured signal, observation withdrawal must expose
+the vehicle and that actual signal together.
+`CoordinateUnit.required_signal_observation` optionally
 binds the exact incoming edge, original private placement evidence, native
 image bounds, camera epoch and registration. The private bundle must include
 the matching hashed `signal_target_evidence` record. A changed view rejects
@@ -122,6 +132,16 @@ joint change, changed identity/TCP, stale evidence or Native disagreement stops
 without further acquisition or command retry. This changes observation
 acquisition, not physical limits, motion authority, replay policy or receiver
 scripts. It is not a recovery path for an unknown command outcome.
+
+The real host-journal port now uses the reader's existing eight-second bounded
+acquisition budget. A later actual D approach stopped before contact because
+the default four-second wait did not obtain a newer completed publication.
+The original `HOST_PUBLICATION_NOT_NEW` failure remains in its journal. Waiting
+for a new publication does not refresh old measurements: the original five-
+second source age, exact receiver binding, Native agreement and stationary
+checks still apply. A synthetic publication arriving after six seconds passes
+only with genuinely fresh source samples; the shorter budget rejects it. No
+command is retried and no additional Native client or service restart is used.
 
 For a contact recipe with a reviewed pushing-face normal, the private site
 review can bind `normal_disengagement` with `contact_normal_base_xy` and

@@ -554,7 +554,8 @@ class RealTaughtPorts:
                 native = self.native_capture()
             elif self.native_observation_source == "host_journal":
                 native = host_journal_native_capture(self.runtime, self.journal,
-                    expected_receiver={key: receiver[key] for key in ("session_id", "seq", "profile_id")})
+                    expected_receiver={key: receiver[key] for key in ("session_id", "seq", "profile_id")},
+                    max_wait_s=8.)
             else:
                 native = quiet_native_capture(self.runtime, self.journal)
             self._native_cache = identity, native

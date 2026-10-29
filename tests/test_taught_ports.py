@@ -124,6 +124,7 @@ class RealTaughtPortsTests(TestCase):
                 self.ports.snapshot()
         self.assertEqual(host.call_args.kwargs["expected_receiver"],
                          {"session_id": "synthetic-session", "seq": 4, "profile_id": "synthetic-profile"})
+        self.assertEqual(host.call_args.kwargs["max_wait_s"], 8.)
 
     def test_expected_marker_occlusion_retains_original_jpeg_but_disagreement_blocks(self):
         frame = self.ports.capture()
@@ -631,6 +632,44 @@ def journal_bytes(rows):
 
 
 class HostJournalNativeProofTests(TestCase):
+    def test_later_completed_publication_can_be_fresh_without_relaxing_source_age(self):
+        identity, state, rows = host_cycle_fixture()
+        for budget in (4., 8.):
+            with self.subTest(budget=budget), TemporaryDirectory() as temp:
+                root = Path(temp)
+                runtime = root / "runtime"
+                run = runtime / "runs" / "current"
+                run.mkdir(parents=True)
+                (runtime / "current_session.json").write_bytes(encoded({"path": run.name}))
+                (run / "state.json").write_bytes(encoded({**state, "updated_monotonic_ns": 1_000_000_000}))
+                (run / "events.jsonl").write_bytes(journal_bytes(rows))
+                now = [2.2]
+                later = {**state, "updated_monotonic_ns": state["updated_monotonic_ns"] + 6_000_000_000}
+                later_rows = [{**row, "monotonic_ns": row["monotonic_ns"] + 6_000_000_000} for row in rows]
+                def sleep(delay):
+                    now[0] += delay
+                    if now[0] >= 8.2:
+                        (run / "events.jsonl").write_bytes(journal_bytes(later_rows))
+                        (run / "state.json").write_bytes(encoded(later))
+                journal = PrivateJournal(root / "evidence")
+                try:
+                    def capture():
+                        return host_journal_native_capture(runtime, journal, expected_receiver=identity,
+                            max_wait_s=budget, verifier=lambda _: {"server.py": b"synthetic source"},
+                            clock=lambda: 100. + now[0], monotonic=lambda: now[0],
+                            monotonic_ns=lambda: int(now[0] * 1e9), sleep=sleep)
+                    if budget == 4.:
+                        with self.assertRaises(ExecutionBlocked):
+                            capture()
+                    else:
+                        observed = capture()
+                        self.assertLess(100. + now[0] - observed.observed_at, 5.)
+                        proof = json.loads(next((root / "evidence").glob("host-native-*.json")).read_bytes())
+                        self.assertEqual(proof["source_sample_monotonic_ns"], later_rows[-1]["monotonic_ns"])
+                        self.assertEqual(proof["extra_fc03_queries"], 0)
+                finally:
+                    journal.close()
+
     def prove(self, state, rows, **kwargs):
         return prove_host_journal_cycle(state, journal_bytes(rows), now_monotonic_ns=2_200_000_000,
                                         publication_after_ns=1_000_000_000, **kwargs)
