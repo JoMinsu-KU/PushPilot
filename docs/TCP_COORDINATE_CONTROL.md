@@ -221,6 +221,26 @@ Expected gripper occlusion must not break the persistent robot session, trigger 
 
 Vehicle yaw/cross-track error can inform the next qualified contact correction, remaining turn or route decision. The selected pushing face, approach/repositioning envelope, actual slip/rotation response and stopping geometry still need separate contact tests. No contact or rotation is authorized by this noncontact teaching result.
 
+## Clean START restart after the extended D trial
+
+The explicitly reviewed 39.8 mm TCP contact experiment completed two consecutive
+19.9 mm EAST strokes, then a 10 mm normal WEST release and LEFT observation.
+All eleven robot stages had Native endpoint confirmation. The original MUSE
+outcome was **FAIL**: the car moved and yawed, but its footprint overlapped an
+island. This supplies a qualitative contact-response observation; it does not
+qualify a road-contained turn, a measured 90-degree rotation or D arrival.
+See [the extended trial record](evidence/taught-D-extended-contact-20261029.json).
+
+The operator then requested restarting from the fixed START rather than adding
+more corrections to the accumulated car pose. Return the empty tool first at
+unchanged working Z and EAST orientation, verify its endpoint, then request
+human car placement. Generate fresh commands from the actual new source;
+historical profiles, mailboxes and interrupted requests are never replayed.
+Reuse the evidenced common route geometry, but revalidate the central approach
+where the later NORTH stroke caused excessive yaw. A clean reset removes an
+accumulated initial-condition ambiguity; it does not by itself fix contact
+geometry or establish repeatability.
+
 ## Current physical evidence
 
 The October 29 records separate one completed B car course, three actual
