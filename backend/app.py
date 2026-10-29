@@ -27,6 +27,8 @@ from backend.voice_api import router as voice_router
 from backend.map_api import router as map_router
 from backend.signal_watch import SignalWatchService
 from backend.display_registration import DisplayRegistrationService
+from backend.physical_mission import PhysicalMissionService
+from backend.physical_api import router as physical_router
 
 
 class Command(BaseModel):
@@ -111,7 +113,7 @@ def create_app(settings: Settings | None = None, *, db_path: str | None = None,
                action_review_provider: ActionReviewProvider | None = None,
                planning_provider=None, live_review_provider=None, voice_provider=None,
                automatic_signal_watch: bool = True,
-               live_camera_url: str | None = None) -> FastAPI:
+               live_camera_url: str | None = None, physical_driver=None) -> FastAPI:
     """Create an app without reading credentials or initializing a database yet."""
     @asynccontextmanager
     async def lifespan(application: FastAPI):
@@ -150,9 +152,20 @@ def create_app(settings: Settings | None = None, *, db_path: str | None = None,
         application.state.store.voice_backend_enabled = bool(configured.meta_api_key)
         application.state.signal_watch = SignalWatchService(application.state.store, application.state.live_intelligence)
         application.state.automatic_signal_watch = automatic_signal_watch
+        driver = physical_driver
+        if driver is None and configured.physical_config_path:
+            from backend.robot_control.mission_driver import ConfigBackedMissionDriver
+            from backend.robot_control.mission_observer import MissionObserver
+            driver = ConfigBackedMissionDriver(configured.physical_config_path,
+                observer_callback=MissionObserver(configured.meta_api_key))
+        application.state.physical = PhysicalMissionService(application.state.store,
+            Path(scene_dir) / "physical-mission", driver=driver)
+        await application.state.physical.refresh_readiness()
+        application.state.physical.start_monitor()
         try:
             yield
         finally:
+            await application.state.physical.close()
             await application.state.signal_watch.close()
             application.state.live_camera.close()
             application.state.voice.close()
@@ -345,6 +358,7 @@ def create_app(settings: Settings | None = None, *, db_path: str | None = None,
     application.include_router(scene_router)
     application.include_router(voice_router)
     application.include_router(map_router)
+    application.include_router(physical_router)
 
     @application.api_route("/api", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
     @application.api_route("/api/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])

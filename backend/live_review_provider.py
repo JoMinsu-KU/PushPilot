@@ -105,6 +105,7 @@ def _frame_content(frame: dict, label: str) -> list[dict]:
 class MetaLiveReviewProvider:
     endpoint = MetaGoalProvider.endpoint
     model = MetaGoalProvider.model
+    max_completion_tokens = 1600
 
     def __init__(self, api_key: str, transport: httpx.AsyncBaseTransport | None = None):
         self._api_key = api_key
@@ -203,7 +204,7 @@ class MetaLiveReviewProvider:
             "response_format": {"type": "json_schema", "json_schema": {
                 "name": schema_name, "strict": True, "schema": schema,
             }},
-            "reasoning_effort": "minimal", "max_completion_tokens": 1600,
+            "reasoning_effort": "minimal", "max_completion_tokens": self.max_completion_tokens,
         }
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(45.0, connect=5.0), follow_redirects=False,

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { EvidenceEvent, WorkspaceSnapshot } from '../../contracts/workspace';
 import type { TemporaryMap } from '../../contracts/scene';
+import type { PhysicalStatus } from '../../contracts/physical';
+import { physicalDetail, physicalTitle } from './physicalMission';
 import { Icon } from './Icons';
 import { drawingDistance, nodeLabel, planStepLabel } from './mapMetadata';
 
@@ -58,7 +60,7 @@ export function TextPages({ text, size = 440 }: { text: string; size?: number })
   return <div className="text-pages"><p>{chunks[index]}</p>{chunks.length > 1 && <Pager page={index} total={chunks.length} onChange={setPage} label="Text"/>}</div>;
 }
 
-export function PlanBrowser({ workspace, map = null }: { workspace: WorkspaceSnapshot | null; map?: TemporaryMap | null }) {
+export function PlanBrowser({ workspace, map = null, physical = false }: { workspace: WorkspaceSnapshot | null; map?: TemporaryMap | null; physical?: boolean }) {
   const compact = useCompact();
   const size = compact ? 2 : 4;
   const [page, setPage] = useState(0);
@@ -70,8 +72,27 @@ export function PlanBrowser({ workspace, map = null }: { workspace: WorkspaceSna
     <div className="route-facts"><span><small>From</small><strong>{nodeLabel(map, workspace?.plan?.route.start ?? map?.start)}</strong></span><Icon name="arrow" size={24}/><span><small>To</small><strong>{nodeLabel(map, workspace?.goal?.destination)}</strong></span><span><small>Drawing distance</small><strong>{drawingDistance(workspace?.plan?.route.distance_mm)} mm</strong></span><span><small>Junction checks</small><strong>{workspace?.plan?.route.junction_ids.length ?? '—'} </strong></span></div>
     <ol className="route-page" start={index * size + 1} aria-label="Route steps">{steps.slice(index * size, (index + 1) * size).map((step, offset) => <li className={step.status} key={step.id}><span className="route-number">{step.status === 'complete' ? <Icon name="check" size={16}/> : String(index * size + offset + 1).padStart(2, '0')}</span><div><strong>{planStepLabel(map, step)}</strong><p>{step.description}</p></div><span className="route-kind">{step.kind}</span></li>)}</ol>
     {steps.length === 0 && <p className="empty-copy">Create a goal to inspect its route.</p>}
-    <footer className="dialog-bottom"><span>Temporary drawing graph · simulated actions</span><Pager page={index} total={pages} onChange={setPage} label="Route page"/></footer>
+    <footer className="dialog-bottom"><span>{physical ? 'Planned road route · robot progress shown in the mission panel' : 'Temporary drawing graph · simulated actions'}</span><Pager page={index} total={pages} onChange={setPage} label="Route page"/></footer>
   </div>;
+}
+
+export function PhysicalStatusPanel({ status, connected, map = null }: { status: PhysicalStatus | null; connected: boolean; map?: TemporaryMap | null }) {
+  const destinations = connected && status?.capabilities.destinations;
+  const destinationDetail = !destinations ? 'Robot destinations have not been confirmed.'
+    : destinations.length ? `Available robot destinations: ${destinations.map(id => nodeLabel(map, id)).join(', ')}.` : 'No robot destinations are currently available.';
+  return <section className="physical-status-panel">
+    <h3>{physicalTitle(status, connected)}</h3>
+    <TextPages text={`${physicalDetail(status, connected)}\n\n${destinationDetail}`} size={320}/>
+    <dl className="physical-status-facts">
+      <div><dt>Robot</dt><dd>{!connected ? 'Status unavailable' : !status?.robot.connected ? 'Disconnected' : status.robot.at_start ? 'Ready at start' : status.robot.stationary ? 'Stationary' : 'Moving'}</dd></div>
+      <div><dt>Car arrival</dt><dd>{connected && status?.car.arrived ? 'Confirmed' : 'Not confirmed'}</dd></div>
+      <div><dt>Parking alignment</dt><dd>{connected && status?.car.aligned ? 'Confirmed' : 'Not confirmed'}</dd></div>
+      <div><dt>Heading error</dt><dd>{connected && status?.car.heading_error_deg != null ? `${Math.abs(status.car.heading_error_deg).toFixed(1)}°` : 'Not measured'}</dd></div>
+      <div><dt>Signal</dt><dd>{connected ? status?.signal.color ?? 'UNKNOWN' : 'UNKNOWN'}</dd></div>
+      <div><dt>Execution</dt><dd>{connected ? status?.stage_label || 'No active stage' : 'Current stage unconfirmed'}</dd></div>
+    </dl>
+    <p className="physical-stop-note">A stop request holds further dispatch. A stopped state is confirmed separately by the robot.</p>
+  </section>;
 }
 
 export function EvidenceBrowser({ events, selected, onSelect, onOpenRecord }: {

@@ -15,4 +15,6 @@ dependencies = [
 [tool.pushpilot]
 workspace_status = "temporary_map_workspace"
 runtime_implemented = true
-physical_execution_implemented = false
+physical_execution_implemented = true
+physical_execution_enabled_by_default = false
+autonomous_physical_release_qualified = false

@@ -16,6 +16,7 @@ class Settings:
     frontend_dist: str = str(ROOT / "frontend" / "dist")
     map_path: str = str(ROOT / "backend" / "data" / "little-town-temporary.json")
     scene_dir: str | None = None
+    physical_config_path: str | None = None
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -33,4 +34,5 @@ class Settings:
             frontend_dist=os.environ.get("PUSHPILOT_FRONTEND_DIST", cls.frontend_dist),
             map_path=os.environ.get("PUSHPILOT_MAP_PATH", values.get("PUSHPILOT_MAP_PATH", cls.map_path)),
             scene_dir=os.environ.get("PUSHPILOT_SCENE_DIR", values.get("PUSHPILOT_SCENE_DIR")),
+            physical_config_path=os.environ.get("PUSHPILOT_PHYSICAL_CONFIG"),
         )

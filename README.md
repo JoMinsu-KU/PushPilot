@@ -84,6 +84,8 @@ The implemented [stopped-live signal service](docs/MUSE_SIGNAL_GATE.md) makes MU
 
 SQLite events and review records connect the input, response and resulting transition for replay. Recorded imagery, actual provider responses and simulated execution retain separate source labels.
 
+The new [autonomous physical executor](docs/AUTONOMOUS_EXECUTOR.md) connects a separate Robot mode to measured primitives, post-withdrawal MUSE review, two-face paper-signal waiting/recontact, bounded correction, parking verification and empty-tool return. Its software path is implemented and tested offline. Complete physical release remains blocked by explicit car-response, signal-placement and return-path evidence gaps; simulation is still the default.
+
 ## Evidence and limits
 
 | Area | Available today | Evidence boundary |
@@ -97,7 +99,7 @@ SQLite events and review records connect the input, response and resulting trans
 | Live MUSE planning | Native JPEG + grounded graph → selected directed nodes → validated AR geometry | Actual left/right route-preview requests accepted; no measured car pose or physical action. |
 | Live action and signal services | Server-bound native BEFORE/AFTER review; new post-stop signal images and bounded RED/UNKNOWN waiting | Offline provider tests pass. Stop/action receipts remain simulated; real-car outcomes and paper-signal accuracy are unverified. |
 | Voice backend | Bounded PCM WAV → Meta adapter → editable, revision-bound transcript candidate | Implemented and tested offline. Actual ASR access and browser microphone capture are not verified. |
-| Robot execution | Separate future qualified adapter | Not connected. Physical pushing, turning, stopping and paper-signal operation need qualification. |
+| Robot execution | Separate commissioning service plus an optional autonomous measured-primitive coordinator and tablet controls | Historical B/C/D trials are preserved. Complete autonomous repeatability, correction response, parking alignment and physical signal operation are not yet qualified. See [executor evidence and limits](docs/AUTONOMOUS_EXECUTOR.md). |
 | GX10 and glasses | GX10 serves the compiled frontend and simulation backend beside the independent camera helper | A separate [robot commissioning service](docs/ROBOT_CONTROL.md) verified the persistent connection and one local tool retreat; tablet missions remain simulated. Wearable connection, boot without login and tablet HTTPS remain unverified. |
 
 The temporary print is replaceable through a reviewed JSON definition, map version, new plan and fresh camera display registration. Places, aliases, directed roads, marker facts and approach-specific signal regions belong to map data. Validate a candidate with `python tools/validate_map.py --map-path /private/maps/replacement.json` or `POST /api/v1/maps/validate`, then select it at startup with `--map-path`. See [map replacement](docs/MAP_REPLACEMENT.md) and [route display](docs/ROUTE_DISPLAY.md). Drawing geometry does not qualify physical stop lines, vehicle/tool clearance or contact turning. Raw map artwork, camera frames, credentials and operational archives are excluded from public source and release bundles.

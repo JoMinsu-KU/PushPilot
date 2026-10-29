@@ -57,6 +57,23 @@
 .mission-journey > svg { flex: none; }
 .scene-heading > h2, .scene-heading > button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mission-intro > h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mode-label { max-width: 155px; font-family: inherit; cursor: pointer; }
+.physical-check p { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.physical-detail-link { display: flex; align-items: center; gap: 4px; margin-top: 5px; color: #75818a; font-size: 10px; }
+.physical-stop { background: #a95f49; border-color: #a95f49; }
+.physical-stop:hover:not(:disabled) { background: #934f3b; }
+.physical-status-panel { display: flex; flex-direction: column; gap: 15px; min-height: 0; }
+.physical-status-panel > h3 { font-size: 22px; font-weight: 500; color: #344650; }
+.physical-status-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding-top: 14px; border-top: 1px solid #dce3e6; }
+.physical-status-facts > div { min-width: 0; }
+.physical-status-facts dt { font-size: 11px; color: #7d8b94; margin-bottom: 6px; }
+.physical-status-facts dd { margin: 0; font-size: 13px; color: #344650; overflow-wrap: anywhere; }
+.physical-stop-note { color: #7d8b94; font-size: 11px; line-height: 1.5; }
+.status-card-value { overflow: hidden; text-overflow: ellipsis; }
+.status-card.is-scanning .status-card-top i { background: #d28e68; animation: muse-request-pulse 1.4s ease-in-out infinite; }
+.status-card.is-scanning { box-shadow: inset 0 0 0 1px #deaa836e; }
+@keyframes muse-request-pulse { 0%, 100% { box-shadow: 0 0 0 0 #d28e6833; opacity: .65; } 50% { box-shadow: 0 0 0 5px #d28e6800; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .status-card.is-scanning .status-card-top i { animation: none; opacity: 1; } }
 @media (min-width: 901px) {
   .mission-heading > span, .section-caption h3 { font-size: 13px; color: #4d5962; }
   .mission-provider, .mission-journey { font-size: 11px; color: #74818a; }

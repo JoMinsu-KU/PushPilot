@@ -52,12 +52,12 @@ export function RouteOverlay({ display, scale = 1, boundary }: { display: RouteD
   </g>;
 }
 
-export function RouteLegend({ display }: { display: RouteDisplay | null }) {
+export function RouteLegend({ display, physicalLabel }: { display: RouteDisplay | null; physicalLabel?: string }) {
   if (!display) return null;
   return <div className="route-progress-legend" aria-label="Route display status">
     <strong>{display.source}</strong>
-    {display.source === 'Simulation progress' ? <><span className="route-legend-done">Reviewed</span><span className="route-legend-current">Current</span><span className="route-legend-next">Upcoming</span></>
+    {physicalLabel ? <span className="route-legend-next">Robot mission</span> : display.source === 'Simulation progress' ? <><span className="route-legend-done">Reviewed</span><span className="route-legend-current">Current</span><span className="route-legend-next">Upcoming</span></>
       : <span className="route-legend-next">{display.awaitingApproval ? 'Awaiting approval' : 'Plan only'}</span>}
-    <span className="route-progress-message">{display.currentLabel}</span>
+    <span className="route-progress-message">{physicalLabel ?? display.currentLabel}</span>
   </div>;
 }
