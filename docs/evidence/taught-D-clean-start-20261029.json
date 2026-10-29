@@ -1,0 +1,287 @@
+{
+  "schema": "pushpilot.scoped-physical-course-evidence.v1",
+  "date_kst": "2026-10-29",
+  "scope": "Clean START frontage, unloaded face preparation and first-junction turn; later rear seating and central approach excluded",
+  "operator_reset_confirmed_after_empty_return_sequence": 333,
+  "frontage": {
+    "units": [
+      {
+        "contact_TCP_mm": 19.899999999999995,
+        "actual_motion_stages": 2,
+        "MUSE": {
+          "after_sha256": "1c9a4609c690ab3360d9f3c32775b2c6f68491e50615a13365e77be9a1ae874f",
+          "arrived": false,
+          "before_sha256": "c70f9590979d73369c1ad26564b713ccbacd140acbac173e10f915d44f36b633",
+          "car_footprint": "WITHIN_ROAD",
+          "car_visible": true,
+          "excessive_yaw": false,
+          "expected_progress": true,
+          "heading_matches_expected": true,
+          "occlusion_cause": "NONE",
+          "provider_receipt": "cc31a616b1315916c946e073ca7ef1551b20a9ceb9ebe31647bc25f971ec39f0",
+          "request_id": "D-fixed-plan-review-20261029T034234981825Z",
+          "signal_occlusion_cause": "UNKNOWN",
+          "signal_region_visible": false,
+          "summary": "Whole unit shows expected east progress with correct heading and road placement. Robot receipts only prove completion.",
+          "verdict": "PASS"
+        }
+      },
+      {
+        "contact_TCP_mm": 19.899999999999995,
+        "actual_motion_stages": 3,
+        "MUSE": {
+          "after_sha256": "00872377a30459f36b98807a01b14abe0fb7db363c52e8a631ba0225ae57895c",
+          "arrived": false,
+          "before_sha256": "35e4a277c4b9f86d09d60eb3a3b942fcf4085f355609688e0af58cfdd5bd8052",
+          "car_footprint": "WITHIN_ROAD",
+          "car_visible": true,
+          "excessive_yaw": false,
+          "expected_progress": true,
+          "heading_matches_expected": true,
+          "occlusion_cause": "NONE",
+          "provider_receipt": "406639789a2f72696276e88b1b3fbfb760dfaf5a73aa07d33409bcc067eb50a7",
+          "request_id": "D-fixed-plan-review-20261029T034418293000Z",
+          "signal_occlusion_cause": "UNKNOWN",
+          "signal_region_visible": false,
+          "summary": "Whole unit shows EAST progress with correct heading and road containment, consistent with bounded EAST push and WEST withdrawal. Not arrival.",
+          "verdict": "PASS"
+        }
+      },
+      {
+        "contact_TCP_mm": 19.899999999999995,
+        "actual_motion_stages": 3,
+        "MUSE": {
+          "after_sha256": "ff750c2275c7f4760b0c6662d54a562b9ff35a5ffb75ed97b01cc5d16fed6a4f",
+          "arrived": false,
+          "before_sha256": "9970aef40c4177b38a2fa4538a72fe860853c217d094047698dbe47480fd68a6",
+          "car_footprint": "WITHIN_ROAD",
+          "car_visible": true,
+          "excessive_yaw": false,
+          "expected_progress": true,
+          "heading_matches_expected": true,
+          "occlusion_cause": "NONE",
+          "provider_receipt": "39d9141da3a16500ba4dd6178d503fc425c05da9c2ec9fe4cd77a1adb9b797e9",
+          "request_id": "D-fixed-plan-review-20261029T034547242944Z",
+          "signal_occlusion_cause": "UNKNOWN",
+          "signal_region_visible": false,
+          "summary": "Whole-unit EAST push with WEST withdrawal shows EAST progress, EAST heading, footprint within road, no arrival expected.",
+          "verdict": "PASS"
+        }
+      },
+      {
+        "contact_TCP_mm": 19.899999999999995,
+        "actual_motion_stages": 3,
+        "MUSE": {
+          "after_sha256": "2451170f0c3a4b1b5559165469916f4b529dfd288bd37ca5265f2b770cccbf35",
+          "arrived": false,
+          "before_sha256": "6dc728108073d1f9719908baf598610b9ab1d55e7e0aa5148d2f7a4c10c85b44",
+          "car_footprint": "WITHIN_ROAD",
+          "car_visible": true,
+          "excessive_yaw": false,
+          "expected_progress": true,
+          "heading_matches_expected": true,
+          "occlusion_cause": "NONE",
+          "provider_receipt": "2e5d2f9f684c96f6eb6658e365fa25ac1ec837fdc165feb12123f6cc064feb6f",
+          "request_id": "D-fixed-plan-review-20261029T034716442000Z",
+          "signal_occlusion_cause": "UNKNOWN",
+          "signal_region_visible": false,
+          "summary": "Whole unit PASS for bounded EAST push with WEST withdrawal: visible EAST progress, correct heading, within road.",
+          "verdict": "PASS"
+        }
+      },
+      {
+        "contact_TCP_mm": 19.899999999999995,
+        "actual_motion_stages": 3,
+        "MUSE": {
+          "after_sha256": "637b05d831a86fa28e48197bdc17ee57576f5a6834d8324e6a06bbf759a2add5",
+          "arrived": false,
+          "before_sha256": "67f87e6e74e56398b97e58a73c2cc157c331ce97942f0b898bb323640f187842",
+          "car_footprint": "WITHIN_ROAD",
+          "car_visible": true,
+          "excessive_yaw": false,
+          "expected_progress": true,
+          "heading_matches_expected": true,
+          "occlusion_cause": "NONE",
+          "provider_receipt": "86f70065666475c0fd37135d43ac5b69977e8d8b5ec13d23ddfb4d8ad82dd510",
+          "request_id": "D-fixed-plan-review-20261029T034845134379Z",
+          "signal_occlusion_cause": "UNKNOWN",
+          "signal_region_visible": false,
+          "summary": "Whole unit shows EAST progress with correct heading and road-keeping, consistent with bounded EAST push and withdrawal. Not arrival.",
+          "verdict": "PASS"
+        }
+      },
+      {
+        "contact_TCP_mm": 17.020659203275155,
+        "actual_motion_stages": 3,
+        "MUSE": {
+          "after_sha256": "cd65647bb2acfdb0cc71dfc181a4ad43221691ced0734e78369585693a4659d1",
+          "arrived": false,
+          "before_sha256": "b56ad1e84d9a5dfd55b97cf5604ada8ca1182def2117198b6f7659e9a36f34d1",
+          "car_footprint": "WITHIN_ROAD",
+          "car_visible": true,
+          "excessive_yaw": false,
+          "expected_progress": true,
+          "heading_matches_expected": true,
+          "occlusion_cause": "NONE",
+          "provider_receipt": "7faf4ade0d8993cc2745bb7f3cf64297d7a73790d7214d322777ec7f3bf121b0",
+          "request_id": "D-fixed-plan-review-20261029T035019375783Z",
+          "signal_occlusion_cause": "UNKNOWN",
+          "signal_region_visible": false,
+          "summary": "Whole unit shows car retained on dark road with expected EAST heading and frontage position consistent with bounded EAST push and withdrawal; no arrival expected.",
+          "verdict": "PASS"
+        }
+      }
+    ],
+    "actual_motion_stages": 17,
+    "contact_TCP_total_mm": 116.52065920327513,
+    "receiver_sequence": 379,
+    "all_Native_endpoints_verified": true,
+    "working_Z_and_EAST_posture_fixed": true,
+    "car_distance_measured": false
+  },
+  "empty_tool_clearance": {
+    "actual_motion_stages": 8,
+    "receiver_sequence": 392,
+    "all_Native_endpoints_verified": true,
+    "car_contact_intended": false
+  },
+  "unloaded_wrist": {
+    "wrong_direction_edge": {
+      "delta_J6_deg": 89.999,
+      "receiver_sequence": 396,
+      "actual_BASE_yaw_deg": -114.66835015810103,
+      "intended_face": "NORTH",
+      "actual_face": "SOUTH",
+      "original_error_preserved": true,
+      "car_contact_dispatched": false
+    },
+    "correction": {
+      "edges_J6_deg": [
+        -89.999,
+        -89.999
+      ],
+      "receiver_sequences": [
+        400,
+        404
+      ],
+      "final_BASE_yaw_deg": 65.32964984192485,
+      "actual_NORTH_face_verified": true,
+      "all_Native_endpoints_verified": true,
+      "XYZ_targets_fixed": true,
+      "original_FK_radius_and_winding_guards_retained": true
+    }
+  },
+  "D_arrival_verified": false,
+  "route_repeatability_qualified": false,
+  "map_to_BASE_calibration_accepted": false,
+  "services_camera_or_original_persist_restarted": false,
+  "first_turn": {
+    "units": [
+      {
+        "unit": 1,
+        "actual_motion_stages": 6,
+        "contact_TCP_mm": 19.900000000000066,
+        "normal_SOUTH_release_mm": 10,
+        "MUSE": {
+          "after_sha256": "2c83a538471ad390889b5881d94e49ba39a2419108e38a0da4a170e736ee7de8",
+          "arrived": false,
+          "before_sha256": "5b0b754f980bd5dd70d025074d73509dffc0cfa1b4ea01a2234ec7a9d5972574",
+          "car_footprint": "WITHIN_ROAD",
+          "car_visible": true,
+          "excessive_yaw": false,
+          "expected_progress": true,
+          "heading_matches_expected": true,
+          "occlusion_cause": "NONE",
+          "provider_receipt": "210f3cb7e4cfd5447b05ea1c3d93e0535b57c85e10a80421f95182bd134df1db",
+          "request_id": "D-fixed-plan-review-20261029T040356680813Z",
+          "signal_occlusion_cause": "UNKNOWN",
+          "signal_region_visible": false,
+          "summary": "Whole-unit expected north eccentric push with CCW yaw toward north and road-contained footprint is supported by visible car evidence; no arrival required.",
+          "verdict": "PASS"
+        },
+        "temporal_contact_photo_captured": true,
+        "temporal_image_stationary_or_isolated_contact_effect_claimed": false
+      },
+      {
+        "unit": 2,
+        "actual_motion_stages": 5,
+        "contact_TCP_mm": 19.92510978639771,
+        "normal_SOUTH_release_mm": 10,
+        "MUSE": {
+          "after_sha256": "98e2cf09b2a6195b8fd23b9b3f0b0dfd5a91d79c08d8a28cd52d0eacb4f85b06",
+          "arrived": false,
+          "before_sha256": "dc920790459f5fcfb529861ca362b3be0542bb234338f83cae777553c12f7e13",
+          "car_footprint": "WITHIN_ROAD",
+          "car_visible": true,
+          "excessive_yaw": false,
+          "expected_progress": true,
+          "heading_matches_expected": true,
+          "occlusion_cause": "NONE",
+          "provider_receipt": "357143637e8fabe7c03010c9f2487232b41189d0f59c806b8933c6737544723a",
+          "request_id": "D-fixed-plan-review-20261029T040618103199Z",
+          "signal_occlusion_cause": "UNKNOWN",
+          "signal_region_visible": false,
+          "summary": "Whole unit counterclockwise reorientation toward north observed with footprint inside road, matching expected bounded push and withdrawal.",
+          "verdict": "PASS"
+        },
+        "temporal_contact_photo_captured": true,
+        "temporal_image_stationary_or_isolated_contact_effect_claimed": false
+      },
+      {
+        "unit": 3,
+        "actual_motion_stages": 6,
+        "contact_TCP_mm": 16.999999999999897,
+        "normal_SOUTH_release_mm": 10,
+        "MUSE": {
+          "after_sha256": "f1bc3d10bec01cbca4275b29c98eae3ea11e6e94a5ffbacb742050d2282a59b5",
+          "arrived": false,
+          "before_sha256": "a0d582bf079b74113b73aa5bab6980e8afbd9177cc14eebfc8af24542542664e",
+          "car_footprint": "WITHIN_ROAD",
+          "car_visible": true,
+          "excessive_yaw": false,
+          "expected_progress": true,
+          "heading_matches_expected": true,
+          "occlusion_cause": "NONE",
+          "provider_receipt": "889d0375a693289b77d8975b13e16b1d35a0d7a5234b23d7616448e9ccb14c21",
+          "request_id": "D-fixed-plan-review-20261029T040822582862Z",
+          "signal_occlusion_cause": "UNKNOWN",
+          "signal_region_visible": false,
+          "summary": "Whole-unit BEFORE/AFTER shows continued turn progress toward NORTH with car staying within road, matching expected result. No arrival claimed.",
+          "verdict": "PASS"
+        },
+        "temporal_contact_photo_captured": true,
+        "temporal_image_stationary_or_isolated_contact_effect_claimed": false
+      },
+      {
+        "unit": 4,
+        "actual_motion_stages": 6,
+        "contact_TCP_mm": 10.000000000000082,
+        "normal_SOUTH_release_mm": 10,
+        "MUSE": {
+          "after_sha256": "690c7428aa8813596628f07086da151f0a08818c23b661e4f6bacaf944ec3398",
+          "arrived": false,
+          "before_sha256": "92ad4124d9962880f82329865cffbe208356b7672d8ba9f26a162ea20b69bf33",
+          "car_footprint": "WITHIN_ROAD",
+          "car_visible": true,
+          "excessive_yaw": false,
+          "expected_progress": true,
+          "heading_matches_expected": true,
+          "occlusion_cause": "NONE",
+          "provider_receipt": "52acc1ffc06b693b44fed197db09de78e403f9f17750d1e2f7756852640e47d8",
+          "request_id": "D-fixed-plan-review-20261029T041036447126Z",
+          "signal_occlusion_cause": "UNKNOWN",
+          "signal_region_visible": false,
+          "summary": "Whole-unit evidence supports NW alignment push with counterclockwise progress toward NORTH and clean south/east withdrawal. Car remains within road.",
+          "verdict": "PASS"
+        },
+        "temporal_contact_photo_captured": true,
+        "temporal_image_stationary_or_isolated_contact_effect_claimed": false
+      }
+    ],
+    "receiver_sequence": 452,
+    "all_Native_endpoints_verified": true,
+    "all_whole_unit_MUSE_PASS": true,
+    "exact_90_degree_car_rotation_measured": false,
+    "route_repeatability_qualified": false
+  }
+}

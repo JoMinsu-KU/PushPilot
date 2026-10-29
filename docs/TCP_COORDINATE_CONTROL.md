@@ -241,6 +241,23 @@ where the later NORTH stroke caused excessive yaw. A clean reset removes an
 accumulated initial-condition ambiguity; it does not by itself fix contact
 geometry or establish repeatability.
 
+The subsequent clean run completed six EAST contact units with original MUSE
+PASS for progress, heading and road containment, through receiver sequence379.
+Their 116.520659 mm total is TCP contact travel, not independently measured car
+distance. Unloaded face preparation included a wrong-sign J6 edge, recorded
+as SOUTH rather than the intended NORTH, and two separate corrective edges.
+All remain in the evidence; no car contact was dispatched at the wrong face.
+The corrected NORTH source was verified through404. Downward tool Z reverses
+the J6-to-BASE-yaw direction in this installation: inspect the computed BASE
+target instead of inferring a named face from a positive joint increment.
+See [the clean START evidence](evidence/taught-D-clean-start-20261029.json).
+
+The four subsequent common first-turn units also passed their new original
+MUSE reviews, with 23 Native-confirmed robot stages through452. They used a
+10 mm SOUTH normal release before lateral observation. This reproduces
+qualitative turn progress and road containment from the reset, without
+measuring an exact 90-degree vehicle rotation or qualifying D arrival.
+
 ## Current physical evidence
 
 The October 29 records separate one completed B car course, three actual
