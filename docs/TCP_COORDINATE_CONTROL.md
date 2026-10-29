@@ -110,6 +110,19 @@ and fresh stationary evidence. It must preserve the original interruption and
 review the original whole-unit image pair after withdrawal; never repeat a
 completed contact to recover an observation.
 
+`confirm_joint_publication` is an explicit host-journal-only observation option,
+disabled by default. A one-register joint publication crossing is retained as
+a failed snapshot, with its original before/after states and Native hash. It
+can trigger exactly two new read-only captures only when session, sequence,
+profile, installation and literal TCP are unchanged, and the discarded proof
+still satisfies the original Native agreement/freshness limits. Both new
+captures must pass every original guard, have exactly matching current joints
+and different completed-cycle evidence hashes. Continued instability, a larger
+joint change, changed identity/TCP, stale evidence or Native disagreement stops
+without further acquisition or command retry. This changes observation
+acquisition, not physical limits, motion authority, replay policy or receiver
+scripts. It is not a recovery path for an unknown command outcome.
+
 On October 29 the operator selected the actual manually taught BASE positions B, C and D as the destination references. This mode uses those controller coordinates directly and does not require a drawing-to-BASE transform. The earlier nominal-map calibration remains rejected: the A/B/C unit-scale fit has a maximum 11.42 mm residual, and its reserved D/E numerical discrepancies are 2.87/6.47 mm. Reusing the records as operator-selected BASE goals does not make the map calibration pass or establish vehicle arrival.
 
 `backend/robot_control/taught_roads.py` constructs route proposals from the taught lower A–B and upper C–D frontage lines. E locates a proposed perpendicular connecting road. This perpendicularity is an explicit layout assumption; proposed junctions and complete tool/arm/hose sweeps need actual review. B uses the lower frontage. C/D use the connector and their respective upper frontage. The algorithm uses no image coordinates, map artwork or printer scale. Every proposal preserves the observation hashes, fixed taught Z/orientation and missing physical qualifications.

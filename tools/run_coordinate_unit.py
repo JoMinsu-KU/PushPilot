@@ -86,7 +86,7 @@ def main(argv=None):
             raise ValueError("Physical IO needs an explicit private config and a new journal outside source.")
         config = read_json(args.config_file)
         allowed = {"runtime", "token_file", "meta_env_file", "camera_epoch", "registration_id", "expected_visual",
-                   "robot_origin", "camera_origin", "command_timeout_s", "native_observation_source"}
+                   "robot_origin", "camera_origin", "command_timeout_s", "native_observation_source", "confirm_joint_publication"}
         if not isinstance(config, dict) or set(config)-allowed:
             raise ValueError("Use only reviewed real-port configuration fields.")
         journal = PrivateJournal(args.output_dir)

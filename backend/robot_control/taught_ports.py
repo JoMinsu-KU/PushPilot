@@ -455,6 +455,7 @@ class RealTaughtPorts:
                  robot_origin="http://127.0.0.1:8897", camera_origin="http://127.0.0.1:8080",
                  command_timeout_s=60., api=None, camera=None, native_capture=None,
                  native_observation_source="quiet_query",
+                 confirm_joint_publication=False,
                  provider_request=request_json, provider_opener=None, clock=time.time,
                  monotonic=time.monotonic, sleep=time.sleep):
         if (not 1 <= command_timeout_s <= 180 or not camera_epoch or not registration_id
@@ -471,6 +472,9 @@ class RealTaughtPorts:
         self.camera = camera or LocalHTTP(camera_origin)
         if native_observation_source not in {"quiet_query", "host_journal"}:
             raise ValueError("Select the explicit quiet_query or host_journal Native observation source.")
+        if type(confirm_joint_publication) is not bool or confirm_joint_publication and native_observation_source != "host_journal":
+            raise ValueError("Bounded joint-publication confirmation uses only the existing read-only host journal.")
+        self.confirm_joint_publication = confirm_joint_publication
         self.native_capture, self.native_observation_source = native_capture, native_observation_source
         self.provider_request = provider_request
         self.provider_opener = provider_opener or urllib.request.build_opener(NoRedirect())
@@ -505,6 +509,40 @@ class RealTaughtPorts:
         return status
 
     def snapshot(self):
+        """Optionally acquire two new exact stable proofs after a quantization crossing.
+
+        This never retries a command or accepts a mismatched snapshot. Both new
+        captures must independently pass the original guards, match the same
+        exact receiver baseline and use distinct completed host cycles.
+        """
+        try:
+            return self._snapshot_once()
+        except ExecutionBlocked as error:
+            conflict = self._joint_publication_conflict
+            if not self.confirm_joint_publication or error.code != "NATIVE_BASELINE_CHANGED" or conflict is None:
+                raise
+        self.journal.append("joint_publication_confirmation_started", conflict)
+        samples = []
+        for _ in range(2):
+            self._native_cache = None
+            fresh = self._snapshot_once()
+            identity = (fresh.session_id, fresh.sequence, fresh.profile_id, fresh.tcp_base, fresh.installation_id)
+            _require(identity == conflict["identity"] and fresh.joints_deg == conflict["after_joints"],
+                     "NATIVE_BASELINE_CHANGED", "Both new stationary captures must match the exact unchanged publication baseline.")
+            _require(len(fresh.native_tcp_base) == 6
+                     and all(abs(a-b) <= .100000001 for a,b in zip(fresh.tcp_base, fresh.native_tcp_base))
+                     and 0 <= self.now()-fresh.native_observed_at <= 5,
+                     "NATIVE_DISAGREEMENT", "Each new confirmation must independently retain original pose agreement and freshness.")
+            samples.append(fresh)
+        _require(samples[0].native_evidence_sha256 != samples[1].native_evidence_sha256,
+                 "HOST_PUBLICATION_NOT_NEW", "Joint publication confirmation needs two distinct fresh completed host cycles.")
+        self.journal.append("joint_publication_confirmed", {
+            "native_evidence_sha256": [sample.native_evidence_sha256 for sample in samples],
+            "receiver_sequence": samples[-1].sequence, "commands_issued": 0, "limits_changed": False})
+        return samples[-1]
+
+    def _snapshot_once(self):
+        self._joint_publication_conflict = None
         before = self._status()
         receiver, installation = before["receiver"], before["installation"]
         identity = (receiver["session_id"], receiver["seq"], receiver["profile_id"],
@@ -522,8 +560,26 @@ class RealTaughtPorts:
             self._native_cache = identity, native
         after = self._status()
         ar = after["receiver"]
-        _require(identity == (ar["session_id"], ar["seq"], ar["profile_id"], tuple(ar["actual_pose"]),
-                              tuple(ar["actual_joint"]), after["installation"]["installation_id"]),
+        after_identity = (ar["session_id"], ar["seq"], ar["profile_id"], tuple(ar["actual_pose"]),
+                          tuple(ar["actual_joint"]), after["installation"]["installation_id"])
+        if identity != after_identity:
+            # Preserve the failed observation. A bounded read-only confirmation
+            # is eligible only for one-register joint changes, with all other
+            # source facts exact and the original Native agreement unchanged.
+            self.journal.artifact("native-baseline-conflict", {
+                "before": before, "after": after, "native_sha256": native.sha256})
+            if (identity[:4]+identity[5:] == after_identity[:4]+after_identity[5:]
+                    and len(native.joint) == len(identity[4]) == len(after_identity[4]) == 6
+                    and 0 < max(abs(a-b) for a,b in zip(identity[4], after_identity[4])) <= .100000001
+                    and all(abs(a-b) <= .100000001 for a,b in zip(native.joint, identity[4]))
+                    and all(abs(a-b) <= .100000001 for a,b in zip(native.joint, after_identity[4]))
+                    and all(abs(a-b) <= .100000001 for a,b in zip(native.pose, identity[3]))
+                    and 0 <= self.now()-native.observed_at <= 5):
+                self._joint_publication_conflict = {
+                    "identity": (identity[0], identity[1], identity[2], identity[3], identity[5]),
+                    "before_joints": identity[4], "after_joints": after_identity[4],
+                    "discarded_native_sha256": native.sha256, "commands_issued": 0, "limits_changed": False}
+        _require(identity == after_identity,
                  "NATIVE_BASELINE_CHANGED", "Receiver/installation changed while independent coordinates were collected.")
         self.journal.artifact("robot-status", {"before": before, "after": after, "native_sha256": native.sha256})
         _require(len(native.joint) == 6 and all(abs(a-b) <= .100000001 for a, b in zip(native.joint, receiver["actual_joint"])),

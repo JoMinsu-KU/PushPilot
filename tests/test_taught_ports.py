@@ -134,6 +134,66 @@ class RealTaughtPortsTests(TestCase):
         with self.assertRaises(ExecutionBlocked):
             self.ports.capture()
 
+    def test_quantized_joint_publication_needs_two_new_exact_stable_host_proofs(self):
+        self.ports.native_observation_source = "host_journal"
+        self.ports.confirm_joint_publication = True
+        calls = []
+        def native():
+            calls.append(True)
+            self.api.status["receiver"]["actual_joint"][0] = .1
+            return NativeObservation(pose(0), (.1, 0., 0., 0., 0., 0.), 100., f"{len(calls):064x}")
+        self.ports.native_capture = native
+        result = self.ports.snapshot()
+        self.assertEqual(len(calls), 3)  # Discarded crossing plus two new completed cycles.
+        self.assertEqual(result.joints_deg[0], .1)
+        self.assertTrue(list(self.journal.root.glob("native-baseline-conflict-*.json")))
+        rows = [json.loads(line) for line in self.journal.event_path.read_text().splitlines()]
+        self.assertEqual(rows[-1]["kind"], "joint_publication_confirmed")
+        self.assertEqual(rows[-1]["payload"]["commands_issued"], 0)
+        self.assertEqual(len(set(rows[-1]["payload"]["native_evidence_sha256"])), 2)
+        self.assertFalse(any(path != "/v1/status" for path, _ in self.api.calls))
+
+    def test_quantization_confirmation_does_not_retry_real_baseline_or_native_disagreement(self):
+        for mode in ("disabled", "large_joint_change", "sequence_change", "bad_original_native"):
+            with self.subTest(mode=mode):
+                self.api.status = synthetic_status()
+                self.ports._native_cache = None
+                self.ports.native_observation_source = "host_journal"
+                self.ports.confirm_joint_publication = mode != "disabled"
+                calls = []
+                def native():
+                    calls.append(True)
+                    delta = .2 if mode == "large_joint_change" else .1
+                    self.api.status["receiver"]["actual_joint"][0] = delta
+                    if mode == "sequence_change":
+                        self.api.status["receiver"]["seq"] += 1
+                    return NativeObservation(pose(.2) if mode == "bad_original_native" else pose(0),
+                        (delta, 0., 0., 0., 0., 0.), 100., "d"*64)
+                self.ports.native_capture = native
+                with self.assertRaises(ExecutionBlocked):
+                    self.ports.snapshot()
+                self.assertEqual(len(calls), 1)
+
+    def test_unstable_or_reused_confirmation_proofs_stop_without_command_retry(self):
+        for mode in ("unstable", "reused", "bad_new_native"):
+            with self.subTest(mode=mode):
+                self.api.status = synthetic_status()
+                self.ports._native_cache = None
+                self.ports.native_observation_source = "host_journal"
+                self.ports.confirm_joint_publication = True
+                calls = []
+                def native():
+                    calls.append(True)
+                    delta = 0. if mode == "unstable" and len(calls) == 2 else .1
+                    self.api.status["receiver"]["actual_joint"][0] = delta
+                    return NativeObservation(pose(.2) if mode == "bad_new_native" and len(calls) == 2 else pose(0),
+                        (delta, 0., 0., 0., 0., 0.), 100., "d"*64 if mode == "reused" else f"{len(calls):064x}")
+                self.ports.native_capture = native
+                with self.assertRaises(ExecutionBlocked):
+                    self.ports.snapshot()
+                self.assertEqual(len(calls), 3 if mode == "reused" else 2)
+                self.assertFalse(self.api.command)
+
     def test_api_uuid_and_wire_id_are_distinct_and_both_preserved(self):
         intent = self.intent()
         result = self.ports.execute_once(intent)
