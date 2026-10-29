@@ -1,0 +1,256 @@
+{
+  "schema": "pushpilot.scoped-physical-course-evidence.v1",
+  "date_kst": "2026-10-29",
+  "scope": "Post-signal-wait central recovery and rear-EAST progress; latest correction completed through620 but remains UNCERTAIN, D arrival unsupported",
+  "selected_signal_wait_reference_preserved": true,
+  "units": [
+    {
+      "id": "D-fixed-plan-review-20261029T043209725354Z",
+      "purpose": "NORTH continuation after the selected signal-wait reference",
+      "actual_motion_stages": 14,
+      "receiver_sequence": 500,
+      "state": "WAIT_REVIEW",
+      "MUSE": {
+        "verdict": "FAIL",
+        "car_visible": true,
+        "expected_progress": false,
+        "heading_matches_expected": false,
+        "excessive_yaw": true,
+        "car_footprint": "OVERLAPS_ISLAND",
+        "occlusion_cause": "TOOL",
+        "before_sha256": "9c75762f91bcaeeb8e8c1c3e9e3b77e2060632c25e85c4d196d1c4a6350baabc",
+        "after_sha256": "c184d47abd6159827c8dd0ebf2481021b3c94e1159d0d6a58816d8b92d56bc2e",
+        "provider_receipt": "1223d5d36fe0f0e6c1ced992a4ec605952b0a7ccb5e5a015e2aba1e3d193ab20"
+      }
+    },
+    {
+      "id": "D-fixed-plan-review-20261029T044208584300Z",
+      "purpose": "Empty-tool farther-LEFT observation clearance",
+      "actual_motion_stages": 2,
+      "receiver_sequence": 505,
+      "car_contact_intended": false,
+      "separate_current_only_MUSE": {
+        "car_fully_visible": true,
+        "footprint": "WITHIN_ROAD",
+        "body_axis": "NE_SW",
+        "styling_distinguishes_nose": false,
+        "before_after_progress_or_failure_override": false
+      }
+    },
+    {
+      "id": "D-fixed-plan-review-20261029T044610072378Z",
+      "purpose": "New rear contact lane biased3mm EAST; one19.9mm NORTH interval and10mm reverse-normal release",
+      "actual_motion_stages": 10,
+      "receiver_sequence": 521,
+      "state": "WAIT_REVIEW",
+      "MUSE": {
+        "verdict": "FAIL",
+        "car_visible": true,
+        "expected_progress": false,
+        "heading_matches_expected": false,
+        "excessive_yaw": false,
+        "car_footprint": "OVERLAPS_ISLAND",
+        "occlusion_cause": "NONE",
+        "before_sha256": "e9ec6f6d98c4a50314247377860e549b12ecf72cbf473ec962cf21a12bc5c979",
+        "after_sha256": "4544bff15531a621e01eebb478c090a4facb96ab8883df416aea116e40cc50d9",
+        "provider_receipt": "c9295deda8a6dc1cc7e42bd37b7234ecc45d60a4845824c17580c2bfe5531a04"
+      }
+    },
+    {
+      "id": "D-fixed-plan-review-20261029T045651436973Z",
+      "purpose": "New19.9mm NORTH interval beyond the preceding actual endpoint; no loaded interval replay",
+      "actual_motion_stages": 11,
+      "receiver_sequence": 539,
+      "state": "WAIT_REVIEW",
+      "MUSE": {
+        "verdict": "FAIL",
+        "car_visible": true,
+        "expected_progress": false,
+        "heading_matches_expected": false,
+        "excessive_yaw": false,
+        "car_footprint": "OVERLAPS_ISLAND",
+        "occlusion_cause": "NONE",
+        "before_sha256": "a15df24cf820671418b6fc8266b68dc261d23200e212a8f29dd27332321d12b8",
+        "after_sha256": "40dbd1217168adccbae69573307683097d75b13f33485430baa158fbca728497",
+        "provider_receipt": "84b110df0c54e58e11675afaadd61638cea667830dc22452404b4c404f11728d"
+      },
+      "separate_original_pair_MUSE_diagnostic": {
+        "translation_relative_to_crosswalk": "WEST",
+        "heading_change": "NONE_VISIBLE",
+        "current_axis": "NE_SW",
+        "current_rear_island_clearance": "OVERLAPS",
+        "rear_west_push_would_initially_enter_island": "YES",
+        "scope": "Independent diagnostic; does not replace whole-unit FAIL or grant motion authority"
+      },
+      "separate_original_pixel_diagnostic": {
+        "method": "Fixed native-pixel ROI and connected cream-colour body mask; approximate PCA",
+        "centroid_delta_xy_pixels": [
+          15.134806014892206,
+          -51.288515949365376
+        ],
+        "approximate_body_mask_axis_degrees_from_image_north_toward_east": [
+          44.0296682771624,
+          54.26298538641286
+        ],
+        "model_disagreement_preserved": true,
+        "calibrated_car_pose_or_floor_footprint": false,
+        "robot_targets_generated": false,
+        "limitations": [
+          "Hand-selected ROI, colour threshold and elevated-body projection can bias measurements.",
+          "Native image pixels are not road millimetres or a contact-point measurement.",
+          "Visible displacement does not establish NORTH alignment or road-contained success."
+        ]
+      }
+    },
+    {
+      "id": "D-fixed-plan-review-20261029T050939781955Z",
+      "purpose": "NEW19.9mm right-turn-entry interval beyond the prior endpoint; NORTH/NE progress with intentional partial clockwise turn, not NORTH alignment",
+      "actual_motion_stages": 11,
+      "receiver_sequence": 557,
+      "state": "ACCEPTED",
+      "MUSE": {
+        "verdict": "PASS",
+        "car_visible": true,
+        "expected_progress": true,
+        "heading_matches_expected": true,
+        "excessive_yaw": false,
+        "car_footprint": "WITHIN_ROAD",
+        "occlusion_cause": "NONE",
+        "before_sha256": "ca68d2d5e69d9f53e38d5a494513142c31055216ccbb9db6ef9dadd1c670686e",
+        "after_sha256": "4c3baa4700527e112b68cd199086e22613feb64ba22e1c2303dc4201aeee966f",
+        "provider_receipt": "4596cdc1f950787e3e70730798ceb0049be99ba2a5cd76e1823a4393aa806e31",
+        "summary": "Both originals show readable car in junction road supporting expected NORTH/NORTHEAST progress and partial clockwise turn. No off-road overlap, no excessive yaw."
+      },
+      "preparation_failure": "Initial binding rejected an over700character visual description before bundle creation or motion. The original preparation remains unchanged; an exclusive first bundle concisely preserves the new right-turn-entry conditions within the existing limit.",
+      "previous_failure_relabelled": false,
+      "exact_90degree_car_rotation_measured": false
+    },
+    {
+      "id": "D-fixed-plan-review-20261029T052256192986Z",
+      "purpose": "Fresh rear-EAST contact at taught frontage row; two new collinear19.9mm strokes, WEST10mm release and LEFT observation",
+      "actual_motion_stages": 12,
+      "receiver_sequence": 581,
+      "state": "ACCEPTED",
+      "contact_TCP_total_mm": 39.8,
+      "MUSE": {
+        "verdict": "PASS",
+        "car_visible": true,
+        "expected_progress": true,
+        "heading_matches_expected": true,
+        "excessive_yaw": false,
+        "car_footprint": "WITHIN_ROAD",
+        "occlusion_cause": "NONE",
+        "arrived": false,
+        "before_sha256": "6435aed3c2f7d18b5457e31c79cebcaf3def2b2d751f9010f1a51838043854d9",
+        "after_sha256": "409f6cc63b6a7aac35980938001416a26dca4948b2709f7403236da42662d25f",
+        "provider_receipt": "011a36f80c7faa88dc16deaed18fa98119384801a577dbf1e536accc2761b238",
+        "summary": "Whole-unit EAST rear push shows expected EAST progress with correct heading and road containment. No arrival expected."
+      },
+      "car_distance_measured": false
+    },
+    {
+      "id": "D-fixed-plan-review-20261029T052953417512Z",
+      "purpose": "New39.8mm EAST continuation and shorter LEFT observation",
+      "actual_motion_stages": 10,
+      "receiver_sequence": 598,
+      "state": "ACCEPTED",
+      "contact_TCP_total_mm": 39.799999999999976,
+      "MUSE": {
+        "verdict": "PASS",
+        "car_visible": true,
+        "expected_progress": true,
+        "heading_matches_expected": true,
+        "excessive_yaw": false,
+        "car_footprint": "WITHIN_ROAD",
+        "occlusion_cause": "NONE",
+        "arrived": false,
+        "before_sha256": "3af8dc6e64169cb118b4499c1938c76debea726de686065cf3deed49c9c960d3",
+        "after_sha256": "1aa2dd63ec4c13ed6677ee2b0bc50028bf4746eed2a6c1e7cdb9a615e9319d4b",
+        "provider_receipt": "3d7ba1ac3178a011671f25f4a7c9cba5520f578935e169af4030070e718d197f"
+      },
+      "car_distance_measured": false
+    },
+    {
+      "id": "D-fixed-plan-review-20261029T053715963799Z",
+      "purpose": "New EAST upper-rear correction and destination check; nominal contact row shifted10mm NORTH",
+      "actual_motion_stages": 9,
+      "receiver_sequence": 620,
+      "state": "WAIT_REVIEW",
+      "contact_TCP_total_mm": 19.9,
+      "original_provider_failure": {
+        "http_status": 200,
+        "finish_reason": "length",
+        "max_completion_tokens": 1100,
+        "reported_reasoning_tokens": 906,
+        "truncated_JSON_accepted": false,
+        "before_sha256": "31386aac02aaa41108e78345f5f43b16943efc45146a300cee494f0aef246751",
+        "after_sha256": "8ebe80e83529fa77b103b96b3dd9659b432cb9c8ab0e2571677622243b964c97"
+      },
+      "explicit_readonly_reobservation": {
+        "id": "explicit-readonly-reobservation-20261029T054638962799Z",
+        "original_hash_chain_verified": true,
+        "all_original_completed_stages_reconciled": true,
+        "fresh_Native_bound_to_original_endpoint": true,
+        "all_robot_mutation_APIs_denied": true,
+        "original_provider_failure_preserved": true,
+        "new_max_completion_tokens": 2200,
+        "new_current_original": true,
+        "MUSE": {
+          "verdict": "UNCERTAIN",
+          "car_visible": true,
+          "expected_progress": false,
+          "heading_matches_expected": false,
+          "excessive_yaw": false,
+          "car_footprint": "WITHIN_ROAD",
+          "occlusion_cause": "NONE",
+          "arrived": false,
+          "before_sha256": "31386aac02aaa41108e78345f5f43b16943efc45146a300cee494f0aef246751",
+          "after_sha256": "b9e1781667c2416294a18693ccc968f042616cb25a343614fcbc4c9698f2e8c4",
+          "provider_receipt": "b677adff052e2f18a03b6916bac8e2c820c598963383993977a0be87407abb28",
+          "summary": "Car present and in-road in both views but does not show expected EAST correction and heading improvement toward EAST; arrival at Hanok frontage with required heading not supported, so unit is UNCERTAIN."
+        }
+      },
+      "new_scene_object": {
+        "standing_paper_signal_visible_in_reobservation": true,
+        "standing_signal_clearance_qualified": false,
+        "additional_motion_withheld": true,
+        "signal_color_or_GO_permission_inferred": false
+      },
+      "vehicle_arrival_verified": false
+    }
+  ],
+  "local_display_error": {
+    "description": "Root initially inferred BEFORE/AFTER from an unsorted directory listing and attached reversed labels to local display copies. SHA-bound originals identified the error.",
+    "original_executor_and_MUSE_pair_order_correct": true,
+    "original_records_rewritten": false,
+    "corrective_rule": "Resolve every displayed original by its recorded SHA256, never directory order or a local descriptive filename."
+  },
+  "actual_motion_stages_total": 79,
+  "all_recorded_endpoints_Native_verified": true,
+  "original_failures_preserved": true,
+  "fixed_working_Z_and_NORTH_posture": true,
+  "original_speed_acceleration_and_per_command_limits_retained": true,
+  "map_to_BASE_calibration_accepted": false,
+  "D_arrival_verified": false,
+  "rear_WEST_clockwise_turn_qualified": false,
+  "services_camera_or_original_persist_restarted": false,
+  "unloaded_EAST_face_preparation": {
+    "review": "D-reviewed-wrist-review-20261029T051818087855Z",
+    "actual_trial": "wrist-trial-20261029T051914383608Z",
+    "receiver_sequence": 561,
+    "actual_J6_increment_deg": 89.999,
+    "computed_and_actual_BASE_yaw_deg": -24.66934884367081,
+    "actual_motion_stages": 1,
+    "literal_XYZ_fixed": true,
+    "original_19_FK_radius_and_winding_guards_retained": true,
+    "Native_before_and_after_verified": true,
+    "car_rotation_claimed": false
+  },
+  "unused_preparation_preserved": {
+    "id": "D-fixed-plan-review-20261029T053511680008Z",
+    "purpose": "15mm straight final continuation",
+    "bundle_created": false,
+    "motion_dispatched": false,
+    "reason": "Latest original remained diagonally NE; replaced by a separately prepared upper-rear correction, not silently edited or replayed."
+  }
+}

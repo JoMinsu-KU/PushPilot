@@ -322,6 +322,7 @@ class RealTaughtPortsTests(TestCase):
         self.assertEqual(result.verdict, "UNCERTAIN")
         self.assertEqual(result.car_footprint, "OVERLAPS_ISLAND")
         payload = self.provider.call_args.args[3]
+        self.assertEqual(payload["max_completion_tokens"], 2200)
         context = json.loads(payload["messages"][1]["content"][0]["text"])
         self.assertEqual(context["review_scope"], "whole_unit")
         self.assertFalse(context["approach_vision_gate"])
@@ -329,12 +330,34 @@ class RealTaughtPortsTests(TestCase):
         self.assertEqual(len(context["stages"]), 4)
         saved = json.loads(next(self.journal.root.glob("muse-input-*.json")).read_bytes())
         self.assertEqual(saved["operation"], "coordinate_action_unit")
+        self.assertEqual(saved["max_completion_tokens"], 2200)
         self.assertEqual(self.provider.call_count, 1)
         self.assertFalse(any(path == "/v1/commands" for path, _ in self.api.calls))
         self.provider.reset_mock()
         with self.assertRaises(ExecutionBlocked):
             self.ports.review_coordinate_unit(unit(), tuple(executor.completed[:-1]), before, after)
         self.provider.assert_not_called()
+
+    def test_coordinate_unit_truncation_preserves_failure_without_retry_or_motion(self):
+        from tests.test_coordinate_units import Ports, unit
+        from backend.robot_control.coordinate_units import CoordinateUnitExecutor
+        synthetic = Ports()
+        executor = CoordinateUnitExecutor(unit(), self.adapter, synthetic)
+        executor.run()
+        before = self.ports.capture()
+        after = replace(before, id="truncated-unit-after", sequence=11)
+        envelope = {"choices": [{"finish_reason": "length", "message": {"content": '{"arrived":false'}}],
+                    "usage": {"completion_tokens": 2200, "completion_tokens_details": {"reasoning_tokens": 2000}}}
+        self.provider.return_value = 200, envelope, 10
+        with self.assertRaises(ExecutionBlocked) as caught:
+            self.ports.review_coordinate_unit(unit(), tuple(executor.completed), before, after)
+        self.assertEqual(caught.exception.code, "MUSE_PROVIDER_FAILURE")
+        self.assertEqual(self.provider.call_count, 1)
+        saved = json.loads(next(self.journal.root.glob("muse-response-*.json")).read_bytes())
+        self.assertEqual(saved["provider_envelope"], envelope)
+        self.assertEqual(saved["max_completion_tokens"], 2200)
+        self.assertFalse(list(self.journal.root.glob("muse-result-*.json")))
+        self.assertFalse(any(path == "/v1/commands" for path, _ in self.api.calls))
 
     def test_coordinate_unit_joint_target_is_bound_visibility_only(self):
         from tests.test_coordinate_units import Ports, unit

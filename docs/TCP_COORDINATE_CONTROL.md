@@ -263,6 +263,20 @@ actual withdrawn pose as the C/D northbound signal-wait observation reference.
 Its last contact endpoint and observation pose are stored separately, with
 fresh stationary Native evidence. See [the signal-wait reference](ROBOT_SIGNAL_WAIT.md).
 
+Subsequent central NORTH trials did not meet their original heading and
+whole-footprint requirements. Preserve each FAIL and the separate observations,
+including disagreement between qualitative MUSE direction and an approximate
+original-pixel body-mask diagnostic. Neither pixel displacement nor a completed
+TCP stroke establishes successful vehicle alignment. The operator's proposed
+rear-right-side WEST push is a clockwise-turn candidate; inspect the rear's
+road clearance before testing it, because its first motion can carry the rear
+into the adjacent park island. See [the central recovery record](evidence/taught-D-central-recovery-20261029.json).
+
+Display and compare originals by their recorded SHA256. Directory iteration
+order and descriptive local filenames do not establish BEFORE/AFTER. A local
+display-labelling mistake was corrected without changing the correctly bound
+executor/MUSE pair or replacing its failed review.
+
 ## Current physical evidence
 
 The October 29 records separate one completed B car course, three actual

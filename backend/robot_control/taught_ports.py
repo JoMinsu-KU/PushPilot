@@ -815,11 +815,15 @@ class RealTaughtPorts:
                 {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,"+base64.b64encode(frame.original_jpeg).decode("ascii")}}])
         payload = {"model": MODELS[0], "messages": [{"role": "system", "content": prompt}, {"role": "user", "content": contents}],
             "response_format": {"type": "json_schema", "json_schema": {"name": "pushpilot_physical_unit_v1" if unit_review else "pushpilot_physical_action_v1", "strict": True, "schema": schema}},
-            "reasoning_effort": "minimal", "max_completion_tokens": 1100}
+            # Reasoning and JSON share this budget. An actual whole-unit review
+            # used906 reasoning tokens and truncated at1100; preserve rejection
+            # of incomplete output while leaving room for the full strict JSON.
+            "reasoning_effort": "minimal", "max_completion_tokens": 2200 if unit_review else 1100}
         operation = "coordinate_action_unit" if context.get("operation") == "coordinate_action_unit" else "physical_action_pair"
         record = {"source": "meta", "operation": operation, "request_id": request_id,
                   "model": MODELS[0], "prompt": prompt, "context": context, "response_schema": schema,
-                  "automatic_retry": False, "motion_authority": False}
+                  "automatic_retry": False, "motion_authority": False,
+                  "max_completion_tokens": payload["max_completion_tokens"]}
         self.journal.artifact("muse-input", record)
         try:
             status, envelope, latency = self.provider_request(self.provider_opener, load_key(self.meta_env_file), "/chat/completions", payload)
