@@ -289,7 +289,8 @@ export function MapScene({ workspace, physicalLabel, readOnly = false, onSnapsho
   }
 
   const route = workspace?.plan?.route ?? null;
-  const routeDisplay = createRouteDisplay(route, map, workspace);
+  // Physical execution has its own receipts; simulator steps cannot color a robot route.
+  const routeDisplay = createRouteDisplay(route, map, physicalLabel ? null : workspace);
   const status = scene?.registration.status ?? 'unregistered';
   const markerCount = scene?.detection.marker_ids.filter(id => map?.markers.some(marker => marker.id === id)).length ?? 0;
   const canLock = ['candidate', 'view_changed'].includes(status) && markerCount === 4 && !active && !readOnly && !busy;

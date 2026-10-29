@@ -144,6 +144,30 @@ class PhysicalMissionVisionTests(unittest.IsolatedAsyncioTestCase):
         result = await self.provider(handler).observe(frame=frame_fixture(), context={"synthetic": True})
         self.assertFalse(result["car_unchanged_since_stop"])
 
+    async def test_delivery_only_prompt_separates_arrival_from_parallel_parking_and_retains_raw_verdict(self):
+        task = {"parking_mode": "delivery_only", "goal_arrival_check": True,
+                "completed_primitive_id": "synthetic-delivery", "expected_visual": "Reach the named destination.",
+                "numeric_pose_authority": False}
+        for verdict in ("PASS", "FAIL", "UNCERTAIN"):
+            def handler(request):
+                payload = json.loads(request.content)
+                prompt = payload["messages"][0]["content"]
+                for requirement in ("parking_mode is delivery_only AND goal_arrival_check is true",
+                                    "wholly within the road", "parallel angle and lateral parking alignment are not",
+                                    "An earlier FAIL/UNCERTAIN is not rewritten",
+                                    "bound completed primitive's expected_visual", "may intentionally leave the car diagonal",
+                                    "visible wrong turn", "not a measurement request"):
+                    self.assertIn(requirement, prompt)
+                serialized_task = json.loads(payload["messages"][1]["content"][0]["text"].split(": ", 1)[1])
+                self.assertEqual(serialized_task, task)
+                return httpx.Response(200, json=envelope(observation(verdict=verdict, arrived=True,
+                    heading_matches_expected=False)))
+            with self.subTest(verdict=verdict):
+                result = await self.provider(handler).observe(frame=frame_fixture(), context=task)
+                self.assertEqual(result["verdict"], verdict)
+                self.assertFalse(result["heading_matches_expected"])
+                self.assertTrue(result["arrived"])
+
     async def test_original_hash_mismatch_fails_before_any_http_request(self):
         calls = []
         def handler(request):

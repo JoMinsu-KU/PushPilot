@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import asyncio
+from copy import deepcopy
 from dataclasses import asdict
+import hashlib
 import math
 import re
 import time
@@ -34,26 +36,36 @@ class MissionObserver:
         if not self.configured:
             blockers.append("MUSE_NOT_CONFIGURED")
         adapter = config.get("measurement_adapter") if isinstance(config, dict) else None
-        try:
-            from .mission_measurement import QualifiedCarMeasurement, canonical_sha256
-            configured_sha = canonical_sha256(adapter)
-            if self.measurement is None or configured_sha != self._measurement_config_sha256:
-                # Reusing an old accepted object after configuration changes
-                # would silently bypass its exact ROI/calibration bindings.
-                self.measurement = None
-                self.measurement = QualifiedCarMeasurement(adapter)
-                self._measurement_config_sha256 = configured_sha
-        except (ImportError, ValueError, KeyError, TypeError, OSError):
-            blockers.append("INDEPENDENT_CAR_MEASUREMENT_QUALIFICATION_REQUIRED")
-        if self.measurement is not None:
-            readiness = self.measurement.readiness()
-            if readiness.get("available") is not True:
-                blockers.extend(readiness.get("blockers") or ["INDEPENDENT_CAR_MEASUREMENT_QUALIFICATION_REQUIRED"])
+        outcome_only = isinstance(adapter, dict) and adapter.get("kind") == "muse_outcome"
+        if outcome_only:
+            # Do not retain a previously accepted numeric adapter in this mode.
+            self.measurement = None
+            self._measurement_config_sha256 = None
+            if not self._valid_outcome_adapter(adapter):
+                blockers.append("MUSE_OUTCOME_BINDING_REQUIRED")
+        else:
+            try:
+                from .mission_measurement import QualifiedCarMeasurement, canonical_sha256
+                configured_sha = canonical_sha256(adapter)
+                if self.measurement is None or configured_sha != self._measurement_config_sha256:
+                    # Reusing an old accepted object after configuration changes
+                    # would silently bypass its exact ROI/calibration bindings.
+                    self.measurement = None
+                    self.measurement = QualifiedCarMeasurement(adapter)
+                    self._measurement_config_sha256 = configured_sha
+            except (ImportError, ValueError, KeyError, TypeError, OSError):
+                blockers.append("INDEPENDENT_CAR_MEASUREMENT_QUALIFICATION_REQUIRED")
+            if self.measurement is not None:
+                readiness = self.measurement.readiness()
+                if readiness.get("available") is not True:
+                    blockers.extend(readiness.get("blockers") or ["INDEPENDENT_CAR_MEASUREMENT_QUALIFICATION_REQUIRED"])
         observations = (config.get("observations") or {}) if isinstance(config, dict) else {}
         if not isinstance(observations, dict):
             observations = {}
         if not isinstance(observations.get("fixed_start"), dict) or not observations["fixed_start"] or not observations.get("zones"):
             blockers.append("FIXED_START_AND_CAR_ZONE_REFERENCES_REQUIRED")
+        if outcome_only and not self._valid_outcome_zone(observations.get("fixed_start")):
+            blockers.append("MUSE_OUTCOME_FIXED_START_REFERENCE_REQUIRED")
         declared = observations.get("required_destinations")
         required = []
         if declared is not None:
@@ -70,6 +82,8 @@ class MissionObserver:
         return {"ready": not blockers, "blockers": list(dict.fromkeys(blockers)),
                 "validated_destinations": destinations, "required_destinations": list(required),
                 "complete_destination_coverage": not missing if required else None,
+                "observation_mode": "muse_outcome" if outcome_only else "qualified_measurement",
+                "numeric_pose_authority": not outcome_only and not blockers,
                 "destination_coverage": "declared_product_destinations" if required else "configured_routes_only"}
 
     @classmethod
@@ -92,6 +106,7 @@ class MissionObserver:
         except (KeyError, TypeError, ValueError):
             blockers.append("MEASUREMENT_SITE_BINDING_REQUIRED")
             return []
+        outcome_only = adapter.get("kind") == "muse_outcome"
         zones, targets = observations.get("zones"), observations.get("signal_targets", {})
         contexts = config.get("contexts", {})
         if not isinstance(zones, dict) or not isinstance(targets, dict) or not isinstance(contexts, dict):
@@ -107,18 +122,24 @@ class MissionObserver:
             except (KeyError, TypeError, ValueError, AttributeError):
                 blockers.append(f"OBSERVATION_ROUTE_INVALID:{index}")
                 continue
+            if outcome_only and (plan.parking.mode != "delivery_only" or plan.corrections):
+                blockers.append("MUSE_OUTCOME_REQUIRES_DELIVERY_ONLY_WITHOUT_NUMERIC_CORRECTIONS:" + plan.destination)
             for step in plan.steps:
                 zone = zones.get(step.car_zone_id)
                 lane = zone.get("target_lane") if isinstance(zone, dict) else None
-                lane_valid = cls._valid_lane(lane, frame_id)
-                if not lane_valid:
-                    blockers.append("MEASUREMENT_LANE_NOT_BOUND:" + step.car_zone_id)
+                if outcome_only:
+                    if not cls._valid_outcome_zone(zone):
+                        blockers.append("MUSE_OUTCOME_ZONE_REFERENCE_REQUIRED:" + step.car_zone_id)
                 else:
-                    expected = plan.parking.heading_deg if step.at_goal else step.expected_heading_deg
-                    if abs((lane["heading_deg"] - expected + 90.) % 180. - 90.) > .01:
-                        blockers.append("MEASUREMENT_HEADING_FRAME_MISMATCH:" + step.id)
-                if step.at_goal and not plan.parking.parallel_axis:
-                    blockers.append("DIRECTED_PARKING_MEASUREMENT_UNAVAILABLE:" + step.id)
+                    lane_valid = cls._valid_lane(lane, frame_id)
+                    if not lane_valid:
+                        blockers.append("MEASUREMENT_LANE_NOT_BOUND:" + step.car_zone_id)
+                    else:
+                        expected = plan.parking.heading_deg if step.at_goal else step.expected_heading_deg
+                        if abs((lane["heading_deg"] - expected + 90.) % 180. - 90.) > .01:
+                            blockers.append("MEASUREMENT_HEADING_FRAME_MISMATCH:" + step.id)
+                    if step.at_goal and not plan.parking.parallel_axis:
+                        blockers.append("DIRECTED_PARKING_MEASUREMENT_UNAVAILABLE:" + step.id)
                 observed_context = contexts.get(step.primitive.target_context_id)
                 if not cls._valid_context(observed_context, working_z, clear=True):
                     blockers.append("MEASUREMENT_OBSERVATION_CONTEXT_NOT_BOUND:" + step.id)
@@ -141,6 +162,40 @@ class MissionObserver:
     @staticmethod
     def _finite(value):
         return type(value) in (int, float) and math.isfinite(value)
+
+    @classmethod
+    def _valid_outcome_adapter(cls, adapter):
+        """A camera/site declaration, explicitly not a metric qualification."""
+        fields = {"kind", "camera_epoch", "map_sha256", "car_id", "frame_size_px",
+                  "coordinate_frame_id", "working_z_mm"}
+        return (isinstance(adapter, dict) and set(adapter) == fields and adapter.get("kind") == "muse_outcome"
+                and all(isinstance(adapter.get(key), str) and 0 < len(adapter[key].strip()) <= 200
+                        for key in ("camera_epoch", "car_id", "coordinate_frame_id"))
+                and re.fullmatch(r"[a-f0-9]{64}", str(adapter.get("map_sha256", ""))) is not None
+                and isinstance(adapter.get("frame_size_px"), (list, tuple)) and len(adapter["frame_size_px"]) == 2
+                and all(type(value) is int and 1 <= value <= 8192 for value in adapter["frame_size_px"])
+                and cls._finite(adapter.get("working_z_mm")))
+
+    @staticmethod
+    def _valid_outcome_zone(zone):
+        return (isinstance(zone, dict) and isinstance(zone.get("description"), str)
+                and 0 < len(zone["description"].strip()) <= 2000)
+
+    @staticmethod
+    def _outcome_frame_matches(frame, adapter):
+        # Decode the original JPEG's dimensions rather than trusting metadata.
+        try:
+            import cv2
+            import numpy as np
+            if (frame.epoch != adapter["camera_epoch"] or not isinstance(frame.original_jpeg, bytes)
+                    or not 4 <= len(frame.original_jpeg) <= 10 * 1024 * 1024
+                    or not frame.original_jpeg.startswith(b"\xff\xd8") or not frame.original_jpeg.endswith(b"\xff\xd9")
+                    or hashlib.sha256(frame.original_jpeg).hexdigest() != frame.sha256):
+                return False
+            image = cv2.imdecode(np.frombuffer(frame.original_jpeg, dtype=np.uint8), cv2.IMREAD_COLOR)
+            return image is not None and (image.shape[1], image.shape[0]) == tuple(adapter["frame_size_px"])
+        except (ImportError, OSError, ValueError, KeyError, TypeError):
+            return False
 
     @classmethod
     def _valid_context(cls, context, working_z, clear=False):
@@ -176,6 +231,27 @@ class MissionObserver:
         index = state.signal_step_index if state.phase == Phase.ENTRY_SIGNAL else state.step_index
         step = plan.steps[index]
         configuration = driver.observation_config
+        adapter = (getattr(driver, "config", None) or {}).get("measurement_adapter")
+        outcome_only = isinstance(adapter, dict) and adapter.get("kind") == "muse_outcome"
+        if outcome_only and (not self._valid_outcome_adapter(adapter)
+                or plan.parking.mode != "delivery_only" or plan.corrections
+                or (adapter["camera_epoch"], adapter["map_sha256"], adapter["car_id"]) !=
+                    (plan.binding.camera_epoch, plan.binding.map_sha256, plan.binding.car_id)
+                or abs(driver.last_snapshot.tcp_base[2] - adapter["working_z_mm"]) > .1
+                or not self._valid_outcome_zone(configuration.get("fixed_start"))
+                or not self._valid_outcome_zone(configuration["zones"].get(step.car_zone_id))):
+            raise ExecutionBlocked("MUSE_OUTCOME_BINDING_CHANGED", "Use the reviewed delivery-only camera, car, zone and fixed-height context.")
+        adapter_before = deepcopy(adapter) if outcome_only else None
+        outcome = getattr(driver, "last_contact_outcome", None)
+        expected_visual = None
+        completed_primitive_id = None
+        if (isinstance(outcome, dict) and outcome.get("command_id") == state.action_command_id
+                and isinstance(outcome.get("expected_visual"), str) and outcome["expected_visual"].strip()
+                and isinstance(outcome.get("primitive_id"), str) and outcome["primitive_id"]):
+            expected_visual = outcome["expected_visual"]
+            completed_primitive_id = outcome["primitive_id"]
+        if outcome_only and state.start_verified and not at_signal and expected_visual is None:
+            raise ExecutionBlocked("CONTACT_OUTCOME_CONTEXT_REQUIRED", "Bind the completed contact unit's actual expected outcome before visual review.")
         target = None
         if at_signal:
             target = (configuration.get("signal_targets") or {}).get(step.signal_gate.id)
@@ -184,10 +260,14 @@ class MissionObserver:
         task = {"prompt_version": PROMPT_VERSION, "mission_id": plan.id, "phase": state.phase,
             "site_binding": asdict(plan.binding), "stationary_context": asdict(before_context),
             "car_zone_id": step.car_zone_id, "car_zone": configuration["zones"].get(step.car_zone_id),
-            "expected_heading_deg": step.expected_heading_deg, "goal_arrival_check": step.at_goal,
+            "expected_heading_deg": step.expected_heading_deg, "goal_arrival_check": step.at_goal and state.start_verified,
+            "parking_mode": plan.parking.mode, "numeric_pose_authority": False,
+            "expected_visual": expected_visual, "completed_primitive_id": completed_primitive_id,
             "fixed_start": configuration["fixed_start"], "signal_target": target,
             "action_command_id": state.action_command_id, "physical_stop_verified_separately": True}
         current = driver.capture()
+        if outcome_only and not self._outcome_frame_matches(current, adapter):
+            raise ExecutionBlocked("MUSE_OUTCOME_FRAME_BINDING", "Use the unchanged original camera epoch and native image dimensions.")
         stop_key = (plan.id, step.id)
         if at_signal:
             reference = self.stop_frames.get(stop_key)
@@ -198,6 +278,8 @@ class MissionObserver:
                 self.stop_frames[stop_key] = reference
             self.sleep(.35)
             second = driver.capture()
+            if outcome_only and not self._outcome_frame_matches(second, adapter):
+                raise ExecutionBlocked("MUSE_OUTCOME_FRAME_BINDING", "The second signal source must match the declared native camera frame.")
             frames = (current, second)
             if (current.epoch != second.epoch or current.sequence >= second.sequence
                     or current.captured_at >= second.captured_at or current.sha256 == second.sha256):
@@ -212,6 +294,9 @@ class MissionObserver:
         after_context = driver.context()
         if not self._same_stop(before_context, after_context):
             raise ExecutionBlocked("OBSERVATION_CONTEXT_CHANGED", "Robot context changed during inference; discard authority.")
+        if outcome_only and (adapter_before != driver.config.get("measurement_adapter")
+                or abs(driver.last_snapshot.tcp_base[2] - adapter_before["working_z_mm"]) > .1):
+            raise ExecutionBlocked("MUSE_OUTCOME_BINDING_CHANGED", "Delivery-only source configuration or fixed height changed during inference.")
         driver.ports._camera_status()  # Fixed registration must also remain valid after inference.
         samples = []
         for frame, result in zip(frames, results, strict=True):
@@ -223,7 +308,7 @@ class MissionObserver:
                 "captured_at_s": frame.captured_at, "image_sha256": frame.sha256,
                 "provider_receipt_sha256": receipt_sha}
             numeric = {}
-            if self.measurement is not None and result["car_visible"] and result["occlusion_cause"] == "NONE":
+            if not outcome_only and self.measurement is not None and result["car_visible"] and result["occlusion_cause"] == "NONE":
                 zone = configuration["zones"].get(step.car_zone_id) or {}
                 measured = self.measurement.estimate(frame, {**task, "map_sha256": plan.binding.map_sha256,
                     "car_id": plan.binding.car_id, "working_z_mm": driver.last_snapshot.tcp_base[2],

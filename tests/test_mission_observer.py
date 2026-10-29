@@ -16,13 +16,14 @@ import unittest
 
 from backend.physical_mission import PhysicalMissionService
 from backend.robot_control.mission_observer import MissionObserver
-from backend.robot_control.mission_policy import MissionPolicy, Phase
-from backend.robot_control.taught_executor import ExecutionBlocked
-from tests.test_mission_policy import BINDING, after_first, car, context, plan, signal
+from backend.robot_control.mission_policy import CorrectionTemplate, MissionPolicy, ParkingTarget, Phase
+from backend.robot_control.taught_executor import ExecutionBlocked, Frame
+from tests.test_mission_policy import BINDING, after_first, car, context, plan, primitive, signal
 from tests.test_mission_vision import observation
 from tests.test_mission_measurement import configuration as measurement_configuration, rehash
 from backend.robot_control.mission_measurement import canonical_sha256
 from tests.test_physical_mission import FakeMeasuredDriver, FakeWorkspace, command_for, event_seen
+from tests.test_live_review_provider import frame_fixture
 
 
 def sha(value):
@@ -294,6 +295,173 @@ def readiness_configuration():
                       "GOAL": {"target_lane": {"point_mm": [75., 50.], "heading_deg": 0.,
                                                   "parallel_axis": True, "coordinate_frame_id": frame_id}}},
             "signal_targets": {"SOUTH_SIGNAL": target}}}
+
+
+def outcome_configuration():
+    config = readiness_configuration()
+    source = config["measurement_adapter"]
+    config["measurement_adapter"] = {key: source[key] for key in
+        ("camera_epoch", "map_sha256", "car_id", "frame_size_px", "coordinate_frame_id", "working_z_mm")}
+    config["measurement_adapter"]["kind"] = "muse_outcome"
+    config["routes"][0]["plan"]["parking"]["mode"] = "delivery_only"
+    config["observations"]["zones"] = {
+        "STOP": {"description": "Synthetic northbound car stopped before the crossing."},
+        "GOAL": {"description": "Synthetic car in the road directly in front of the named destination."}}
+    return config
+
+
+class OutcomeOnlyObserverTests(unittest.TestCase):
+    def observer(self):
+        return MissionObserver(provider=FakeProvider(), sleep=lambda _: None)
+
+    def runtime(self):
+        driver = ObserverDriver()
+        driver.plan = plan(parking=ParkingTarget(0., mode="delivery_only"))
+        driver.config = outcome_configuration()
+        driver.config["measurement_adapter"]["frame_size_px"] = [96, 64]
+        driver.config["measurement_adapter"]["working_z_mm"] = 7.3649
+        driver.observation_config = driver.config["observations"]
+        state = after_first(MissionPolicy(driver.plan))
+        driver.last_contact_outcome = {"command_id": state.action_command_id, "primitive_id": "delivery-unit",
+            "expected_visual": "Synthetic contact unit completes delivery to the named goal."}
+        data = frame_fixture(20)["data"]
+        frame = Frame("synthetic-native", BINDING.camera_epoch, 10, 100., hashlib.sha256(data).hexdigest(), data)
+        driver.before_frame = replace(frame, id="synthetic-reference", sequence=1, captured_at=90.)
+        driver.prepare_frames(frame, where="GOAL_PARK")
+        return driver, state, frame
+
+    def test_explicit_delivery_mode_needs_no_numeric_qualification_or_fake_metric_lane(self):
+        observer, config = self.observer(), outcome_configuration()
+        result = observer.readiness(config)
+        self.assertTrue(result["ready"], result["blockers"])
+        self.assertEqual(result["observation_mode"], "muse_outcome")
+        self.assertFalse(result["numeric_pose_authority"])
+        self.assertIsNone(observer.measurement)
+        self.assertEqual(result["validated_destinations"], ["HANOK"])
+        self.assertEqual(observer.provider.calls, [])
+
+    def test_muse_mode_discards_cached_numeric_adapter(self):
+        observer = self.observer()
+        self.assertTrue(observer.readiness(readiness_configuration())["ready"])
+        self.assertIsNotNone(observer.measurement)
+        self.assertTrue(observer.readiness(outcome_configuration())["ready"])
+        self.assertIsNone(observer.measurement)
+        self.assertIsNone(observer._measurement_config_sha256)
+
+    def test_all_routes_must_use_delivery_only_and_cannot_declare_numeric_corrections(self):
+        for alteration in ("parking", "correction"):
+            config = outcome_configuration()
+            second = deepcopy(config["routes"][0])
+            second["plan"]["destination"] = "VILLA"
+            if alteration == "parking":
+                second["plan"]["parking"]["mode"] = "parallel_alignment"
+            else:
+                correction = CorrectionTemplate(primitive("correction", "GOAL_PARK", "GOAL_PARK"),
+                    "delivery", "GOAL", (10., 20.), (-3., 3.), -10., 0.)
+                second["plan"]["corrections"] = [asdict(correction)]
+            config["routes"].append(second)
+            result = self.observer().readiness(config)
+            self.assertFalse(result["ready"])
+            self.assertIn("MUSE_OUTCOME_REQUIRES_DELIVERY_ONLY_WITHOUT_NUMERIC_CORRECTIONS:VILLA", result["blockers"])
+
+    def test_muse_adapter_requires_complete_actual_site_dimensions_and_height(self):
+        changes = ({"camera_epoch": "foreign"}, {"map_sha256": "b" * 64}, {"car_id": "foreign"},
+                   {"frame_size_px": [0, 200]}, {"frame_size_px": [True, 200]},
+                   {"coordinate_frame_id": ""}, {"working_z_mm": float("nan")}, {"working_z_mm": 8.4},
+                   {"qualification": {"accepted": True}})
+        for change in changes:
+            with self.subTest(change=change):
+                config = outcome_configuration()
+                config["measurement_adapter"].update(change)
+                self.assertFalse(self.observer().readiness(config)["ready"])
+        for field in tuple(outcome_configuration()["measurement_adapter"]):
+            with self.subTest(missing=field):
+                config = outcome_configuration()
+                del config["measurement_adapter"][field]
+                self.assertFalse(self.observer().readiness(config)["ready"])
+
+    def test_qualitative_references_and_signal_binding_remain_required_before_start(self):
+        for part in ("zone", "start", "signal", "context"):
+            config = outcome_configuration()
+            if part == "zone":
+                config["observations"]["zones"]["GOAL"] = {"target_lane": {"heading_deg": 0.}}
+            elif part == "start":
+                config["observations"]["fixed_start"] = {"id": "START"}
+            elif part == "signal":
+                config["observations"]["signal_targets"] = {}
+            else:
+                config["contexts"]["GOAL_PARK"]["tool_clear"] = False
+            with self.subTest(part=part):
+                self.assertFalse(self.observer().readiness(config)["ready"])
+
+    def test_runtime_preserves_provider_facts_and_does_not_call_cached_metric_estimator(self):
+        driver, state, frame = self.runtime()
+        provider, measurement = FakeProvider(), FakeMeasurement()
+        provider.changes = {"heading_matches_expected": False, "expected_progress": False}
+        observer = MissionObserver(provider=provider, measurement=measurement, sleep=lambda _: None)
+        result = observer(state, driver)
+        task = provider.calls[0][1]["context"]
+        self.assertEqual(task["parking_mode"], "delivery_only")
+        self.assertEqual(task["expected_visual"], driver.last_contact_outcome["expected_visual"])
+        self.assertEqual(task["completed_primitive_id"], "delivery-unit")
+        self.assertFalse(task["numeric_pose_authority"])
+        self.assertEqual(measurement.calls, [])
+        self.assertEqual(result["car"].measurement_source, "unmeasured")
+        self.assertIsNone(result["car"].heading_deg)
+        self.assertFalse(result["car"].heading_matches_expected)
+        self.assertTrue(result["car"].arrived)
+        self.assertEqual(result["car"].image_sha256, frame.sha256)
+
+    def test_missing_or_foreign_completed_contact_context_is_not_fabricated(self):
+        for outcome in (None, {"command_id": "foreign", "primitive_id": "delivery-unit", "expected_visual": "arrive"},
+                        {"command_id": "motion-1", "primitive_id": "delivery-unit", "expected_visual": ""}):
+            driver, state, _ = self.runtime()
+            driver.last_contact_outcome = outcome
+            observer = self.observer()
+            with self.subTest(outcome=outcome), self.assertRaises(ExecutionBlocked) as raised:
+                observer(state, driver)
+            self.assertEqual(raised.exception.code, "CONTACT_OUTCOME_CONTEXT_REQUIRED")
+            self.assertEqual(observer.provider.calls, [])
+            self.assertEqual(driver.capture_calls, 0)
+
+    def test_runtime_source_epoch_resolution_hash_and_height_are_checked(self):
+        for mutation in ("epoch", "size", "hash", "height", "plan_mode", "zone"):
+            driver, state, frame = self.runtime()
+            if mutation == "epoch":
+                driver.frames[0] = replace(frame, epoch="foreign")
+            elif mutation == "size":
+                driver.config["measurement_adapter"]["frame_size_px"] = [1920, 1080]
+            elif mutation == "hash":
+                driver.frames[0] = replace(frame, sha256="0" * 64)
+            elif mutation == "height":
+                driver.last_snapshot.tcp_base[2] = 8.5
+            elif mutation == "plan_mode":
+                driver.plan = replace(driver.plan, parking=ParkingTarget(0.))
+            else:
+                driver.observation_config["zones"]["GOAL"] = {}
+            observer = self.observer()
+            with self.subTest(mutation=mutation), self.assertRaises(ExecutionBlocked):
+                observer(state, driver)
+            self.assertEqual(observer.provider.calls, [])
+
+    def test_config_change_during_inference_discards_result(self):
+        driver, state, _ = self.runtime()
+        observer = self.observer()
+        observer.provider.after_call = lambda: driver.config["measurement_adapter"].update(camera_epoch="changed")
+        with self.assertRaises(ExecutionBlocked) as raised:
+            observer(state, driver)
+        self.assertEqual(raised.exception.code, "MUSE_OUTCOME_BINDING_CHANGED")
+        self.assertEqual(driver.journal.entries, [])
+
+    def test_earlier_fail_is_not_relabelled_as_delivery_pass(self):
+        driver, state, _ = self.runtime()
+        observer = self.observer()
+        observer.provider.changes = {"verdict": "FAIL", "arrived": True}
+        observed = observer(state, driver)
+        self.assertEqual(observed["car"].verdict, "FAIL")
+        result = MissionPolicy(driver.plan).decide(state, driver.contexts[-1], car=observed["car"], command_id="return")
+        self.assertFalse(result.state.vehicle_delivered)
+        self.assertEqual(result.reason, "DELIVERY_REQUIRES_ORIGINAL_PASS")
 
 
 class ObserverReadinessTests(unittest.TestCase):

@@ -1,4 +1,4 @@
-import type { PhysicalStartCommand, PhysicalStatus } from '../../contracts/physical';
+import type { PhysicalStartCommand, PhysicalStatus, PhysicalTelemetry } from '../../contracts/physical';
 import type { WorkspaceSnapshot } from '../../contracts/workspace';
 
 export type ExecutionMode = 'simulation' | 'physical';
@@ -38,15 +38,59 @@ export function parsePhysicalStatus(value: unknown): PhysicalStatus {
     || !p.capabilities || typeof p.capabilities !== 'object' || Array.isArray(p.capabilities)
     || Object.entries(p.capabilities).some(([key, item]) => key === 'destinations'
       ? !Array.isArray(item) || item.some(id => typeof id !== 'string' || !id.trim() || id !== id.trim()) || new Set(item).size !== item.length
-      : typeof item !== 'boolean')) {
+      : key === 'release_mode' ? item !== 'site_trial' && item !== 'qualified' : typeof item !== 'boolean')
+    || p.telemetry !== undefined && !validTelemetry(p.telemetry)) {
     throw new Error('Robot status could not be verified.');
   }
   return p;
 }
 
+function validTelemetry(value: PhysicalTelemetry): boolean {
+  const strings = (items: unknown) => Array.isArray(items) && items.every(item => typeof item === 'string');
+  const stamp = (n: unknown) => typeof n === 'number' && Number.isFinite(n) && n >= 0;
+  const nullableString = (s: unknown) => s === null || typeof s === 'string';
+  if (!value || !Array.isArray(value.sequence) || !Array.isArray(value.history)) return false;
+  if (value.sequence.some(step => !step || !step.id || typeof step.id !== 'string' || typeof step.label !== 'string'
+    || typeof step.kind !== 'string' || typeof step.detail !== 'string' || !['pending', 'current', 'complete', 'held'].includes(step.status))) return false;
+  if (new Set(value.sequence.map(step => step.id)).size !== value.sequence.length) return false;
+  if (!nullableString(value.current_step_id) || value.current_step_id !== null && !value.sequence.some(step => step.id === value.current_step_id)) return false;
+  if (value.history.some(event => !event || !event.id || typeof event.id !== 'string' || !stamp(event.at)
+    || typeof event.title !== 'string' || typeof event.kind !== 'string' || typeof event.detail !== 'string' || typeof event.source !== 'string')) return false;
+  if (value.review !== null && (!value.review || value.review.source !== 'meta' || typeof value.review.verdict !== 'string'
+    || typeof value.review.summary !== 'string' || !stamp(value.review.observed_at) || !strings(value.review.frame_ids))) return false;
+  return nullableString(value.signal_gate_id) && (value.signal_observed_at === null || stamp(value.signal_observed_at))
+    && (value.distance_mm === null && value.distance_source === null || stamp(value.distance_mm) && value.distance_source === 'native_tcp');
+}
+
+/** No fallback to simulator records, even when an old simulator plan is complete. */
+export function physicalTelemetry(status: PhysicalStatus | null, workspace: WorkspaceSnapshot | null, connected: boolean): PhysicalTelemetry | null {
+  return connected && (physicalRunning(status) || physicalMatchesPlan(status, workspace)) ? status?.telemetry ?? null : null;
+}
+
+export function physicalProgress(status: PhysicalStatus | null, telemetry: PhysicalTelemetry | null): { completed: number; total: number } | null {
+  return status?.mission_id && telemetry && status.progress.total > 0 ? status.progress : null;
+}
+
+export function physicalRouteContext(telemetry: PhysicalTelemetry | null, size = 3) {
+  const steps = telemetry?.sequence ?? [];
+  const current = steps.findIndex(step => step.id === telemetry?.current_step_id);
+  const start = Math.min(Math.max(0, current - 1), Math.max(0, steps.length - size));
+  return { start, steps: steps.slice(start, start + size) };
+}
+
+export function physicalReviewLabel(status: PhysicalStatus | null, telemetry: PhysicalTelemetry | null, connected: boolean): string {
+  if (!connected) return 'Review unavailable';
+  if (physicalVisionActive(status, connected, 'car')) return 'Checking car · MUSE';
+  if (physicalVisionActive(status, connected, 'signal')) return 'Checking signal · MUSE';
+  return telemetry?.review ? telemetry.review.verdict.replaceAll('_', ' ') : 'No robot review';
+}
+
+export const physicalModeLabel = (status: PhysicalStatus | null) => status?.capabilities.release_mode === 'site_trial' ? 'Robot · current-site test' : 'Robot';
+
 export const physicalAvailable = (status: PhysicalStatus | null) => Boolean(status?.enabled && status.available);
 export const physicalRunning = (status: PhysicalStatus | null) => Boolean(status?.mission_id && !terminal.has(status.state) && !inactive.has(status.state));
 export const physicalFinished = (status: PhysicalStatus | null) => Boolean(status?.mission_id && terminal.has(status.state));
+export const physicalParkingEnabled = (status: PhysicalStatus | null) => status?.capabilities.parking_alignment === true;
 
 /** Destination readiness is advertised by the server, never inferred from a map or old arrival. */
 export function physicalDestinationBlocker(status: PhysicalStatus | null, destination: string | null | undefined, label = destination): string | null {
@@ -101,10 +145,32 @@ export function physicalDetail(status: PhysicalStatus | null, connected: boolean
   if (status.returning_home && !terminal.has(status.state)) return 'The car remains at its destination while the empty tool returns.';
   if (status.state === 'WAITING_SIGNAL' || status.signal.waiting) return 'The robot stays stopped until a fresh green signal permits automatic continuation.';
   if (status.state === 'ALIGNING') return 'Checking the parking angle and applying bounded corrections.';
-  if (['COMPLETE', 'COMPLETED'].includes(status.state)) return status.car.arrived && status.car.aligned
-    ? 'Car delivered and aligned. Check the robot status before preparing the next mission.'
-    : 'The run has ended. Arrival and parking alignment are reported separately.';
+  if (['COMPLETE', 'COMPLETED'].includes(status.state)) {
+    if (physicalParkingEnabled(status)) return status.car.arrived && status.car.aligned
+      ? 'Car delivered and aligned. Check the robot status before preparing the next mission.'
+      : 'The run has ended. Arrival and parking alignment are reported separately.';
+    return status.car.arrived
+      ? 'Car delivered. Check the robot status before preparing the next mission.'
+      : 'The run has ended. Vehicle arrival is not confirmed.';
+  }
   return status.stage_label || 'The executor checks the car after each complete movement.';
+}
+
+export function physicalDeliveryLabel(status: PhysicalStatus | null, connected: boolean): string {
+  if (!connected) return 'Status unavailable';
+  if (physicalVisionActive(status, connected, 'car')) return 'Checking car · MUSE';
+  if (status?.returning_home && !['HOLD', 'HELD', 'STOPPING'].includes(status.state) && !terminal.has(status.state)) return 'Returning to start';
+  // An actual server phase remains visible even if capability reporting changes mid-mission.
+  if (status?.state === 'ALIGNING') return 'Aligning the car';
+  if (status?.car.arrived) return physicalParkingEnabled(status) && status.car.aligned ? 'Parked and aligned' : 'Arrival confirmed';
+  return 'Arrival pending';
+}
+
+export function physicalDeliveryDetail(status: PhysicalStatus | null, connected: boolean): string {
+  if (!connected) return 'Car arrival and robot return are unconfirmed';
+  if (physicalVisionActive(status, connected, 'car')) return 'Reading a fresh camera image';
+  if (physicalParkingEnabled(status) && status?.car.arrived && !status.car.aligned) return 'Parking alignment not yet confirmed';
+  return 'Car arrival and robot return tracked separately';
 }
 
 export function physicalStartCommand(workspace: WorkspaceSnapshot | null, status: PhysicalStatus | null, requestId: string): PhysicalStartCommand {

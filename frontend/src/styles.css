@@ -69,6 +69,14 @@
 .physical-status-facts dd { margin: 0; font-size: 13px; color: #344650; overflow-wrap: anywhere; }
 .physical-stop-note { color: #7d8b94; font-size: 11px; line-height: 1.5; }
 .status-card-value { overflow: hidden; text-overflow: ellipsis; }
+.context-steps strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.context-steps small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.physical-telemetry .route-page strong, .physical-telemetry .route-kind { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.physical-telemetry .route-kind { max-width: 140px; }
+.physical-telemetry .route-page p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.physical-telemetry .route-page small { display: block; margin-top: 4px; font-size: 9px; color: #7f8c94; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.physical-telemetry .event-page strong, .physical-telemetry .decision-page h3 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.physical-telemetry .event-page button > span { min-width: 0; }
 .status-card.is-scanning .status-card-top i { background: #d28e68; animation: muse-request-pulse 1.4s ease-in-out infinite; }
 .status-card.is-scanning { box-shadow: inset 0 0 0 1px #deaa836e; }
 @keyframes muse-request-pulse { 0%, 100% { box-shadow: 0 0 0 0 #d28e6833; opacity: .65; } 50% { box-shadow: 0 0 0 5px #d28e6800; opacity: 1; } }

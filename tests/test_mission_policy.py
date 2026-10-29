@@ -109,6 +109,119 @@ class MissionPolicyTests(unittest.TestCase):
         self.assertEqual(decision.kind, DecisionKind.OBSERVE)
         self.assertFalse(decision.state.vehicle_delivered)
 
+    def test_delivery_only_accepts_unmeasured_goal_and_returns_empty_tool(self):
+        policy = MissionPolicy(plan(parking=ParkingTarget(0., lateral_tolerance_mm=3., mode="delivery_only")))
+        state, at = after_first(policy), context("GOAL_PARK", 12., 2)
+        observation = car(at, state, heading_deg=None, heading_uncertainty_deg=None,
+                          lateral_error_mm=None, lateral_uncertainty_mm=None,
+                          heading_matches_expected=False, expected_progress=False,
+                          measurement_source="unmeasured", measurement_evidence_sha256=None)
+        decision = policy.decide(state, at, car=observation, command_id="return-1")
+        self.assertEqual(decision.primitive_id, "return")
+        self.assertEqual(decision.state.pending_role, "RETURN")
+        self.assertTrue(decision.state.vehicle_delivered)
+        # Arrival does not certify an angle, lateral error, or parallel parking.
+        self.assertFalse(observation.measured_heading)
+        self.assertFalse(observation.measured_lateral)
+        returned = completed(policy, decision, 14.)
+        result = policy.decide(returned, context("START", 15., 3))
+        self.assertEqual(result.kind, DecisionKind.COMPLETE)
+
+    def test_delivery_only_does_not_dispatch_final_alignment_even_when_measured_skewed(self):
+        template = CorrectionTemplate(primitive("align", "GOAL_PARK", "GOAL_PARK"),
+            "delivery", "GOAL", (18., 32.), (-3., 3.), -12., 0., True)
+        policy = MissionPolicy(plan(parking=ParkingTarget(0., mode="delivery_only"), corrections=(template,)))
+        state, at = after_first(policy), context("GOAL_PARK", 12., 2)
+        result = policy.decide(state, at, car=car(at, state, heading_deg=25.), command_id="return-1")
+        self.assertEqual(result.primitive_id, "return")
+        self.assertEqual(result.state.correction_count, 0)
+
+    def test_delivery_only_requires_original_pass_and_arrival(self):
+        policy = MissionPolicy(plan(parking=ParkingTarget(0., mode="delivery_only")))
+        state, at = after_first(policy), context("GOAL_PARK", 12., 2)
+        for changes, reason in (({"verdict": "FAIL"}, "DELIVERY_REQUIRES_ORIGINAL_PASS"),
+                                ({"verdict": "UNCERTAIN"}, "MUSE_UNCERTAIN"),
+                                ({"arrived": False}, "GOAL_ARRIVAL_UNCONFIRMED")):
+            with self.subTest(changes=changes):
+                result = policy.decide(state, at, car=car(at, state, **changes), command_id="return-1")
+                self.assertEqual(result.kind, DecisionKind.OBSERVE)
+                self.assertEqual(result.reason, reason)
+                self.assertFalse(result.state.vehicle_delivered)
+
+    def test_delivery_only_preserves_visibility_road_zone_and_source_checks(self):
+        policy = MissionPolicy(plan(parking=ParkingTarget(0., mode="delivery_only")))
+        state, at = after_first(policy), context("GOAL_PARK", 12., 2)
+        for changes in ({"car_visible": False}, {"occlusion_cause": "HOSE"},
+                        {"within_road": False}, {"within_road": None}, {"car_zone_id": "OTHER"},
+                        {"captured_at_s": 9.}, {"captured_at_s": 13.},
+                        {"native_sequence": 99}, {"action_command_id": "foreign"},
+                        {"binding": replace(BINDING, camera_epoch="moved")}):
+            with self.subTest(changes=changes):
+                result = policy.decide(state, at, car=car(at, state, **changes), command_id="return-1")
+                self.assertNotEqual(result.kind, DecisionKind.DISPATCH)
+                self.assertFalse(result.state.vehicle_delivered)
+
+    def test_delivery_only_preserves_stationary_native_and_withdrawal_checks(self):
+        policy = MissionPolicy(plan(parking=ParkingTarget(0., mode="delivery_only")))
+        state, at = after_first(policy), context("GOAL_PARK", 12., 2)
+        for changes in ({"stationary": False}, {"tool_clear": False},
+                        {"native_observed_at_s": 1.}, {"pending_command_id": "foreign"},
+                        {"control_fault": "FAULT"}, {"session_id": "different"}):
+            with self.subTest(changes=changes):
+                result = policy.decide(state, replace(at, **changes), car=car(at, state), command_id="return-1")
+                self.assertEqual(result.kind, DecisionKind.HOLD)
+                self.assertFalse(result.state.vehicle_delivered)
+
+    def test_delivery_only_preserves_intermediate_drift_checks(self):
+        policy = MissionPolicy(plan(signal=True, parking=ParkingTarget(0., mode="delivery_only")))
+        state, at = after_first(policy), context("RIGHT_WAIT", 12., 2)
+        observation = car(at, state, step="approach", zone="STOP", arrived=True,
+                          heading_matches_expected=False, heading_deg=None, heading_uncertainty_deg=None,
+                          measurement_source="unmeasured", measurement_evidence_sha256=None)
+        result = policy.decide(state, at, car=observation, command_id="next")
+        self.assertEqual(result.reason, "MEASURED_CORRECTION_PRECONDITIONS_REQUIRED")
+        self.assertEqual(result.kind, DecisionKind.OBSERVE)
+        self.assertFalse(result.state.vehicle_delivered)
+
+    def test_delivery_only_preserves_qualified_intermediate_correction_selection(self):
+        template = CorrectionTemplate(primitive("route-correct", "RIGHT_WAIT", "RIGHT_WAIT"),
+            "approach", "STOP", (18., 32.), (-3., 3.), -12., 0.)
+        policy = MissionPolicy(plan(signal=True, corrections=(template,),
+                                    parking=ParkingTarget(0., mode="delivery_only")))
+        state, at = after_first(policy), context("RIGHT_WAIT", 12., 2)
+        observation = car(at, state, step="approach", zone="STOP", arrived=False, heading_deg=115.)
+        result = policy.decide(state, at, car=observation, command_id="correct-1")
+        self.assertEqual(result.primitive_id, "route-correct")
+        self.assertEqual(result.state.pending_role, "CORRECTION")
+        self.assertFalse(result.state.vehicle_delivered)
+
+    def test_delivery_only_preserves_red_signal_gate_with_unmeasured_car(self):
+        policy = MissionPolicy(plan(signal=True, parking=ParkingTarget(0., mode="delivery_only")))
+        state, at = after_first(policy), context("RIGHT_WAIT", 12., 2)
+        observation = car(at, state, step="approach", zone="STOP", arrived=False,
+                          heading_deg=None, heading_uncertainty_deg=None,
+                          measurement_source="unmeasured", measurement_evidence_sha256=None)
+        result = policy.decide(state, at, car=observation, signal=signal(at, color="RED"), command_id="next")
+        self.assertEqual(result.kind, DecisionKind.WAIT)
+        self.assertEqual(result.state.phase, Phase.WAIT_SIGNAL)
+        self.assertFalse(result.state.vehicle_delivered)
+
+    def test_delivery_only_cannot_bypass_unqualified_empty_return(self):
+        configuration = plan(parking=ParkingTarget(0., mode="delivery_only"))
+        configuration = replace(configuration, empty_return=(replace(configuration.empty_return[0], qualified=False),))
+        policy = MissionPolicy(configuration)
+        state, at = after_first(policy), context("GOAL_PARK", 12., 2)
+        result = policy.decide(state, at, car=car(at, state), command_id="return-1")
+        self.assertEqual(result.kind, DecisionKind.HOLD)
+        self.assertTrue(result.state.vehicle_delivered)
+        self.assertNotEqual(result.state.phase, Phase.COMPLETE)
+        self.assertIn("NOT_QUALIFIED", result.reason)
+
+    def test_completion_mode_is_explicit_and_defaults_to_parallel_alignment(self):
+        self.assertEqual(ParkingTarget(0.).mode, "parallel_alignment")
+        with self.assertRaises(ValueError):
+            ParkingTarget(0., mode="any_arrival")
+
     def test_muse_numeric_guess_is_not_a_qualified_heading_estimator(self):
         policy = MissionPolicy(plan())
         state, at = after_first(policy), context("GOAL_PARK", 12., 2)

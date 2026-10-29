@@ -16,9 +16,11 @@ The physical mission path connects the tablet's current live MUSE plan to a dete
 | Review | Send original images and the expected car outcome to MUSE. Compare car-only numeric measurements when independently qualified. |
 | Correct | Select a measured primitive whose entire observed error interval lies inside its validated response envelope. Require predicted improvement and limit repeated/non-improving attempts. |
 | Park | Require goal arrival and an independently bounded parallel-axis error within the declared tolerance (default 15 degrees, including uncertainty). White-body geometry alone does not resolve the nose direction. |
-| Return | Leave the car in place. Follow a separate qualified empty-tool route to START; report completion only after its endpoint is verified. |
+| Return | Leave the car in place. Use the shortest reviewed clear empty-tool path to START, including across flat printed buildings; road following is not required. Report completion only after its endpoint is verified. |
 
 The policy never calculates a new TCP from a guessed hidden car pose. Camera presentation transforms and the rejected global board-to-BASE fit remain outside motion authority. Every active motion primitive is bound to exact measured geometry and the current installation/profile review.
+
+The road constraint applies to the vehicle during delivery. An empty tool may cross flat printed artwork when the path is clear; the return planner need not follow the vehicle's road graph or retrace every delivery turn. Preserve the current fixed Z and literal posture, existing speed/stroke limits, fresh Native source and endpoint checks, and current profile coverage. Review the full gripper, arm and hose clearance against the remaining car, standing signal and other physical objects. Flat artwork is traversable space, but an image or a known TCP endpoint alone does not prove that swept clearance. A change in the actual post-correction pose requires a return bound to that new source.
 
 ## Paper signal and the black mask
 
@@ -73,7 +75,7 @@ The initial audit omitted 16 early C motions by selecting an incomplete extracte
 Those records include failed/uncertain trials and intervening operator decisions. They do **not** supply a clean repeatable autonomous course or numeric vehicle response envelopes. In particular:
 
 1. Independent car-axis/lateral error bounds and correction-response envelopes still need physical validation.
-2. The final D/Hanok observation park has no executed complete empty-tool return beginning at that same source. A derived 17-stage, approximately 262 mm candidate follows recorded clearance corridors but includes one proposed reverse 10 mm free-row transition. It remains unexecuted and unqualified; its original sources and new transition are identified separately.
+2. No new complete D/Hanok empty-tool return has yet been recorded in this catalogue. The older 17-stage, approximately 262 mm clearance-corridor candidate is not a mandatory route. The user's clarified policy permits a shorter clear path across flat printed artwork; a direct candidate from the historical D observation pose is approximately 187 mm. Both remain proposals, and neither may be replayed from a changed post-correction pose. Bind and review the return from the actual current Native source before execution, then preserve its new completion evidence separately.
 3. The actual two-face paper signal, selected view/ROI, and entry-view readability have not been commissioned.
 4. A private whole-course release must bind current profile/installation coverage, clearance and kinematic evidence to every chosen primitive. The importer does not create that release.
 

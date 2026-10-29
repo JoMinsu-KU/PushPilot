@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { parsePhysicalStatus, physicalAvailable, physicalDestinationBlocker, physicalDetail, physicalFinished, physicalMatchesPlan, physicalRunning, physicalSignalLabel, physicalStartCommand, physicalTitle, physicalVisionActive } from '../src/physicalMission.ts';
+import { parsePhysicalStatus, physicalAvailable, physicalModeLabel, physicalProgress, physicalReviewLabel, physicalRouteContext, physicalTelemetry, physicalDeliveryDetail, physicalDeliveryLabel, physicalDestinationBlocker, physicalDetail, physicalFinished, physicalMatchesPlan, physicalParkingEnabled, physicalRunning, physicalSignalLabel, physicalStartCommand, physicalTitle, physicalVisionActive } from '../src/physicalMission.ts';
 
 function status(overrides = {}) {
   return { schema_version: 'pushpilot.physical.v1', enabled: true, available: true, state: 'IDLE', revision: 4,
@@ -103,12 +103,41 @@ test('signal waiting, recontact, correction, alignment and return remain automat
 });
 
 test('arrival does not invent alignment or robot home, and lost status cannot show confirmed completion', () => {
-  const s = status({ state: 'COMPLETE', mission_id: 'm', car: { arrived: true, aligned: false, heading_error_deg: null } });
+  const s = status({ state: 'COMPLETE', mission_id: 'm', capabilities: { parking_alignment: true }, car: { arrived: true, aligned: false, heading_error_deg: null } });
   assert.equal(physicalFinished(s), true);
   assert.equal(physicalRunning(s), false);
   assert.match(physicalDetail(s, true), /reported separately/);
   assert.equal(physicalTitle(s, false), 'Robot status unavailable');
   assert.match(physicalDetail(s, false), /not confirmed/);
+});
+
+test('delivery-first completion reports arrival without requiring or inventing parking alignment', () => {
+  for (const capabilities of [{}, { parking_alignment: false }]) {
+    const s = parsePhysicalStatus(status({ state: 'COMPLETE', mission_id: 'm', capabilities,
+      car: { arrived: true, aligned: false, heading_error_deg: 18 } }));
+    assert.equal(physicalParkingEnabled(s), false);
+    assert.match(physicalDetail(s, true), /^Car delivered\./);
+    assert.doesNotMatch(physicalDetail(s, true), /aligned|parking/);
+    assert.equal(physicalDeliveryLabel(s, true), 'Arrival confirmed');
+    assert.doesNotMatch(physicalDeliveryDetail(s, true), /alignment/);
+    assert.equal(s.car.aligned, false, 'presentation must not manufacture an alignment result');
+    assert.equal(s.robot.at_start, undefined, 'arrival does not imply automatic return already finished');
+    assert.equal(physicalDeliveryLabel(s, false), 'Status unavailable');
+  }
+  const incomplete = status({ state: 'COMPLETE', car: { arrived: false, aligned: false, heading_error_deg: null } });
+  assert.match(physicalDetail(incomplete, true), /arrival is not confirmed/);
+});
+
+test('parking is opt-in while actual return and correction states remain observable', () => {
+  const s = status({ capabilities: { parking_alignment: true }, car: { arrived: true, aligned: false, heading_error_deg: 18 } });
+  assert.equal(physicalParkingEnabled(s), true);
+  assert.equal(physicalDeliveryDetail(s, true), 'Parking alignment not yet confirmed');
+  assert.equal(physicalDeliveryLabel({ ...s, car: { ...s.car, aligned: true } }, true), 'Parked and aligned');
+  const delivery = { ...s, capabilities: { parking_alignment: false }, state: 'RETURNING_HOME', returning_home: true };
+  assert.equal(physicalDeliveryLabel(delivery, true), 'Returning to start');
+  assert.equal(physicalDeliveryLabel({ ...delivery, state: 'HOLD' }, true), 'Arrival confirmed');
+  assert.equal(physicalDeliveryLabel({ ...delivery, state: 'ALIGNING', returning_home: false }, true), 'Aligning the car');
+  assert.throws(() => parsePhysicalStatus(status({ capabilities: { parking_alignment: 'false' } })));
 });
 
 test('a previous physical result is shown only for its exact session and plan revision', () => {
@@ -143,4 +172,74 @@ test('green confirmation uses server observations without implying crossing perm
   assert.equal(physicalSignalLabel(s, true), 'Recontacting');
   assert.equal(physicalSignalLabel(status({ signal: { color: 'RED', waiting: true } }), true), 'Red · Waiting');
   assert.equal(physicalSignalLabel(s, false), 'Status unavailable');
+});
+
+function telemetry(overrides = {}) {
+  return { sequence: [
+    { id: 'push-b', label: 'Push toward Office', kind: 'push', status: 'complete', detail: 'Native executor receipt recorded.' },
+    { id: 'clear-b', label: 'Clear the camera view', kind: 'observe_clear', status: 'current', detail: 'Moving the empty tool.' },
+    { id: 'return-b', label: 'Return to start', kind: 'return', status: 'pending', detail: 'Not dispatched.' },
+  ], current_step_id: 'clear-b', history: [{ id: 'receipt-1', at: 1793200000, kind: 'PRIMITIVE_RECEIPT', title: 'Push completed', detail: 'Receipt native-123.', source: 'executor' }],
+    review: { verdict: 'ARRIVED', summary: 'Vehicle visible at the destination.', observed_at: 1793200001, source: 'meta', frame_ids: ['native-before', 'native-after'] },
+    signal_gate_id: null, signal_observed_at: null, distance_mm: null, distance_source: null, ...overrides };
+}
+
+test('physical telemetry never borrows simulator progress, reviews or history', () => {
+  const w = workspace();
+  Object.assign(w, { current_step: 99, events: [{ title: 'Fake arrival' }], review: { verdict: 'PASS' } });
+  const s = status({ mission_id: 'm', state: 'RUNNING', progress: { completed: 1, total: 3 }, telemetry: telemetry() });
+  const actual = physicalTelemetry(parsePhysicalStatus(s), w, true);
+  assert.equal(actual, s.telemetry);
+  assert.deepEqual(physicalProgress(s, actual), { completed: 1, total: 3 });
+  assert.equal(actual.history[0].title, 'Push completed');
+  assert.equal(physicalReviewLabel(s, actual, true), 'ARRIVED');
+  assert.deepEqual(physicalRouteContext(actual).steps.map(step => step.status), ['complete', 'current', 'pending']);
+  const missing = { ...s, telemetry: undefined };
+  assert.equal(physicalTelemetry(missing, w, true), null);
+  assert.equal(physicalProgress(missing, null), null);
+  assert.equal(physicalReviewLabel(missing, null, true), 'No robot review');
+  assert.deepEqual(physicalRouteContext(null), { start: 0, steps: [] });
+});
+
+test('disconnected, previous and unbound physical telemetry cannot appear as current results', () => {
+  const s = status({ mission_id: 'old-m', state: 'COMPLETE', plan_id: 'plan-a', plan_revision: 2,
+    workspace_session_id: 'session-a', telemetry: telemetry(), progress: { completed: 3, total: 3 } });
+  assert.equal(physicalTelemetry(s, workspace(), true), s.telemetry);
+  assert.equal(physicalTelemetry(s, workspace(), false), null);
+  assert.equal(physicalTelemetry({ ...s, plan_revision: 1 }, workspace(), true), null);
+  assert.equal(physicalTelemetry({ ...s, workspace_session_id: 'old' }, workspace(), true), null);
+  assert.equal(physicalTelemetry({ ...s, mission_id: null }, workspace(), true), null);
+  assert.equal(physicalReviewLabel(s, null, false), 'Review unavailable');
+});
+
+test('telemetry rejects inferred distance, malformed receipts and fabricated review sources', () => {
+  assert.deepEqual(parsePhysicalStatus(status({ telemetry: telemetry() })).telemetry, telemetry());
+  assert.equal(parsePhysicalStatus(status({ telemetry: telemetry({ distance_mm: 42.3, distance_source: 'native_tcp' }) })).telemetry.distance_mm, 42.3);
+  for (const t of [null, {}, telemetry({ distance_mm: 500, distance_source: 'drawing' }), telemetry({ distance_mm: 500, distance_source: null }),
+    telemetry({ distance_mm: -1, distance_source: 'native_tcp' }), telemetry({ current_step_id: 'not-in-sequence' }),
+    telemetry({ sequence: [{ ...telemetry().sequence[0], status: 'estimated' }] }),
+    telemetry({ history: [{ ...telemetry().history[0], at: Number.NaN }] }),
+    telemetry({ review: { ...telemetry().review, source: 'demo' } }), telemetry({ review: { ...telemetry().review, observed_at: 'now' } })]) {
+    assert.throws(() => parsePhysicalStatus(status({ telemetry: t })));
+  }
+});
+
+test('actual inference activity is distinct from the last recorded review and signal wait', () => {
+  const s = status({ mission_id: 'm', state: 'WAITING_SIGNAL', telemetry: telemetry(),
+    vision: { in_flight: false, kind: 'signal', started_at: null, last_result_at: 1793200001, summary: 'Previous result' } });
+  assert.equal(physicalReviewLabel(s, s.telemetry, true), 'ARRIVED');
+  assert.equal(physicalVisionActive(s, true, 'signal'), false);
+  s.vision.in_flight = true;
+  assert.equal(physicalReviewLabel(s, s.telemetry, true), 'Checking signal · MUSE');
+  s.vision.kind = 'car';
+  assert.equal(physicalReviewLabel(s, s.telemetry, true), 'Checking car · MUSE');
+  assert.equal(physicalReviewLabel(s, null, false), 'Review unavailable');
+});
+
+test('current-site testing is explicitly labeled and grants no route capability', () => {
+  const s = parsePhysicalStatus(status({ available: false, capabilities: { release_mode: 'site_trial', destinations: [] } }));
+  assert.equal(physicalModeLabel(s), 'Robot · current-site test');
+  assert.throws(() => physicalStartCommand(workspace(), s, 'r'));
+  assert.equal(physicalModeLabel(status({ capabilities: { release_mode: 'qualified' } })), 'Robot');
+  assert.throws(() => parsePhysicalStatus(status({ capabilities: { release_mode: 'pretend_ready' } })));
 });

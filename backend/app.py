@@ -154,9 +154,9 @@ def create_app(settings: Settings | None = None, *, db_path: str | None = None,
         application.state.automatic_signal_watch = automatic_signal_watch
         driver = physical_driver
         if driver is None and configured.physical_config_path:
-            from backend.robot_control.mission_driver import ConfigBackedMissionDriver
+            from backend.robot_control.site_trial_driver import configured_driver
             from backend.robot_control.mission_observer import MissionObserver
-            driver = ConfigBackedMissionDriver(configured.physical_config_path,
+            driver = configured_driver(configured.physical_config_path,
                 observer_callback=MissionObserver(configured.meta_api_key))
         application.state.physical = PhysicalMissionService(application.state.store,
             Path(scene_dir) / "physical-mission", driver=driver)

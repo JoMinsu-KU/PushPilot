@@ -79,6 +79,8 @@ class TaughtPrimitive:
     qualification_sha256: str
     qualified: bool = False
     empty_tool: bool = False
+    release_mode: str = "qualified"
+    current_site_review_sha256: str | None = None
 
     def __post_init__(self):
         for value in (self.id, self.source_context_id, self.target_context_id):
@@ -86,6 +88,12 @@ class TaughtPrimitive:
         _sha(self.qualification_sha256)
         if type(self.qualified) is not bool or type(self.empty_tool) is not bool:
             raise ValueError("Qualification and empty-tool declarations are explicit booleans.")
+        if self.release_mode not in {"qualified", "site_trial"}:
+            raise ValueError("Use an explicit physical release mode.")
+        if self.release_mode == "site_trial":
+            _sha(self.current_site_review_sha256)
+            if self.qualified:
+                raise ValueError("A current-site trial cannot claim repeatability qualification.")
 
 
 @dataclass(frozen=True)
@@ -118,6 +126,7 @@ class RouteStep:
     expected_heading_deg: float
     at_goal: bool = False
     signal_gate: SignalGate | None = None
+    observation_required: bool = True
 
     def __post_init__(self):
         _name(self.id)
@@ -125,6 +134,9 @@ class RouteStep:
         _number(self.expected_heading_deg, minimum=-180., maximum=180.)
         if type(self.at_goal) is not bool:
             raise ValueError("Goal membership must be explicit.")
+        if type(self.observation_required) is not bool or (not self.observation_required
+                and (not self.primitive.empty_tool or self.at_goal or self.signal_gate)):
+            raise ValueError("Only unloaded intermediate repositioning can omit a car outcome review.")
         if self.signal_gate and self.primitive.target_context_id != self.signal_gate.right_wait_context_id:
             raise ValueError("A signal-stop step must finish at its selected far-RIGHT wait park.")
 
@@ -192,6 +204,7 @@ class ParkingTarget:
     tolerance_deg: float = 15.
     parallel_axis: bool = True
     lateral_tolerance_mm: float | None = None
+    mode: str = "parallel_alignment"
 
     def __post_init__(self):
         _number(self.heading_deg, minimum=-180., maximum=180.)
@@ -200,6 +213,8 @@ class ParkingTarget:
             raise ValueError("Parallel-axis parking must be explicitly selected.")
         if self.lateral_tolerance_mm is not None:
             _number(self.lateral_tolerance_mm, minimum=.1, maximum=20.)
+        if self.mode not in {"parallel_alignment", "delivery_only"}:
+            raise ValueError("Explicitly select parallel_alignment or delivery_only completion.")
 
 
 @dataclass(frozen=True)
@@ -222,10 +237,15 @@ class MissionPlan:
     signal_max_age_s: float = 15.
     native_max_age_s: float = 5.
     route_heading_tolerance_deg: float = 15.
+    release_mode: str = "qualified"
 
     def __post_init__(self):
         for value in (self.id, self.destination, self.start_context_id):
             _name(value)
+        if self.release_mode not in {"qualified", "site_trial"}:
+            raise ValueError("Use an explicit physical release mode.")
+        if self.release_mode == "site_trial" and (self.parking.mode != "delivery_only" or self.corrections):
+            raise ValueError("The current-site delivery trial excludes unqualified numeric corrections.")
         for name in ("steps", "empty_return", "corrections", "clearances"):
             object.__setattr__(self, name, tuple(getattr(self, name)))
         if (not self.steps or not self.steps[-1].at_goal
@@ -468,13 +488,19 @@ class MissionPolicy:
         return self._decision(DecisionKind.HOLD, replace(state,
             phase=Phase.NEEDS_RECONCILIATION if reconcile else Phase.FAILED), reason)
 
+    def _admitted(self, primitive):
+        if self.plan.release_mode == "qualified":
+            return primitive.qualified and primitive.release_mode == "qualified"
+        return (primitive.release_mode == "site_trial" and not primitive.qualified
+                and primitive.current_site_review_sha256 is not None)
+
     def _dispatch(self, state, context, primitive, role, command_id, **changes):
-        if not primitive.qualified:
+        if not self._admitted(primitive):
             return self._fail(state, "PRIMITIVE_NOT_QUALIFIED:" + primitive.id)
         if primitive.source_context_id != context.context_id:
             if role in {"ROUTE", "RETURN"}:
                 restores = [c.restore for c in self.plan.clearances if c.restore is not None
-                    and c.restore.qualified and c.restore.source_context_id == context.context_id
+                    and self._admitted(c.restore) and c.restore.source_context_id == context.context_id
                     and c.restore.target_context_id == primitive.source_context_id]
                 if restores:
                     restore = sorted(restores, key=lambda p: p.id)[0]
@@ -516,6 +542,8 @@ class MissionPolicy:
             return replace(next_state, phase=state.resume_phase or Phase.OBSERVE, resume_phase=None)
         if role == "RESTORE":
             return replace(next_state, phase=state.resume_phase, resume_phase=None)
+        if role == "ROUTE" and not self.plan.steps[state.step_index].observation_required:
+            return replace(next_state, phase=Phase.READY, step_index=state.step_index + 1)
         return replace(next_state, phase=Phase.OBSERVE, action_command_id=receipt.command_id)
 
     def _valid_car(self, state, context, car):
@@ -538,7 +566,7 @@ class MissionPolicy:
         if len(state.used_clearances) >= self.plan.max_clearances_per_step:
             return None
         candidates = [c for c in self.plan.clearances if c.step_id == step.id
-            and c.primitive.qualified and c.primitive.source_context_id == context.context_id
+            and self._admitted(c.primitive) and c.primitive.source_context_id == context.context_id
             and c.primitive.id not in state.used_clearances and cause in c.occlusion_causes
             and c.car_visible_qualified and (not signal or c.signal_visible_qualified)
             and (not signal or c.side == "RIGHT"
@@ -723,6 +751,14 @@ class MissionPolicy:
         if car.verdict == "UNCERTAIN":
             return self._reobserve(state, "MUSE_UNCERTAIN")
         if step.at_goal and car.arrived:
+            if self.plan.parking.mode == "delivery_only":
+                # This mode accepts destination delivery, not parallel parking.
+                # All source/Native/visibility/road/zone checks above still apply.
+                # Intermediate drift and correction admission remain unchanged.
+                if car.verdict != "PASS":
+                    return self._reobserve(state, "DELIVERY_REQUIRES_ORIGINAL_PASS")
+                return self.decide(replace(state, phase=Phase.RETURNING, vehicle_delivered=True),
+                                   context, command_id=command_id)
             if not car.measured_heading:
                 return self._reobserve(state, "MEASURED_PARKING_HEADING_REQUIRED")
             _, _, score = self._errors(step, car, True)

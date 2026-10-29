@@ -115,6 +115,7 @@ class ConfigBackedMissionDriver:
         self.config = self.binding = None
         self.current_context_id, self.pending_command_id = None, None
         self.before_frame = self.last_snapshot = None
+        self.last_contact_outcome = None
         self.workspace_binding = None
         self.issued = set()
         self._configuration_error = None
@@ -368,6 +369,7 @@ class ConfigBackedMissionDriver:
             self.workspace_binding = dict(workspace_binding)
             self.pending_command_id = None
             self.before_frame = None
+            self.last_contact_outcome = None
             self.journal.append("physical_mission_prepared", {"mission_id": plan.id,
                 "workspace_binding": self.workspace_binding, "native": asdict(snapshot), "automatic_replay": False})
             with self._stop_lock:
@@ -405,6 +407,10 @@ class ConfigBackedMissionDriver:
         if self.stop_latch.is_set():
             raise ExecutionBlocked("MISSION_STOPPED", "No subsequent stage may arm after Stop.")
 
+    def _prepare_measured(self, primitive_id, command_id):
+        """Qualified releases have already reviewed the current whole-route profile."""
+        return None
+
     def execute(self, primitive_id, command_id):
         if not self.execution_lock.acquire(blocking=False):
             raise ExecutionBlocked("MISSION_BUSY", "Only one physical primitive may execute.")
@@ -420,6 +426,7 @@ class ConfigBackedMissionDriver:
             qualification = self.qualifications[primitive_id]
             if self.current_context_id != policy_primitive.source_context_id:
                 raise ExecutionBlocked("PRIMITIVE_SOURCE_MISMATCH", "The current measured context does not match this primitive.")
+            self._prepare_measured(primitive_id, command_id)
             current = self._snapshot()
             if not self._matches(current.tcp_base, self.current_context_id):
                 raise ExecutionBlocked("PHYSICAL_CONTEXT_CHANGED", "Reconcile a source change before any motion.")
@@ -490,6 +497,9 @@ class ConfigBackedMissionDriver:
                 current = actual
             self.current_context_id = policy_primitive.target_context_id
             self.pending_command_id = None
+            if any(s.phase == "contact" for s in measured.stages):
+                self.last_contact_outcome = {"command_id": command_id,
+                    "primitive_id": primitive_id, "expected_visual": measured.expected_visual}
             result = MotionReceipt(command_id, primitive_id, current.session_id,
                 self.current_context_id, self.ports.now(), True, "COMPLETED")
             self.journal.append("mission_primitive_complete", {"receipt": asdict(result), "car_outcome_inferred": False})

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { EvidenceEvent, WorkspaceSnapshot } from '../../contracts/workspace';
 import type { TemporaryMap } from '../../contracts/scene';
-import type { PhysicalStatus } from '../../contracts/physical';
-import { physicalDetail, physicalTitle } from './physicalMission';
+import type { PhysicalStatus, PhysicalTelemetry } from '../../contracts/physical';
+import { physicalDetail, physicalModeLabel, physicalParkingEnabled, physicalProgress, physicalReviewLabel, physicalTitle } from './physicalMission';
 import { Icon } from './Icons';
 import { drawingDistance, nodeLabel, planStepLabel } from './mapMetadata';
 
@@ -76,22 +76,75 @@ export function PlanBrowser({ workspace, map = null, physical = false }: { works
   </div>;
 }
 
-export function PhysicalStatusPanel({ status, connected, map = null }: { status: PhysicalStatus | null; connected: boolean; map?: TemporaryMap | null }) {
+export function PhysicalStatusPanel({ status, connected, map = null, missionBound = true }: { status: PhysicalStatus | null; connected: boolean; map?: TemporaryMap | null; missionBound?: boolean }) {
   const destinations = connected && status?.capabilities.destinations;
   const destinationDetail = !destinations ? 'Robot destinations have not been confirmed.'
     : destinations.length ? `Available robot destinations: ${destinations.map(id => nodeLabel(map, id)).join(', ')}.` : 'No robot destinations are currently available.';
+  const currentTitle = !missionBound && connected && status?.available ? 'Robot ready' : physicalTitle(status, connected);
+  const currentDetail = !missionBound && connected && status?.available && !status.error && !status.blockers.length
+    ? 'No robot execution is bound to the current plan.' : physicalDetail(status, connected);
   return <section className="physical-status-panel">
-    <h3>{physicalTitle(status, connected)}</h3>
-    <TextPages text={`${physicalDetail(status, connected)}\n\n${destinationDetail}`} size={320}/>
+    <h3>{currentTitle}</h3>
+    <TextPages text={`${currentDetail}\n\n${destinationDetail}`} size={320}/>
     <dl className="physical-status-facts">
       <div><dt>Robot</dt><dd>{!connected ? 'Status unavailable' : !status?.robot.connected ? 'Disconnected' : status.robot.at_start ? 'Ready at start' : status.robot.stationary ? 'Stationary' : 'Moving'}</dd></div>
-      <div><dt>Car arrival</dt><dd>{connected && status?.car.arrived ? 'Confirmed' : 'Not confirmed'}</dd></div>
-      <div><dt>Parking alignment</dt><dd>{connected && status?.car.aligned ? 'Confirmed' : 'Not confirmed'}</dd></div>
-      <div><dt>Heading error</dt><dd>{connected && status?.car.heading_error_deg != null ? `${Math.abs(status.car.heading_error_deg).toFixed(1)}°` : 'Not measured'}</dd></div>
-      <div><dt>Signal</dt><dd>{connected ? status?.signal.color ?? 'UNKNOWN' : 'UNKNOWN'}</dd></div>
-      <div><dt>Execution</dt><dd>{connected ? status?.stage_label || 'No active stage' : 'Current stage unconfirmed'}</dd></div>
+      <div><dt>Car arrival</dt><dd>{!missionBound ? 'No current mission' : connected && status?.car.arrived ? 'Confirmed' : 'Not confirmed'}</dd></div>
+      {physicalParkingEnabled(status) ? <div><dt>Parking alignment</dt><dd>{!missionBound ? 'No current mission' : connected && status?.car.aligned ? 'Confirmed' : 'Not confirmed'}</dd></div>
+        : <div><dt>Mission scope</dt><dd>Delivery and return</dd></div>}
+      <div><dt>Heading error</dt><dd>{missionBound && connected && status?.car.heading_error_deg != null ? `${Math.abs(status.car.heading_error_deg).toFixed(1)}°` : 'Not measured'}</dd></div>
+      <div><dt>Signal</dt><dd>{missionBound && connected ? status?.signal.color ?? 'UNKNOWN' : 'UNKNOWN'}</dd></div>
+      <div><dt>{physicalModeLabel(status)}</dt><dd>{!missionBound ? 'No active stage' : connected ? status?.stage_label || 'No active stage' : 'Current stage unconfirmed'}</dd></div>
     </dl>
     <p className="physical-stop-note">A stop request holds further dispatch. A stopped state is confirmed separately by the robot.</p>
+  </section>;
+}
+
+const recordedTime = (at: number) => new Date(at * 1000).toLocaleTimeString('en-US', { hour12: false });
+
+export function PhysicalRouteBrowser({ status, telemetry, connected, map }: {
+  status: PhysicalStatus | null; telemetry: PhysicalTelemetry | null; connected: boolean; map: TemporaryMap | null;
+}) {
+  const compact = useCompact();
+  const size = compact ? 2 : 4;
+  const [page, setPage] = useState(0);
+  const steps = telemetry?.sequence ?? [];
+  const pages = Math.max(1, Math.ceil(steps.length / size));
+  const index = Math.min(page, pages - 1);
+  const current = steps.findIndex(step => step.id === telemetry?.current_step_id);
+  const progress = physicalProgress(status, telemetry);
+  useEffect(() => setPage(Math.floor(Math.max(0, current) / size)), [current, size, status?.mission_id]);
+  return <div className="plan-browser physical-telemetry">
+    <div className="route-facts"><span><small>Destination</small><strong>{telemetry ? nodeLabel(map, status?.destination) : 'Not started'}</strong></span><span><small>Executor receipts</small><strong>{progress ? `${progress.completed} / ${progress.total}` : 'Awaiting execution'}</strong></span><span><small>TCP travel</small><strong>{telemetry?.distance_source === 'native_tcp' ? `${telemetry.distance_mm!.toFixed(1)} mm` : 'Not measured'}</strong></span></div>
+    {steps.length ? <ol className="route-page" start={index * size + 1} aria-label="Robot execution sequence">{steps.slice(index * size, (index + 1) * size).map((step, offset) => <li className={step.status} key={step.id}><span className="route-number">{step.status === 'complete' ? <Icon name="check" size={16}/> : String(index * size + offset + 1).padStart(2, '0')}</span><div><strong title={step.label}>{step.label}</strong><p title={step.detail}>{step.detail}</p><small>{step.status} · {step.id}</small></div><span className="route-kind">{step.kind}</span></li>)}</ol> : <p className="empty-copy">{connected ? 'The executor has not reported a sequence for this mission.' : 'Robot telemetry is unavailable. No completion is inferred.'}</p>}
+    <footer className="dialog-bottom"><span>{physicalModeLabel(status)} · executor records</span><Pager page={index} total={pages} onChange={setPage} label="Route page"/></footer>
+  </div>;
+}
+
+export function PhysicalHistoryBrowser({ telemetry, connected }: { telemetry: PhysicalTelemetry | null; connected: boolean }) {
+  const compact = useCompact();
+  const size = compact ? 2 : 4;
+  const [page, setPage] = useState(0);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [tab, setTab] = useState<'timeline' | 'detail'>('timeline');
+  const ordered = [...(telemetry?.history ?? [])].reverse();
+  const pages = Math.max(1, Math.ceil(ordered.length / size));
+  const index = Math.min(page, pages - 1);
+  const selected = ordered.find(event => event.id === selectedId) ?? ordered[0];
+  return <div className={`evidence-browser physical-telemetry show-${tab}`}>
+    <div className="compact-evidence-tabs"><button className={tab === 'timeline' ? 'selected' : ''} onClick={() => setTab('timeline')}>Timeline</button><button className={tab === 'detail' ? 'selected' : ''} onClick={() => setTab('detail')}>Record</button></div>
+    <div className="evidence-columns"><section className="event-page" aria-label="Robot execution records">{ordered.slice(index * size, (index + 1) * size).map(event => <button key={event.id} className={selected?.id === event.id ? 'selected' : ''} onClick={() => { setSelectedId(event.id); setTab('detail'); }}><span><strong>{event.title}</strong><small>{event.source} · {recordedTime(event.at)}</small></span><Icon name="chevron" size={16}/></button>)}</section>
+      <section className="decision-page" aria-label="Selected robot record">{selected ? <><div className="decision-label"><span>{selected.kind}</span><span>{selected.source}</span></div><h3>{selected.title}</h3><TextPages text={selected.detail} size={compact ? 250 : 440}/><dl><div><dt>Recorded</dt><dd>{recordedTime(selected.at)}</dd></div></dl></> : <p className="empty-copy">{connected ? 'No robot records for this mission yet.' : 'Robot records are unavailable.'}</p>}</section></div>
+    <footer className="dialog-bottom"><span>Actual executor records · read-only</span><Pager page={index} total={pages} onChange={setPage} label="Timeline page"/></footer>
+  </div>;
+}
+
+export function PhysicalReviewPanel({ status, telemetry, connected }: { status: PhysicalStatus | null; telemetry: PhysicalTelemetry | null; connected: boolean }) {
+  const review = telemetry?.review;
+  const inFlight = connected && status?.vision?.in_flight;
+  return <section className="physical-status-panel"><h3>{physicalReviewLabel(status, telemetry, connected)}</h3><TextPages text={inFlight
+    ? 'MUSE is reviewing the current camera evidence. The executor will apply the result when the request completes.'
+    : review?.summary ?? (connected ? 'No MUSE review has been recorded for this robot mission.' : 'Live review status is unavailable. No verdict is inferred.')} size={380}/>
+    {review && <dl className="physical-status-facts"><div><dt>Source</dt><dd>MUSE · Meta</dd></div><div><dt>Observed</dt><dd>{recordedTime(review.observed_at)}</dd></div><div><dt>Bound frames</dt><dd>{review.frame_ids.length}</dd></div><div><dt>Verdict</dt><dd>{review.verdict}</dd></div></dl>}
   </section>;
 }
 

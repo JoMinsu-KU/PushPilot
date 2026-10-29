@@ -10,7 +10,7 @@ from copy import deepcopy
 from backend.live_review_provider import MetaLiveReviewProvider, _frame_content, _serialized
 from backend.scene import SceneError
 
-PROMPT_VERSION = "pushpilot.physical-observation.v1"
+PROMPT_VERSION = "pushpilot.physical-observation.v2"
 
 
 def observation_schema() -> dict:
@@ -120,6 +120,21 @@ class MetaMissionVision(MetaLiveReviewProvider):
             "Return only the exact schema. Use UNCERTAIN/null when hidden; never imagine an occluded car or color. "
             "Car-zone IDs come only from the provided context; do not invent a zone or infer a precise metric pose. "
             "Expected motion and reference photos are hypotheses, not proof of successful action. The car may slip. "
+            "Evaluate expected_progress and heading_matches_expected against the bound completed primitive's "
+            "expected_visual outcome. A turning unit may intentionally leave the car diagonal; do not require "
+            "the later route's final straight heading at every intermediate unit. Preserve a visible wrong turn "
+            "or absence of expected car progress as a failed fact. If expected_visual is absent, use the declared "
+            "step outcome without inventing a successful action. Initial fixed-start placement still requires "
+            "the declared starting direction. The numeric expected_heading_deg is nominal task context, not "
+            "a measurement request or an image-space angle. Never infer precise metric heading from it. "
+            "When parking_mode is delivery_only AND goal_arrival_check is true, judge destination delivery: "
+            "return PASS only when the visible unoccluded car is in the named goal zone and wholly within the "
+            "road. In that final delivery-only check, parallel angle and lateral parking alignment are not "
+            "completion conditions; report their qualitative facts truthfully without failing arrival solely "
+            "for a skewed parked orientation. Do not claim parallel parking or measured angle. An earlier "
+            "FAIL/UNCERTAIN is not rewritten: assess only this fresh original evidence. With parallel_alignment "
+            "mode, the separate qualified metric parking checks still apply. An unconfirmed goal, hidden car, "
+            "wrong zone or uncertain road boundary must never become a delivery PASS. "
             "The signal has TWO permanently printed red and green colored faces. A black circular paper paddle "
             "on a cable tie intentionally covers one face: green covered and red visible means RED; red covered "
             "and green visible means GREEN. Report each face independently. Both visible, neither visible, uncertain "

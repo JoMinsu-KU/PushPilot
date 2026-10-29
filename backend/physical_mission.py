@@ -42,6 +42,7 @@ class PhysicalMissionService:
         self.stop_generation = 0
         row = self.db.execute("SELECT value FROM state WHERE id=1").fetchone()
         self.status = json.loads(row[0]) if row else self._empty()
+        self.status.setdefault("telemetry", self._empty_telemetry())
         self.status["vision"].update(in_flight=False, kind=None, started_at=None)
         if row and self.status["state"] not in {"DISABLED", "READY", "COMPLETE", "HOLD"}:
             self.status.update(state="HOLD", available=False, error="RESTART_REQUIRES_RECONCILIATION",
@@ -61,7 +62,56 @@ class PhysicalMissionService:
             "vision": {"in_flight": False, "kind": None, "started_at": None, "last_result_at": None, "summary": None},
             "returning_home": False, "error": None,
             "blockers": ["A qualified measured physical mission release is not installed."], "capabilities": {},
-            "plan_id": None, "plan_revision": None, "workspace_session_id": None}
+            "plan_id": None, "plan_revision": None, "workspace_session_id": None,
+            "telemetry": self._empty_telemetry()}
+
+    @staticmethod
+    def _empty_telemetry():
+        return {"sequence": [], "current_step_id": None, "history": [], "review": None,
+                "signal_gate_id": None, "signal_observed_at": None,
+                "distance_mm": None, "distance_source": None}
+
+    def _telemetry_event(self, kind, title, detail, source="executor"):
+        rows = self.status["telemetry"]["history"]
+        rows.append({"id": uuid4().hex, "at": self.clock(), "kind": kind,
+                     "title": title, "detail": detail, "source": source})
+        del rows[:-100]
+
+    def _sequence_status(self, primitive_id, status, detail, *, command_id=None, kind="motion"):
+        telemetry = self.status["telemetry"]
+        rows = telemetry["sequence"]
+        row = next((row for row in rows if row["id"] == primitive_id), None)
+        if status == "current" and (row is None or row["status"] == "complete"):
+            # Runtime corrections and recontacts are real dispatched primitives.
+            # Repeated primitives get one distinct row per command receipt.
+            row_id = primitive_id if row is None else f"{primitive_id}:{command_id}"
+            row = {"id": row_id, "label": primitive_id.replace("_", " "),
+                   "kind": kind.lower(), "status": "pending", "detail": ""}
+            index = next((i for i, pending in enumerate(rows) if pending["status"] == "pending"), len(rows))
+            rows.insert(index, row)
+        if row is not None:
+            row.update(status=status, detail=detail)
+            telemetry["current_step_id"] = row["id"] if status in {"current", "held"} else None
+        self.status["progress"] = {"completed": sum(row["status"] == "complete" for row in rows),
+                                   "total": len(rows)}
+        return row["id"] if row is not None else None
+
+    def _observation_telemetry(self, result):
+        """Display actual observations; queued frames do not start another model request."""
+        car = result.get("car")
+        if car is not None:
+            self.status["telemetry"]["review"] = {"verdict": car.verdict,
+                "summary": result.get("summary") or "", "observed_at": car.captured_at_s,
+                "source": "meta", "frame_ids": [car.image_sha256]}
+            self.status["car"]["heading_error_deg"] = None
+            self._telemetry_event("review", "MUSE " + car.verdict, result.get("summary") or "", "meta")
+        signal = result.get("signal")
+        if signal is not None:
+            self.status["signal"]["color"] = signal.color
+            self.status["telemetry"].update(signal_gate_id=signal.gate_id,
+                signal_observed_at=signal.captured_at_s)
+            self._telemetry_event("signal", "Signal " + signal.color,
+                result.get("summary") or "Fresh stopped-camera observation", "meta")
 
     def _disable_unconfigured(self):
         """Retain mission history without advertising a removed runtime release."""
@@ -188,7 +238,16 @@ class PhysicalMissionService:
                 workspace_session_id=command["workspace_session_id"], returning_home=False)
             self.status["car"] = {"arrived": False, "aligned": False, "heading_error_deg": None}
             self.status["signal"] = {"color": "UNKNOWN", "waiting": False, "stable_green_frames": 0, "required_green_frames": 2}
-            self.status["progress"] = {"completed": 0, "total": len(plan.steps)}
+            self.status["progress"] = {"completed": 0, "total": len(plan.steps) + len(plan.empty_return)}
+            self.status["telemetry"] = self._empty_telemetry()
+            self.status["telemetry"]["sequence"] = [
+                {"id": step.primitive.id, "label": step.id.replace("_", " "), "kind": "route",
+                 "status": "pending", "detail": "Awaiting robot execution"} for step in plan.steps
+            ] + [
+                {"id": primitive.id, "label": "Return to start", "kind": "return",
+                 "status": "pending", "detail": "After confirmed vehicle arrival"} for primitive in plan.empty_return
+            ]
+            self._telemetry_event("mission", "Mission accepted", "Exact live plan bound to the physical executor")
             self._persist("MISSION_ACCEPTED", {"workspace": binding, "policy": asdict(plan), "state": asdict(state)})
             response = self._save_request(command)
             self.task = asyncio.create_task(self._run(policy, state, command), name="physical-mission")
@@ -205,6 +264,10 @@ class PhysicalMissionService:
             # A stop remains available while status revisions advance during a move.
             self.stopping.set()
             self.status.update(state="HOLD", available=False, error="OPERATOR_STOP", stage_label="Stop requested")
+            active_id = self.status["telemetry"]["current_step_id"]
+            if active_id:
+                self._sequence_status(active_id, "held", "Stop requested; endpoint not yet confirmed")
+            self._telemetry_event("stop", "Stop requested", "No automatic resume or command replay", "operator")
             self._persist("STOP_REQUESTED", {"request_id": command["request_id"]})
             if self.driver is not None:
                 try:
@@ -221,9 +284,11 @@ class PhysicalMissionService:
         self._persist("OBSERVATION_STARTED", {"phase": state.phase})
         try:
             result = await asyncio.to_thread(self.driver.observe, state)
+            if self.stopping.is_set():
+                return {}
             self.status["vision"].update(last_result_at=self.clock(), summary=result.get("summary"))
-            if result.get("signal"):
-                self.status["signal"]["color"] = result["signal"].color
+            if not result.get("samples"):
+                self._observation_telemetry(result)
             return result
         finally:
             self.status["vision"]["in_flight"] = False
@@ -244,8 +309,8 @@ class PhysicalMissionService:
                                             at_start=context.context_id == policy.plan.start_context_id)
                 self.status["signal"].update(waiting=state.phase in {Phase.WAIT_SIGNAL, Phase.ENTRY_SIGNAL},
                     stable_green_frames=min(2, len(state.green_image_sha256s)))
-                self.status["car"].update(arrived=state.vehicle_delivered, aligned=state.vehicle_delivered)
-                self.status["progress"]["completed"] = min(len(policy.plan.steps), state.step_index + int(state.vehicle_delivered))
+                self.status["car"].update(arrived=state.vehicle_delivered,
+                    aligned=state.vehicle_delivered and policy.plan.parking.mode == "parallel_alignment")
                 self.status["returning_home"] = state.phase == Phase.RETURNING or state.pending_role == "RETURN"
                 self.status["stage_label"] = decision.reason.replace("_", " ").capitalize()
                 # Persist every intent BEFORE the only motion call. A crash cannot recreate it.
@@ -257,9 +322,16 @@ class PhysicalMissionService:
                     self.status["state"] = {"RECONTACT": "RECONTACTING", "RETURN": "RETURNING_HOME",
                         "PARKING": "ALIGNING", "CORRECTION": "CORRECTING", "CLEARANCE": "CLEARING_VIEW"}.get(state.pending_role, "MOVING")
                     self.status["robot"].update(stationary=False, at_start=False)
+                    sequence_id = self._sequence_status(decision.primitive_id, "current", "Robot command in progress",
+                        command_id=decision.command_id, kind=state.pending_role or "motion")
+                    self._telemetry_event("motion", "Robot moving", decision.primitive_id)
                     self._persist("PRIMITIVE_DISPATCH_INTENT", {"primitive": decision.primitive_id, "command_id": decision.command_id})
                     receipt = await asyncio.to_thread(self.driver.execute, decision.primitive_id, decision.command_id)
                     state = policy.accept_receipt(state, receipt)
+                    if receipt.native_verified and receipt.outcome == "COMPLETED" and state.phase != Phase.NEEDS_RECONCILIATION:
+                        self._sequence_status(sequence_id, "complete", "Native endpoint confirmed")
+                        self.status["robot"]["stationary"] = True
+                        self._telemetry_event("endpoint", "Robot endpoint confirmed", decision.primitive_id, "native")
                     self._persist("PRIMITIVE_RECEIPT", {"receipt": asdict(receipt), "state": asdict(state)})
                     observation = {}
                     observation_queue = []
@@ -267,12 +339,16 @@ class PhysicalMissionService:
                     self.status["state"] = "WAITING_SIGNAL" if state.phase in {Phase.WAIT_SIGNAL, Phase.ENTRY_SIGNAL} else "OBSERVING"
                     if observation_queue:
                         observation = observation_queue.pop(0)
+                        self._observation_telemetry(observation)
+                        self._persist("QUEUED_OBSERVATION_SELECTED")
                         continue
                     try:
                         observation = await self._observe(state)
                         samples = observation.pop("samples", [])
                         if samples:
                             observation, observation_queue = samples[0], list(samples[1:])
+                            self._observation_telemetry(observation)
+                            self._persist("QUEUED_OBSERVATION_SELECTED")
                         failure_count = 0
                     except Exception as error:
                         # Re-observe only; no replay and no runtime restart. Repeated failures terminate.
@@ -290,17 +366,25 @@ class PhysicalMissionService:
                 elif decision.kind == DecisionKind.COMPLETE:
                     self.status.update(state="COMPLETE", returning_home=False, stage_label="Delivered · Robot returned to start")
                     self.status["robot"].update(stationary=True, at_start=True)
-                    self.status["progress"]["completed"] = len(policy.plan.steps)
+                    self._telemetry_event("complete", "Delivered and returned", "MUSE arrival and Native START confirmed")
                     self._persist("MISSION_COMPLETE", {"state": asdict(state)})
                     return
                 else:
                     self.status.update(state="HOLD", error=decision.reason, available=False)
+                    active_id = self.status["telemetry"]["current_step_id"]
+                    if active_id:
+                        self._sequence_status(active_id, "held", "Completion not confirmed")
+                    self._telemetry_event("hold", "Mission held", decision.reason)
                     await asyncio.to_thread(self.driver.hold, decision.reason)
                     self._persist("MISSION_HELD", {"state": asdict(state)})
                     return
         except Exception as error:
             code = getattr(error, "code", None) or (str(error) if str(error) == "OBSERVATION_SERVICE_UNAVAILABLE" else "PHYSICAL_MISSION_INTERRUPTED")
             self.status.update(state="HOLD", error=code, available=False, stage_label="Mission stopped · Review required")
+            active_id = self.status["telemetry"]["current_step_id"]
+            if active_id:
+                self._sequence_status(active_id, "held", "Completion not confirmed")
+            self._telemetry_event("hold", "Mission interrupted", code)
             self._persist("MISSION_INTERRUPTED", {"exception_type": type(error).__name__, "state": asdict(state)})
             try:
                 await asyncio.to_thread(self.driver.hold, code)

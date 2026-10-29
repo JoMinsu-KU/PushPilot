@@ -1,7 +1,40 @@
 /** Server-qualified route identifiers. An absent list grants no destination authority. */
 export interface PhysicalCapabilities {
   destinations?: string[];
-  [key: string]: boolean | string[] | undefined;
+  /** Only an explicit true advertises destination parking alignment. */
+  parking_alignment?: boolean;
+  release_mode?: 'site_trial' | 'qualified';
+  [key: string]: boolean | string[] | 'site_trial' | 'qualified' | undefined;
+}
+
+export interface PhysicalSequenceStep {
+  id: string;
+  label: string;
+  kind: string;
+  status: 'pending' | 'current' | 'complete' | 'held';
+  detail: string;
+}
+
+export interface PhysicalHistoryEvent {
+  id: string;
+  /** Unix seconds, recorded by the executor. */
+  at: number;
+  kind: string;
+  title: string;
+  detail: string;
+  source: string;
+}
+
+export interface PhysicalTelemetry {
+  sequence: PhysicalSequenceStep[];
+  current_step_id: string | null;
+  history: PhysicalHistoryEvent[];
+  review: { verdict: string; summary: string; observed_at: number; source: 'meta'; frame_ids: string[] } | null;
+  signal_gate_id: string | null;
+  signal_observed_at: number | null;
+  /** Measured TCP travel only. Never drawing distance or inferred car travel. */
+  distance_mm: number | null;
+  distance_source: 'native_tcp' | null;
 }
 
 /** Separate physical authority. A simulation workspace never grants robot motion. */
@@ -26,6 +59,7 @@ export interface PhysicalStatus {
   error: string | null;
   blockers: string[];
   capabilities: PhysicalCapabilities;
+  telemetry?: PhysicalTelemetry;
 }
 
 export interface PhysicalStartCommand {

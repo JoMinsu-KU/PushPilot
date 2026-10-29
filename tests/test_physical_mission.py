@@ -21,7 +21,7 @@ import httpx
 from backend.core import CommandError
 from backend.physical_api import router
 from backend.physical_mission import PhysicalMissionService
-from backend.robot_control.mission_policy import MotionReceipt, Phase
+from backend.robot_control.mission_policy import MotionReceipt, ParkingTarget, Phase
 from tests.test_mission_policy import BINDING, car, context, plan, signal, start
 
 
@@ -377,6 +377,159 @@ class PhysicalMissionTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("WAIT_UNKNOWN", reasons)
         self.assertIn("WAIT_SECOND_EXCLUSIVE_GREEN_FRAME", reasons)
         self.assertIn("ENTRY_WAIT_SECOND_EXCLUSIVE_GREEN_FRAME", reasons)
+
+    async def test_telemetry_waits_for_native_receipts_and_counts_empty_return(self):
+        entered, release = threading.Event(), threading.Event()
+        def blocking(_primitive, _command):
+            if len(self.driver.commands) == 1:
+                entered.set()
+                release.wait(3.)
+        self.driver.execute_hook = blocking
+        accepted = await self.service.start(command_for(self.service, self.store))
+        self.assertEqual(accepted["progress"], {"completed": 0, "total": 2})
+        await event_seen(entered)
+        current = self.service.snapshot()
+        self.assertEqual(current["progress"], {"completed": 0, "total": 2})
+        self.assertEqual([row["status"] for row in current["telemetry"]["sequence"]], ["current", "pending"])
+        self.assertFalse(current["car"]["arrived"])
+        self.assertFalse(any(row["source"] == "native" for row in current["telemetry"]["history"]))
+        release.set()
+        result = await self.finish()
+        self.assertEqual(result["progress"], {"completed": 2, "total": 2})
+        self.assertEqual([row["status"] for row in result["telemetry"]["sequence"]], ["complete", "complete"])
+        self.assertEqual([row["detail"] for row in result["telemetry"]["history"] if row["source"] == "native"],
+                         ["delivery-unit", "return"])
+        self.assertIsNone(result["telemetry"]["distance_mm"])
+        self.assertIsNone(result["telemetry"]["distance_source"])
+
+    async def test_unverified_receipt_holds_row_without_fabricating_completion(self):
+        execute = self.driver.execute
+        def unverified(primitive, command):
+            return replace(execute(primitive, command), native_verified=False)
+        self.driver.execute = unverified
+        await self.service.start(command_for(self.service, self.store))
+        result = await self.finish()
+        self.assertEqual(result["state"], "HOLD")
+        self.assertEqual(result["progress"], {"completed": 0, "total": 2})
+        self.assertEqual([row["status"] for row in result["telemetry"]["sequence"]], ["held", "pending"])
+        self.assertEqual(result["telemetry"]["current_step_id"], "delivery-unit")
+        self.assertFalse(any(row["source"] == "native" for row in result["telemetry"]["history"]))
+        self.assertEqual(len(self.driver.commands), 1)
+
+    async def test_delivery_only_arrival_does_not_claim_alignment(self):
+        self.driver.plan = replace(self.driver.plan, parking=ParkingTarget(0., mode="delivery_only"))
+        observe = self.driver.observe
+        def skewed(state):
+            result = observe(state)
+            if result.get("car"):
+                result["car"] = replace(result["car"], heading_deg=35., heading_matches_expected=False)
+            return result
+        self.driver.observe = skewed
+        await self.service.start(command_for(self.service, self.store))
+        result = await self.finish()
+        self.assertEqual(result["state"], "COMPLETE")
+        self.assertTrue(result["car"]["arrived"])
+        self.assertFalse(result["car"]["aligned"])
+        self.assertIsNone(result["car"]["heading_error_deg"])
+        self.assertEqual(result["progress"], {"completed": 2, "total": 2})
+        self.assertEqual([primitive for primitive, _ in self.driver.commands], ["delivery-unit", "return"])
+
+    async def test_simulator_completion_signal_and_review_never_fill_physical_telemetry(self):
+        self.store.state.update(current_step=99, progress={"completed": 99, "total": 99},
+            events=[{"source": "simulation", "title": "Fake arrival"}],
+            signal={"source": "simulation", "color": "GREEN"},
+            review={"source": "demo", "verdict": "PASS", "summary": "Fake arrival"})
+        self.driver.observe_error = TimeoutError("No actual observation")
+        await self.service.start(command_for(self.service, self.store))
+        result = await self.finish()
+        self.assertEqual(result["state"], "HOLD")
+        self.assertEqual(result["progress"], {"completed": 0, "total": 2})
+        self.assertEqual(result["signal"]["color"], "UNKNOWN")
+        self.assertIsNone(result["telemetry"]["review"])
+        self.assertIsNone(result["telemetry"]["signal_observed_at"])
+        self.assertFalse(any(row["source"] in {"simulation", "demo", "meta", "native"}
+                             for row in result["telemetry"]["history"]))
+        self.assertNotIn("Fake arrival", json.dumps(result))
+
+    async def test_failed_car_review_preserves_endpoint_but_does_not_complete_delivery(self):
+        observe = self.driver.observe
+        def failed(state):
+            result = observe(state)
+            if result.get("car"):
+                result["car"] = replace(result["car"], verdict="FAIL", arrived=False)
+                result["summary"] = "Actual review reports the car outside its target."
+            return result
+        self.driver.observe = failed
+        await self.service.start(command_for(self.service, self.store))
+        result = await self.finish()
+        self.assertEqual(result["state"], "HOLD")
+        self.assertEqual(result["progress"], {"completed": 1, "total": 2})
+        self.assertEqual([row["status"] for row in result["telemetry"]["sequence"]], ["complete", "pending"])
+        self.assertFalse(result["car"]["arrived"])
+        self.assertEqual(result["telemetry"]["review"]["verdict"], "FAIL")
+        self.assertEqual(result["telemetry"]["review"]["source"], "meta")
+        self.assertEqual([p for p, _ in self.driver.commands], ["delivery-unit"])
+
+    async def test_post_stop_inference_does_not_publish_late_arrival_or_review(self):
+        entered, release = threading.Event(), threading.Event()
+        def blocking(state):
+            if state.phase == Phase.OBSERVE:
+                entered.set()
+                release.wait(3.)
+        self.driver.observe_hook = blocking
+        await self.service.start(command_for(self.service, self.store))
+        await event_seen(entered)
+        self.assertTrue(self.service.snapshot()["vision"]["in_flight"])
+        await self.service.stop({"request_id": str(uuid4()), "expected_revision": 0})
+        release.set()
+        result = await self.finish()
+        self.assertEqual(result["state"], "HOLD")
+        self.assertFalse(result["vision"]["in_flight"])
+        self.assertIsNone(result["telemetry"]["review"])
+        self.assertFalse(result["car"]["arrived"])
+        self.assertEqual([p for p, _ in self.driver.commands], ["delivery-unit"])
+
+    async def test_queued_signal_frames_update_actual_telemetry_without_extra_inference(self):
+        await self.service.close()
+        self.driver = FakeMeasuredDriver(plan(signal=True))
+        self.service = PhysicalMissionService(self.store, self.temp.name, driver=self.driver,
+            poll_interval_s=.001, clock=lambda: self.driver.now)
+        observe = self.driver.observe
+        pairs, captures, snapshots = [], [], []
+        def paired(state):
+            if state.phase not in {Phase.WAIT_SIGNAL, Phase.ENTRY_SIGNAL}:
+                return observe(state)
+            pairs.append(state.phase)
+            samples = []
+            for index in range(2):
+                self.driver.now += .3
+                at = context(self.driver.where, self.driver.now, self.driver.seq)
+                step = self.driver.plan.steps[state.step_index]
+                digest = hashlib.sha256(f"{len(pairs)}-{index}".encode()).hexdigest()
+                samples.append({"car": replace(car(at, state, step=step.id, zone=step.car_zone_id,
+                    heading_deg=step.expected_heading_deg), image_sha256=digest),
+                    "signal": replace(signal(at), image_sha256=digest), "summary": "Actual paired signal review"})
+                captures.append(at.now_s)
+            return {**samples[-1], "samples": samples}
+        self.driver.observe = paired
+        persist = self.service._persist
+        def record(kind, evidence=None):
+            persist(kind, evidence)
+            if kind == "QUEUED_OBSERVATION_SELECTED":
+                snapshots.append(self.service.snapshot())
+        self.service._persist = record
+        await self.service.start(command_for(self.service, self.store))
+        result = await self.finish()
+        self.assertEqual(result["state"], "COMPLETE")
+        self.assertEqual(pairs, [Phase.WAIT_SIGNAL, Phase.ENTRY_SIGNAL])
+        self.assertEqual([s["telemetry"]["signal_observed_at"] for s in snapshots], captures)
+        self.assertTrue(all(s["signal"]["color"] == "GREEN" and not s["vision"]["in_flight"] for s in snapshots))
+        self.assertTrue(all(s["telemetry"]["review"]["observed_at"] == s["telemetry"]["signal_observed_at"] for s in snapshots))
+        rows = result["telemetry"]["sequence"]
+        self.assertEqual([row["id"] for row in rows], ["approach-unit", "recontact", "crossing-unit", "return"])
+        self.assertTrue(all(row["status"] == "complete" for row in rows))
+        self.assertEqual(result["progress"], {"completed": 4, "total": 4})
+        self.assertEqual(len([row for row in result["telemetry"]["history"] if row["kind"] == "signal"]), 4)
 
     async def test_status_copy_cannot_mutate_service(self):
         snapshot = self.service.snapshot()
