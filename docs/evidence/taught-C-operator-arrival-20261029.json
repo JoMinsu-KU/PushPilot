@@ -1,0 +1,74 @@
+{
+  "schema": "pushpilot.scoped-physical-course-evidence.v1",
+  "date_kst": "2026-10-29",
+  "destination": "C",
+  "display_destination": "Villa frontage",
+  "coordinate_unit_runtime_source_commit": "47dd0aa5966c7671c4e92deaa67944b00d67009c",
+  "vehicle_arrival": {
+    "source": "operator",
+    "status": "ACCEPTED_CURRENT_CAR_POSITION",
+    "instruction_basis": "The car position is the destination basis. The operator accepts the current position as final C.",
+    "supersedes_remaining_old_raw_C_TCP_target": true,
+    "old_raw_C_TCP_target_reached": false,
+    "muse_final_arrived": false,
+    "precision_vehicle_pose_measured": false,
+    "acceptance_receiver_sequence": 180,
+    "operator_acceptance_sha256": "2f4a6b7d2518468c3d7989fe52da1b3505986ee220c282e3fcd9ac4116a0635b",
+    "original_accepted_car_frame_sha256": "1f44e17d99f0ae43927fa326e251585926a52a797b4b50a46dd833826db0da01"
+  },
+  "west_delivery": {
+    "actual_loaded_units": 3,
+    "requested_contact_distance_each_mm": 19.9,
+    "total_loaded_TCP_translation_mm": 59.7,
+    "vehicle_translation_is_not_TCP_translation": true,
+    "all_actual_stage_endpoints_verified": true,
+    "unit_endpoint_counts": [
+      11,
+      9,
+      9
+    ],
+    "post_withdrawal_muse_verdicts": [
+      "PASS",
+      "PASS",
+      "PASS"
+    ],
+    "car_footprint": "WITHIN_ROAD",
+    "heading_matches_expected": true,
+    "provider_receipt_sha256": [
+      "2599d11aa33aa533c0f212af69425b3c7b662ec0533054550e7328fb3e31f6c3",
+      "61869d92e4abb72ae9fbca850bb037d40d006bd60cf67697d06dc942b9fbe424",
+      "859a3c39cffca6c484404d570bd3a411c1e7ccc44fc8b514502b4ecc5ca8c54d"
+    ]
+  },
+  "interruptions_preserved": {
+    "third_west_unit": "Stopped after verified contact endpoint before an unissued withdrawal. Two fresh stationary Native observations and explicit journal/receipt reconciliation preceded new UUIDs for withdrawal only. No push replay and no guard widening. Original whole-unit review then PASS.",
+    "fourth_prepared_west_unit": "Four recontact stages completed through sequence180. No contact push intent was issued. Operator accepted the existing car position; the remaining old target is cancelled in separate acceptance evidence. Original partial journal remains unchanged."
+  },
+  "empty_tool_return": {
+    "status": "COMPLETE",
+    "disengagement_and_observation_stages": 4,
+    "return_START_XY_stages": 14,
+    "wrist_restoration_edges": 2,
+    "requested_delta_each_deg": 89.999,
+    "working_Z_preserved": true,
+    "START_XY_restored": true,
+    "EAST_pushing_face_restored": true,
+    "all_robot_endpoints_verified": true,
+    "historical_full_pose_replayed": false,
+    "final_receiver_sequence": 210,
+    "held_disarmed_idle": true,
+    "active_commands": 0,
+    "car_reset_requested_after_stop": true,
+    "final_native_evidence_sha256": "5d85bc72e63dbbe8902bd1f658c1342b8a62e18b3f1fe9f01efe94f072503e4f"
+  },
+  "car_contact_turn_observed": true,
+  "exact_90_degree_vehicle_turn_measured": false,
+  "C_repeatability_trials": 1,
+  "D_completed": false,
+  "physical_signal_gate_tested": false,
+  "map_to_BASE_calibration_accepted": false,
+  "web_simulation_connected_to_physical_motion": false,
+  "private_media_and_coordinates_published": false,
+  "state_warning": "Historical current-site evidence only. Operator acceptance is separate from model arrival or precision calibration. Never replay commands, profiles or pending journals.",
+  "private_original_archive_sha256": "5814fb5d740b734e55b951cd547cd14bd748180cfae8a37c44a004c70f428794"
+}

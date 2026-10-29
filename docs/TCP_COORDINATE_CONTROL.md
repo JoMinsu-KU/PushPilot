@@ -56,10 +56,17 @@ to the operator's experimental contact authorization. Validation does not grant
 route qualification. The runner performs one unit and stops; it does not switch
 services, resume a journal or treat simulation approval as physical authority.
 
-Current commissioning helpers have physically completed northbound units and
-upper-corner experiments with post-withdrawal MUSE reviews. This is not yet
-an activated reusable city-route adapter or completed C/D delivery. The private
-measured registry must preserve this scope as course qualification continues.
+Current commissioning helpers have physically completed northbound units,
+contact turning and westbound delivery to Villa. On October 29 the operator
+accepted the current **car position** as the final C destination, superseding
+the remaining old raw TCP target. Preserve this as operator acceptance: the
+three westbound unit reviews supported progress, road containment and heading,
+but were not MUSE final-arrival judgments. The fourth prepared unit completed
+only recontact; its contact push was never dispatched and must not be resumed.
+D delivery and the reusable city-route/web hardware adapter remain incomplete.
+The private measured registry preserves actual commands, interruptions and
+acceptance sources separately. See the
+[C delivery evidence](evidence/taught-C-operator-arrival-20261029.json).
 See the
 [coordinate-unit evidence](evidence/coordinate-unit-north-progress-20261029.json).
 
