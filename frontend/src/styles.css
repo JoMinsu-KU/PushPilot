@@ -36,8 +36,7 @@
 .scene-tools-toggle, .scene-focus-toggle, .scene-source-plate { clip-path: inset(0 round 14px); }
 .scene-view-toggle, .scene-tools-toggle, .scene-focus-toggle { -webkit-backdrop-filter: none; backdrop-filter: none; background: #ffffffb8; }
 .scene-heading { left: 108px; top: 108px; }
-.workspace-stage .map-scene-controls { left: 108px; }
-.workspace-stage .scene-source-plate { left: 108px; }
+.workspace-stage .scene-toolbar { left: 108px; }
 .floating-mission { top: 104px; }
 .status-dock { left: 108px; }
 .stage-bottom-line { left: 112px; }
@@ -91,7 +90,7 @@
 @media (max-width: 1050px) and (min-width: 701px) {
   .floating-mission { top: 93px; }
   .scene-heading { left: 100px; top: 100px; }
-  .workspace-stage .map-scene-controls, .workspace-stage .scene-source-plate { left: 100px; }
+  .workspace-stage .scene-toolbar { left: 100px; }
   .status-dock { left: 100px; }
 }
 @media (max-width: 900px) {
@@ -101,7 +100,7 @@
 @media (max-width: 700px) {
   .scene-heading { left: 22px; top: 98px; }
   .workspace-stage { --stage-controls-top: 184px; }
-  .workspace-stage .map-scene-controls, .workspace-stage .scene-source-plate { left: 16px; }
+  .workspace-stage .scene-toolbar { left: 16px; }
   .status-dock { left: 16px; }
   .stage-bottom-line { left: 20px; }
   .mobile-mission-switch { top: 100px; }

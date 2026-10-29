@@ -1,9 +1,12 @@
 .map-scene-component { position: relative; min-width: 0; min-height: 0; color: #36393b; background: transparent; isolation: isolate; }
 .map-scene-stage { width: 100%; height: 100%; }
 .map-scene-panel { height: 550px; }
-.map-scene-controls { position: absolute; z-index: 5; top: var(--stage-controls-top, 200px); left: var(--stage-content-left, 108px); display: flex; align-items: center; gap: 8px; }
-.map-scene-panel .map-scene-controls { top: 18px; left: 18px; }
-.route-progress-legend { position: absolute; z-index: 3; top: calc(var(--stage-controls-top, 200px) + 51px); left: var(--stage-content-left, 108px); display: flex; flex-wrap: wrap; align-items: center; gap: 7px 12px; max-width: min(440px, calc(100% - var(--stage-content-left, 108px) - var(--stage-overlay-width, 340px) - 28px)); padding: 9px 12px; border: 1px solid #ffffffad; border-radius: 13px; background: #ffffff78; box-shadow: 0 5px 20px #24302204; backdrop-filter: blur(12px); color: #607178; font-size: 10px; line-height: 1.35; pointer-events: none; }
+/* Scene UI shares one fixed dock, outside the image pan/zoom plane. */
+.scene-toolbar { position: absolute; z-index: 5; top: var(--stage-controls-top, 200px); left: var(--stage-content-left, 108px); right: calc(var(--stage-overlay-width, 340px) + 24px); display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px 12px; pointer-events: none; }
+.scene-toolbar > * { pointer-events: auto; }
+.map-scene-controls { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.map-scene-panel .scene-toolbar { top: 18px; left: 18px; right: 18px; }
+.route-progress-legend { grid-column: 1; grid-row: 2; justify-self: start; display: flex; flex-wrap: wrap; align-items: center; gap: 7px 12px; max-width: min(440px, 100%); min-width: 0; padding: 9px 12px; border: 1px solid #ffffffad; border-radius: 13px; background: #ffffff78; box-shadow: 0 5px 20px #24302204; backdrop-filter: blur(12px); color: #607178; font-size: 10px; line-height: 1.35; pointer-events: none; }
 .route-progress-legend strong { font-size: 10px; font-weight: 550; color: #44565d; }
 .route-progress-legend > span:not(.route-progress-message) { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .route-progress-legend > span:not(.route-progress-message)::before { content: ''; width: 13px; height: 2px; border-radius: 2px; background: #819aa2; }
@@ -11,7 +14,6 @@
 .route-progress-legend .route-legend-current::before { background: #09b8dc; }
 .route-progress-legend .route-legend-next::before { background: repeating-linear-gradient(90deg, #819aa2 0 4px, transparent 4px 6px); }
 .route-progress-legend .route-progress-message { flex-basis: 100%; color: #75858a; font-size: 10px; }
-.map-scene-panel .route-progress-legend { top: 67px; left: 18px; max-width: calc(100% - 36px); }
 .route-junction-status text { font-family: inherit; }
 .scene-view-toggle { display: flex; padding: 4px; gap: 3px; border: 1px solid #ffffffd9; border-radius: 15px; background: #ffffffe0; box-shadow: 0 4px 22px #24302205; backdrop-filter: blur(18px); }
 .scene-view-toggle button { display: flex; align-items: center; justify-content: center; gap: 7px; height: 32px; padding: 0 13px; border-radius: 11px; color: #858b8e; font-size: 12px; white-space: nowrap; }
@@ -45,16 +47,16 @@
 .map-scene-panel .camera-view-controls { left: 18px; bottom: 47px; }
 @media (max-width: 1180px) { .camera-view-gesture { display: none; } }
 @media (max-width: 760px) { .camera-view-controls { left: 16px; bottom: calc(var(--stage-source-bottom, 9px) + 49px); } }
-.scene-source-plate { position: absolute; z-index: 3; bottom: 15px; left: var(--stage-content-left, 108px); display: flex; align-items: center; gap: 9px; padding: 9px 11px; border: 1px solid #ffffffb5; border-radius: 13px; background: #ffffffa8; backdrop-filter: blur(16px); color: #858c91; }
-.map-scene-stage .scene-source-plate { bottom: var(--stage-source-bottom, 146px); }
-/* Keep the lower storefront departure visible beneath the existing glass HUD. */
-@media (min-width: 701px) {
-  .workspace-stage .map-scene-stage .scene-source-plate {
-    top: calc(var(--stage-controls-top, 200px) + 116px);
-    bottom: auto;
-    left: auto;
-    right: calc(var(--stage-overlay-width, 340px) + 24px);
-  }
+.scene-source-plate { grid-column: 2; grid-row: 2; justify-self: end; min-width: 0; max-width: 330px; display: flex; align-items: center; gap: 9px; padding: 8px 11px; border: 1px solid #ffffffb5; border-radius: 13px; background: #ffffffa8; -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); color: #858c91; }
+.scene-source-plate > div { min-width: 0; }
+.scene-source-plate strong, .scene-source-plate > div > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (min-width: 1340px) {
+  .map-scene-controls { grid-column: 1; grid-row: 1; }
+  .scene-source-plate { grid-row: 1; }
+}
+@media (max-width: 600px) {
+  .scene-source-plate { grid-column: 1 / -1; justify-self: start; max-width: 100%; }
+  .route-progress-legend { grid-column: 1 / -1; grid-row: 3; }
 }
 .scene-source-dot { width: 5px; height: 5px; border-radius: 50%; background: #97a39b; flex: none; }
 .live-source .scene-source-dot { background: #38835f; box-shadow: 0 0 0 3px #38835f12; }
@@ -144,15 +146,15 @@
 .scene-dialog-footer { display: flex; align-items: center; gap: 7px; padding-top: 13px; margin-top: 15px; border-top: 1px solid #e4e8e9; color: #94a2ab; font-size: 10px; line-height: 1.5; flex: none; }
 .scene-dialog-footer > svg { flex: none; }
 @media (max-width: 1020px) {
-  .map-scene-controls { left: var(--stage-content-left, 94px); gap: 6px; }
+  .map-scene-controls { gap: 6px; }
   .scene-view-toggle button { padding: 0 10px; font-size: 11px; }
   .scene-tools-toggle { padding: 0 10px; }
   .scene-tools-toggle > span { display: none; }
   .scene-focus-toggle { padding: 0 9px; font-size: 10px; gap: 5px; }
-  .scene-source-plate { left: var(--stage-content-left, 94px); }
 }
 @media (max-width: 760px) {
-  .map-scene-controls { left: 16px; top: var(--stage-controls-top, 88px); gap: 6px; }
+  .scene-toolbar { left: 16px; right: 16px; gap: 6px 8px; }
+  .map-scene-controls { gap: 6px; }
   .scene-visual { inset: 100px -8px -10px; }
   .scene-view-toggle button { height: 28px; padding: 0 9px; gap: 5px; }
   .scene-view-toggle button > svg { width: 13px; height: 13px; }
@@ -162,12 +164,12 @@
   .scene-source-plate > .live-lock-button { width: auto; padding: 0 7px; margin-left: 4px; font-size: 10px; }
   .overlay-inhibition.live-warning { left: 16px; right: 16px; top: 104px; }
   .scene-tools-toggle { width: 34px; height: 34px; padding: 0; }
-  .scene-source-plate { left: 16px; bottom: 9px; padding: 7px 9px; gap: 7px; }
+  .scene-source-plate { padding: 7px 9px; gap: 7px; }
   .scene-source-plate strong { font-size: 10px; }
   .scene-source-plate > div > span { font-size: 9px; }
   .scene-source-plate > button { height: 24px; width: 20px; margin-left: 2px; }
   .scene-error { left: 16px; right: 16px; top: 164px; font-size: 11px; }
-  .route-progress-legend { top: calc(var(--stage-controls-top, 88px) + 46px); left: 16px; max-width: calc(100% - 32px); gap: 6px 10px; padding: 7px 9px; font-size: 9px; }
+  .route-progress-legend { gap: 6px 10px; padding: 7px 9px; font-size: 9px; }
   .route-progress-legend strong, .route-progress-legend .route-progress-message { font-size: 9px; }
   .scene-tools-dialog { padding: 21px 18px; height: min(550px, calc(100dvh - 28px)); width: calc(100vw - 28px); max-width: calc(100vw - 28px); max-height: calc(100dvh - 28px); border-radius: 24px; }
   .scene-dialog-heading h2 { font-size: 21px; }
