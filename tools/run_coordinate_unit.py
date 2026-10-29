@@ -66,6 +66,17 @@ def load_unit(path):
             or any(stage.review_sha256 != bundle["site_review"]["sha256"] for stage in unit.stages)):
         raise ValueError("Bind every stage, actual identity and experimental unit geometry to the explicit site review.")
     normal = review.get("normal_disengagement")
+    extended = review.get("extended_contact")
+    if sum(stage.phase == "contact" for stage in unit.stages) == 2:
+        if (not isinstance(extended, dict)
+                or set(extended) != {"max_total_mm", "per_command_cap_mm", "operator_basis"}
+                or extended["max_total_mm"] != unit.contact_travel_limit_mm
+                or extended["per_command_cap_mm"] != 20
+                or not isinstance(extended["operator_basis"], str) or len(extended["operator_basis"].strip()) < 10
+                or normal is None):
+            raise ValueError("Extended contact requires hashed operator scope, exact total, original20mm command cap and normal backoff.")
+    elif extended is not None:
+        raise ValueError("Do not attach extended-contact authority to another contact geometry.")
     if normal is not None:
         if not isinstance(normal, dict) or set(normal) != {"contact_normal_base_xy", "minimum_release_mm"}:
             raise ValueError("Bind exact normal-disengagement geometry without inferring physical contact release.")

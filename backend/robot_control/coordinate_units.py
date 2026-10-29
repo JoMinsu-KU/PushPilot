@@ -79,6 +79,7 @@ class CoordinateUnit:
     expected_visual: str
     at_goal: bool = False
     required_signal_observation: SignalObservationTarget | None = None
+    contact_travel_limit_mm: float = 20.
 
     def __post_init__(self):
         stages = tuple(self.stages)
@@ -88,12 +89,23 @@ class CoordinateUnit:
                 or type(self.revision) is not int or self.revision < 1 or type(self.at_goal) is not bool
                 or not 2 <= len(stages) <= 64 or len(phases) != len(stages)
                 or len({s.id for s in stages}) != len(stages)
-                or phases.count("contact") != 1 or phases[-1] != "withdraw"
+                or not 1 <= phases.count("contact") <= 2 or phases[-1] != "withdraw"
                 or phases != sorted(phases, key={"approach": 0, "contact": 1, "withdraw": 2}.get)
                 or any(a.target_base != b.start_base for a, b in zip(stages, stages[1:]))
                 or any(s.start_base[2:] != stages[0].start_base[2:] for s in stages)
                 or not isinstance(self.expected_visual, str) or not 10 <= len(self.expected_visual) <= 700):
-            raise ValueError("Use a continuous finite approach/contact/withdraw unit with exactly one bounded contact trial.")
+            raise ValueError("Use a continuous finite approach/contact/withdraw unit with a bounded contact phase.")
+        contacts = [stage for stage in stages if stage.phase == "contact"]
+        lengths = [math.dist(stage.start_base[:2], stage.target_base[:2]) for stage in contacts]
+        if (not _finite(self.contact_travel_limit_mm) or not 0 < self.contact_travel_limit_mm <= 40
+                or any(length > 20 for length in lengths)
+                or sum(lengths) > self.contact_travel_limit_mm + 1e-6):
+            raise ValueError("Keep contact total within its explicit <=40mm limit and every command within20mm.")
+        if len(contacts) == 2:
+            a, b = [tuple(y-x for x,y in zip(stage.start_base[:2], stage.target_base[:2])) for stage in contacts]
+            if (self.contact_travel_limit_mm <= 20 or sum(lengths) <= 20
+                    or abs(a[0]*b[1]-a[1]*b[0]) > 1e-6 or sum(x*y for x,y in zip(a,b)) <= 0):
+                raise ValueError("Extended contact needs two collinear forward stages and an explicit total above20mm.")
         object.__setattr__(self, "stages", stages)
         target = self.required_signal_observation
         if target is not None and (not isinstance(target, SignalObservationTarget)
@@ -120,7 +132,7 @@ def validate_normal_disengagement(unit: CoordinateUnit, contact_normal_base_xy, 
             or abs(math.hypot(*normal)-1) > 1e-6
             or not _finite(minimum_release_mm) or not 0 < minimum_release_mm <= 20):
         raise ValueError("Use an explicit unit face normal and a bounded positive normal backoff.")
-    contact_index = next(i for i, stage in enumerate(unit.stages) if stage.phase == "contact")
+    contact_index = max(i for i, stage in enumerate(unit.stages) if stage.phase == "contact")
     release = 0.
     for stage in unit.stages[contact_index+1:]:
         delta = tuple(b-a for a,b in zip(stage.start_base[:2], stage.target_base[:2]))
@@ -150,6 +162,8 @@ class CoordinateUnitExecutor:
     Review failure allows read-only reobservation, never motion replay. A new
     instance with an existing journal always requires independent reconciliation.
     Wrist reorientation is deliberately separate from this fixed-pose runner.
+    A separately reviewed extended contact may use two collinear <=20mm stages
+    with an explicit total <=40mm, without intermediate retreat or model gates.
     """
     def __init__(self, unit: CoordinateUnit, adapter: TaughtAdapter | CoordinateBinding, ports: CoordinateUnitPorts,
                  *, native_max_age_s=5., frame_max_age_s=2.):

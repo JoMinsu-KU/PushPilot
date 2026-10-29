@@ -1,0 +1,65 @@
+{
+  "schema": "pushpilot.scoped-physical-course-evidence.v1",
+  "date_kst": "2026-10-29",
+  "scope": "Current central-junction front contact and LEFT car-only observation",
+  "operator_junction_has_signal": false,
+  "operator_front_identity": "NW/LEFT; visually ambiguous white nose styling does not override operator identity",
+  "earlier_33_stage_front_trial": {
+    "all_Native_endpoints_verified": true,
+    "receiver_sequence": 259,
+    "MUSE_verdict": "UNCERTAIN",
+    "rotation_success_claimed": false
+  },
+  "closer_candidate_interruption": {
+    "completed_approaches": 15,
+    "sequence": 284,
+    "contact_dispatched": false,
+    "pending_request_at_stop": null,
+    "original_error": "HOST_PUBLICATION_NOT_NEW",
+    "source_reconciled_with_distinct_fresh_host_proofs": 2,
+    "completed_approaches_replayed": false
+  },
+  "new_remaining_left_unit": {
+    "actual_motion_stages": 6,
+    "contact_TCP_mm": 19.9,
+    "normal_WEST_backoff_mm": 10,
+    "all_Native_endpoints_verified": true,
+    "receiver_sequence": 296,
+    "original_whole_unit_MUSE_verdict": "UNCERTAIN",
+    "car_visible": true,
+    "car_footprint": "WITHIN_ROAD",
+    "after_original_sha256": "a16c5d6e3567acbc24339340e97eaf4f2395908d0dbdda31810ba30fb5d7f59d",
+    "separate_three_original_plus_derived_ROI_diagnostic": {
+      "derived_crops_are_original_frames": false,
+      "unscaled_same_pixel_bounds": true,
+      "translation": "RIGHT",
+      "body_rotation": "NONE_VISIBLE",
+      "withdrawal_comparison": "UNCHANGED_VISIBLE",
+      "original_UNCERTAIN_result_preserved": true,
+      "motion_authority": false
+    }
+  },
+  "longer_contact_implementation": {
+    "operator_requests_longer_push": true,
+    "default_total_contact_limit_mm": 20,
+    "explicit_extended_total_limit_mm": 40,
+    "maximum_collinear_contact_segments": 2,
+    "per_command_limit_mm_unchanged": 20,
+    "intermediate_model_gate_or_retreat": false,
+    "unknown_second_contact_replayed": false,
+    "hashed_operator_scope_and_normal_backoff_required": true,
+    "offline_tests_passed": 827,
+    "offline_tests_skipped": 2,
+    "extended_physical_execution_claimed_at_this_cutoff": false
+  },
+  "static_private_backup_through296": {
+    "files_verified": 2450,
+    "motion_checkpoints": 200,
+    "event_journals_hash_verified": 21,
+    "archive_sha256": "3e1bd1288b352fa04a676cd0be8eef0b528e4e3805a558a50610eb62a8f1031c",
+    "hardware_calls_for_registry": 0
+  },
+  "D_arrival_verified": false,
+  "map_to_BASE_calibration_accepted": false,
+  "services_camera_or_original_persist_restarted": false
+}

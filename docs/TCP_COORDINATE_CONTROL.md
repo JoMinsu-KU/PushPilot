@@ -22,7 +22,7 @@ withdrawal. Keep those narrower results uncertain when they cannot be observed.
 
 `backend/robot_control/coordinate_units.py` now implements this finite phase
 contract as a reusable `CoordinateUnitExecutor`. One instance executes a
-continuous reviewed approach, exactly one <=20 mm contact trial and a required
+continuous reviewed approach, one bounded contact phase and a required
 coordinate withdrawal. Every internal command has its own durable UUID and
 independent Native confirmation. There is no intermediate image capture or
 MUSE admission dependency. One original before image and one fresh image after
@@ -32,6 +32,19 @@ whole-unit limitations. Provider/camera failure after withdrawal permits only
 read-only reobservation. A control/Native ambiguity or restart requires
 reconciliation, with no automatic replay. Verified arrival requires empty-tool
 return before asking the operator to reset the car.
+
+The default contact travel ceiling remains20mm. After the operator explicitly
+requested a longer front push, an opt-in unit can declare
+`contact_travel_limit_mm` above20mm and at most40mm. It may contain exactly
+two contiguous collinear forward contact stages, each still at most20mm.
+The private hashed review must bind `extended_contact.max_total_mm`, the
+unchanged `per_command_cap_mm=20`, explicit operator scope and normal backoff.
+There is no retreat or intermediate MUSE admission between those two stages;
+each still has its own sole UUID, original controller limits and Native
+endpoint verification. An unknown second-stage outcome stops without replay
+or automatic withdrawal. The normal-backoff check starts after the final
+contact stage. This is an explicit longer experimental stroke, not a larger
+per-command profile limit or a new accepted road.
 
 The unit review separately requires `car_footprint=WITHIN_ROAD` and
 `heading_matches_expected=true`; a generic progress/PASS statement cannot

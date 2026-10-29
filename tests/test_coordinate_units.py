@@ -2,6 +2,7 @@
 from dataclasses import asdict, replace
 import hashlib
 import json
+import math
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -20,6 +21,15 @@ def unit():
             CoordinateStage("disengage", "withdraw", pose(20), pose(15), "c"*64),
             CoordinateStage("observe", "withdraw", pose(15), pose(15, 10), "d"*64),
         ), "Car moves toward the visibly identified Office frontage.", at_goal=True)
+
+
+def extended_unit():
+    return replace(unit(), contact_travel_limit_mm=39.8, stages=(
+        CoordinateStage("approach", "approach", pose(0), pose(10), "a"*64),
+        CoordinateStage("push1", "contact", pose(10), pose(29.9), "b"*64),
+        CoordinateStage("push2", "contact", pose(29.9), pose(49.8), "b"*64),
+        CoordinateStage("disengage", "withdraw", pose(49.8), pose(39.8), "c"*64),
+        CoordinateStage("observe", "withdraw", pose(39.8), pose(39.8, 10), "d"*64)))
 
 
 class Ports(SyntheticPorts):
@@ -96,6 +106,45 @@ class CoordinateUnitTests(unittest.TestCase):
         with self.assertRaises(ExecutionBlocked):
             self.executor.run()
         self.assertEqual(len(self.ports.motions), 4)
+
+    def test_extended_contact_keeps_per_command_limit_and_one_final_review(self):
+        planned = extended_unit()
+        ports = Ports()
+        result = CoordinateUnitExecutor(planned, self.adapter, ports).run()
+        self.assertEqual(result["state"], "ACCEPTED")
+        self.assertEqual(ports.capture_at, [0, 5])
+        self.assertEqual(len(ports.unit_reviews), 1)
+        self.assertEqual(len(ports.motions), 5)
+        self.assertTrue(validate_normal_disengagement(planned, (1., 0.), 10.)["normal_backoff_geometry_verified"])
+        self.assertTrue(all(math.dist(stage.start_base[:2], stage.target_base[:2]) <= 20
+                            for stage in planned.stages))
+
+    def test_extended_contact_rejects_implicit_total_oversize_and_reversing_chords(self):
+        planned = extended_unit()
+        for limit in (20., 39., 40.1):
+            with self.subTest(limit=limit), self.assertRaises(ValueError):
+                replace(planned, contact_travel_limit_mm=limit)
+        for end in (pose(49.8, 1), pose(10)):
+            with self.subTest(end=end), self.assertRaises(ValueError):
+                replace(planned, stages=(*planned.stages[:2],
+                    replace(planned.stages[2], target_base=end),
+                    replace(planned.stages[3], start_base=end), planned.stages[4]))
+        with self.assertRaises(ValueError):
+            replace(unit(), contact_travel_limit_mm=40., stages=(
+                CoordinateStage("push", "contact", pose(0), pose(40), "a"*64),
+                CoordinateStage("withdraw", "withdraw", pose(40), pose(30), "b"*64)))
+
+    def test_unknown_second_contact_stops_without_withdrawal_or_replay(self):
+        ports = Ports()
+        ports.fail_motion_at = 3
+        executor = CoordinateUnitExecutor(extended_unit(), self.adapter, ports)
+        with self.assertRaises(TimeoutError):
+            executor.run()
+        self.assertEqual(executor.state, "NEEDS_RECONCILIATION")
+        self.assertEqual(len(executor.completed), 2)
+        self.assertFalse(ports.unit_reviews)
+        with self.assertRaises(ExecutionBlocked):
+            executor.run()
 
     def test_current_site_binding_needs_no_fake_qualified_road(self):
         binding = CoordinateBinding(self.adapter.map_id, self.adapter.map_version, self.adapter.map_hash,
@@ -322,6 +371,35 @@ class CoordinateUnitTests(unittest.TestCase):
             (root/"target.json").write_text("{}"); path.write_text(json.dumps(bundle))
             with self.assertRaises(ValueError):
                 load_unit(path)
+
+    def test_extended_loader_requires_explicit_total_command_cap_and_backoff(self):
+        with TemporaryDirectory() as folder:
+            root = Path(folder)
+            binding = CoordinateBinding(self.adapter.map_id, self.adapter.map_version, self.adapter.map_hash,
+                self.adapter.tcp_definition_sha256, self.adapter.tool_id, self.adapter.car_id, self.adapter.surface_id)
+            policy = {"max_total_mm": 39.8, "per_command_cap_mm": 20,
+                      "operator_basis": "Synthetic explicit longer-stroke fixture; no hardware authorization."}
+            for override in (None, policy, {**policy, "max_total_mm": 40}, {**policy, "per_command_cap_mm": 40}):
+                planned = extended_unit()
+                review = {"schema": "pushpilot.operator-coordinate-unit-review.v1", "source": "operator",
+                    "on_site_review": True, "experimental_contact_authorized": True,
+                    "operator_instruction_reference": "Synthetic extended-contact loading fixture.",
+                    "binding": asdict(binding), "unit_geometry": unit_geometry(planned),
+                    "normal_disengagement": {"contact_normal_base_xy": [1., 0.], "minimum_release_mm": 10.}}
+                if override is not None:
+                    review["extended_contact"] = override
+                raw = json.dumps(review).encode()
+                (root/"review.json").write_bytes(raw)
+                digest = hashlib.sha256(raw).hexdigest()
+                planned = replace(planned, stages=tuple(replace(s, review_sha256=digest) for s in planned.stages))
+                path = root/"unit.json"
+                path.write_text(json.dumps({"schema": "pushpilot.experimental-coordinate-unit.v1", "binding": asdict(binding),
+                    "unit": asdict(planned), "site_review": {"path": "review.json", "sha256": digest}}))
+                if override == policy:
+                    self.assertEqual(load_unit(path)[1], planned)
+                else:
+                    with self.assertRaises(ValueError):
+                        load_unit(path)
 
     def test_loader_enforces_hashed_normal_backoff_policy(self):
         with TemporaryDirectory() as folder:
