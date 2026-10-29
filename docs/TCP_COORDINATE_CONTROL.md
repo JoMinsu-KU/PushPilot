@@ -277,6 +277,15 @@ order and descriptive local filenames do not establish BEFORE/AFTER. A local
 display-labelling mistake was corrected without changing the correctly bound
 executor/MUSE pair or replacing its failed review.
 
+The later new 35.5 mm EAST interval completed ten Native-confirmed stages
+through637 and received a complete original MUSE `PASS`, `arrived=true` and
+`WITHIN_ROAD` for Hanok/D frontage. The robot finished withdrawn, held,
+disarmed and idle with no pending command; a new stationary Native proof was
+saved. The operator's final scope was to finish D and end, so no further car
+correction or empty START return was issued. This records one actual arrival;
+the retained failures and uncertain corrections do not establish a clean,
+repeatable D course or an exactly measured 90-degree turn.
+
 ## Current physical evidence
 
 The October 29 records separate one completed B car course, three actual

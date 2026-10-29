@@ -1,7 +1,7 @@
 {
   "schema": "pushpilot.scoped-physical-course-evidence.v1",
   "date_kst": "2026-10-29",
-  "scope": "Post-signal-wait central recovery and rear-EAST progress; latest correction completed through620 but remains UNCERTAIN, D arrival unsupported",
+  "scope": "Post-signal-wait central recovery through actual Hanok/D vehicle arrival at receiver sequence637",
   "selected_signal_wait_reference_preserved": true,
   "units": [
     {
@@ -217,6 +217,35 @@
         "signal_color_or_GO_permission_inferred": false
       },
       "vehicle_arrival_verified": false
+    },
+    {
+      "id": "D-fixed-plan-review-20261029T055617515443Z",
+      "purpose": "New35.5mm EAST upper-rear interval, two17.75mm strokes without intermediate inference, reverse-normal release and LEFT observation",
+      "actual_motion_stages": 10,
+      "receiver_sequence": 637,
+      "state": "ACCEPTED",
+      "contact_TCP_total_mm": 35.5,
+      "vehicle_arrival_verified": true,
+      "MUSE": {
+        "verdict": "PASS",
+        "car_visible": true,
+        "expected_progress": true,
+        "heading_matches_expected": true,
+        "excessive_yaw": false,
+        "car_footprint": "WITHIN_ROAD",
+        "occlusion_cause": "NONE",
+        "arrived": true,
+        "before_sha256": "ba236c7579230a292ab3d18163216e36bb55fc0d3151541070800feeb84970bf",
+        "after_sha256": "8e3bf96c734dfe877d66adf18589ddadb4f7b100048efbb4783c5eea005e2bcf",
+        "provider_receipt": "cce0886030d2ee02d6e192654460ac45a755a831aeffd539ad7a7d6ab2891085",
+        "summary": "Whole unit EAST progress supported with arrival on Hanok frontage, correct heading and road placement."
+      },
+      "standalone_runner_commit": "6c933de6c15394a4aa38bb205444f8667954c9d8",
+      "max_completion_tokens": 2200,
+      "per_command_translation_limit_mm": 20,
+      "standing_paper_signal_contact_explicitly_authorized": true,
+      "signal_color_or_GO_authority_inferred": false,
+      "car_distance_measured": false
     }
   ],
   "local_display_error": {
@@ -225,13 +254,13 @@
     "original_records_rewritten": false,
     "corrective_rule": "Resolve every displayed original by its recorded SHA256, never directory order or a local descriptive filename."
   },
-  "actual_motion_stages_total": 79,
+  "actual_motion_stages_total": 89,
   "all_recorded_endpoints_Native_verified": true,
   "original_failures_preserved": true,
   "fixed_working_Z_and_NORTH_posture": true,
   "original_speed_acceleration_and_per_command_limits_retained": true,
   "map_to_BASE_calibration_accepted": false,
-  "D_arrival_verified": false,
+  "D_arrival_verified": true,
   "rear_WEST_clockwise_turn_qualified": false,
   "services_camera_or_original_persist_restarted": false,
   "unloaded_EAST_face_preparation": {
@@ -252,5 +281,41 @@
     "bundle_created": false,
     "motion_dispatched": false,
     "reason": "Latest original remained diagonally NE; replaced by a separately prepared upper-rear correction, not silently edited or replayed."
+  },
+  "final_status": {
+    "receiver_sequence": 637,
+    "held_disarmed_idle_no_pending": true,
+    "fresh_stationary_Native_verified": true,
+    "last_contact_endpoint_and_observation_pose_recorded_separately": true,
+    "private_arrival_record": "D-actual-HANOK-arrival-20261029T060746127939Z/arrival.private.json",
+    "user_final_scope": "Finish D only, then end",
+    "additional_motion_after_arrival": false,
+    "START_return_after_D": false
+  },
+  "limitations": [
+    "One actual Hanok/D vehicle arrival is supported by original-image MUSE and independently confirmed robot endpoints.",
+    "No exact90degree car rotation or metric vehicle pose was measured.",
+    "The retained failed and uncertain intermediate trials are not a qualified clean repeatable D recipe.",
+    "No accepted full-map-to-BASE transform or activated web-route-to-hardware adapter is created."
+  ],
+  "prior_static_backup": {
+    "cutoff_receiver_sequence": 620,
+    "files_verified": 4789,
+    "actual_motion_checkpoints": 371,
+    "hash_verified_journals": 41,
+    "whole_unit_reviews": 34,
+    "archive_sha256": "f328dedfd10e47bef6bec27a2bc8763a9e747fc9cee561d4baf76ed1f89cd20b",
+    "local_and_GX10_copies_verified": true
+  },
+  "final_static_backup": {
+    "cutoff_receiver_sequence": 637,
+    "files_verified": 4900,
+    "actual_motion_checkpoints": 381,
+    "hash_verified_journals": 42,
+    "whole_unit_reviews": 35,
+    "archive_sha256": "cf5eb7f03d2f9fcdd3b49a6f7a4f2c3b854bb984da22716d57f9d7c6c4f7c842",
+    "local_and_GX10_copies_verified": true,
+    "all_original_failures_and_reobservation_retained": true,
+    "verification_hardware_or_network_calls": 0
   }
 }
