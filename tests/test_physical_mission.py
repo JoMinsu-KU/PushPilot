@@ -573,6 +573,67 @@ class PhysicalMissionTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(self.service.snapshot()["car"]["arrived"])
         self.assertEqual(self.service.snapshot()["state"], "READY")
 
+    async def test_explicit_reset_preserves_history_retires_plan_and_never_executes(self):
+        command = command_for(self.service, self.store)
+        self.driver.observe_error = RuntimeError("Synthetic stopped mission")
+        await self.service.start(command)
+        failed = await self.finish()
+        calls = []
+        def retire(mission_id, reason):
+            calls.append((mission_id, reason))
+            return {"at_start": True, "stationary": True, "motion_issued": False,
+                    "automatic_resume": False, "proof_sha256": "c"*64}
+        self.driver.retire_at_start = retire
+        reset = {"request_id": str(uuid4()), "expected_revision": failed["revision"],
+                 "mission_id": failed["mission_id"], "reason": "Operator requested reset after verified empty return."}
+        response = await self.service.reset(reset)
+        self.assertEqual(response["state"], "READY")
+        self.assertIsNone(response["mission_id"])
+        self.assertIsNone(response["telemetry"]["review"])
+        self.assertEqual(response["signal"]["color"], "UNKNOWN")
+        self.assertEqual(response["progress"], {"completed": 0, "total": 0})
+        self.assertTrue(self.service.stopping.is_set())
+        self.assertEqual(self.driver.commands, [])
+        self.assertEqual(await self.service.reset(reset), response)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(await self.service.start(command), self.service._existing(command))
+        with self.assertRaisesRegex(CommandError, "plan was retired"):
+            await self.service.start(command_for(self.service, self.store))
+        evidence = json.loads(self.service.db.execute(
+            "SELECT value FROM events WHERE kind='MISSION_RETIRED_AT_START'").fetchone()[0])
+        self.assertEqual(evidence["previous_status"]["state"], "HOLD")
+        self.assertEqual(evidence["previous_status"]["error"], failed["error"])
+        self.assertFalse(evidence["car_reset_verified"])
+        self.assertGreater(self.service.db.execute("SELECT count(*) FROM requests").fetchone()[0], 1)
+
+    async def test_reset_rejects_stale_revision_foreign_mission_and_live_worker(self):
+        self.service.status.update(state="HOLD", mission_id="ended")
+        self.driver.retire_at_start = lambda *_: self.fail("Invalid reset must not reach driver")
+        reset = {"request_id": str(uuid4()), "expected_revision": self.service.status["revision"],
+                 "mission_id": "ended", "reason": "Explicit reset requested."}
+        for changes in ({"expected_revision": -1}, {"mission_id": "foreign"}):
+            with self.assertRaises(CommandError):
+                await self.service.reset({**reset, **changes})
+        pending = asyncio.Event()
+        self.service.task = asyncio.create_task(pending.wait())
+        with self.assertRaises(CommandError):
+            await self.service.reset(reset)
+        pending.set()
+        await self.service.task
+
+    async def test_failed_reset_retains_hold_and_original_mission(self):
+        self.service.status.update(state="HOLD", mission_id="ended", error="COMMAND_TIMEOUT")
+        def reject(*_):
+            raise RuntimeError("No fresh stationary proof")
+        self.driver.retire_at_start = reject
+        with self.assertRaisesRegex(CommandError, "STATIONARY_RESET_UNCONFIRMED"):
+            await self.service.reset({"request_id": str(uuid4()), "expected_revision": self.service.status["revision"],
+                "mission_id": "ended", "reason": "Explicit reset requested."})
+        self.assertEqual(self.service.status["state"], "HOLD")
+        self.assertEqual(self.service.status["mission_id"], "ended")
+        self.assertEqual(self.service.status["error"], "COMMAND_TIMEOUT")
+        self.assertEqual(self.service.db.execute("SELECT count(*) FROM retired_plans").fetchone()[0], 0)
+
 
 class PhysicalApiTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -606,7 +667,9 @@ class PhysicalApiTests(unittest.IsolatedAsyncioTestCase):
         for headers in ({}, {"origin": "http://attacker"}, {"origin": "https://testserver"},
                         {"origin": "http://testserver:9999"},
                         {"origin": "http://testserver", "sec-fetch-site": "cross-site"}):
-            for route, payload in (("start", command), ("stop", {"request_id": str(uuid4()), "expected_revision": 0})):
+            for route, payload in (("start", command), ("stop", {"request_id": str(uuid4()), "expected_revision": 0}),
+                    ("reset", {"request_id": str(uuid4()), "expected_revision": 0,
+                               "mission_id": "ended", "reason": "Explicit reset requested."})):
                 with self.subTest(headers=headers, route=route):
                     response = await self.client.post("/api/v1/physical/" + route, headers=headers, json=payload)
                     self.assertEqual(response.status_code, 403)

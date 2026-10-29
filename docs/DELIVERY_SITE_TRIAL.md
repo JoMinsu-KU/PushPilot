@@ -46,7 +46,23 @@ profile, independently confirmed before dispatch. Interrupted preparation,
 ambiguous dispatch, external profile changes and unknown endpoints hold without
 replay. Application deployment never restarts the camera, robot API or Rodi.
 
+Wrist commands honor the installed, hash-bound rotation runtime's completion
+timeout. The current reviewed runtime allows 120 seconds; the generic 60-second
+translation wait cannot shorten it. The outer receipt poll uses the same
+effective timeout plus 15 seconds for admission and receipt delivery. An
+unresolved outcome still holds without replay or automatic continuation.
+
 The source includes no private coordinates, profiles, camera images or secrets.
 The packet/compiler and offline tests establish software consistency only.
 Actual end-to-end repetition, signal readability from the right-hand wait and
 vehicle response under changed friction remain physical test results to record.
+
+## Explicit mission retirement after an interrupted trial
+
+`POST /api/v1/physical/reset` is a same-origin, revision-bound **no-motion** operation. Its body contains `request_id`, `expected_revision`, the exact ended `mission_id`, and a `reason`. It is available only after the mission worker has exited and the robot has independently returned to measured START.
+
+The original unresolved request must already be `complete` or explicitly `reconciled` in the robot ledger. The reset validates the preserved dispatch identity, held/disarmed/idle state, absence of pending commands, current site/tool/payload/height, fixed camera registration and fresh independent host Native START evidence. It neither returns the robot nor reconciles, resends, or marks the failed motion successful. A profile installed by an independently reviewed empty return is repinned only after these checks.
+
+Reset preserves requests, failed mission events, original journal records and dispatch markers, appending a `MISSION_RETIRED_AT_START` proof. The previous live plan is permanently retired for physical execution. Reset the workspace with `/api/v1/reset` and create a new live MUSE plan before the next explicit tablet Start. Vehicle placement is not inferred from the empty-tool START proof; the next mission still performs its original fixed-start visual check.
+
+After a web-only restart, explicitly resuming the unchanged saved display reference may create a new registration ID. Retirement alone can accept that ID in `site_binding.calibration_id`, `ports.registration_id`, and all existing signal-target registration fields. Every other configuration value must remain identical, including camera epoch, map, pixels, physical review and control limits. The operator/deployer must independently verify the unchanged saved homography and reference frame. The terminal request, current camera and fresh Native START checks still run; normal automatic configuration reload cannot bypass an unresolved checkpoint.

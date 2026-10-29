@@ -5,7 +5,8 @@ trials. It never invents repeatability qualification. Each exact unit receives
 a fresh, narrow profile/IK preparation; policy, Native endpoint, MUSE, signal,
 stop and no-replay checks remain independent.
 """
-from dataclasses import replace
+from dataclasses import asdict, replace
+from copy import deepcopy
 import hashlib
 import json
 import math
@@ -136,6 +137,7 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
         self._preparing_profile = False
         self.profile_preparer = None
         self._loaded_config_sha256 = hashlib.sha256(raw_config).hexdigest()
+        self._loaded_source_config = json.loads(raw_config)
 
     def _reload_before_first_mission(self):
         """Accept a complete revised deployment only before a mission exists.
@@ -163,7 +165,7 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
                     temporary = journal = self.journal_factory(old_root)
             previous = journal.load() if journal else None
             if previous and previous.get("state") not in {"STATIONARY_COMMAND_COMPLETE", "PROFILE_PREPARATION_COMPLETE",
-                                                         "RECONCILED_STATIONARY_NO_MOTION"}:
+                                                         "RECONCILED_STATIONARY_NO_MOTION", "MISSION_RETIRED_AT_START"}:
                 raise ExecutionBlocked("SITE_TRIAL_RECONCILIATION_REQUIRED", "An unresolved journal prohibits deployment replacement.")
             if self.journal:
                 self.journal.close()  # Release file ownership only; no device IO.
@@ -182,6 +184,150 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
     def prepare(self, workspace_binding):
         self._reload_before_first_mission()
         return super().prepare(workspace_binding)
+
+    def retire_at_start(self, mission_id, reason):
+        """Explicit no-motion retirement; an old failure never becomes success.
+
+        An external empty return may legitimately replace the pinned per-unit
+        profile. Validate the current original guarded ports, site and fresh
+        Native START first, then repin. No arm, dispatch, profile installation,
+        command reconciliation or automatic return is performed here.
+        """
+        if not self.execution_lock.acquire(blocking=False):
+            raise ExecutionBlocked("MISSION_BUSY", "An in-flight operation cannot be reset.")
+        self.stop_latch.set()
+        temporary = None
+        probe = None
+        original_api = None
+        original_registration = None
+        config_reloaded = False
+        try:
+            if self._configuration_error:
+                raise ExecutionBlocked("PHYSICAL_CONFIGURATION_INVALID", self._configuration_error)
+            if self.currentplan is not None and self.currentplan.id != mission_id:
+                raise ExecutionBlocked("RESET_MISSION_MISMATCH", "Retire only the exact ended mission.")
+            journal = self.journal
+            if journal is None:
+                temporary = journal = self.journal_factory(Path(self.config["journal_root"]))
+            previous = journal.load()
+            state = previous.get("state") if previous else None
+            allowed = {None, "STATIONARY_COMMAND_COMPLETE", "PROFILE_PREPARATION_COMPLETE",
+                       "RECONCILED_STATIONARY_NO_MOTION", "MISSION_RETIRED_AT_START", "DISPATCH_UNRESOLVED"}
+            if state not in allowed or self.pending_command_id and state != "DISPATCH_UNRESOLVED":
+                raise ExecutionBlocked("RESET_RECONCILIATION_REQUIRED", "Preserve and explicitly reconcile the unresolved preparation first.")
+            candidate, candidate_sha = self._retirement_registration_candidate()
+            registration = (candidate or self._loaded_source_config)["ports"]["registration_id"]
+            probe = self.ports or self.port_factory(adapter=self.coordinate_binding, journal=journal,
+                **{**self.config["ports"], "registration_id": registration})
+            original_api = probe.api
+            original_registration = getattr(probe, "registration_id", None)
+            probe.registration_id = registration
+            raw = self.raw_api if self.ports is not None else original_api
+            probe.api = raw
+            terminal = None
+            if state == "DISPATCH_UNRESOLVED":
+                command_id, request_id = previous.get("command_id"), previous.get("request_id")
+                if not isinstance(command_id, str) or not isinstance(request_id, str):
+                    raise ExecutionBlocked("RESET_RECONCILIATION_REQUIRED", "The prior intent must retain exact identities.")
+                marker = Path(self.config["journal_root"]) / ("dispatch-"+hashlib.sha256(command_id.encode()).hexdigest()+".private.json")
+                record = json.loads(marker.read_bytes())
+                if (record.get("mission_id") != mission_id or record.get("command_id") != command_id
+                        or self.pending_command_id not in {None, command_id}):
+                    raise ExecutionBlocked("RESET_MISSION_MISMATCH", "The preserved intent belongs to another mission.")
+                terminal = raw.call("/v1/commands/"+request_id)
+                if terminal.get("id") != request_id or terminal.get("state") not in {"complete", "reconciled"}:
+                    raise ExecutionBlocked("RESET_COMMAND_OUTCOME_UNRESOLVED", "Reconcile the exact prior robot request before resetting.")
+            before = probe._status()  # Original profile/tool/limits guards remain binding.
+            self._reset_stationary_status(before)
+            probe._camera_status()
+            probe._native_cache = None
+            native = checked_snapshot(probe, self.coordinate_binding, 5.)
+            after = probe._status()
+            self._reset_stationary_status(after)
+            expected = (native.session_id, native.sequence, native.profile_id, native.installation_id, native.tcp_base)
+            for observed in (before, after):
+                receiver = observed["receiver"]
+                actual = (receiver["session_id"], receiver["seq"], receiver["profile_id"],
+                          observed["installation"]["installation_id"], tuple(receiver["actual_pose"]))
+                if actual != expected:
+                    raise ExecutionBlocked("RESET_BASELINE_CHANGED", "Keep the stationary receiver/profile unchanged during reset.")
+            starts = {p.start_context_id for _, p in self.routes if self._matches(native.tcp_base, p.start_context_id)}
+            if not starts:
+                raise ExecutionBlocked("ROBOT_NOT_AT_START", "Return the empty tool to its measured START before reset.")
+            if self.currentplan is not None and self.currentplan.start_context_id not in starts:
+                raise ExecutionBlocked("RESET_START_MISMATCH", "Use this mission's measured START.")
+            if hashlib.sha256(self.config_file.read_bytes()).hexdigest() != candidate_sha:
+                raise ExecutionBlocked("RESET_CONFIGURATION_CHANGED", "Keep the exact deployment fixed during the stationary check.")
+            proof = {"mission_id": mission_id, "reason": reason, "previous_checkpoint": previous,
+                "terminal_robot_command": terminal, "native": asdict(native), "site_review_sha256": self.review_sha,
+                "camera_epoch": self.binding.camera_epoch, "registration_id": registration,
+                "previous_registration_id": self.binding.calibration_id,
+                "previous_configuration_sha256": self._loaded_config_sha256,
+                "configuration_sha256": candidate_sha, "registration_identity_rebound": candidate is not None,
+                "current_profile_sha256": content_hash(after["receiver"]["profile"]),
+                "motion_issued": False, "command_replayed": False, "car_reset_verified": False,
+                "historical_outcome_changed": False}
+            path, digest = journal.artifact("mission-retired-at-start", proof)
+            journal.append("mission_retired_at_start", {"mission_id": mission_id, "proof_sha256": digest,
+                "proof_path": str(path), "automatic_resume": False, "historical_outcome_changed": False})
+            journal.checkpoint({"state": "MISSION_RETIRED_AT_START", "mission_id": mission_id,
+                "proof_sha256": digest, "automatic_replay": False})
+            if candidate is not None:
+                preparer = self.profile_preparer
+                self._load()  # Full schema/hash validation after retirement proof; no device IO.
+                self.profile_preparer = preparer
+                config_reloaded = True
+            self._pin(after)
+            self.currentplan = self.plan = self.current_context_id = self.pending_command_id = None
+            self.workspace_binding = self.before_frame = self.last_contact_outcome = None
+            self.last_snapshot = native
+            if self.profile_preparer:
+                self.profile_preparer.failed = False
+            return {"proof_sha256": digest, "native_evidence_sha256": native.native_evidence_sha256,
+                    "at_start": True, "stationary": True, "motion_issued": False, "automatic_resume": False}
+        finally:
+            if probe is not None and original_api is not None:
+                probe.api = original_api
+                if not config_reloaded and original_registration is not None:
+                    probe.registration_id = original_registration
+            if temporary:
+                temporary.close()
+            self.execution_lock.release()
+
+    def _retirement_registration_candidate(self):
+        """Permit only an explicit display identity rebind during retirement.
+
+        Normal startup/reload remains blocked by an unresolved checkpoint.
+        Camera epoch, map, geometry, physical review, signal pixels and all
+        hardware settings must remain byte-equivalent JSON values. The reset
+        still checks the terminal command and actual camera/Native source.
+        """
+        raw = self.config_file.read_bytes()
+        digest = hashlib.sha256(raw).hexdigest()
+        if digest == self._loaded_config_sha256:
+            return None, digest
+        candidate = json.loads(raw)
+        registration = (candidate.get("ports") or {}).get("registration_id")
+        if not isinstance(registration, str) or not 1 <= len(registration) <= 100:
+            raise ExecutionBlocked("RESET_CONFIGURATION_CHANGED", "Use one explicit display registration identity.")
+        permitted = deepcopy(self._loaded_source_config)
+        permitted["ports"]["registration_id"] = registration
+        permitted["site_binding"]["calibration_id"] = registration
+        for target in (permitted.get("observations", {}).get("signal_targets") or {}).values():
+            target["registration_id"] = registration
+        if candidate != permitted:
+            raise ExecutionBlocked("RESET_CONFIGURATION_CHANGED", "Retirement may rebind only the display registration identity.")
+        return candidate, digest
+
+    def _reset_stationary_status(self, status):
+        receiver = status.get("receiver", {})
+        if (status.get("hold") is not True or status.get("armed") is not False
+                or status.get("active_commands") != [] or receiver.get("connected") is not True
+                or receiver.get("idle") is not True or receiver.get("physical_execution") is not True
+                or receiver.get("profile_pending") or receiver.get("reason") == "RECEIVER_RECONCILIATION_REQUIRED"):
+            raise ExecutionBlocked("RESET_HELD_IDLE_REQUIRED", "Require held, disarmed, idle and no active or pending robot operation.")
+        if any(status["installation"].get(k) != v for k, v in self.profile_review["site"].items()):
+            raise ExecutionBlocked("RESET_SITE_CHANGED", "The current tool, payload, surface and fixed height must match review.")
 
     def _pin(self, status):
         self.actual_installation_id = status["installation"]["installation_id"]

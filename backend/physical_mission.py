@@ -33,6 +33,8 @@ class PhysicalMissionService:
           CREATE TABLE IF NOT EXISTS state (id INTEGER PRIMARY KEY CHECK(id=1), value TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS requests (id TEXT PRIMARY KEY, payload TEXT NOT NULL, response TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS events (seq INTEGER PRIMARY KEY AUTOINCREMENT, at REAL, kind TEXT, value TEXT);
+          CREATE TABLE IF NOT EXISTS retired_plans (session_id TEXT NOT NULL, plan_id TEXT NOT NULL,
+            plan_revision INTEGER NOT NULL, PRIMARY KEY(session_id,plan_id,plan_revision));
         """)
         self.task = None
         self.monitor_task = None
@@ -192,6 +194,9 @@ class PhysicalMissionService:
         if (state["state"] != "PLAN_READY" or goal.get("provider") != "meta" or not plan.get("planning")
                 or any(command.get(key) != value for key, value in expected.items())):
             raise CommandError("Physical execution requires the exact current live MUSE plan and map.", 409)
+        if self.db.execute("SELECT 1 FROM retired_plans WHERE session_id=? AND plan_id=? AND plan_revision=?",
+                (expected["workspace_session_id"], expected["plan_id"], expected["plan_revision"])).fetchone():
+            raise CommandError("This mission plan was retired. Reset the workspace and create a new live plan.", 409)
         return expected
 
     def _existing(self, command):
@@ -278,6 +283,50 @@ class PhysicalMissionService:
                 except Exception:
                     self.status.update(error="STOP_DELIVERY_UNCONFIRMED", stage_label="Stop delivery unconfirmed")
                     self._persist("STOP_DELIVERY_UNCONFIRMED")
+            return self._save_request(command)
+
+    async def reset(self, command):
+        """Retire an ended mission after independent START proof, never resume it."""
+        async with self.lock:
+            prior = self._existing(command)
+            if prior is not None:
+                return prior
+            if command["expected_revision"] != self.status["revision"]:
+                raise CommandError("Physical status changed; refresh before resetting.", 409)
+            if (command["mission_id"] != self.status["mission_id"]
+                    or self.status["state"] not in {"HOLD", "COMPLETE"}
+                    or self.task and not self.task.done()):
+                raise CommandError("Reset requires the exact ended mission and an exited worker.", 409)
+            retire = getattr(self.driver, "retire_at_start", None)
+            if not callable(retire):
+                raise CommandError("This driver does not support verified stationary mission reset.", 409)
+            self.stop_generation += 1
+            self.stopping.set()
+            previous = self.snapshot()
+            self._persist("MISSION_RESET_REQUESTED", {"mission_id": command["mission_id"],
+                "request_id": command["request_id"], "reason": command["reason"]})
+            try:
+                proof = await asyncio.to_thread(retire, command["mission_id"], command["reason"])
+                if (not isinstance(proof, dict) or proof.get("at_start") is not True
+                        or proof.get("stationary") is not True or proof.get("motion_issued") is not False
+                        or proof.get("automatic_resume") is not False):
+                    raise ValueError("A reset requires explicit no-motion stationary START proof.")
+            except Exception as error:
+                code = getattr(error, "code", "STATIONARY_RESET_UNCONFIRMED")
+                self._persist("MISSION_RESET_BLOCKED", {"code": code, "automatic_resume": False})
+                raise CommandError("Mission reset blocked: " + code, 409) from error
+            revision = self.status["revision"]
+            self.status = self._empty()
+            self.status.update(revision=revision, state="READY", stage_label="Mission cleared · Create a new plan")
+            self.task = None
+            with self.db:
+                if all(previous.get(key) is not None for key in ("workspace_session_id", "plan_id", "plan_revision")):
+                    self.db.execute("INSERT OR IGNORE INTO retired_plans VALUES(?,?,?)", (
+                        previous["workspace_session_id"], previous["plan_id"], previous["plan_revision"]))
+                self._persist("MISSION_RETIRED_AT_START", {"previous_status": previous, "proof": proof,
+                    "reason": command["reason"], "car_reset_verified": False, "automatic_resume": False})
+            await self.refresh_readiness()
+            self._persist("RESET_READINESS_CHECKED")
             return self._save_request(command)
 
     async def _observe(self, state):

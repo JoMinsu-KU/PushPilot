@@ -642,6 +642,7 @@ class RealTaughtPorts:
         expected_purpose = "contact_turn_trial" if status["installation"]["scope"] == "local_contact_turn_commissioning" else "contact_trial"
         _require(intent.purpose == expected_purpose and intent.kind in {"translate", "rotate"},
                  "INTENT_SCOPE", "Preserve the exact physical scope and experimental purpose of this measured operation.")
+        completion_timeout_s = float(self.command_timeout_s)
         if intent.kind == "rotate":
             profile = receiver["profile"]
             edges = [edge for edge in profile.get("rotation_edges", []) if edge["id"] == intent.edge_id]
@@ -651,9 +652,14 @@ class RealTaughtPorts:
                      and tuple(edges[0]["expected_target_joint_deg"]) == intent.expected_target_joint_deg
                      and hashlib.sha256(encoded(profile["rotation_runtime"])).hexdigest() == intent.rotation_runtime_sha256,
                      "ROTATION_EDGE", "Bind the actual installed wrist runtime and measured directed joint edge.")
+            # The generic translation timeout must not truncate the reviewed
+            # wrist runtime. Use the same bound for the API and its observer;
+            # neither a longer wait nor a late receipt authorizes a resend.
+            completion_timeout_s = max(completion_timeout_s,
+                float(profile["rotation_runtime"]["completion_timeout_s"]))
         command = {"request_id": intent.request_id, "kind": intent.kind, "purpose": intent.purpose,
                    "installation_id": intent.installation_id, "expected_receiver": intent.expected_receiver,
-                   "target": list(intent.target_base), "timeout_seconds": float(self.command_timeout_s),
+                   "target": list(intent.target_base), "timeout_seconds": completion_timeout_s,
                    "admission_timeout_seconds": 10., "expected_visual": intent.expected_visual or self.expected_visual}
         if intent.edge_id is not None:
             command["edge_id"] = intent.edge_id
@@ -665,7 +671,7 @@ class RealTaughtPorts:
                 "expected_receiver": intent.expected_receiver,
                 "reason": "Explicitly approved taught-course commissioning: one bounded measured contact stroke."})
             self.api.call("/v1/commands", command)  # Exactly one POST, never replayed.
-            deadline = self.monotonic()+self.command_timeout_s+15
+            deadline = self.monotonic()+completion_timeout_s+15
             while self.monotonic() < deadline:
                 job = self.api.call("/v1/commands/"+intent.request_id)
                 if job["state"] in {"complete", "rejected", "cancelled", "outcome_unknown", "awaiting_review",

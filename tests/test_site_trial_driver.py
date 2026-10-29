@@ -50,6 +50,7 @@ class SitePorts:
     def __init__(self, **kwargs):
         type(self).created += 1
         self.adapter, self.journal = kwargs["adapter"], kwargs["journal"]
+        self.registration_id = kwargs["registration_id"]
         self.raw = SiteAPI()
         self.api = self.raw
         self.intents, self.holds, self.frame_count = [], [], 0
@@ -176,6 +177,150 @@ class SiteTrialTests(unittest.TestCase):
         driver = SiteTrialMissionDriver(path, Observer(), port_factory=SitePorts)
         self.addCleanup(driver.close)
         return driver, request
+
+    def reset_source(self, edit=None):
+        driver, request = self.driver(edit=edit)
+        plan = driver.prepare(request)
+        command, request_id = "failed-command", "00000000-0000-4000-8000-000000000001"
+        marker = Path(driver.config["journal_root"]) / ("dispatch-"+hashlib.sha256(command.encode()).hexdigest()+".private.json")
+        marker.write_text(json.dumps({"mission_id": plan.id, "command_id": command}))
+        driver.pending_command_id = command
+        driver.journal.checkpoint({"state": "DISPATCH_UNRESOLVED", "command_id": command, "request_id": request_id})
+        driver.ports.raw.jobs[request_id] = {"id": request_id, "state": "reconciled", "error": "partial"}
+        driver.stop_latch.set()
+        return driver, plan, marker, request_id
+
+    def test_reset_proves_start_repins_external_profile_and_preserves_failed_history(self):
+        driver, plan, marker, request_id = self.reset_source()
+        raw = driver.ports.raw
+        raw.status["installation"]["installation_id"] = "external-empty-return"
+        raw.status["receiver"]["profile"]["profile_id"] = "changed-profile"
+        driver.issued.add("failed-command")
+        before = len(raw.calls)
+        proof = driver.retire_at_start(plan.id, "Operator requested a fresh mission after empty return.")
+        self.assertTrue(proof["at_start"])
+        self.assertFalse(proof["motion_issued"])
+        self.assertTrue(driver.stop_latch.is_set())
+        self.assertIsNone(driver.pending_command_id)
+        self.assertIsNone(driver.currentplan)
+        self.assertEqual(driver.actual_installation_id, "external-empty-return")
+        self.assertEqual(driver.journal.load()["state"], "MISSION_RETIRED_AT_START")
+        self.assertIn("failed-command", driver.issued)
+        self.assertTrue(marker.exists())
+        self.assertEqual(raw.jobs[request_id]["error"], "partial")
+        self.assertFalse(any(payload is not None for _, payload in raw.calls[before:]))
+        self.assertTrue(driver.readiness()["ready"])
+
+    def test_reset_cannot_clear_unknown_dispatch_or_failed_preparation(self):
+        driver, plan, marker, request_id = self.reset_source()
+        driver.ports.raw.jobs[request_id]["state"] = "outcome_unknown"
+        with self.assertRaisesRegex(ExecutionBlocked, "Reconcile the exact"):
+            driver.retire_at_start(plan.id, "Explicit reset requested by operator.")
+        self.assertEqual(driver.pending_command_id, "failed-command")
+        self.assertEqual(driver.journal.load()["state"], "DISPATCH_UNRESOLVED")
+        driver.journal.checkpoint({"state": "PROFILE_PREPARATION_FAILED"})
+        with self.assertRaises(ExecutionBlocked):
+            driver.retire_at_start(plan.id, "Explicit reset requested by operator.")
+        self.assertTrue(marker.exists())
+
+    def test_reset_rejects_not_start_active_site_change_and_foreign_mission(self):
+        driver, plan, marker, request_id = self.reset_source()
+        baseline = deepcopy(driver.ports.raw.status)
+        cases = [lambda s: s["receiver"]["actual_pose"].__setitem__(0, 10.),
+                 lambda s: s.update(armed=True),
+                 lambda s: s.update(active_commands=[{"id": "running"}]),
+                 lambda s: s["receiver"].update(profile_pending=True),
+                 lambda s: s["installation"].update(tool_id="different-tool")]
+        for change in cases:
+            driver.ports.raw.status = deepcopy(baseline)
+            change(driver.ports.raw.status)
+            with self.subTest(change=change), self.assertRaises(ExecutionBlocked):
+                driver.retire_at_start(plan.id, "Explicit reset requested by operator.")
+            self.assertEqual(driver.journal.load()["state"], "DISPATCH_UNRESOLVED")
+        driver.ports.raw.status = deepcopy(baseline)
+        with self.assertRaises(ExecutionBlocked):
+            driver.retire_at_start("different-mission", "Explicit reset requested by operator.")
+
+    def test_reset_camera_or_stale_native_failure_does_not_retire(self):
+        driver, plan, marker, request_id = self.reset_source()
+        with patch.object(driver.ports, "_camera_status", side_effect=ExecutionBlocked("CAMERA_VIEW_CHANGED", "Camera changed")):
+            with self.assertRaises(ExecutionBlocked):
+                driver.retire_at_start(plan.id, "Explicit reset requested by operator.")
+        snapshot = driver.ports.snapshot
+        with patch.object(driver.ports, "snapshot", side_effect=lambda: replace(snapshot(), native_observed_at=0.)):
+            with self.assertRaises(ExecutionBlocked):
+                driver.retire_at_start(plan.id, "Explicit reset requested by operator.")
+        self.assertEqual(driver.journal.load()["state"], "DISPATCH_UNRESOLVED")
+
+    def test_reset_after_web_restart_uses_preserved_intent_and_existing_terminal_command(self):
+        old, plan, marker, request_id = self.reset_source()
+        raw = old.ports.raw
+        raw.jobs[request_id]["state"] = "complete"
+        old.close()
+        old.ports = old.journal = None
+        def factory(**kwargs):
+            ports = SitePorts(**kwargs)
+            ports.raw = ports.api = raw
+            return ports
+        fresh = SiteTrialMissionDriver(old.config_file, Observer(), port_factory=factory)
+        self.addCleanup(fresh.close)
+        self.assertIsNone(fresh.currentplan)
+        before = len(raw.calls)
+        result = fresh.retire_at_start(plan.id, "Explicit no-motion retirement after web restart and empty return.")
+        self.assertTrue(result["at_start"])
+        self.assertFalse(any(payload is not None for _, payload in raw.calls[before:]))
+        self.assertTrue(marker.exists())
+        self.assertTrue(fresh.readiness()["ready"])
+
+    def test_retirement_only_rebinds_display_registration_after_restart(self):
+        def edit(config, _packet, _review):
+            config["observations"]["signal_targets"] = {"SOUTH": {"registration_id": "registration", "pixel_polygon": [[1, 2]]}}
+        old, plan, marker, request_id = self.reset_source(edit=edit)
+        raw = old.ports.raw
+        old.close()
+        old.ports = old.journal = None
+        def factory(**kwargs):
+            ports = SitePorts(**kwargs)
+            ports.raw = ports.api = raw
+            def camera():
+                if ports.registration_id != "explicit-resumed-reference":
+                    raise ExecutionBlocked("CAMERA_VIEW_CHANGED", "Old registration after web restart")
+                return {"ready": True}
+            ports._camera_status = camera
+            return ports
+        fresh = SiteTrialMissionDriver(old.config_file, Observer(), port_factory=factory)
+        self.addCleanup(fresh.close)
+        candidate = json.loads(fresh.config_file.read_bytes())
+        candidate["ports"]["registration_id"] = candidate["site_binding"]["calibration_id"] = "explicit-resumed-reference"
+        candidate["observations"]["signal_targets"]["SOUTH"]["registration_id"] = "explicit-resumed-reference"
+        fresh.config_file.write_text(json.dumps(candidate))
+        self.assertFalse(fresh.readiness()["ready"])
+        self.assertEqual(fresh.binding.calibration_id, "registration")
+        result = fresh.retire_at_start(plan.id, "Explicit exact-reference resume after reviewed empty return.")
+        self.assertTrue(result["at_start"])
+        self.assertEqual(fresh.binding.calibration_id, "explicit-resumed-reference")
+        self.assertEqual(fresh.observation_config["signal_targets"]["SOUTH"]["registration_id"], "explicit-resumed-reference")
+        self.assertTrue(fresh.readiness()["ready"])
+        self.assertTrue(marker.exists())
+
+    def test_retirement_rebind_cannot_change_camera_epoch_map_target_pixels_or_controls(self):
+        driver, plan, marker, request_id = self.reset_source()
+        original = json.loads(driver.config_file.read_bytes())
+        for mutate in (lambda c: c["ports"].update(camera_epoch="different-camera"),
+                       lambda c: c["ports"].update(command_timeout_s=120.),
+                       lambda c: c["coordinate_binding"].update(map_hash="d"*64),
+                       lambda c: c["observations"].update(signal_targets={"invented": {"registration_id": "new"}}),
+                       lambda c: c["site_binding"].update(calibration_id="inconsistent")):
+            candidate = deepcopy(original)
+            candidate["ports"]["registration_id"] = candidate["site_binding"]["calibration_id"] = "new"
+            mutate(candidate)
+            driver.config_file.write_text(json.dumps(candidate))
+            with self.assertRaises(ExecutionBlocked):
+                driver.retire_at_start(plan.id, "Explicit exact-reference resume after reviewed empty return.")
+            self.assertEqual(driver.binding.calibration_id, "registration")
+            self.assertEqual(driver.pending_command_id, "failed-command")
+            self.assertEqual(driver.journal.load()["state"], "DISPATCH_UNRESOLVED")
+        driver.config_file.write_text(json.dumps(original))
 
     def test_prepares_each_exact_unit_and_separates_actual_from_logical_installation(self):
         driver, request = self.driver()

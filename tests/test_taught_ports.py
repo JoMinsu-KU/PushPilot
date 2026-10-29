@@ -223,7 +223,7 @@ class RealTaughtPortsTests(TestCase):
             self.ports.execute_once(self.intent())
         self.assertEqual(self.api.calls[-1][0], "/v1/hold")
 
-    def turn_scope(self):
+    def turn_scope(self, *, completion_timeout_s=60.):
         local = self.api.status["installation"]
         local.update(scope="local_contact_turn_commissioning", contact_turn_trials_authorized=True,
             max_rotation_increment_deg=5.,
@@ -237,7 +237,7 @@ class RealTaughtPortsTests(TestCase):
                 "wrist_only": True, "joint_path_reviewed": True}],
             rotation_runtime={"verified": True, "primitive": "moveJoint_wrist", "controller_version": "synthetic-only",
                 "argument_semantics": "Synthetic test degree units, not physical runtime evidence.", "speed_argument": 3.,
-                "accel_argument": 5., "completion_timeout_s": 60., "review_reference": "Synthetic runtime-only fixture review."})
+                "accel_argument": 5., "completion_timeout_s": completion_timeout_s, "review_reference": "Synthetic runtime-only fixture review."})
         receiver = self.api.status["receiver"]
         receiver["profile"] = build_turn_profile(local, {key: receiver[key] for key in ("actual_pose", "actual_joint")}, on_site_review=True)
         return replace(self.intent(), kind="rotate", purpose="contact_turn_trial", edge_id="synthetic-edge",
@@ -259,6 +259,48 @@ class RealTaughtPortsTests(TestCase):
                          ("rotate", "contact_turn_trial", "synthetic-edge"))
         self.assertEqual(command["expected_visual"], intent.expected_visual)
         self.assertEqual(sum(path == "/v1/commands" for path, _ in self.api.calls), 1)
+
+    def test_reviewed_120_second_wrist_runtime_survives_generic_60_second_timeout(self):
+        intent = self.turn_scope(completion_timeout_s=120.)
+        elapsed = [0.]
+        original_call = self.api.call
+        def delayed_completion(path, payload=None):
+            if path.startswith("/v1/commands/") and elapsed[0] < 119.:
+                return {"state": "executing"}
+            return original_call(path, payload)
+        self.api.call = delayed_completion
+        self.ports.monotonic = lambda: elapsed[0]
+        self.ports.sleep = lambda seconds: elapsed.__setitem__(0, elapsed[0]+seconds)
+        receipt = self.ports.execute_once(intent)
+        self.assertEqual(receipt.target_base, intent.target_base)
+        self.assertEqual(self.api.command["timeout_seconds"], 120.)
+        self.assertGreaterEqual(elapsed[0], 119.)
+        self.assertLess(elapsed[0], 120.)
+        self.assertEqual(sum(path == "/v1/commands" for path, _ in self.api.calls), 1)
+        self.assertEqual(self.api.calls[-1][0], "/v1/hold")
+
+    def test_unresolved_120_second_wrist_keeps_outer_deadline_bounded_without_replay(self):
+        intent = self.turn_scope(completion_timeout_s=120.)
+        elapsed = [0.]
+        original_call = self.api.call
+        def unresolved(path, payload=None):
+            if path.startswith("/v1/commands/"):
+                return {"state": "executing"}
+            return original_call(path, payload)
+        self.api.call = unresolved
+        self.ports.monotonic = lambda: elapsed[0]
+        self.ports.sleep = lambda seconds: elapsed.__setitem__(0, elapsed[0]+seconds)
+        with self.assertRaises(TimeoutError):
+            self.ports.execute_once(intent)
+        self.assertEqual(self.api.command["timeout_seconds"], 120.)
+        self.assertGreaterEqual(elapsed[0], 135.)
+        self.assertLess(elapsed[0], 135.3)
+        self.assertEqual(sum(path == "/v1/commands" for path, _ in self.api.calls), 1)
+        self.assertEqual(self.api.calls[-1][0], "/v1/hold")
+
+    def test_translation_retains_its_configured_timeout(self):
+        self.ports.execute_once(self.intent())
+        self.assertEqual(self.api.command["timeout_seconds"], 60.)
 
     def test_contact_turn_wrong_runtime_edge_or_source_joints_never_posts(self):
         intent = self.turn_scope()

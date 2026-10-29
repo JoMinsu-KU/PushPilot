@@ -25,6 +25,11 @@ class StartCommand(PhysicalCommand):
     map_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
 
 
+class ResetCommand(PhysicalCommand):
+    mission_id: str = Field(min_length=1, max_length=100)
+    reason: str = Field(min_length=10, max_length=500)
+
+
 def same_origin(request):
     origin = request.headers.get("origin")
     parsed = urlsplit(origin or "")
@@ -49,3 +54,9 @@ async def start(command: StartCommand, request: Request):
 async def stop(command: PhysicalCommand, request: Request):
     same_origin(request)
     return await request.app.state.physical.stop(command.model_dump(mode="json"))
+
+
+@router.post("/reset")
+async def reset(command: ResetCommand, request: Request):
+    same_origin(request)
+    return await request.app.state.physical.reset(command.model_dump(mode="json"))
