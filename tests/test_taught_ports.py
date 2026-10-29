@@ -275,6 +275,39 @@ class RealTaughtPortsTests(TestCase):
             self.ports.review_coordinate_unit(unit(), tuple(executor.completed[:-1]), before, after)
         self.provider.assert_not_called()
 
+    def test_coordinate_unit_joint_target_is_bound_visibility_only(self):
+        from tests.test_coordinate_units import Ports, unit
+        from backend.robot_control.coordinate_units import CoordinateUnitExecutor
+        target = replace(right_signal_target(camera_epoch="synthetic-camera"), junction_id="OFFICE_BUILDING")
+        planned = replace(unit(), required_signal_observation=target)
+        synthetic = Ports()
+        executor = CoordinateUnitExecutor(unit(), self.adapter, synthetic)
+        executor.run()
+        before = self.ports.capture()
+        after = replace(before, sequence=11)
+        value = {"verdict": "PASS", "occlusion_cause": "NONE", "car_visible": True,
+                 "expected_progress": True, "signal_region_visible": False, "signal_occlusion_cause": "TOOL",
+                 "car_footprint": "WITHIN_ROAD", "heading_matches_expected": True,
+                 "excessive_yaw": False, "arrived": False, "observed": "Synthetic visible car and covered configured signal.",
+                 "summary": "Joint visibility not established.", "limitations": ["Synthetic imagery."]}
+        self.provider.return_value = 200, {"choices": [{"finish_reason": "stop", "message": {"content": json.dumps(value)}}]}, 10
+        result = self.ports.review_coordinate_unit(planned, tuple(executor.completed), before, after)
+        self.assertFalse(result.signal_region_visible)
+        payload = self.provider.call_args.args[3]
+        context = json.loads(payload["messages"][1]["content"][0]["text"])
+        self.assertEqual(context["required_signal_observation"], json.loads(encoded(asdict(target))))
+        self.assertTrue(context["signal_visibility_only"])
+        properties = payload["response_format"]["json_schema"]["schema"]["properties"]
+        self.assertNotIn("signal_color", properties)
+        self.assertNotIn("crossing_permission", properties)
+        self.provider.reset_mock()
+        bad = replace(planned, required_signal_observation=replace(target, registration_id="other-view"))
+        with self.assertRaises(ExecutionBlocked):
+            self.ports.validate_signal_observation_target(bad.required_signal_observation)
+        with self.assertRaises(ExecutionBlocked):
+            self.ports.review_coordinate_unit(bad, tuple(executor.completed), before, after)
+        self.provider.assert_not_called()
+
     def test_clearance_review_sends_three_originals_and_separates_visibility_from_stationarity(self):
         before = self.ports.capture()
         covered_bytes, clear_bytes = b"\xff\xd8covered-original\xff\xd9", b"\xff\xd8clear-original\xff\xd9"

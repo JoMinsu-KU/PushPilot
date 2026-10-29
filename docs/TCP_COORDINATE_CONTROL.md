@@ -72,6 +72,35 @@ See the
 
 ## Current mode: directly taught destinations
 
+### Shared C/D course and joint observation
+
+The Pizza departure, first NORTH turn and central-junction approach share the
+same route geometry. C branches WEST and D EAST at the later junction. Reuse
+the measured common geometry with a fresh current-session review, rather than
+replaying C commands, profiles or journals. At the D checkpoint, four bounded
+front-side turn units and a rear seating unit had Native-confirmed endpoints
+and post-withdrawal MUSE progress/road/heading support. D arrival remained
+incomplete. [Common-turn evidence](evidence/taught-D-common-turn-20261029.json).
+
+Observation withdrawal must expose the vehicle and the configured right-side
+paper signal together. `CoordinateUnit.required_signal_observation` optionally
+binds the exact incoming edge, original private placement evidence, native
+image bounds, camera epoch and registration. The private bundle must include
+the matching hashed `signal_target_evidence` record. A changed view rejects
+the binding, and a visible car with a covered signal stays `WAIT_REVIEW`.
+Read-only reobservation does not repeat contact or automatically resume.
+This visibility check follows coordinate withdrawal; it does not admit each
+approach step or grant RED/GREEN crossing permission.
+
+The actual far-right D observation showed the car and the nominal future
+signal region unobstructed. No standing paper signal face was present, so
+that observation does not validate actual signal readability. The optional
+joint-target feature has offline coverage; the physical checkpoint used the
+previous runner and a separate current-original visibility diagnostic.
+Final vehicle arrival and its provider receipt are now persisted together
+in the coordinate-unit checkpoint, only after all outcome and Native checks.
+Operator arrival acceptance remains a distinct evidence source.
+
 On October 29 the operator selected the actual manually taught BASE positions B, C and D as the destination references. This mode uses those controller coordinates directly and does not require a drawing-to-BASE transform. The earlier nominal-map calibration remains rejected: the A/B/C unit-scale fit has a maximum 11.42 mm residual, and its reserved D/E numerical discrepancies are 2.87/6.47 mm. Reusing the records as operator-selected BASE goals does not make the map calibration pass or establish vehicle arrival.
 
 `backend/robot_control/taught_roads.py` constructs route proposals from the taught lower A–B and upper C–D frontage lines. E locates a proposed perpendicular connecting road. This perpendicularity is an explicit layout assumption; proposed junctions and complete tool/arm/hose sweeps need actual review. B uses the lower frontage. C/D use the connector and their respective upper frontage. The algorithm uses no image coordinates, map artwork or printer scale. Every proposal preserves the observation hashes, fixed taught Z/orientation and missing physical qualifications.

@@ -1,0 +1,75 @@
+{
+  "schema": "pushpilot.scoped-physical-course-evidence.v1",
+  "date_kst": "2026-10-29",
+  "scope": "D common first-junction turn, rear seating and joint observation checkpoint",
+  "vehicle_arrival_verified": false,
+  "common_route": "Pizza departure, first turn toward NORTH and central-junction approach are shared by C and D. C branches WEST and D EAST only at the later central junction.",
+  "recovery": {
+    "operator_reported_pendant_fault": "singularity",
+    "exact_error_code_observed": false,
+    "fresh_receiver_READY_IDLE_verified": true,
+    "old_interrupted_read_only_IK_reconciled": "partial inspection; no terminal IK solution claimed",
+    "old_query_profile_or_mailbox_replayed": false,
+    "services_camera_or_original_persist_restarted": false,
+    "fresh_host_journal_stationary_proofs": 2,
+    "read_only_publication_wait_seconds": 8,
+    "native_freshness_and_pose_guards_changed": false
+  },
+  "actual_common_turn": {
+    "empty_inward_fixed_pose_stages": 2,
+    "front_side_contact_units": 4,
+    "front_side_loaded_TCP_translation_mm": [
+      19.9,
+      19.925109786397666,
+      17,
+      10
+    ],
+    "reused_C_geometry_adjusted_for_earlier_D_incoming_stop": true,
+    "all_four_post_withdrawal_MUSE_results": "PASS with expected counterclockwise progress, WITHIN_ROAD and heading support",
+    "rear_seating_contact_units": 1,
+    "rear_seating_loaded_TCP_translation_mm": 19.9,
+    "rear_seating_post_withdrawal_MUSE_result": "PASS with short NORTH car progress, NORTH heading and WITHIN_ROAD",
+    "exact_vehicle_90_degrees_measured": false,
+    "TCP_distance_is_not_vehicle_displacement": true,
+    "all_actual_robot_endpoints_Native_verified": true,
+    "Z_or_wrist_change_in_these_units": false,
+    "max_internal_translation_mm": 20,
+    "speed_mm_s": 5,
+    "acceleration_mm_s2": 10,
+    "new_session_checkpoint_sequence": 81
+  },
+  "joint_observation": {
+    "short_park_preparation_superseded_before_motion": true,
+    "actual_farther_right_C_observation_candidate_reached": true,
+    "original_frame_sha256": "68e2dd80c938ed2bf63e6bee765b11aaefa2eee742f3640d4ecb673c8a882ad3",
+    "current_single_original_MUSE_car_fully_visible": true,
+    "MUSE_nominal_right_junction_region_unobstructed": "YES",
+    "actual_standing_paper_signal_face_present": false,
+    "actual_signal_face_readable": false,
+    "signal_color_or_GREEN_permission": false,
+    "meaning": "A visible car and empty future signal mounting region do not establish actual signal-face readability."
+  },
+  "software": {
+    "optional_reviewed_signal_target_supported_by_coordinate_unit": true,
+    "target_binds_incoming_edge_native_region_camera_epoch_registration_and_original_placement_evidence": true,
+    "joint_visibility_required_only_after_coordinate_withdrawal": true,
+    "covered_signal_keeps_WAIT_REVIEW_with_no_contact_replay": true,
+    "arrival_and_provider_receipt_persisted_in_checkpoint": true,
+    "new_joint_view_feature_physically_activated_at_this_checkpoint": false,
+    "actual_commissioning_runner_release": "47dd0aa",
+    "offline_tests_passed": 815,
+    "offline_tests_skipped": 2
+  },
+  "private_backup": {
+    "actual_motion_checkpoints": 63,
+    "hash_verified_public_unit_journals": 12,
+    "original_files_verified_locally": 1048,
+    "archive_sha256": "ad9bf4eba16da02ecf91ef933801f728055c3c131a5eea36375583357d49f243"
+  },
+  "remaining": [
+    "Further NORTH course, D clockwise central turn and actual Hanok arrival are outside this checkpoint.",
+    "Install and bind the actual paper signal face before judging joint target visibility or signal color.",
+    "Repeatability, accepted map-to-BASE fit and reusable city-route/web hardware activation remain incomplete."
+  ],
+  "privacy": "Exact operating coordinates, profiles, raw Native records, images, provider envelopes and credentials remain private."
+}

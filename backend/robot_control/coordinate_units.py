@@ -13,7 +13,7 @@ from uuid import uuid4
 
 from .taught_executor import (
     ExecutionBlocked, ExecutorPorts, Frame, MotionIntent, TaughtAdapter,
-    VehicleReview, _finite, _hash, _require, checked_frame, checked_snapshot,
+    SignalObservationTarget, VehicleReview, _finite, _hash, _require, checked_frame, checked_snapshot,
 )
 from .tcp_path import Pose, _pose
 
@@ -78,6 +78,7 @@ class CoordinateUnit:
     stages: tuple[CoordinateStage, ...]
     expected_visual: str
     at_goal: bool = False
+    required_signal_observation: SignalObservationTarget | None = None
 
     def __post_init__(self):
         stages = tuple(self.stages)
@@ -94,9 +95,15 @@ class CoordinateUnit:
                 or not isinstance(self.expected_visual, str) or not 10 <= len(self.expected_visual) <= 700):
             raise ValueError("Use a continuous finite approach/contact/withdraw unit with exactly one bounded contact trial.")
         object.__setattr__(self, "stages", stages)
+        target = self.required_signal_observation
+        if target is not None and (not isinstance(target, SignalObservationTarget)
+                or (target.approach_from, target.junction_id) != (self.source, self.target)):
+            raise ValueError("Bind the actual signal visibility target to this exact incoming unit edge.")
 
 
 class CoordinateUnitPorts(ExecutorPorts):
+    def validate_signal_observation_target(self, target: SignalObservationTarget) -> None: ...
+
     def review_coordinate_unit(self, unit: CoordinateUnit, completed: tuple[dict, ...],
                                before: Frame, after: Frame) -> CoordinateUnitReview: ...
 
@@ -125,6 +132,9 @@ class CoordinateUnitExecutor:
         self.native_max_age_s, self.frame_max_age_s = native_max_age_s, frame_max_age_s
         self.state, self.completed, self.pending = "READY", [], None
         self.before, self.last_actual = None, None
+        self.vehicle_arrival_verified = False
+        self.review_provider_receipt = None
+        self.signal_region_visible = False
         self.lock = threading.Lock()
         prior = ports.load_checkpoint()
         if prior is not None:
@@ -137,7 +147,11 @@ class CoordinateUnitExecutor:
                  "completed_stage_ids": [row["stage"]["id"] for row in self.completed],
                  "pending_request_id": self.pending.request_id if self.pending else None,
                  "automatic_replay": False, "approach_vision_gate": False,
-                 "vehicle_arrival_verified": False}
+                 "vehicle_arrival_verified": self.vehicle_arrival_verified,
+                 "review_provider_receipt": self.review_provider_receipt,
+                 "required_signal_observation_id": self.unit.required_signal_observation.id
+                    if self.unit.required_signal_observation else None,
+                 "signal_region_visible": self.signal_region_visible}
         self.ports.save_checkpoint(value)
         return value
 
@@ -159,12 +173,17 @@ class CoordinateUnitExecutor:
         _require(self.lock.acquire(blocking=False), "BUSY", "Only one coordinate unit may execute.")
         try:
             _require(self.state == "READY", "NOT_READY", "A unit is dispatched only once.")
+            if self.unit.required_signal_observation is not None:
+                self.ports.validate_signal_observation_target(self.unit.required_signal_observation)
             current = self._snapshot()
             _require(current.tcp_base == self.unit.stages[0].start_base,
                      "UNIT_SOURCE", "Use the actual exact reviewed unit source.")
             # Outcome evidence is selected at the observation park, without
             # asking a model to admit approach or identify the tool/contact tip.
             self.before = checked_frame(self.ports, self.frame_max_age_s)
+            target = self.unit.required_signal_observation
+            _require(target is None or self.before.epoch == target.camera_epoch,
+                     "SIGNAL_OBSERVATION_VIEW", "A changed camera epoch invalidates the reviewed signal region.")
             self._same(current, self._snapshot())
             self.state = "RUNNING"
             self.ports.append_event("coordinate_unit_input", {
@@ -235,7 +254,8 @@ class CoordinateUnitExecutor:
                  and (review.before_sha256, review.after_sha256) == (self.before.sha256, after.sha256)
                  and review.verdict in {"PASS", "FAIL", "UNCERTAIN"}
                  and all(type(x) is bool for x in (review.car_visible, review.expected_progress,
-                                                  review.excessive_yaw, review.arrived, review.heading_matches_expected))
+                                                  review.excessive_yaw, review.arrived, review.heading_matches_expected,
+                                                  review.signal_region_visible))
                  and review.car_footprint in {"WITHIN_ROAD", "OVERLAPS_ISLAND", "UNCERTAIN"},
                  "UNIT_REVIEW", "Preserve the actual whole-unit result and original frame binding.")
         self.ports.append_event("coordinate_unit_review", {"result": asdict(review),
@@ -247,11 +267,14 @@ class CoordinateUnitExecutor:
             raise
         accepted = (review.verdict == "PASS" and review.car_visible and review.expected_progress
                     and not review.excessive_yaw and review.heading_matches_expected
-                    and review.car_footprint == "WITHIN_ROAD")
+                    and review.car_footprint == "WITHIN_ROAD"
+                    and (self.unit.required_signal_observation is None or review.signal_region_visible))
         self.state = "ACCEPTED" if accepted else "WAIT_REVIEW"
+        self.signal_region_visible = self.unit.required_signal_observation is not None and review.signal_region_visible
+        self.vehicle_arrival_verified = accepted and self.unit.at_goal and review.arrived
+        self.review_provider_receipt = review.provider_receipt
         result = self._checkpoint()
-        result.update(vehicle_arrival_verified=accepted and self.unit.at_goal and review.arrived,
-                      empty_tool_return_required=accepted and self.unit.at_goal and review.arrived,
+        result.update(empty_tool_return_required=self.vehicle_arrival_verified,
                       automatic_next_unit=False)
         return result
 

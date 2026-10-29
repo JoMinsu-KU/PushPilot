@@ -18,6 +18,7 @@ if str(ROOT) not in sys.path:
 
 from backend.robot_control.coordinate_units import CoordinateBinding, CoordinateStage, CoordinateUnit, CoordinateUnitExecutor
 from backend.robot_control.taught_ports import PrivateJournal, RealTaughtPorts
+from backend.robot_control.taught_executor import SignalObservationTarget
 from tools.run_taught_executor import read_json, reference
 
 
@@ -31,13 +32,29 @@ def unit_geometry(unit):
 def load_unit(path):
     path = Path(path)
     bundle = read_json(path)
-    if (set(bundle) != {"schema", "binding", "unit", "site_review"}
+    required = {"schema", "binding", "unit", "site_review"}
+    if (not required <= set(bundle) or set(bundle)-required-{"signal_target_evidence"}
             or bundle["schema"] != "pushpilot.experimental-coordinate-unit.v1"):
         raise ValueError("Use the exact experimental coordinate-unit bundle schema.")
     binding = CoordinateBinding(**bundle["binding"])
     data = dict(bundle["unit"])
     data["stages"] = tuple(CoordinateStage(**stage) for stage in data["stages"])
+    if data.get("required_signal_observation") is not None:
+        data["required_signal_observation"] = SignalObservationTarget(**data["required_signal_observation"])
     unit = CoordinateUnit(**data)
+    target = unit.required_signal_observation
+    if target is not None:
+        source = bundle.get("signal_target_evidence")
+        if not isinstance(source, dict) or source.get("sha256") != target.target_evidence_sha256:
+            raise ValueError("Retain the exact private signal placement evidence before configuring joint visibility.")
+        original = reference(source, path.parent)
+        metadata = {key: value for key, value in asdict(target).items() if key != "target_evidence_sha256"}
+        if (original.get("schema") != "pushpilot.signal-observation-target.v1"
+                or original.get("visibility_only") is not True or original.get("signal_color_qualified") is not False
+                or original.get("target") != json.loads(json.dumps(metadata))):
+            raise ValueError("Signal placement evidence must match the exact incoming edge, native region and view; no color qualification.")
+    elif "signal_target_evidence" in bundle:
+        raise ValueError("Unbound signal evidence cannot invent a joint-view target.")
     review = reference(bundle["site_review"], path.parent)
     if (review.get("schema") != "pushpilot.operator-coordinate-unit-review.v1"
             or review.get("source") != "operator" or review.get("on_site_review") is not True
