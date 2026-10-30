@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
-import { Icon } from './Icons';
 import {
-  DEFAULT_CAMERA_VIEWPORT, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM,
+  DEFAULT_CAMERA_VIEWPORT,
   panCameraViewport, pinchCameraViewport, zoomCameraViewport, type CameraViewport,
 } from './cameraViewport';
 
@@ -10,7 +9,7 @@ const midpoint = (first: Position, second: Position): Position => [(first[0] + s
 const distance = (first: Position, second: Position) => Math.hypot(first[0] - second[0], first[1] - second[1]);
 
 /** Local display navigation only: the original JPEG and AR geometry share one plane. */
-export function CameraNavigation({ children }: { children: ReactNode }) {
+export function CameraNavigation({ children, resetToken = 0 }: { children: ReactNode; resetToken?: number }) {
   const host = useRef<HTMLDivElement>(null);
   const pointers = useRef(new Map<number, Position>());
   const current = useRef<CameraViewport>({ ...DEFAULT_CAMERA_VIEWPORT });
@@ -22,6 +21,9 @@ export function CameraNavigation({ children }: { children: ReactNode }) {
     setView(next);
   }, []);
   const reset = () => apply(() => ({ ...DEFAULT_CAMERA_VIEWPORT }));
+  useEffect(() => {
+    apply(() => ({ ...DEFAULT_CAMERA_VIEWPORT }));
+  }, [resetToken, apply]);
   const position = useCallback((x: number, y: number): Position | null => {
     const rect = host.current?.getBoundingClientRect();
     if (!rect || rect.width <= 0 || rect.height <= 0) return null;
@@ -92,24 +94,12 @@ export function CameraNavigation({ children }: { children: ReactNode }) {
     event.preventDefault();
   };
 
-  return <>
-    <div ref={host} className={`camera-viewport${dragging ? ' is-dragging' : ''}`} tabIndex={0}
-      role="region" aria-label="Camera viewport" aria-description="Drag to move. Pinch or use plus and minus to zoom. Arrow keys move the view; zero resets it."
+  return <div ref={host} className={`camera-viewport${dragging ? ' is-dragging' : ''}`} tabIndex={0}
+      role="region" aria-label="Camera viewport" aria-description="Drag to move. Pinch to zoom. Arrow keys move the view; zero or Fit camera view resets it."
       onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerEnd}
       onPointerCancel={cancel} onLostPointerCapture={pointerEnd} onBlur={cancel} onKeyDown={keyDown}>
       <div className="camera-image-plane" style={{ transform: `translate(${view.panX * 100}%, ${view.panY * 100}%) scale(${view.zoom})` }}>
         {children}
       </div>
-    </div>
-    <div className="camera-view-controls" role="group" aria-label="Camera view controls">
-      <button type="button" onClick={() => apply(value => zoomCameraViewport(value, value.zoom / 1.2))}
-        disabled={view.zoom <= MIN_CAMERA_ZOOM} aria-label="Zoom out camera" title="Zoom out"><Icon name="minus" size={16}/></button>
-      <output aria-label="Camera zoom">{Math.round(view.zoom * 100)}%</output>
-      <button type="button" onClick={() => apply(value => zoomCameraViewport(value, value.zoom * 1.2))}
-        disabled={view.zoom >= MAX_CAMERA_ZOOM} aria-label="Zoom in camera" title="Zoom in"><Icon name="plus" size={16}/></button>
-      <span className="camera-control-divider" aria-hidden="true"/>
-      <button type="button" onClick={reset} aria-label="Fit camera view" title="Fit the original camera view"><Icon name="refresh" size={15}/></button>
-      <span className="camera-view-gesture">Drag to move · Pinch to zoom</span>
-    </div>
-  </>;
+    </div>;
 }

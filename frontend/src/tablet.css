@@ -23,8 +23,8 @@ button:not(:disabled):active, [role="button"]:active, [role="tab"]:not(:disabled
 }
 
 /* Overlays above the map keep their own gestures; the map surfaces stay touch-action: none. */
-.scene-heading, .floating-mission, .status-dock, .map-scene-controls, .scene-source-plate, .stage-notice, .scene-error,
-.city-model-view-controls, .camera-view-controls, .topbar { touch-action: manipulation; }
+.scene-heading, .floating-mission, .status-dock, .map-scene-controls, .stage-notice, .scene-error,
+.city-model-view-controls, .topbar { touch-action: manipulation; }
 
 /* No side rail: header and map span the full width. */
 .app-shell { grid-template-columns: minmax(0, 1fr); }
@@ -87,8 +87,6 @@ button:not(:disabled):active, [role="button"]:active, [role="tab"]:not(:disabled
 .scene-view-toggle { gap: 8px; }
 .scene-view-toggle button { height: 44px; font-size: var(--fs-13); }
 .scene-tools-toggle, .scene-focus-toggle { height: 44px; font-size: var(--fs-13); }
-.camera-view-controls { gap: 8px; }
-.camera-view-controls output, .camera-view-gesture { font-size: var(--fs-12); }
 
 /* Dialog body copy and buttons. */
 .dialog-header .icon-button, .scene-dialog-heading > button { width: 44px; height: 44px; }
