@@ -148,6 +148,21 @@ class MissionPolicyTests(unittest.TestCase):
                 self.assertEqual(result.reason, reason)
                 self.assertFalse(result.state.vehicle_delivered)
 
+    def test_unconfirmed_delivery_never_requests_unavailable_alignment_measurements(self):
+        policy = MissionPolicy(plan(parking=ParkingTarget(0., mode="delivery_only")))
+        state, at = after_first(policy), context("GOAL_PARK", 12., 2)
+        for index in range(policy.plan.max_reobservations + 1):
+            observation = car(at, state, arrived=False, expected_progress=False,
+                heading_matches_expected=False, heading_deg=None, lateral_error_mm=None,
+                measurement_source="unmeasured", measurement_evidence_sha256=None,
+                image=str(index))
+            result = policy.decide(state, at, car=observation, command_id="no-return")
+            self.assertIn("GOAL_ARRIVAL_UNCONFIRMED", result.reason)
+            self.assertNotEqual(result.kind, DecisionKind.DISPATCH)
+            self.assertFalse(result.state.vehicle_delivered)
+            state = result.state
+        self.assertEqual(result.kind, DecisionKind.HOLD)
+
     def test_delivery_only_preserves_visibility_road_zone_and_source_checks(self):
         policy = MissionPolicy(plan(parking=ParkingTarget(0., mode="delivery_only")))
         state, at = after_first(policy), context("GOAL_PARK", 12., 2)

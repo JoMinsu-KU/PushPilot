@@ -155,6 +155,8 @@ class PhysicalMissionVisionTests(unittest.IsolatedAsyncioTestCase):
                 for requirement in ("parking_mode is delivery_only AND goal_arrival_check is true",
                                     "wholly within the road", "parallel angle and lateral parking alignment are not",
                                     "An earlier FAIL/UNCERTAIN is not rewritten",
+                                    "Additional displacement from REFERENCE is not required",
+                                    "step number or completed TCP motion never proves arrival",
                                     "bound completed primitive's expected_visual", "may intentionally leave the car diagonal",
                                     "visible wrong turn", "not a measurement request"):
                     self.assertIn(requirement, prompt)

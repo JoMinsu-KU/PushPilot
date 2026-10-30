@@ -10,7 +10,7 @@ from copy import deepcopy
 from backend.live_review_provider import MetaLiveReviewProvider, _frame_content, _serialized
 from backend.scene import SceneError
 
-PROMPT_VERSION = "pushpilot.physical-observation.v2"
+PROMPT_VERSION = "pushpilot.physical-observation.v3"
 
 
 def observation_schema() -> dict:
@@ -131,7 +131,10 @@ class MetaMissionVision(MetaLiveReviewProvider):
             "return PASS only when the visible unoccluded car is in the named goal zone and wholly within the "
             "road. In that final delivery-only check, parallel angle and lateral parking alignment are not "
             "completion conditions; report their qualitative facts truthfully without failing arrival solely "
-            "for a skewed parked orientation. Do not claim parallel parking or measured angle. An earlier "
+            "for a skewed parked orientation. Additional displacement from REFERENCE is not required if the "
+            "CURRENT car is already visibly in the named destination road zone. Keep expected_progress and "
+            "heading_matches_expected truthful and separate from this final arrival verdict. A step number "
+            "or completed TCP motion never proves arrival. Do not claim parallel parking or measured angle. An earlier "
             "FAIL/UNCERTAIN is not rewritten: assess only this fresh original evidence. With parallel_alignment "
             "mode, the separate qualified metric parking checks still apply. An unconfirmed goal, hidden car, "
             "wrong zone or uncertain road boundary must never become a delivery PASS. "

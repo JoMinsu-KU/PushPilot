@@ -777,15 +777,17 @@ class MissionPolicy:
             return self._reobserve(state, "CAR_ROAD_OR_ZONE_UNCONFIRMED")
         if car.verdict == "UNCERTAIN":
             return self._reobserve(state, "MUSE_UNCERTAIN")
+        if step.at_goal and self.plan.parking.mode == "delivery_only":
+            # Final delivery has no alignment/correction objective, even when
+            # arrival is unconfirmed. Reobserve or hold with the actual reason.
+            # Source/Native/visibility/road/zone guards above still apply.
+            if not car.arrived:
+                return self._reobserve(state, "GOAL_ARRIVAL_UNCONFIRMED")
+            if car.verdict != "PASS":
+                return self._reobserve(state, "DELIVERY_REQUIRES_ORIGINAL_PASS")
+            return self.decide(replace(state, phase=Phase.RETURNING, vehicle_delivered=True),
+                               context, command_id=command_id)
         if step.at_goal and car.arrived:
-            if self.plan.parking.mode == "delivery_only":
-                # This mode accepts destination delivery, not parallel parking.
-                # All source/Native/visibility/road/zone checks above still apply.
-                # Intermediate drift and correction admission remain unchanged.
-                if car.verdict != "PASS":
-                    return self._reobserve(state, "DELIVERY_REQUIRES_ORIGINAL_PASS")
-                return self.decide(replace(state, phase=Phase.RETURNING, vehicle_delivered=True),
-                                   context, command_id=command_id)
             if not car.measured_heading:
                 return self._reobserve(state, "MEASURED_PARKING_HEADING_REQUIRED")
             _, _, score = self._errors(step, car, True)

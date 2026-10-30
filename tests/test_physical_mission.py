@@ -299,6 +299,27 @@ class PhysicalMissionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["state"], "HOLD")
         self.assertEqual(self.driver.commands, [])
 
+    async def test_two_transient_arrival_timeouts_reobserve_without_replaying_motion(self):
+        self.driver.plan = replace(self.driver.plan, parking=ParkingTarget(0., mode="delivery_only"))
+        observed = self.driver.observe
+        failed = []
+        def intermittent(state):
+            if state.phase == Phase.OBSERVE and len(failed) < 2:
+                failed.append(state.action_command_id)
+                raise TimeoutError("Synthetic connection timeout while stopped at goal")
+            result = observed(state)
+            if result.get("car"):
+                result["car"] = replace(result["car"], expected_progress=False,
+                    heading_matches_expected=False)
+            return result
+        self.driver.observe = intermittent
+        await self.service.start(command_for(self.service, self.store))
+        result = await self.finish()
+        self.assertEqual(result["state"], "COMPLETE")
+        self.assertEqual(len(failed), 2)
+        self.assertEqual(len(set(failed)), 1)
+        self.assertEqual([p for p, _ in self.driver.commands], ["delivery-unit", "return"])
+
     async def test_crash_record_reopens_held_without_replay_or_poll_reset(self):
         self.service.status.update(state="MOVING", mission_id="old-mission")
         self.service._persist("SYNTHETIC_CRASH_INTENT", {"command_id": "never-replay"})
