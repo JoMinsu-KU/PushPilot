@@ -11,6 +11,7 @@ import time
 
 from .mission_policy import CarObservation, Phase, SignalObservation, StartObservation
 from .mission_vision import MetaMissionVision, PROMPT_VERSION, exclusive_signal
+from .mission_progress import PROGRESS_VERSION
 from .taught_executor import ExecutionBlocked
 
 
@@ -26,6 +27,7 @@ class MissionObserver:
         self.sleep = sleep
         self.stop_frames = {}
         self.last_car_frames = {}
+        self.signal_progress_references = {}
         self._measurement_config_sha256 = None
         if isinstance(getattr(measurement, "config", None), dict):
             from .mission_measurement import canonical_sha256
@@ -62,6 +64,18 @@ class MissionObserver:
         observations = (config.get("observations") or {}) if isinstance(config, dict) else {}
         if not isinstance(observations, dict):
             observations = {}
+        if type(observations.get('c14_clear_signal_reference',False)) is not bool:
+            blockers.append('C14_REFERENCE_OPTION_INVALID')
+        details=observations.get('progress_detail_rois',{})
+        size=adapter.get('frame_size_px') if isinstance(adapter,dict) else None
+        if (not isinstance(details,dict) or set(details)-{'C-step-4','C-step-6'}
+                or (details and (not isinstance(size,(list,tuple)) or len(size)!=2))):
+            blockers.append('PROGRESS_DETAIL_CONFIGURATION_INVALID')
+        elif details:
+            for roi in details.values():
+                if (not isinstance(roi,list) or len(roi)!=4 or any(type(v) is not int for v in roi)
+                        or not 0<=roi[0]<roi[2]<=size[0] or not 0<=roi[1]<roi[3]<=size[1]):
+                    blockers.append('PROGRESS_DETAIL_CONFIGURATION_INVALID')
         if not isinstance(observations.get("fixed_start"), dict) or not observations["fixed_start"] or not observations.get("zones"):
             blockers.append("FIXED_START_AND_CAR_ZONE_REFERENCES_REQUIRED")
         if outcome_only and not self._valid_outcome_zone(observations.get("fixed_start")):
@@ -222,6 +236,31 @@ class MissionObserver:
                 and a.stationary and b.stationary and not a.control_fault and not b.control_fault
                 and a.pending_command_id is None and b.pending_command_id is None)
 
+    def _c14_reference(self, state, plan, current, context):
+        """Compare the admitted signal-wait frame through recontact and C14 only."""
+        index=state.step_index
+        step=plan.steps[index]
+        entry=self.signal_progress_references.get((plan.id,index-1))
+        valid=(plan.destination=='VILLA' and step.id=='C-step-14' and index>0
+            and state.signal_step_index==index-1 and entry is not None)
+        if valid:
+            frame,source,issued=entry
+            gate=plan.steps[index-1].signal_gate
+            valid=(gate is not None and gate.entry_policy=='single_departure'
+                and (source.binding,source.session_id)==(context.binding,context.session_id)
+                and frame.epoch==current.epoch==plan.binding.camera_epoch
+                and 0 < current.captured_at-frame.captured_at <= 1200
+                and frame.sequence < current.sequence
+                and tuple(state.issued_command_ids[:-2])==issued
+                and len(state.issued_command_ids)==len(issued)+2
+                and state.issued_command_ids[-1]==state.action_command_id
+                and state.pending_command_id is None
+                and source.context_id==gate.right_wait_context_id)
+        if not valid:
+            raise ExecutionBlocked('C14_CLEAR_REFERENCE_UNAVAILABLE',
+                'A same-mission clear signal frame and exact recontact/C14 command lineage are required.')
+        return frame
+
     def __call__(self, state, driver):
         before_context = driver.context()
         if not before_context.stationary or before_context.control_fault:
@@ -230,6 +269,8 @@ class MissionObserver:
         at_signal = state.phase in {Phase.WAIT_SIGNAL, Phase.ENTRY_SIGNAL}
         index = state.signal_step_index if state.phase == Phase.ENTRY_SIGNAL else state.step_index
         step = plan.steps[index]
+        progress_only = (step.review_mode == "intermediate_progress" and state.start_verified
+                         and not at_signal and not step.at_goal)
         configuration = driver.observation_config
         adapter = (getattr(driver, "config", None) or {}).get("measurement_adapter")
         outcome_only = isinstance(adapter, dict) and adapter.get("kind") == "muse_outcome"
@@ -265,6 +306,9 @@ class MissionObserver:
             "expected_visual": expected_visual, "completed_primitive_id": completed_primitive_id,
             "fixed_start": configuration["fixed_start"], "signal_target": target,
             "action_command_id": state.action_command_id, "physical_stop_verified_separately": True}
+        if progress_only:
+            task["prompt_version"] = PROGRESS_VERSION
+            task["review_mode"] = "intermediate_progress"
         current = driver.capture()
         if outcome_only and not self._outcome_frame_matches(current, adapter):
             raise ExecutionBlocked("MUSE_OUTCOME_FRAME_BINDING", "Use the unchanged original camera epoch and native image dimensions.")
@@ -289,8 +333,21 @@ class MissionObserver:
         else:
             reference = driver.before_frame
             frames = (current,)
-            results = [asyncio.run(self.provider.observe(frame=_image(current), context=task,
-                                     before=_image(reference) if reference is not None else None))]
+            if progress_only:
+                if configuration.get('c14_clear_signal_reference') and step.id=='C-step-14':
+                    reference=self._c14_reference(state,plan,current,before_context)
+                    task['comparison_scope']='signal_wait_through_recontact_and_C14'
+                    task['comparison_excludes_isolated_push_attribution']=True
+                details=configuration.get('progress_detail_rois',{})
+                roi=details.get(step.id) if plan.destination=='VILLA' and step.id in {'C-step-4','C-step-6'} else None
+                options={'detail_roi':roi} if roi is not None else {}
+                if 'comparison_scope' in task:
+                    options['comparison_scope']=task['comparison_scope']
+                results = [asyncio.run(self.provider.observe_progress(frame=_image(current),
+                    before=_image(reference) if reference is not None else None,**options))]
+            else:
+                results = [asyncio.run(self.provider.observe(frame=_image(current), context=task,
+                                         before=_image(reference) if reference is not None else None))]
         after_context = driver.context()
         if not self._same_stop(before_context, after_context):
             raise ExecutionBlocked("OBSERVATION_CONTEXT_CHANGED", "Robot context changed during inference; discard authority.")
@@ -307,6 +364,23 @@ class MissionObserver:
                 "native_sequence": after_context.native_sequence, "context_id": after_context.context_id,
                 "captured_at_s": frame.captured_at, "image_sha256": frame.sha256,
                 "provider_receipt_sha256": receipt_sha}
+            if progress_only:
+                # These legacy facts remain unknown/false rather than being invented
+                # to pass the older road/heading policy. The new status is explicit.
+                status = result["status"]
+                car = CarObservation(mission_id=plan.id, step_id=step.id,
+                    action_command_id=state.action_command_id, **common,
+                    verdict={"PROGRESS_OBSERVED":"PASS", "NO_PROGRESS":"FAIL",
+                             "CLEAR_PROBLEM":"FAIL", "UNCERTAIN":"UNCERTAIN"}[status],
+                    car_visible=result["car_visible"], within_road=None,
+                    expected_progress=result["visible_change"] is True, heading_matches_expected=False,
+                    arrived=False, car_zone_id=None, occlusion_cause=result["occlusion_cause"],
+                    progress_status=status, visible_change=result["visible_change"],
+                    clear_problem=result["clear_problem"])
+                if status == "PROGRESS_OBSERVED":
+                    self.last_car_frames[stop_key] = frame
+                samples.append({"car":car, "signal":None, "start":None, "summary":result["summary"]})
+                continue
             numeric = {}
             if not outcome_only and self.measurement is not None and result["car_visible"] and result["occlusion_cause"] == "NONE":
                 zone = configuration["zones"].get(step.car_zone_id) or {}
@@ -334,6 +408,10 @@ class MissionObserver:
                 sample["signal"] = SignalObservation(gate_id=step.signal_gate.id, **common, color=color,
                     car_visible=result["car_visible"], signal_visible=visible,
                     car_unchanged_since_stop=result["car_unchanged_since_stop"], exclusive_green=color == "GREEN")
+                if (configuration.get('c14_clear_signal_reference') and plan.destination=='VILLA'
+                        and step.id=='C-step-13' and color=='GREEN' and result['car_visible']
+                        and result['car_unchanged_since_stop'] and result['occlusion_cause']=='NONE'):
+                    self.signal_progress_references[(plan.id,index)]=(frame,after_context,tuple(state.issued_command_ids))
             elif result["car_visible"] and result["within_road"] is True:
                 self.last_car_frames[stop_key] = frame
             samples.append(sample)

@@ -46,6 +46,10 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
         self.binding = SiteBinding(**data["site_binding"])
         self.coordinate_binding = CoordinateBinding(**data["coordinate_binding"])
         self.observation_config = data["observations"]
+        review_modes = self.observation_config.get("route_review_modes", {})
+        if not isinstance(review_modes, dict) or any(
+                code != "C" or mode != "intermediate_progress" for code, mode in review_modes.items()):
+            raise ValueError("Only C supports the explicit intermediate progress trial override.")
         if (data["ports"].get("native_observation_source") != "host_journal"
                 or self.coordinate_binding.map_hash != self.binding.map_sha256
                 or self.coordinate_binding.car_id != self.binding.car_id
@@ -118,6 +122,9 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
             for step in raw["steps"]:
                 if step["primitive"]["empty_tool"] and not step.get("signal_gate") and not step["at_goal"]:
                     step["observation_required"] = False
+                if (review_modes.get(code) == "intermediate_progress"
+                        and not step["primitive"]["empty_tool"] and not step["at_goal"]):
+                    step["review_mode"] = "intermediate_progress"
             plan = plan_from_dict(raw)
             for primitive in _plan_primitives(plan):
                 row = packet["primitives"][primitive.id]

@@ -9,7 +9,7 @@ import unittest
 
 import httpx
 
-from backend.robot_control.mission_vision import MetaMissionVision, exclusive_signal, validate_observation
+from backend.robot_control.mission_vision import MetaMissionVision, exclusive_signal, validate_observation, signal_detail_content
 from backend.scene import SceneError
 from tests.test_live_review_provider import envelope, frame_fixture
 
@@ -27,6 +27,22 @@ def observation(**changes):
 
 
 class PhysicalSignalContractTests(unittest.TestCase):
+    def test_signal_detail_preserves_source_pixels_and_marks_sample_order(self):
+        import cv2
+        import numpy as np
+        from tests.test_mission_progress import image
+        frames=(image(25),image(180))
+        content=signal_detail_content(frames,{'pixel_polygon':[[70,70],[75,70],[75,75],[70,75]]})
+        sheet=cv2.imdecode(np.frombuffer(base64.b64decode(content[1]['image_url']['url'].split(',',1)[1]),np.uint8),cv2.IMREAD_COLOR)
+        # Bounds are the polygon plus a clamped 64px margin: [6,6,120,80].
+        for index,frame in enumerate(frames):
+            source=cv2.imdecode(np.frombuffer(frame['data'],np.uint8),cv2.IMREAD_COLOR)
+            panel=sheet[48:,index*228:(index+1)*228]
+            np.testing.assert_array_equal(panel[::2,::2],source[6:80,6:120])
+            self.assertIn(frame['metadata']['sha256'],content[0]['text'])
+        with self.assertRaises(SceneError):
+            signal_detail_content(frames,{'pixel_polygon':[[float('nan'),0],[1,0],[1,1]]})
+
     def test_paddle_over_green_is_red_and_paddle_over_red_is_green(self):
         self.assertEqual(exclusive_signal(observation()), ("RED", True))
         self.assertEqual(exclusive_signal(observation(red_face="COVERED", green_face="VISIBLE")), ("GREEN", True))
@@ -83,11 +99,21 @@ class PhysicalMissionVisionTests(unittest.IsolatedAsyncioTestCase):
             calls.append(request)
             payload = json.loads(request.content)
             self.assertEqual(payload["max_completion_tokens"], 2200)
+            prompt = payload['messages'][0]['content']
+            self.assertIn('a narrow exposed rim or small edge crescent', prompt)
+            self.assertIn('Both substantially exposed faces', prompt)
+            self.assertIn('Small hand tremor', prompt)
+            self.assertIn('substantial shift exposing the covered disk', prompt)
+            self.assertIn('PHYSICAL paper target', prompt)
+            context_text=payload['messages'][1]['content'][0]['text']
+            self.assertNotIn('old motion expectation',context_text)
+            self.assertNotIn('expected_heading_deg',context_text)
             images = [x["image_url"]["url"] for x in payload["messages"][1]["content"] if x["type"] == "image_url"]
             self.assertEqual([base64.b64decode(x.split(",", 1)[1]) for x in images],
                              [x["data"] for x in (reference, first, second)])
             return httpx.Response(200, json=envelope({"samples": [green, green]}))
-        result = await self.provider(handler).observe_signal_pair(frames=(first, second), context={}, before=reference)
+        result = await self.provider(handler).observe_signal_pair(frames=(first, second),
+            context={'expected_visual':'old motion expectation','expected_heading_deg':90}, before=reference)
         self.assertEqual(result, [green, green])
         self.assertEqual(len(calls), 1)
 

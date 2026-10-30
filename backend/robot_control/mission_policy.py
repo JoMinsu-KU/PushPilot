@@ -131,11 +131,16 @@ class RouteStep:
     at_goal: bool = False
     signal_gate: SignalGate | None = None
     observation_required: bool = True
+    review_mode: str = "expected_outcome"
 
     def __post_init__(self):
         _name(self.id)
         _name(self.car_zone_id)
         _number(self.expected_heading_deg, minimum=-180., maximum=180.)
+        if self.review_mode not in {"expected_outcome", "intermediate_progress"}:
+            raise ValueError("Use an explicit observation policy.")
+        if self.review_mode == "intermediate_progress" and (self.at_goal or self.primitive.empty_tool):
+            raise ValueError("Progress-only review applies only to intermediate loaded units.")
         if type(self.at_goal) is not bool:
             raise ValueError("Goal membership must be explicit.")
         if type(self.observation_required) is not bool or (not self.observation_required
@@ -250,6 +255,9 @@ class MissionPlan:
             raise ValueError("Use an explicit physical release mode.")
         if self.release_mode == "site_trial" and (self.parking.mode != "delivery_only" or self.corrections):
             raise ValueError("The current-site delivery trial excludes unqualified numeric corrections.")
+        if any(s.review_mode == "intermediate_progress" for s in self.steps) and (
+                self.release_mode != "site_trial" or self.parking.mode != "delivery_only" or self.corrections):
+            raise ValueError("Progress-only review is an explicit delivery trial, not metric qualification.")
         for name in ("steps", "empty_return", "corrections", "clearances"):
             object.__setattr__(self, name, tuple(getattr(self, name)))
         if (not self.steps or not self.steps[-1].at_goal
@@ -325,6 +333,9 @@ class CarObservation:
     measurement_evidence_sha256: str | None = None
     occlusion_cause: str = "NONE"
     signal_visible: bool = False
+    progress_status: str | None = None
+    visible_change: bool | None = None
+    clear_problem: bool | None = None
 
     def __post_init__(self):
         for name in ("mission_id", "step_id", "action_command_id", "session_id", "context_id"):
@@ -334,6 +345,10 @@ class CarObservation:
         _number(self.captured_at_s, minimum=0)
         if self.verdict not in {"PASS", "FAIL", "UNCERTAIN"}:
             raise ValueError("Use the original model verdict.")
+        if self.progress_status not in {None, "PROGRESS_OBSERVED", "NO_PROGRESS", "UNCERTAIN", "CLEAR_PROBLEM"}:
+            raise ValueError("Use the original progress status.")
+        if any(v is not None and type(v) is not bool for v in (self.visible_change, self.clear_problem)):
+            raise ValueError("Progress facts must be boolean or unknown.")
         if (any(type(getattr(self, name)) is not bool for name in
                 ("car_visible", "expected_progress", "heading_matches_expected", "arrived", "signal_visible"))
                 or self.within_road is not None and type(self.within_road) is not bool
@@ -767,10 +782,29 @@ class MissionPolicy:
         if car.image_sha256 in state.seen_images:
             return self._reobserve(state, "NEW_ORIGINAL_FRAME_REQUIRED")
         state = replace(state, seen_images=(*state.seen_images, car.image_sha256))
+        progress_only = step.review_mode == "intermediate_progress"
+        if progress_only and (car.progress_status == "CLEAR_PROBLEM" or car.clear_problem is True):
+            return self._fail(state, "VISIBLE_PHYSICAL_PROBLEM")
         if not car.car_visible or car.occlusion_cause != "NONE":
             cause = "UNKNOWN" if car.occlusion_cause == "NONE" else car.occlusion_cause
             clearance = self._clearance(state, context, cause, command_id, signal=step.signal_gate is not None)
             return clearance or self._reobserve(state, "CAR_OCCLUDED")
+        if progress_only:
+            if car.progress_status == "NO_PROGRESS":
+                return self._reobserve(state, "CAR_NO_VISIBLE_PROGRESS")
+            if (car.progress_status != "PROGRESS_OBSERVED" or car.visible_change is not True
+                    or car.clear_problem is True or car.verdict != "PASS"):
+                return self._reobserve(state, "CAR_PROGRESS_UNCONFIRMED")
+            # An unknown problem flag alone does not veto visible progress.
+            # Preserve None as unknown; freshness, visibility, Native guards,
+            # explicit problems and signal admission still apply independently.
+            if step.signal_gate:
+                waiting = replace(state, phase=Phase.WAIT_SIGNAL, signal_step_index=state.step_index)
+                return self._signal(waiting, context, car, signal, command_id)
+            next_state = replace(state, phase=Phase.READY, step_index=state.step_index + 1,
+                correction_count=0, reobservations=0, used_clearances=(), before_correction_score=None,
+                nonimproving_corrections=0)
+            return self.decide(next_state, context, command_id=command_id)
         if car.within_road is False:
             return self._fail(state, "CAR_OUTSIDE_QUALIFIED_ROAD")
         if car.within_road is not True or car.car_zone_id != step.car_zone_id:
