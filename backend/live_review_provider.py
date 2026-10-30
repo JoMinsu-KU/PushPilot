@@ -226,5 +226,9 @@ class MetaLiveReviewProvider:
             return validator(json.loads(message["content"]))
         except SceneError:
             raise
-        except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError, AttributeError):
-            raise SceneError(502, f"MUSE {label} failed. No decision was accepted.", "MUSE_FAILED") from None
+        except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError, AttributeError) as error:
+            failure = SceneError(502, f"MUSE {label} failed. No decision was accepted.", "MUSE_FAILED")
+            # Exception type is enough for operational diagnosis. Never persist
+            # exception text, request headers, credentials or response bodies.
+            failure.provider_failure_type = type(error).__name__
+            raise failure from None

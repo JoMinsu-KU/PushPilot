@@ -36,8 +36,10 @@ observation cursor. The completed action is never dispatched again. All issued
 command IDs, completed receipts and the already-consumed signal admission stay
 in the same mission. The next primitive still receives fresh source checks and
 the original guarded profile preparation. Stop requests during reconciliation
-prevent continuation. A failed reconciliation is recorded and is not retried
-automatically or through a new request ID for the same hold.
+prevent continuation. A failed reconciliation is recorded and is never retried
+automatically. One additional explicit request may repeat all no-motion checks
+after a provider transport/parse failure. A negative or uncertain scene verdict
+cannot be retried through a new request ID for the same hold.
 
 This feature does not establish route repeatability or guarantee correction of
 vehicle drift. Existing C26 destination verification and empty-tool return

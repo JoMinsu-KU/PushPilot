@@ -376,9 +376,16 @@ class PhysicalMissionService:
             later = [r for r in rows if r[0] > accepted[0]]
             held = [r for r in later if r[1] == 'MISSION_HELD']
             receipts = [r for r in later if r[1] == 'PRIMITIVE_RECEIPT']
+            attempts = [r for r in later if held and r[0] > held[-1][0] and r[1] == 'MISSION_RESUME_REQUESTED']
+            failures = [r for r in later if attempts and r[0] > attempts[-1][0] and r[1] == 'MISSION_RESUME_BLOCKED']
+            # An explicit second request may repeat no-motion checks after a
+            # provider transport/parse failure. A negative or uncertain scene
+            # judgment cannot be retried through a new request ID.
+            retryable = (len(attempts) == 1 and len(failures) == 1
+                         and failures[0][2].get('code') == 'MUSE_FAILED')
             if (not held or not receipts or receipts[-1][0] >= held[-1][0]
                     or any(r[1] == 'PRIMITIVE_DISPATCH_INTENT' for r in later if r[0] > receipts[-1][0])
-                    or any(r[1] == 'MISSION_RESUME_REQUESTED' for r in later if r[0] > held[-1][0])):
+                    or attempts and not retryable):
                 raise CommandError('Completed action evidence is missing or this hold already had a resume attempt.', 409)
             original = accepted[2]
             workspace = original['workspace']
@@ -402,7 +409,8 @@ class PhysicalMissionService:
                 self.status['vision']['in_flight'] = False
                 self.status['stage_label'] = 'Continuation check failed · Original hold preserved'
                 code = getattr(error, 'code', 'RESUME_CHECK_FAILED')
-                self._persist('MISSION_RESUME_BLOCKED', {'code':code, 'original_error':self.status['error']})
+                self._persist('MISSION_RESUME_BLOCKED', {'code':code, 'original_error':self.status['error'],
+                    'provider_failure_type':getattr(error, 'provider_failure_type', None)})
                 raise CommandError('Continuation blocked: '+code, 409) from error
             self.stopping.clear()
             self.status.update(state='OBSERVING', error=None, available=False,

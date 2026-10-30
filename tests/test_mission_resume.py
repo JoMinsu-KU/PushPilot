@@ -143,6 +143,18 @@ class ResumeServiceTests(unittest.IsolatedAsyncioTestCase):
         for change in ({'expected_revision':0},{'mission_id':'other'}):
             with self.assertRaises(CommandError): await self.service.resume({**self.command(),**change})
 
+    async def test_provider_failure_allows_one_explicit_recheck_but_not_a_loop(self):
+        from backend.scene import SceneError
+        calls=[]
+        def fail(*_):
+            calls.append(1)
+            raise SceneError(502,'No decision accepted','MUSE_FAILED')
+        self.driver.resume_review=fail
+        for _ in range(3):
+            with self.assertRaises(CommandError): await self.service.resume(self.command())
+        self.assertEqual(len(calls),2)
+        self.assertEqual(self.driver.commands,[])
+
     async def test_stop_during_preparation_prevents_continuation(self):
         original=self.driver.resume_review
         def stopped(*args):
