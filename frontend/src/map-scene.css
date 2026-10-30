@@ -11,6 +11,7 @@
   padding: 6px; border: 1px solid #ffffffd9; border-radius: 19px;
   background: #f8faf9d9; background-clip: padding-box;
   box-shadow: 0 4px 18px #263b4210; overflow: hidden; isolation: isolate;
+  -webkit-clip-path: inset(0 round 19px); clip-path: inset(0 round 19px);
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
 }
 .workspace-stage .map-scene-component .map-scene-controls { left: var(--stage-content-left, 12px); }
