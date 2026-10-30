@@ -11,6 +11,7 @@ import { CityViewBoundary } from './CityViewBoundary';
 import { recordedDisplay } from './boardFocus';
 import { createLivePollGate, liveDisplaySnapshot, liveFrameAge, liveFrameFresh, liveOverlayAllowed } from './liveCamera';
 import { liveCameraPresentation } from './cameraPresentation';
+import { decodeLiveFrame, fetchLiveSnapshot, previewRetryDelay } from './liveCameraTransport';
 import { CameraNavigation } from './CameraNavigation';
 import type { PhysicalDisplaySnapshot } from './physicalDisplay';
 import './map-scene.css';
@@ -99,47 +100,60 @@ function useLiveCamera() {
   useEffect(() => {
     let cancelled = false;
     let timer: number | undefined;
-    const controller = new AbortController();
+    let activeRequest: AbortController | null = null;
+    let wakeRequested = false;
+    let failures = 0;
     const tick = window.setInterval(() => setClock(performance.now()), 250);
     const poll = async () => {
-      let delay = 1000;
+      if (cancelled || activeRequest) return;
+      const controller = new AbortController();
+      activeRequest = controller;
+      let delay = 125;
       const generation = pollGate.current.begin();
       const receivedAt = performance.now();
       try {
-        const response = await fetch('/api/v1/live-camera', { cache: 'no-store', signal: controller.signal });
-        if (!response.ok) throw new Error('Live camera status is unavailable.');
-        const snapshot = await response.json() as LiveCameraSnapshot;
-        if (snapshot.schema_version !== 'pushpilot.live-camera.v1' || cancelled || !pollGate.current.accept(generation, snapshot)) return;
+        const snapshot = await fetchLiveSnapshot(controller.signal);
+        if (cancelled || controller.signal.aborted || !pollGate.current.accept(generation, snapshot)) return;
         setStatus(snapshot);
         delay = snapshot.enabled ? 125 : 2000;
         if (snapshot.frame) {
+          if (!liveFrameFresh(snapshot, receivedAt, performance.now())) throw new Error('Camera frame is stale.');
           const currentView = displayed.current;
           if (currentView?.snapshot.frame?.id !== snapshot.frame.id || currentView.snapshot.epoch !== snapshot.epoch) {
-            const image = new Image();
-            image.src = snapshot.frame.image_url;
-            let timeout: number | undefined;
-            try {
-              await Promise.race([image.decode(), new Promise<never>((_, reject) => {
-                timeout = window.setTimeout(() => reject(new Error('Live image decode timed out.')), 1250);
-              })]);
-              if (image.naturalWidth !== snapshot.frame.width || image.naturalHeight !== snapshot.frame.height) {
-                throw new Error('Live image dimensions do not match its frame geometry.');
-              }
-            } finally { window.clearTimeout(timeout); }
+            await decodeLiveFrame(snapshot.frame, controller.signal);
           }
-          if (cancelled || !pollGate.current.accept(generation, snapshot)) return;
+          if (cancelled || controller.signal.aborted || !pollGate.current.accept(generation, snapshot)) return;
+          if (!liveFrameFresh(snapshot, receivedAt, performance.now())) throw new Error('Decoded camera frame is stale.');
           const next = { snapshot, receivedAt };
           displayed.current = next;
           setDecoded(next);
         }
+        failures = 0;
+        // Target one poll per 125 ms, including transport and decode time.
+        if (snapshot.enabled) delay = Math.max(0, 125 - (performance.now() - receivedAt));
       } catch {
         // Keep the previous decoded image; its monotonic age will mark it stale.
+        delay = previewRetryDelay(++failures);
       } finally {
+        activeRequest = null;
+        if (wakeRequested) { delay = 0; wakeRequested = false; }
         if (!cancelled) timer = window.setTimeout(() => void poll(), delay);
       }
     };
+    const wake = () => {
+      if (document.visibilityState !== 'visible' || cancelled) return;
+      // Safari may suspend a pending fetch/decode while the tablet sleeps.
+      setClock(performance.now());
+      window.clearTimeout(timer);
+      if (activeRequest) { wakeRequested = true; activeRequest.abort(); }
+      else void poll();
+    };
+    document.addEventListener('visibilitychange', wake);
     void poll();
-    return () => { cancelled = true; controller.abort(); window.clearTimeout(timer); window.clearInterval(tick); };
+    return () => {
+      cancelled = true; activeRequest?.abort(); window.clearTimeout(timer); window.clearInterval(tick);
+      document.removeEventListener('visibilitychange', wake);
+    };
   }, []);
   return { status, decoded, clock, applyRegistration };
 }
