@@ -353,14 +353,15 @@ class PhysicalMissionService:
     async def resume(self, command):
         """Explicit reviewed continuation, never an ambiguous-command retry."""
         from backend.robot_control.mission_driver import plan_from_dict
-        from backend.robot_control.mission_resume import REVIEW_HOLD, state_from_dict
+        from backend.robot_control.mission_resume import REVIEW_HOLD, C19_REVIEW_HOLD, state_from_dict
         async with self.lock:
+            omit_c19 = command.get('omit_c19_review') is True
             prior = self._existing(command)
             if prior is not None:
                 return prior
             if (command['expected_revision'] != self.status['revision']
                     or command['mission_id'] != self.status['mission_id']
-                    or self.status['state'] != 'HOLD' or self.status['error'] != REVIEW_HOLD
+                    or self.status['state'] != 'HOLD' or self.status['error'] != (C19_REVIEW_HOLD if omit_c19 else REVIEW_HOLD)
                     or self.task and not self.task.done()):
                 raise CommandError('Resume requires the exact ended visual-review hold and current revision.', 409)
             prepare = getattr(self.driver, 'resume_review', None)
@@ -393,17 +394,22 @@ class PhysicalMissionService:
             generation = self.stop_generation
             self._persist('MISSION_RESUME_REQUESTED', {'request_id':command['request_id'],
                 'mission_id':command['mission_id'], 'reason':command['reason'],
+                'review_omitted': 'C-step-19' if omit_c19 else None,
                 'original_hold_event':held[-1][0], 'completed_receipt_event':receipts[-1][0]})
-            self.status['vision'].update(in_flight=True, kind='car', started_at=self.clock())
+            self.status['vision'].update(in_flight=not omit_c19, kind='car', started_at=self.clock())
             self.status['stage_label'] = 'Checking current position before continuation'
             self._persist('RESUME_REVIEW_STARTED')
             try:
                 plan, state, observation, proof = await asyncio.to_thread(prepare, workspace,
                     plan_from_dict(original['policy']), state_from_dict(held[-1][2]['state']),
-                    state_from_dict(receipts[-1][2]['state']), receipts[-1][2]['receipt'])
+                    state_from_dict(receipts[-1][2]['state']), receipts[-1][2]['receipt'],
+                    **({'omit_c19_review':True} if omit_c19 else {}))
                 self._bound_workspace(workspace)
                 if self.stop_generation != generation or proof.get('motion_issued') is not False:
                     raise ValueError('A stop or invalid preparation prevents continuation.')
+                if omit_c19 and (proof.get('review_omitted') != 'C-step-19' or proof.get('next_step') != 'C-step-20'
+                                 or state.phase != Phase.READY or observation):
+                    raise ValueError('C19 continuation must omit review without manufacturing a car verdict.')
             except Exception as error:
                 await asyncio.to_thread(self.driver.hold, 'RESUME_CHECK_FAILED')
                 self.status['vision']['in_flight'] = False
@@ -413,13 +419,18 @@ class PhysicalMissionService:
                     'provider_failure_type':getattr(error, 'provider_failure_type', None)})
                 raise CommandError('Continuation blocked: '+code, 409) from error
             self.stopping.clear()
-            self.status.update(state='OBSERVING', error=None, available=False,
+            self.status.update(state='READY' if omit_c19 else 'OBSERVING', error=None, available=False,
                                stage_label='Continuing after the completed action')
-            self.status['vision'].update(in_flight=False, last_result_at=self.clock(), summary=observation.get('summary'))
-            self._observation_telemetry(observation)
+            if omit_c19:
+                self.status['vision'].update(in_flight=False, summary='C19 visual review omitted by operator; native endpoint confirmed.')
+                self._telemetry_event('review_omitted', 'C19 review omitted', 'Explicit operator instruction; no MUSE PASS recorded', 'operator')
+            else:
+                self.status['vision'].update(in_flight=False, last_result_at=self.clock(), summary=observation.get('summary'))
+                self._observation_telemetry(observation)
             self._telemetry_event('resume', 'Mission continuing',
-                                  'Current pose and car checked; completed motion will not replay', 'executor')
-            self._persist('MISSION_RESUMED_AFTER_REVIEW', {'proof':proof, 'state':asdict(state), 'policy':asdict(plan)})
+                                  'Completed motion will not replay; next coordinate unit follows', 'executor')
+            self._persist('MISSION_CONTINUED_WITH_C19_REVIEW_OMITTED' if omit_c19 else 'MISSION_RESUMED_AFTER_REVIEW',
+                          {'proof':proof, 'state':asdict(state), 'policy':asdict(plan)})
             response = self._save_request(command)
             self.task = asyncio.create_task(self._run(MissionPolicy(plan), state, workspace,
                                                       initial_observation=observation), name='physical-mission')

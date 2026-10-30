@@ -14,6 +14,7 @@ from .taught_executor import ExecutionBlocked, Frame
 
 
 REVIEW_HOLD = 'OBSERVATION_BUDGET_EXHAUSTED:MEASURED_CORRECTION_PRECONDITIONS_REQUIRED'
+C19_REVIEW_HOLD = 'OBSERVATION_BUDGET_EXHAUSTED:CAR_NO_VISIBLE_PROGRESS'
 
 
 def require(condition, code):
@@ -31,22 +32,27 @@ def state_from_dict(value):
     return MissionState(**value)
 
 
-def resume_candidate(old_plan, current_plan, held, completed, receipt):
+def resume_candidate(old_plan, current_plan, held, completed, receipt, *, omit_c19_review=False):
     old, new = asdict(old_plan), asdict(replace(current_plan, id=old_plan.id))
     permitted = deepcopy(old)
     permitted['binding']['calibration_id'] = new['binding']['calibration_id']
     for step in permitted['steps']:
         if not step['primitive']['empty_tool'] and not step['at_goal']:
             step['review_mode'] = 'intermediate_progress'
+        if omit_c19_review and step['id'] == 'C-step-19':
+            step['review_mode'] = 'operator_native_endpoint'
+            step['observation_required'] = False
     require(new == permitted, 'RESUME_PLAN_CHANGED')
     require(old_plan.destination == 'VILLA' and old_plan.release_mode == 'site_trial'
             and held.mission_id == old_plan.id and held.phase == Phase.FAILED
-            and held.reason == REVIEW_HOLD, 'RESUME_NOT_REVIEW_ONLY')
+            and held.reason == (C19_REVIEW_HOLD if omit_c19_review else REVIEW_HOLD), 'RESUME_NOT_REVIEW_ONLY')
     require(0 <= held.step_index < len(old_plan.steps)-1, 'RESUME_CURSOR_INVALID')
     step = current_plan.steps[held.step_index]
     # C14 has a volatile pre-recontact reference and cannot be reconstructed by
     # substituting a contact-hidden image. Resume here is after the crossing.
-    require(step.id != 'C-step-14' and step.review_mode == 'intermediate_progress'
+    require((step.id == 'C-step-19' and step.primitive.id == 'C-upper-WEST-corner'
+                and step.review_mode == 'operator_native_endpoint' and not step.observation_required
+             if omit_c19_review else step.id != 'C-step-14' and step.review_mode == 'intermediate_progress')
             and not step.at_goal and step.signal_gate is None
             and held.start_verified and not held.vehicle_delivered
             and held.signal_step_index is not None and 0 <= held.signal_step_index < held.step_index - 1
@@ -67,6 +73,8 @@ def resume_candidate(old_plan, current_plan, held, completed, receipt):
             'RESUME_RECEIPT_MISMATCH')
     require(current_plan.steps[held.step_index+1].primitive.source_context_id == step.primitive.target_context_id,
             'RESUME_NEXT_SOURCE_MISMATCH')
+    require(not omit_c19_review or current_plan.steps[held.step_index+1].id == 'C-step-20',
+            'RESUME_C19_NEXT_STEP_MISMATCH')
     return replace(current_plan, id=old_plan.id), replace(held, phase=Phase.OBSERVE,
         reobservations=0, reason='EXPLICIT_REVIEW_RECONCILIATION')
 

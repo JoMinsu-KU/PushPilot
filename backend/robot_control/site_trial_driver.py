@@ -47,6 +47,9 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
         self.coordinate_binding = CoordinateBinding(**data["coordinate_binding"])
         self.observation_config = data["observations"]
         review_modes = self.observation_config.get("route_review_modes", {})
+        omit_c19 = self.observation_config.get('c19_native_endpoint_only', False)
+        if type(omit_c19) is not bool:
+            raise ValueError('C19 review omission must be an explicit boolean.')
         if not isinstance(review_modes, dict) or any(
                 code != "C" or mode != "intermediate_progress" for code, mode in review_modes.items()):
             raise ValueError("Only C supports the explicit intermediate progress trial override.")
@@ -125,6 +128,9 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
                 if (review_modes.get(code) == "intermediate_progress"
                         and not step["primitive"]["empty_tool"] and not step["at_goal"]):
                     step["review_mode"] = "intermediate_progress"
+                if omit_c19 and code == 'C' and step['id'] == 'C-step-19':
+                    step['review_mode'] = 'operator_native_endpoint'
+                    step['observation_required'] = False
             plan = plan_from_dict(raw)
             for primitive in _plan_primitives(plan):
                 row = packet["primitives"][primitive.id]
@@ -192,7 +198,7 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
         self._reload_before_first_mission()
         return super().prepare(workspace_binding)
 
-    def resume_review(self, workspace, accepted_plan, held, completed, receipt):
+    def resume_review(self, workspace, accepted_plan, held, completed, receipt, *, omit_c19_review=False):
         """Reconcile one completed visual-review hold without replaying its motion."""
         import asyncio
         from .mission_resume import (require, resume_candidate, read_chain,
@@ -210,7 +216,8 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
             require(self.pending_command_id is None, 'RESUME_DISPATCH_UNRESOLVED')
             candidates = [p for key, p in self.routes if all(workspace[k] == key[k] for k in WORKSPACE_KEYS)]
             require(len(candidates) == 1, 'RESUME_ROUTE_NOT_FOUND')
-            plan, state = resume_candidate(accepted_plan, candidates[0], held, completed, receipt)
+            plan, state = resume_candidate(accepted_plan, candidates[0], held, completed, receipt,
+                                           omit_c19_review=omit_c19_review)
             readiness = self.observer_callback.readiness(self.config)
             require(readiness.get('ready') is True, 'RESUME_OBSERVER_UNAVAILABLE')
             self._ensure_ports()
@@ -280,10 +287,11 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
                     and all(camera['registration'].get(k) == old_camera['registration'].get(k)
                             for k in ('homography','reference_frame_id')), 'RESUME_CAMERA_REFERENCE_CHANGED')
             current = self.capture()
-            continuity = asyncio.run(review_continuity(self.observer_callback.provider, held_frame, current))
+            continuity = ({'review_omitted_by_operator': 'C-step-19', 'visual_continuity_verified': False}
+                          if omit_c19_review else asyncio.run(review_continuity(self.observer_callback.provider, held_frame, current)))
             self.journal.artifact('resume-continuity', {'mission_id':plan.id, 'held_frame':held_frame.metadata(),
                 'current':current.metadata(), 'result':continuity, 'native':asdict(native)})
-            require(all(continuity[k] is True for k in ('car_visible_in_both','car_position_unchanged',
+            require(omit_c19_review or all(continuity[k] is True for k in ('car_visible_in_both','car_position_unchanged',
                     'car_orientation_unchanged','board_view_unchanged')) and continuity['clear_problem'] is False,
                     'RESUME_SCENE_CONTINUITY_UNCONFIRMED')
             fresh = self._snapshot()
@@ -302,17 +310,26 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
             with self._stop_lock:
                 require(self._stop_generation == stop_generation, 'RESUME_STOPPED')
                 self.stop_latch.clear()
-            observation = self.observe(state)  # Fresh C review; no historical FAIL is relabelled.
+            next_step_index = state.step_index + 1
+            if omit_c19_review:
+                from .mission_policy import Phase
+                state = replace(state, phase=Phase.READY, step_index=next_step_index,
+                                reobservations=0, reason='OPERATOR_OMITTED_C19_REVIEW')
+                observation = {}  # No synthetic PASS or car measurement.
+            else:
+                observation = self.observe(state)  # No historical FAIL is relabelled.
             context = self.context()
             decision = MissionPolicy(plan).decide(state, context, car=observation.get('car'), command_id=uuid4().hex)
             require(decision.kind == DecisionKind.DISPATCH
-                    and decision.primitive_id == plan.steps[state.step_index+1].primitive.id
+                    and decision.primitive_id == plan.steps[next_step_index].primitive.id
                     and decision.state.pending_role == 'ROUTE', 'RESUME_PROGRESS_UNCONFIRMED')
             proof = {'mission_id':plan.id, 'completed_command_id':state.action_command_id,
-                'native_sequence':context.native_sequence, 'next_step':plan.steps[state.step_index+1].id,
+                'native_sequence':context.native_sequence, 'next_step':plan.steps[next_step_index].id,
                 'original_error':held.reason, 'old_binding':asdict(accepted_plan.binding),
                 'binding':asdict(plan.binding), 'continuity':continuity,
-                'fresh_review':asdict(observation['car']), 'motion_issued':False, 'command_replayed':False}
+                'fresh_review':asdict(observation['car']) if observation.get('car') else None,
+                'review_omitted': 'C-step-19' if omit_c19_review else None,
+                'motion_issued':False, 'command_replayed':False}
             self.journal.append('explicit_review_resume_prepared', proof)
             return plan, state, observation, proof
         except Exception:

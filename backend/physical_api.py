@@ -66,3 +66,9 @@ async def reset(command: ResetCommand, request: Request):
 async def resume(command: ResetCommand, request: Request):
     same_origin(request)
     return await request.app.state.physical.resume(command.model_dump(mode="json"))
+
+
+@router.post('/continue-c19')
+async def continue_c19(command: ResetCommand, request: Request):
+    same_origin(request)
+    return await request.app.state.physical.resume({**command.model_dump(mode='json'), 'omit_c19_review': True})

@@ -137,14 +137,19 @@ class RouteStep:
         _name(self.id)
         _name(self.car_zone_id)
         _number(self.expected_heading_deg, minimum=-180., maximum=180.)
-        if self.review_mode not in {"expected_outcome", "intermediate_progress"}:
+        if self.review_mode not in {"expected_outcome", "intermediate_progress", "operator_native_endpoint"}:
             raise ValueError("Use an explicit observation policy.")
+        native_only = self.review_mode == 'operator_native_endpoint'
+        if native_only and (self.id != 'C-step-19' or self.primitive.id != 'C-upper-WEST-corner'
+                or self.primitive.release_mode != 'site_trial' or self.primitive.empty_tool
+                or self.at_goal or self.signal_gate or self.observation_required):
+            raise ValueError('The operator omission applies only to the intermediate C19 native endpoint.')
         if self.review_mode == "intermediate_progress" and (self.at_goal or self.primitive.empty_tool):
             raise ValueError("Progress-only review applies only to intermediate loaded units.")
         if type(self.at_goal) is not bool:
             raise ValueError("Goal membership must be explicit.")
         if type(self.observation_required) is not bool or (not self.observation_required
-                and (not self.primitive.empty_tool or self.at_goal or self.signal_gate)):
+                and not native_only and (not self.primitive.empty_tool or self.at_goal or self.signal_gate)):
             raise ValueError("Only unloaded intermediate repositioning can omit a car outcome review.")
         if self.signal_gate and self.primitive.target_context_id != self.signal_gate.right_wait_context_id:
             raise ValueError("A signal-stop step must finish at its selected far-RIGHT wait park.")

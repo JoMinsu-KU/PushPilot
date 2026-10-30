@@ -11,7 +11,7 @@ from uuid import uuid4
 from backend.core import CommandError
 from backend.physical_mission import PhysicalMissionService
 from backend.robot_control.mission_policy import Phase, MissionState
-from backend.robot_control.mission_resume import REVIEW_HOLD, resume_candidate, state_from_dict, read_chain
+from backend.robot_control.mission_resume import REVIEW_HOLD, C19_REVIEW_HOLD, resume_candidate, state_from_dict, read_chain
 from backend.robot_control.taught_executor import ExecutionBlocked
 from backend.robot_control.taught_ports import PrivateJournal
 from tests.test_mission_policy import plan
@@ -45,6 +45,31 @@ def fixture():
 
 
 class CandidateTests(unittest.TestCase):
+    def test_c19_omission_requires_exact_step_primitive_receipt_and_next_source(self):
+        old,new,held,completed,receipt=fixture()
+        def convert(p, omit=False):
+            steps=list(p.steps)
+            steps[2]=replace(steps[2],id='C-step-19',
+                primitive=replace(steps[2].primitive,id='C-upper-WEST-corner'),
+                observation_required=not omit,
+                review_mode='operator_native_endpoint' if omit else steps[2].review_mode)
+            steps[3]=replace(steps[3],id='C-step-20')
+            return replace(p,steps=tuple(steps))
+        old,new=convert(old),convert(new,True)
+        held=replace(held,reason=C19_REVIEW_HOLD)
+        receipt={**receipt,'primitive_id':'C-upper-WEST-corner'}
+        p,s=resume_candidate(old,new,held,completed,receipt,omit_c19_review=True)
+        self.assertFalse(p.steps[2].observation_required)
+        self.assertEqual(s.action_command_id,'completed')
+        self.assertEqual(p.steps[3].review_mode,'expected_outcome')
+        with self.assertRaises(ExecutionBlocked): resume_candidate(old,new,held,completed,receipt)
+        for bad in ({**receipt,'native_verified':False},{**receipt,'outcome':'UNKNOWN'}):
+            with self.assertRaises(ExecutionBlocked): resume_candidate(old,new,held,completed,bad,omit_c19_review=True)
+        with self.assertRaises(ValueError): replace(p.steps[2],id='C-step-20')
+        with self.assertRaises(ValueError): replace(p.steps[2],at_goal=True)
+        with self.assertRaises(ValueError): replace(p.steps[2],primitive=replace(p.steps[2].primitive,id='other'))
+        with self.assertRaises(ExecutionBlocked): resume_candidate(*fixture(),omit_c19_review=True)
+
     def test_restores_observation_not_completed_motion(self):
         args = fixture()
         recovered, state = resume_candidate(*args)
@@ -93,6 +118,21 @@ class CandidateTests(unittest.TestCase):
 
 
 class ResumeServiceTests(unittest.IsolatedAsyncioTestCase):
+    async def test_explicit_c19_continuation_records_omission_without_review_or_pass(self):
+        self.service.status['error']=C19_REVIEW_HOLD
+        def prepare(*args,**kwargs):
+            self.assertEqual(kwargs,{'omit_c19_review':True})
+            return self.driver.plan,replace(self.completed,phase=Phase.READY,step_index=1),{}, {
+                'motion_issued':False,'review_omitted':'C-step-19','next_step':'C-step-20'}
+        self.driver.resume_review=prepare
+        result=await self.service.resume({**self.command(),'omit_c19_review':True})
+        await self.service.task
+        self.assertEqual(result['state'],'READY')
+        self.assertEqual(self.started[0][0].phase,Phase.READY)
+        self.assertEqual(self.started[0][1]['initial_observation'],{})
+        self.assertEqual(self.driver.commands,[])
+        self.assertEqual(self.service.db.execute("SELECT count(*) FROM events WHERE kind='MISSION_CONTINUED_WITH_C19_REVIEW_OMITTED'").fetchone()[0],1)
+
     async def asyncSetUp(self):
         self.temp=TemporaryDirectory(); self.store=FakeWorkspace(); self.driver=FakeMeasuredDriver()
         self.service=PhysicalMissionService(self.store,self.temp.name,driver=self.driver,poll_interval_s=.001)

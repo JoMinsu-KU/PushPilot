@@ -44,3 +44,8 @@ cannot be retried through a new request ID for the same hold.
 This feature does not establish route repeatability or guarantee correction of
 vehicle drift. Existing C26 destination verification and empty-tool return
 remain mandatory.
+# Explicit C19 review omission
+
+The October 30 operator request permits omitting MUSE at C19 and continuing to C20. This is a separate, explicit `POST /api/v1/physical/continue-c19` operation with the same request ID, revision, mission and reason fields. It is accepted only for the exact ended `CAR_NO_VISIBLE_PROGRESS` hold at `C-step-19` / `C-upper-WEST-corner`, with its completed Native receipt and unchanged source, geometry, session, tool and camera reference. No completed contact is repeated. Original failure evidence remains unchanged; the journal records `MISSION_CONTINUED_WITH_C19_REVIEW_OMITTED`, not a MUSE PASS.
+
+Private `observations.c19_native_endpoint_only: true` also omits C19 review on subsequent missions after a verified motion receipt. The policy constructor rejects this mode on any other primitive, final arrival or signal step. C20 onward remains under its existing observation policy. This mode does not establish car progress, car pose or scene continuity; no synthetic car observation is created. It does not recover unknown motion outcomes or alter signal admission, velocity, Z, collision limits or coordinates.
