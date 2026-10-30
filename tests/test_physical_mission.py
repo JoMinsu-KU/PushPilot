@@ -698,7 +698,9 @@ class PhysicalApiTests(unittest.IsolatedAsyncioTestCase):
                         {"origin": "http://testserver", "sec-fetch-site": "cross-site"}):
             for route, payload in (("start", command), ("stop", {"request_id": str(uuid4()), "expected_revision": 0}),
                     ("reset", {"request_id": str(uuid4()), "expected_revision": 0,
-                               "mission_id": "ended", "reason": "Explicit reset requested."})):
+                               "mission_id": "ended", "reason": "Explicit reset requested."}),
+                    ("resume", {"request_id": str(uuid4()), "expected_revision": 0,
+                                "mission_id": "ended", "reason": "Explicit continuation requested."})):
                 with self.subTest(headers=headers, route=route):
                     response = await self.client.post("/api/v1/physical/" + route, headers=headers, json=payload)
                     self.assertEqual(response.status_code, 403)

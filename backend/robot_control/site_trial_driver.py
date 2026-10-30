@@ -192,6 +192,135 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
         self._reload_before_first_mission()
         return super().prepare(workspace_binding)
 
+    def resume_review(self, workspace, accepted_plan, held, completed, receipt):
+        """Reconcile one completed visual-review hold without replaying its motion."""
+        import asyncio
+        from .mission_resume import (require, resume_candidate, read_chain,
+                                     original_frame, review_continuity)
+        from .mission_policy import MissionPolicy, DecisionKind
+        from uuid import uuid4
+        self._reload_before_first_mission()
+        if not self.execution_lock.acquire(blocking=False):
+            raise ExecutionBlocked('MISSION_BUSY', 'A physical operation is already active.')
+        try:
+            with self._stop_lock:
+                stop_generation = self._stop_generation
+            require(not self._configuration_error and self.config['enabled'], 'RESUME_CONFIGURATION_INVALID')
+            require(self.currentplan is None or self.currentplan.id == held.mission_id, 'RESUME_MISSION_MISMATCH')
+            require(self.pending_command_id is None, 'RESUME_DISPATCH_UNRESOLVED')
+            candidates = [p for key, p in self.routes if all(workspace[k] == key[k] for k in WORKSPACE_KEYS)]
+            require(len(candidates) == 1, 'RESUME_ROUTE_NOT_FOUND')
+            plan, state = resume_candidate(accepted_plan, candidates[0], held, completed, receipt)
+            readiness = self.observer_callback.readiness(self.config)
+            require(readiness.get('ready') is True, 'RESUME_OBSERVER_UNAVAILABLE')
+            self._ensure_ports()
+            require(not self.profile_preparer.failed, 'RESUME_PREPARATION_UNRESOLVED')
+            checkpoint = self.journal.load()
+            require(checkpoint.get('state') == 'STATIONARY_COMMAND_COMPLETE'
+                    and checkpoint.get('receipt') == receipt, 'RESUME_CHECKPOINT_CHANGED')
+            root = Path(self.config['journal_root'])
+            chain = read_chain(root/'events.private.jsonl')
+            endings = [r for r in chain if r['kind'] == 'mission_primitive_complete']
+            require(endings and endings[-1]['payload']['receipt'] == receipt, 'RESUME_JOURNAL_RECEIPT_MISMATCH')
+            endpoints = [r for r in chain if r['kind'] == 'mission_stage_endpoint']
+            require(endpoints and endpoints[-1]['payload']['command_id'] == state.action_command_id,
+                    'RESUME_NATIVE_HISTORY_CHANGED')
+            endpoint = endpoints[-1]['payload']
+            historical = endpoint['native_after']
+            intents = [r for r in chain if r['kind'] == 'mission_primitive_intent'
+                       and r['payload']['command_id'] == state.action_command_id]
+            measured = self.measured[receipt['primitive_id']]
+            require(len(intents) == 1 and intents[0]['payload']['geometry_sha256'] == measured.geometry_sha256,
+                    'RESUME_COMPLETED_GEOMETRY_CHANGED')
+            marker = json.loads((root/('dispatch-'+hashlib.sha256(state.action_command_id.encode()).hexdigest()+'.private.json')).read_bytes())
+            require(marker['mission_id'] == plan.id and marker['primitive_id'] == measured.id,
+                    'RESUME_DISPATCH_IDENTITY_CHANGED')
+            terminal = self.raw_api.call('/v1/commands/'+endpoint['receipt']['request_id'])
+            require(terminal.get('state') == 'complete' and terminal.get('id') == endpoint['receipt']['request_id'],
+                    'RESUME_TERMINAL_OUTCOME_UNCONFIRMED')
+            status = self.ports._status()
+            self._reset_stationary_status(status)
+            for key, old_key in (('session_id','session_id'), ('seq','sequence'), ('profile_id','profile_id'),
+                                 ('actual_pose','tcp_base'), ('actual_joint','joints_deg')):
+                require(status['receiver'][key] == historical[old_key], 'RESUME_NATIVE_SOURCE_CHANGED')
+            require(status['installation']['installation_id'] == historical['installation_id'],
+                    'RESUME_INSTALLATION_CHANGED')
+            self._pin(status)
+            native = self._snapshot()
+            require(native.sequence == historical['sequence'] and native.session_id == held.session_id
+                    and list(native.tcp_base) == historical['tcp_base']
+                    and self._matches(native.tcp_base, receipt['target_context_id']), 'RESUME_NATIVE_ENDPOINT_CHANGED')
+            observations = []
+            for path in root.glob('mission-observation-*.private.json'):
+                value = json.loads(path.read_bytes())
+                task = value.get('task', {})
+                if task.get('mission_id') == plan.id and task.get('action_command_id') == state.action_command_id:
+                    require(value['native_after']['native_sequence'] == native.sequence
+                            and value['native_after']['session_id'] == native.session_id,
+                            'RESUME_OBSERVATION_SOURCE_CHANGED')
+                    observations.append(value)
+            require(bool(observations), 'RESUME_OBSERVATION_HISTORY_MISSING')
+            original = max(observations, key=lambda o:o['frame']['captured_at'])
+            before, held_frame = (original_frame(root, original[key]) for key in ('reference','frame'))
+            require(before.epoch == held_frame.epoch == plan.binding.camera_epoch
+                    and before.sequence < held_frame.sequence
+                    and before.captured_at < state.last_motion_completed_at_s <= held_frame.captured_at,
+                    'RESUME_ORIGINAL_INTERVAL_INVALID')
+            # A web restart may renew the registration ID, but never the matrix,
+            # reference photo, epoch or map. Compare actual archived metadata.
+            old_camera = None
+            for path in root.glob('camera-metadata-*.private.json'):
+                if abs(path.stat().st_mtime-held_frame.captured_at) > 30:
+                    continue
+                value = json.loads(path.read_bytes())
+                if value.get('frame', {}).get('sha256') == held_frame.sha256:
+                    old_camera = value; break
+            camera = self.ports._camera_status()
+            require(old_camera is not None and camera['epoch'] == old_camera['epoch']
+                    and all(camera['registration'].get(k) == old_camera['registration'].get(k)
+                            for k in ('homography','reference_frame_id')), 'RESUME_CAMERA_REFERENCE_CHANGED')
+            current = self.capture()
+            continuity = asyncio.run(review_continuity(self.observer_callback.provider, held_frame, current))
+            self.journal.artifact('resume-continuity', {'mission_id':plan.id, 'held_frame':held_frame.metadata(),
+                'current':current.metadata(), 'result':continuity, 'native':asdict(native)})
+            require(all(continuity[k] is True for k in ('car_visible_in_both','car_position_unchanged',
+                    'car_orientation_unchanged','board_view_unchanged')) and continuity['clear_problem'] is False,
+                    'RESUME_SCENE_CONTINUITY_UNCONFIRMED')
+            fresh = self._snapshot()
+            require((fresh.session_id,fresh.sequence,fresh.profile_id,fresh.tcp_base,fresh.joints_deg) ==
+                    (native.session_id,native.sequence,native.profile_id,native.tcp_base,native.joints_deg),
+                    'RESUME_SOURCE_CHANGED_DURING_REVIEW')
+            require(hashlib.sha256(self.config_file.read_bytes()).hexdigest() == self._loaded_config_sha256,
+                    'RESUME_CONFIGURATION_CHANGED')
+            self.currentplan = self.plan = plan
+            self.workspace_binding = dict(workspace)
+            self.current_context_id = receipt['target_context_id']
+            self.issued.update(state.issued_command_ids)
+            self.before_frame = before
+            self.last_contact_outcome = {'command_id':state.action_command_id, 'primitive_id':measured.id,
+                                        'expected_visual':measured.expected_visual}
+            with self._stop_lock:
+                require(self._stop_generation == stop_generation, 'RESUME_STOPPED')
+                self.stop_latch.clear()
+            observation = self.observe(state)  # Fresh C review; no historical FAIL is relabelled.
+            context = self.context()
+            decision = MissionPolicy(plan).decide(state, context, car=observation.get('car'), command_id=uuid4().hex)
+            require(decision.kind == DecisionKind.DISPATCH
+                    and decision.primitive_id == plan.steps[state.step_index+1].primitive.id
+                    and decision.state.pending_role == 'ROUTE', 'RESUME_PROGRESS_UNCONFIRMED')
+            proof = {'mission_id':plan.id, 'completed_command_id':state.action_command_id,
+                'native_sequence':context.native_sequence, 'next_step':plan.steps[state.step_index+1].id,
+                'original_error':held.reason, 'old_binding':asdict(accepted_plan.binding),
+                'binding':asdict(plan.binding), 'continuity':continuity,
+                'fresh_review':asdict(observation['car']), 'motion_issued':False, 'command_replayed':False}
+            self.journal.append('explicit_review_resume_prepared', proof)
+            return plan, state, observation, proof
+        except Exception:
+            self.stop_latch.set()
+            raise
+        finally:
+            self.execution_lock.release()
+
     def retire_at_start(self, mission_id, reason):
         """Explicit no-motion retirement; an old failure never becomes success.
 

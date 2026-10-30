@@ -60,3 +60,9 @@ async def stop(command: PhysicalCommand, request: Request):
 async def reset(command: ResetCommand, request: Request):
     same_origin(request)
     return await request.app.state.physical.reset(command.model_dump(mode="json"))
+
+
+@router.post("/resume")
+async def resume(command: ResetCommand, request: Request):
+    same_origin(request)
+    return await request.app.state.physical.resume(command.model_dump(mode="json"))

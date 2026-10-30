@@ -350,8 +350,75 @@ class PhysicalMissionService:
             self.status["vision"]["in_flight"] = False
             self._persist("OBSERVATION_FINISHED")
 
-    async def _run(self, policy, state, command):
-        observation = {}
+    async def resume(self, command):
+        """Explicit reviewed continuation, never an ambiguous-command retry."""
+        from backend.robot_control.mission_driver import plan_from_dict
+        from backend.robot_control.mission_resume import REVIEW_HOLD, state_from_dict
+        async with self.lock:
+            prior = self._existing(command)
+            if prior is not None:
+                return prior
+            if (command['expected_revision'] != self.status['revision']
+                    or command['mission_id'] != self.status['mission_id']
+                    or self.status['state'] != 'HOLD' or self.status['error'] != REVIEW_HOLD
+                    or self.task and not self.task.done()):
+                raise CommandError('Resume requires the exact ended visual-review hold and current revision.', 409)
+            prepare = getattr(self.driver, 'resume_review', None)
+            if not callable(prepare):
+                raise CommandError('This physical driver has no reviewed continuation procedure.', 409)
+            rows = [(seq, kind, json.loads(value)) for seq, kind, value in self.db.execute(
+                'SELECT seq,kind,value FROM events ORDER BY seq')]
+            accepted = [r for r in rows if r[1] == 'MISSION_ACCEPTED'
+                        and r[2]['policy']['id'] == command['mission_id']]
+            if len(accepted) != 1:
+                raise CommandError('The original accepted mission is unavailable.', 409)
+            accepted = accepted[0]
+            later = [r for r in rows if r[0] > accepted[0]]
+            held = [r for r in later if r[1] == 'MISSION_HELD']
+            receipts = [r for r in later if r[1] == 'PRIMITIVE_RECEIPT']
+            if (not held or not receipts or receipts[-1][0] >= held[-1][0]
+                    or any(r[1] == 'PRIMITIVE_DISPATCH_INTENT' for r in later if r[0] > receipts[-1][0])
+                    or any(r[1] == 'MISSION_RESUME_REQUESTED' for r in later if r[0] > held[-1][0])):
+                raise CommandError('Completed action evidence is missing or this hold already had a resume attempt.', 409)
+            original = accepted[2]
+            workspace = original['workspace']
+            self._bound_workspace(workspace)
+            generation = self.stop_generation
+            self._persist('MISSION_RESUME_REQUESTED', {'request_id':command['request_id'],
+                'mission_id':command['mission_id'], 'reason':command['reason'],
+                'original_hold_event':held[-1][0], 'completed_receipt_event':receipts[-1][0]})
+            self.status['vision'].update(in_flight=True, kind='car', started_at=self.clock())
+            self.status['stage_label'] = 'Checking current position before continuation'
+            self._persist('RESUME_REVIEW_STARTED')
+            try:
+                plan, state, observation, proof = await asyncio.to_thread(prepare, workspace,
+                    plan_from_dict(original['policy']), state_from_dict(held[-1][2]['state']),
+                    state_from_dict(receipts[-1][2]['state']), receipts[-1][2]['receipt'])
+                self._bound_workspace(workspace)
+                if self.stop_generation != generation or proof.get('motion_issued') is not False:
+                    raise ValueError('A stop or invalid preparation prevents continuation.')
+            except Exception as error:
+                await asyncio.to_thread(self.driver.hold, 'RESUME_CHECK_FAILED')
+                self.status['vision']['in_flight'] = False
+                self.status['stage_label'] = 'Continuation check failed · Original hold preserved'
+                code = getattr(error, 'code', 'RESUME_CHECK_FAILED')
+                self._persist('MISSION_RESUME_BLOCKED', {'code':code, 'original_error':self.status['error']})
+                raise CommandError('Continuation blocked: '+code, 409) from error
+            self.stopping.clear()
+            self.status.update(state='OBSERVING', error=None, available=False,
+                               stage_label='Continuing after the completed action')
+            self.status['vision'].update(in_flight=False, last_result_at=self.clock(), summary=observation.get('summary'))
+            self._observation_telemetry(observation)
+            self._telemetry_event('resume', 'Mission continuing',
+                                  'Current pose and car checked; completed motion will not replay', 'executor')
+            self._persist('MISSION_RESUMED_AFTER_REVIEW', {'proof':proof, 'state':asdict(state), 'policy':asdict(plan)})
+            response = self._save_request(command)
+            self.task = asyncio.create_task(self._run(MissionPolicy(plan), state, workspace,
+                                                      initial_observation=observation), name='physical-mission')
+            return response
+
+    async def _run(self, policy, state, command, *, initial_observation=None):
+        observation = initial_observation or {}
         observation_queue = []
         failure_count = 0
         try:
