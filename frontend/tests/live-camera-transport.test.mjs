@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { decodeLiveFrame, fetchLiveSnapshot, previewRetryDelay, withPreviewDeadline } from '../src/liveCameraTransport.ts';
+import { createPreviewResources, decodeLiveFrame as decodeNative, fetchLiveSnapshot, PREVIEW_INTERVAL_MS, previewRetryDelay, withPreviewDeadline } from '../src/liveCameraTransport.ts';
 import { liveFrameFresh } from '../src/liveCamera.ts';
 
 const lifetime = () => new AbortController();
@@ -8,6 +8,11 @@ const pending = () => new Promise(() => {});
 const frame = { id: 'native', image_url: '/api/v1/live-camera/frames/native/image', width: 1920, height: 1080, age_ms: 100 };
 const snapshot = { schema_version: 'pushpilot.live-camera.v1', enabled: true, state: 'live', frame };
 const reply = () => ({ ok: true, json: async () => snapshot });
+const jpeg = new Blob([new Uint8Array([255, 216, 255, 217])], { type: 'image/jpeg' });
+const jpegReply = () => ({ ok: true, headers: new Headers({ 'content-type': 'image/jpeg' }), blob: async () => jpeg });
+const decodeLiveFrame = (frame, signal, options = {}) => decodeNative(frame, signal, {
+  fetcher: async () => jpegReply(), createUrl: () => 'blob:native', revokeUrl: () => {}, ...options,
+});
 const fakeImage = (decode = async () => {}) => ({
   src: '', naturalWidth: 1920, naturalHeight: 1080, removed: false, decode,
   removeAttribute(name) { assert.equal(name, 'src'); this.src = ''; this.removed = true; },
@@ -65,10 +70,15 @@ test('a response that ignores cancellation and arrives late cannot satisfy the t
   await assert.rejects(work, { name: 'AbortError' });
 });
 
-test('successful decoding keeps the exact native URL and dimensions without re-encoding', async () => {
+test('downloaded original bytes are shared by decoder and display with exactly one fetch', async () => {
   const image = fakeImage();
-  await decodeLiveFrame(frame, lifetime().signal, { createImage: () => image });
-  assert.equal(image.src, frame.image_url); assert.equal(image.removed, false);
+  let fetches = 0, revoked = 0;
+  const resource = await decodeLiveFrame(frame, lifetime().signal, { createImage: () => image,
+    fetcher: async (url) => { assert.equal(url, frame.image_url); fetches++; return jpegReply(); },
+    createUrl: blob => { assert.equal(blob, jpeg); return 'blob:exact-original'; }, revokeUrl: () => revoked++,
+  });
+  assert.equal(image.src, resource.url); assert.equal(fetches, 1); assert.equal(image.removed, false);
+  resource.dispose(); resource.dispose(); assert.equal(revoked, 1);
 });
 
 test('expired preloads are cancelled rather than accumulating hidden downloads', async () => {
@@ -77,7 +87,7 @@ test('expired preloads are cancelled rather than accumulating hidden downloads',
   assert.equal(image.removed, true);
   const next = fakeImage();
   await decodeLiveFrame(frame, lifetime().signal, { createImage: () => next });
-  assert.equal(next.src, frame.image_url);
+  assert.equal(next.src, 'blob:native');
 });
 
 test('cleanup cancels an in-flight image and dimension/decode failures remain failures', async () => {
@@ -89,6 +99,29 @@ test('cleanup cancels an in-flight image and dimension/decode failures remain fa
     await assert.rejects(decodeLiveFrame(frame, lifetime().signal, { createImage: () => bad }));
     assert.equal(bad.removed, true);
   }
+});
+
+test('expired or invalid JPEG responses cannot become display resources', async () => {
+  for (const response of [{ ...jpegReply(), ok: false }, { ...jpegReply(), headers: new Headers({ 'content-type': 'text/html' }) }]) {
+    await assert.rejects(decodeLiveFrame(frame, lifetime().signal, { createImage: fakeImage, fetcher: async () => response }));
+  }
+  let created = 0, resolve;
+  const work = decodeLiveFrame(frame, lifetime().signal, { createImage: fakeImage, timeoutMs: 15,
+    fetcher: async () => ({ ...jpegReply(), blob: () => new Promise(done => { resolve = done; }) }),
+    createUrl: () => { created++; return 'blob:late'; },
+  });
+  await assert.rejects(work, { name: 'AbortError' }); resolve(jpeg);
+  await new Promise(done => setImmediate(done)); assert.equal(created, 0);
+});
+
+test('blob lifetime retains the displayed image through download and releases it after commit', () => {
+  const resources = createPreviewResources(); const freed = [];
+  resources.add({ url: 'first', dispose: () => freed.push('first') }); resources.committed('first');
+  resources.add({ url: 'second', dispose: () => freed.push('second') }); assert.deepEqual(freed, []);
+  resources.committed('first'); assert.deepEqual(freed, [], 'an older passive effect cannot release a newer pending frame');
+  resources.committed('second'); assert.deepEqual(freed, ['first']);
+  resources.dispose(); resources.dispose(); assert.deepEqual(freed, ['first', 'second']);
+  assert.equal(PREVIEW_INTERVAL_MS, 250);
 });
 
 test('recovery never renews old pixels or relaxes the existing 1500 ms freshness bound', () => {

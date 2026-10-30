@@ -67,7 +67,7 @@ Each accepted frame has a camera identity, camera-process epoch, increasing sequ
 
 The application freshness limit is **1500 ms**, including reported upstream age, HTTP transport time and elapsed local monotonic time. Receiving the same sequence again does not refresh its age. A stale/disconnected image is labelled stale rather than presented as current. The helper has its own 2000 ms stale threshold; the application applies the stricter preview threshold. These are software display limits, not qualified physical-control timing tolerances.
 
-The helper requests native 1920 × 1080 MJPEG at 30 frames per second. The application and UI target status/frame polling around 125 ms. Requested capture rate and polling interval are configuration values, **not measured delivered frame rate or end-to-end latency**. Do not report an achieved frame rate without a corresponding measurement.
+The helper requests native 1920 × 1080 MJPEG at 30 frames per second. The backend targets polling around 125 ms; the tablet preview targets 250 ms to reduce native-image bandwidth. Requested capture rate and polling interval are configuration values, **not measured delivered frame rate or end-to-end latency**. Do not report an achieved frame rate without a corresponding measurement.
 
 The installed static-view check and short backend delivery sample are recorded in [verification](VERIFICATION.md). They do not establish browser presentation rate or exposure-to-display latency. Browser request, response and image-decode time count conservatively toward preview age; a delayed response cannot renew freshness.
 
@@ -122,6 +122,14 @@ Car and signal visibility are independent: an obscured car outcome can require `
 The [October 28 stability recheck](evidence/vision-stability-20261028.json) records the actual small-marker failure and repair. In a paired twenty-image comparison, complete recovery increased from 10 to 19 frames on both local and GX10 runtimes. A subsequent fresh 120-frame window retained the exact mapping in all frames, with 110 complete and ten three-marker observations. These short checks cover marker decoding and display continuity, not physical car/signal recognition or a moving-robot trial.
 
 ## API and capability meaning
+
+### Tablet preview transfer
+
+The browser targets four original 1920 x 1080 frames per second. It downloads each selected JPEG once into a bounded, short-lived Blob URL, decodes it, and shares those exact bytes with the SVG display. This avoids depending on cross-element HTTP cache reuse between an HTML preload and an SVG image. The previous image remains allocated until React commits its replacement; expired downloads and component cleanup release their resources. No resize, recompression, canvas redraw or inference-input change is involved.
+
+Status fetches and JPEG transfer/decode have deadlines; retries remain bounded and page visibility changes cancel suspended requests. Transport and decoding time still count against the existing 1500 ms freshness limit. Neither a Blob URL nor a repeated frame makes old pixels fresh. Actual stale images still withhold AR.
+
+A read-only October 30 sample found 80/80 live server snapshots (maximum source age 202 ms), unchanged camera epoch/homography, and 40/40 successful LAN status-plus-JPEG transfers (maximum total 106 ms). Native JPEGs reached 687 KB each, approximately 44 Mbit/s at the former eight-frame target before protocol overhead. The four-frame target halves this display traffic. These measurements do not reproduce the operator iPad's Wi-Fi stalls or prove their exact cause; iPad confirmation remains necessary. Robot commands, current mission HOLD, camera settings, and MUSE originals are independent of this preview change.
 
 The contract is [`contracts/live-camera.ts`](../contracts/live-camera.ts), schema `pushpilot.live-camera.v1`.
 

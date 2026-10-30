@@ -1,5 +1,8 @@
 import type { LiveCameraSnapshot } from '../../contracts/live-camera';
 
+export const PREVIEW_INTERVAL_MS = 250;
+export interface DecodedPreview { url: string; dispose: () => void }
+
 /** Bound both the HTTP response and its body; a stalled request cannot stop preview polling. */
 export async function withPreviewDeadline<T>(operation: (signal: AbortSignal) => Promise<T>,
   lifetime: AbortSignal, timeoutMs: number): Promise<T> {
@@ -34,23 +37,54 @@ export async function fetchLiveSnapshot(signal: AbortSignal,
 }
 
 export async function decodeLiveFrame(frame: NonNullable<LiveCameraSnapshot['frame']>, signal: AbortSignal,
-  { createImage = () => new Image(), timeoutMs = 1250 }: { createImage?: () => HTMLImageElement; timeoutMs?: number } = {}) {
+  { createImage = () => new Image(), fetcher = fetch, createUrl = URL.createObjectURL,
+    revokeUrl = URL.revokeObjectURL, timeoutMs = 1250 }: { createImage?: () => HTMLImageElement;
+    fetcher?: typeof fetch; createUrl?: typeof URL.createObjectURL; revokeUrl?: typeof URL.revokeObjectURL;
+    timeoutMs?: number } = {}): Promise<DecodedPreview> {
   const image = createImage();
+  let url: string | undefined;
+  const dispose = () => { image.removeAttribute('src'); if (url) { revokeUrl(url); url = undefined; } };
   try {
     await withPreviewDeadline(async requestSignal => {
       if (requestSignal.aborted) throw new DOMException('Camera preview cancelled.', 'AbortError');
-      // Keep the immutable native URL: the SVG reuses the private browser cache.
-      image.src = frame.image_url;
+      const response = await fetcher(frame.image_url, { cache: 'no-store', signal: requestSignal });
+      if (!response.ok || response.headers.get('content-type')?.split(';')[0] !== 'image/jpeg') {
+        throw new Error('Original camera JPEG is unavailable.');
+      }
+      const blob = await response.blob();
+      if (requestSignal.aborted) throw new DOMException('Camera preview cancelled.', 'AbortError');
+      if (!blob.size || blob.size > 8 * 1024 * 1024) throw new Error('Camera JPEG size is invalid.');
+      // Reuse the exact downloaded bytes for decode AND SVG. No second HTTP
+      // cache lookup, canvas, resize, recompression, or inference input change.
+      url = createUrl(blob);
+      image.src = url;
       await image.decode();
+      if (requestSignal.aborted) throw new DOMException('Camera preview cancelled.', 'AbortError');
       if (image.naturalWidth !== frame.width || image.naturalHeight !== frame.height) {
         throw new Error('Live image dimensions do not match its frame geometry.');
       }
     }, signal, timeoutMs);
   } catch (error) {
-    // Stop a timed-out preload rather than accumulating hidden image downloads.
-    image.removeAttribute('src');
+    dispose();
     throw error;
   }
+  return { url: url!, dispose };
+}
+
+/** Keep the previous decoded image until React has committed its replacement. */
+export function createPreviewResources() {
+  const resources = new Map<string, DecodedPreview>();
+  return {
+    add: (resource: DecodedPreview) => resources.set(resource.url, resource),
+    committed: (url: string) => {
+      if (!resources.has(url)) return;
+      for (const [key, resource] of resources) {
+        if (key === url) break;
+        resource.dispose(); resources.delete(key);
+      }
+    },
+    dispose: () => { for (const resource of resources.values()) resource.dispose(); resources.clear(); },
+  };
 }
 
 export function previewRetryDelay(failures: number): number {

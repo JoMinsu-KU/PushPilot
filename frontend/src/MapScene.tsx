@@ -11,7 +11,7 @@ import { CityViewBoundary } from './CityViewBoundary';
 import { recordedDisplay } from './boardFocus';
 import { createLivePollGate, liveDisplaySnapshot, liveFrameAge, liveFrameFresh, liveOverlayAllowed } from './liveCamera';
 import { liveCameraPresentation } from './cameraPresentation';
-import { decodeLiveFrame, fetchLiveSnapshot, previewRetryDelay } from './liveCameraTransport';
+import { createPreviewResources, decodeLiveFrame, fetchLiveSnapshot, PREVIEW_INTERVAL_MS, previewRetryDelay } from './liveCameraTransport';
 import { CameraNavigation } from './CameraNavigation';
 import type { PhysicalDisplaySnapshot } from './physicalDisplay';
 import './map-scene.css';
@@ -84,7 +84,7 @@ function CameraFrame({ scene, route, map, focused, display, names, live = false,
   </div>;
 }
 
-interface DecodedLiveView { snapshot: LiveCameraSnapshot; receivedAt: number }
+interface DecodedLiveView { snapshot: LiveCameraSnapshot; receivedAt: number; imageUrl: string }
 
 /** Decode first, then replace image and geometry together. Recorded evidence is untouched. */
 function useLiveCamera() {
@@ -92,6 +92,8 @@ function useLiveCamera() {
   const [decoded, setDecoded] = useState<DecodedLiveView | null>(null);
   const [clock, setClock] = useState(() => performance.now());
   const displayed = useRef<DecodedLiveView | null>(null);
+  const previewResources = useRef(createPreviewResources());
+  useEffect(() => { if (decoded) previewResources.current.committed(decoded.imageUrl); }, [decoded]);
   const pollGate = useRef(createLivePollGate());
   const applyRegistration = useCallback((snapshot: LiveCameraSnapshot) => {
     pollGate.current.registrationApplied();
@@ -108,29 +110,34 @@ function useLiveCamera() {
       if (cancelled || activeRequest) return;
       const controller = new AbortController();
       activeRequest = controller;
-      let delay = 125;
+      let delay = PREVIEW_INTERVAL_MS;
       const generation = pollGate.current.begin();
       const receivedAt = performance.now();
       try {
         const snapshot = await fetchLiveSnapshot(controller.signal);
         if (cancelled || controller.signal.aborted || !pollGate.current.accept(generation, snapshot)) return;
         setStatus(snapshot);
-        delay = snapshot.enabled ? 125 : 2000;
+        delay = snapshot.enabled ? PREVIEW_INTERVAL_MS : 2000;
         if (snapshot.frame) {
           if (!liveFrameFresh(snapshot, receivedAt, performance.now())) throw new Error('Camera frame is stale.');
           const currentView = displayed.current;
+          let imageUrl = currentView?.imageUrl;
           if (currentView?.snapshot.frame?.id !== snapshot.frame.id || currentView.snapshot.epoch !== snapshot.epoch) {
-            await decodeLiveFrame(snapshot.frame, controller.signal);
+            const resource = await decodeLiveFrame(snapshot.frame, controller.signal);
+            if (cancelled || controller.signal.aborted || !pollGate.current.accept(generation, snapshot)
+                || !liveFrameFresh(snapshot, receivedAt, performance.now())) { resource.dispose(); return; }
+            previewResources.current.add(resource);
+            imageUrl = resource.url;
           }
           if (cancelled || controller.signal.aborted || !pollGate.current.accept(generation, snapshot)) return;
           if (!liveFrameFresh(snapshot, receivedAt, performance.now())) throw new Error('Decoded camera frame is stale.');
-          const next = { snapshot, receivedAt };
+          const next = { snapshot, receivedAt, imageUrl: imageUrl! };
           displayed.current = next;
           setDecoded(next);
         }
         failures = 0;
-        // Target one poll per 125 ms, including transport and decode time.
-        if (snapshot.enabled) delay = Math.max(0, 125 - (performance.now() - receivedAt));
+        // Four native frames per second halves tablet bandwidth without losing pixels.
+        if (snapshot.enabled) delay = Math.max(0, PREVIEW_INTERVAL_MS - (performance.now() - receivedAt));
       } catch {
         // Keep the previous decoded image; its monotonic age will mark it stale.
         delay = previewRetryDelay(++failures);
@@ -152,6 +159,7 @@ function useLiveCamera() {
     void poll();
     return () => {
       cancelled = true; activeRequest?.abort(); window.clearTimeout(timer); window.clearInterval(tick);
+      previewResources.current.dispose(); displayed.current = null;
       document.removeEventListener('visibilitychange', wake);
     };
   }, []);
@@ -340,7 +348,10 @@ export function MapScene({ workspace, physicalLabel, physicalDisplay, readOnly =
   const liveScene = live.decoded?.snapshot ?? null;
   // Inhibit withdrawn or changed registration before the next JPEG finishes decoding.
   const changedLiveScene = liveDisplaySnapshot(liveScene, live.status);
-  const cameraScene = usingLive ? changedLiveScene : scene;
+  // Display-only URL: metadata, original source URL, frame identity and evidence remain untouched.
+  const cameraScene = usingLive && changedLiveScene?.frame && live.decoded
+    ? { ...changedLiveScene, frame: { ...changedLiveScene.frame, image_url: live.decoded.imageUrl } }
+    : usingLive ? changedLiveScene : scene;
   const liveAge = liveFrameAge(liveScene, live.decoded?.receivedAt ?? 0, live.clock);
   const liveFresh = Boolean(live.decoded && liveFrameFresh(liveScene, live.decoded.receivedAt, live.clock)
     && live.status?.state === 'live' && live.status.epoch === liveScene?.epoch);
