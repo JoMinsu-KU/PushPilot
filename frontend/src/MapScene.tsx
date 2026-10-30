@@ -40,7 +40,7 @@ function captureLabel(frame: NonNullable<SceneSnapshot['frame']>) {
 
 function polygon(points: Point[]) { return points.map(point => point.join(',')).join(' '); }
 
-function CameraFrame({ scene, route, map, focused, display, names, live = false, fresh = true }: { scene: SceneSnapshot | LiveCameraSnapshot; route: MapRoute | null; map: TemporaryMap | null; focused: boolean; display: RouteDisplay | null; names?: { start: string; goal: string }; live?: boolean; fresh?: boolean }) {
+function CameraFrame({ scene, route, map, focused, display, names, live = false, fresh = true, resetToken = 0 }: { scene: SceneSnapshot | LiveCameraSnapshot; route: MapRoute | null; map: TemporaryMap | null; focused: boolean; display: RouteDisplay | null; names?: { start: string; goal: string }; live?: boolean; fresh?: boolean; resetToken?: number }) {
   const id = useId().replace(/:/g, '');
   const frame = scene.frame!;
   const matrix = scene.registration.homography;
@@ -60,7 +60,7 @@ function CameraFrame({ scene, route, map, focused, display, names, live = false,
   const navigationIdentity = [live ? 'live' : 'recorded', 'epoch' in scene ? scene.epoch : frame.id,
     frame.width, frame.height, scene.map_id, scene.map_version, scene.map_hash, scene.registration.id, focused].join('|');
   return <div className="recorded-frame-wrap">
-    <CameraNavigation key={navigationIdentity}>
+    <CameraNavigation key={navigationIdentity} resetToken={resetToken}>
     <svg className="recorded-frame" viewBox={viewport.join(' ')} preserveAspectRatio="xMidYMid meet"
       style={{ aspectRatio: `${viewport[2]} / ${viewport[3]}`, maxWidth: `${viewport[2]}px`, maxHeight: `${viewport[3]}px` }} role="img"
       aria-label={`${live ? 'Live' : 'Recorded'} workspace image${live && !fresh ? ' · stale' : ''}${projectedDisplay ? ' with test-only route overlay' : ''}`}>
@@ -204,6 +204,7 @@ export function MapScene({ workspace, physicalLabel, physicalDisplay, readOnly =
   const [expanded, setExpanded] = useState(false);
   const [toolTab, setToolTab] = useState<'image' | 'registration' | 'muse' | 'result' | 'evidence'>('image');
   const [focused, setFocused] = useState(true);
+  const [cameraResetToken, setCameraResetToken] = useState(0);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState<'upload' | 'registration' | 'inspection' | null>(null);
   const [capturedAt, setCapturedAt] = useState('');
@@ -337,6 +338,10 @@ export function MapScene({ workspace, physicalLabel, physicalDisplay, readOnly =
   const resumeAvailable = Boolean(live.status?.saved_reference_available && changedLiveScene?.registration.status === 'unregistered');
   const canResumeLive = Boolean(usingLive && liveScene?.frame && liveFresh && resumeAvailable && !active && !readOnly && !lockingLive);
   const livePresentation = liveCameraPresentation(changedLiveScene, map, liveFresh);
+  const liveStatusLabel = !usingLive || liveFresh ? 'Live' : liveScene?.frame ? 'Reconnecting' : live.status?.state === 'unavailable' ? 'Offline' : 'Connecting';
+  const liveStatusDetail = liveScene?.frame
+    ? `${liveFresh ? 'Live camera' : 'Camera reconnecting'} · ${Number.isFinite(liveAge) ? `${(liveAge / 1000).toFixed(1)} s` : 'age unknown'} · ${hasBoardMask ? 'Board focus' : 'Full frame'} · ${livePresentation.label}`
+    : 'Waiting for a fresh camera image';
   const previewSourceLabel = view === 'spatial' ? 'Spatial city preview' : usingLive
     ? liveScene?.frame ? liveFresh ? 'Live camera' : 'Live camera · stale' : 'Live camera · connecting'
     : scene?.frame ? scene.frame.source === 'recorded' ? 'Recorded image' : 'Uploaded image' : 'No image';
@@ -364,23 +369,18 @@ export function MapScene({ workspace, physicalLabel, physicalDisplay, readOnly =
         <button className={view === 'camera' ? 'selected' : ''} aria-label="Camera frame" aria-pressed={view === 'camera'} onClick={() => setView('camera')}><Icon name="camera" size={15}/>Camera</button>
         <button className={view === 'spatial' ? 'selected' : ''} aria-label="Spatial map" aria-pressed={view === 'spatial'} onClick={() => setView('spatial')}><Icon name="route" size={15}/>Spatial</button>
       </div>
-      {view === 'camera' && liveAvailable && <div className="scene-view-toggle scene-camera-source" role="group" aria-label="Camera source"><button className={usingLive ? 'selected' : ''} aria-pressed={usingLive} onClick={() => setCameraSource('live')}>Live</button><button className={!usingLive ? 'selected' : ''} aria-pressed={!usingLive} onClick={() => setCameraSource('recorded')}>Recorded</button></div>}
+      {view === 'camera' && liveAvailable && <div className="scene-view-toggle scene-camera-source" role="group" aria-label="Camera source"><button className={`${usingLive ? 'selected ' : ''}${liveFresh ? 'live-source' : 'stale-source'}`} aria-label={`Live camera${usingLive ? ` · ${liveFresh ? 'connected' : liveStatusLabel.toLowerCase()}` : ''}`} aria-pressed={usingLive} title={liveStatusDetail} onClick={() => setCameraSource('live')}><span className="scene-live-dot" aria-hidden="true"/>{liveStatusLabel}</button><button className={!usingLive ? 'selected' : ''} aria-pressed={!usingLive} title={scene?.frame ? `${scene.frame.source === 'recorded' ? 'Recorded' : 'Uploaded'} image · ${scene.frame.width} × ${scene.frame.height}` : 'Recorded image'} onClick={() => setCameraSource('recorded')}>Recorded</button></div>}
+      {view === 'camera' && !liveAvailable && scene?.frame && <span className="scene-recorded-source">{scene.frame.source === 'recorded' ? 'Recorded' : 'Uploaded'} image</span>}
       {view === 'camera' && cameraScene?.frame && <button className="scene-focus-toggle" disabled={!canBoardFocus} aria-pressed={hasBoardMask} onClick={() => setFocused(value => !value)}>{hasBoardMask ? 'Board focus' : 'Full frame'}<Icon name="eye" size={14}/></button>}
       {/* With no image, the empty state's `Choose a recorded frame` is the one entry point to the same tools. */}
       {view === 'camera' && cameraScene?.frame && <button className="scene-tools-toggle" disabled={readOnly || Boolean(busy)} aria-label="Image tools" aria-haspopup="dialog" aria-expanded={expanded} onClick={() => openTools('image')}><Icon name="settings" size={16}/><span>Image tools</span></button>}
+      {view === 'camera' && cameraScene?.frame && <button className="scene-fit-toggle" aria-label="Fit camera view" title="Fit the original camera view" onClick={() => setCameraResetToken(value => value + 1)}><Icon name="refresh" size={16}/></button>}
+      {view === 'camera' && usingLive && (resumeAvailable || ['candidate', 'view_changed'].includes(liveScene?.registration.status ?? '')) && <button className="scene-lock-view" disabled={!(resumeAvailable ? canResumeLive : canLockLive)} onClick={() => void lockLiveView(resumeAvailable)}><Icon name="check" size={14}/>{lockingLive ? 'Checking…' : resumeAvailable ? 'Resume fixed view' : 'Lock live view'}</button>}
     </div>
     {(error || mismatchedRoute) && <div className="scene-error" role="alert"><Icon name="shield" size={16}/><span>{error || 'Map geometry changed. Create a new plan to display its route.'}</span><button onClick={() => { setError(''); void refresh(true); void refreshMap(); }} aria-label="Refresh scene state"><Icon name="refresh" size={15}/></button></div>}
     <div className="scene-visual">
-      {view === 'spatial' ? <Suspense fallback={<div className="no-recorded-frame" role="status" style={emptyInset}><h2>Opening Spatial…</h2></div>}><CityViewBoundary onReturn={() => setView('camera')}><CityModelView map={map} display={routeDisplay} names={routeNames} insetRight={sceneInsetRight} physicalDisplay={boundPhysicalDisplay} physicalMode={Boolean(physicalLabel)}/></CityViewBoundary></Suspense> : cameraScene?.frame ? <CameraFrame scene={cameraScene} route={route} map={map} focused={focused} display={routeDisplay} names={routeNames} live={usingLive} fresh={liveFresh}/> : <div className="no-recorded-frame" style={emptyInset}><Icon name="camera" size={32}/><h2>{usingLive ? 'Connecting to the camera…' : 'Bring your workspace into view.'}</h2><p>{usingLive ? live.status?.last_error || 'Waiting for the first decoded live image. Recorded images remain available.' : 'Load a recorded image for marker detection and scene inspection.'}</p><button disabled={readOnly || Boolean(busy)} onClick={() => usingLive ? setCameraSource('recorded') : openTools('image')}><Icon name={usingLive ? 'camera' : 'upload'} size={16}/>{usingLive ? 'View recorded image' : 'Choose a recorded frame'}</button><small>{usingLive ? 'Live preview has no motion authority.' : 'No live camera is connected.'}</small></div>}
+      {view === 'spatial' ? <Suspense fallback={<div className="no-recorded-frame" role="status" style={emptyInset}><h2>Opening Spatial…</h2></div>}><CityViewBoundary onReturn={() => setView('camera')}><CityModelView map={map} display={routeDisplay} names={routeNames} insetRight={sceneInsetRight} physicalDisplay={boundPhysicalDisplay} physicalMode={Boolean(physicalLabel)}/></CityViewBoundary></Suspense> : cameraScene?.frame ? <CameraFrame scene={cameraScene} route={route} map={map} focused={focused} display={routeDisplay} names={routeNames} live={usingLive} fresh={liveFresh} resetToken={cameraResetToken}/> : <div className="no-recorded-frame" style={emptyInset}><Icon name="camera" size={32}/><h2>{usingLive ? 'Connecting to the camera…' : 'Bring your workspace into view.'}</h2><p>{usingLive ? live.status?.last_error || 'Waiting for the first decoded live image. Recorded images remain available.' : 'Load a recorded image for marker detection and scene inspection.'}</p><button disabled={readOnly || Boolean(busy)} onClick={() => usingLive ? setCameraSource('recorded') : openTools('image')}><Icon name={usingLive ? 'camera' : 'upload'} size={16}/>{usingLive ? 'View recorded image' : 'Choose a recorded frame'}</button><small>{usingLive ? 'Live preview has no motion authority.' : 'No live camera is connected.'}</small></div>}
     </div>
-    {/* Source caption for the image on screen; with no image the centred empty state already says so. */}
-    {view === 'camera' && (usingLive || scene?.frame) && <div className={`scene-source-plate ${usingLive ? liveFresh ? 'live-source' : 'stale-source' : ''}`}>
-      <span className="scene-source-dot"/>
-      <div><strong>{usingLive ? liveScene?.frame ? `Live camera${liveFresh ? '' : ' · STALE'} · ${Number.isFinite(liveAge) ? `${(liveAge / 1000).toFixed(1)} s` : 'age unknown'}` : 'Live camera · connecting' : scene?.frame ? `${scene.frame.source === 'recorded' ? 'Recorded' : 'Uploaded'} camera frame` : 'Camera not connected'}</strong><span>{usingLive ? `${hasBoardMask ? 'Board focus' : 'Full frame'} · ${livePresentation.label}` : hasBoardMask ? 'Board focus · background masked' : scene?.frame ? `${scene.frame.width} × ${scene.frame.height} · full frame` : 'Load a recorded image to inspect the scene'}</span></div>
-      {usingLive ? (resumeAvailable || ['candidate', 'view_changed'].includes(liveScene?.registration.status ?? ''))
-        && <button className="live-lock-button" disabled={!(resumeAvailable ? canResumeLive : canLockLive)} onClick={() => void lockLiveView(resumeAvailable)}><Icon name="check" size={14}/>{lockingLive ? 'Checking…' : resumeAvailable ? 'Resume fixed view' : 'Lock live view'}</button>
-        : <button disabled={readOnly || Boolean(busy)} onClick={() => openTools('registration')} aria-label="View recorded scene registration details"><Icon name="shield" size={15}/></button>}
-    </div>}
     <dialog ref={toolsDialog} className="scene-tools-dialog" aria-label="Recorded image tools" onClose={() => setExpanded(false)} onCancel={() => setExpanded(false)} onClick={event => { const bounds = event.currentTarget.getBoundingClientRect(); if (event.target === event.currentTarget && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) setExpanded(false); }}>
       <input ref={fileInput} type="file" accept="image/jpeg,image/png" className="hidden-file-input" aria-label="Recorded JPEG or PNG frame" disabled={readOnly || Boolean(busy)} onChange={event => void upload(event.target.files?.[0])}/>
       <header className="scene-dialog-heading"><div><span>SCENE EVIDENCE</span><h2>Recorded image tools</h2></div><button onClick={() => setExpanded(false)} aria-label="Close image tools"><Icon name="close" size={19}/></button></header>

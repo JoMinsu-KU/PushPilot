@@ -3,6 +3,47 @@
 .map-scene-panel { height: 550px; }
 .map-scene-controls { position: absolute; z-index: 5; top: var(--stage-controls-top, 200px); left: var(--stage-content-left, 108px); display: flex; align-items: center; gap: 8px; }
 .map-scene-panel .map-scene-controls { top: 18px; left: 18px; }
+/* One clipped material keeps Safari camera controls stable over native frames. */
+.workspace-stage .map-scene-component .map-scene-controls,
+.map-scene-panel .map-scene-controls {
+  display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; width: max-content;
+  max-width: calc(100% - var(--stage-content-left, 12px) - var(--stage-overlay-width, 0px) - 24px);
+  padding: 6px; border: 1px solid #ffffffd9; border-radius: 19px;
+  background: #f8faf9d9; background-clip: padding-box;
+  box-shadow: 0 4px 18px #263b4210; overflow: hidden; isolation: isolate;
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+.workspace-stage .map-scene-component .map-scene-controls { left: var(--stage-content-left, 12px); }
+.map-scene-panel .map-scene-controls { max-width: calc(100% - 36px); }
+.map-scene-controls > .scene-view-toggle {
+  gap: 2px; padding: 0; border: 0; background: transparent; box-shadow: none;
+  -webkit-backdrop-filter: none; backdrop-filter: none; clip-path: none;
+}
+.map-scene-controls > .scene-view-toggle > button,
+.map-scene-controls > .scene-tools-toggle,
+.map-scene-controls > .scene-focus-toggle,
+.map-scene-controls > .scene-fit-toggle,
+.map-scene-controls > .scene-lock-view {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  height: 44px; padding: 0 12px; border: 0; border-radius: 12px;
+  background: transparent; color: #516068; font-size: var(--fs-13); white-space: nowrap;
+  -webkit-backdrop-filter: none; backdrop-filter: none; clip-path: none;
+}
+.map-scene-controls > .scene-view-toggle > button.selected,
+.map-scene-controls > .scene-focus-toggle[aria-pressed="true"] { background: #ffffffed; color: #28373e; }
+.map-scene-controls > .scene-view-toggle > button.live-source.selected { background: #e7f0e9; color: #3c7055; }
+.map-scene-controls > .scene-view-toggle > button.stale-source.selected { background: #f7ecde; color: #8b622c; }
+.map-scene-controls > .scene-fit-toggle { width: 44px; padding: 0; }
+.map-scene-controls > button:disabled { color: #78858a; opacity: .55; }
+.map-scene-controls button:focus-visible { outline: 2px solid #bb815c; outline-offset: -2px; }
+.scene-live-dot { width: 6px; height: 6px; flex: none; border-radius: 50%; background: #4a8b63; }
+.stale-source .scene-live-dot { background: #b6813c; }
+.scene-recorded-source { padding: 0 10px; color: #64727a; font-size: var(--fs-12); white-space: nowrap; }
+@media (max-width: 1100px) {
+  .map-scene-controls > .scene-view-toggle > button,
+  .map-scene-controls > .scene-tools-toggle,
+  .map-scene-controls > .scene-focus-toggle { padding-inline: 9px; }
+}
 .route-progress-legend { position: absolute; z-index: 3; top: calc(var(--stage-controls-top, 200px) + 51px); left: var(--stage-content-left, 108px); display: flex; flex-wrap: wrap; align-items: center; gap: 7px 12px; max-width: min(440px, calc(100% - var(--stage-content-left, 108px) - var(--stage-overlay-width, 340px) - 28px)); padding: 9px 12px; border: 1px solid #ffffffad; border-radius: 13px; background: #ffffff78; box-shadow: 0 5px 20px #24302204; backdrop-filter: blur(12px); color: #607178; font-size: var(--fs-12); line-height: 1.35; pointer-events: none; }
 .route-progress-legend strong { font-size: var(--fs-12); font-weight: 500; color: #44565d; }
 .route-progress-legend > span:not(.route-progress-message) { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
@@ -31,45 +72,9 @@
 .recorded-frame-wrap { overflow: hidden; }
 .camera-viewport { position: absolute; inset: 0; overflow: hidden; touch-action: none; overscroll-behavior: contain; cursor: grab; user-select: none; -webkit-user-select: none; }
 .camera-viewport.is-dragging { cursor: grabbing; }
-.camera-viewport:focus-visible { outline: none; }
-.camera-viewport:focus-visible + .camera-view-controls { outline: 2px solid #bb815c; outline-offset: 3px; }
+.camera-viewport:focus-visible { outline: 2px solid #bb815c; outline-offset: -3px; }
 .camera-image-plane { width: 100%; height: 100%; display: grid; place-items: center; transform-origin: center; }
 .camera-image-plane .recorded-frame { pointer-events: none; }
-.camera-view-controls { position: absolute; z-index: 3; left: var(--stage-content-left, 108px); bottom: calc(var(--stage-source-bottom, 146px) + 91px); display: flex; align-items: center; gap: 2px; max-width: calc(100% - var(--stage-content-left, 108px) - 20px); padding: 4px 6px; border: 1px solid #ffffffba; border-radius: 15px; background: #ffffff93; box-shadow: 0 5px 22px #2c3c3208; -webkit-backdrop-filter: blur(13px); backdrop-filter: blur(13px); color: #687777; }
-.camera-view-controls button { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border-radius: 11px; color: #687777; touch-action: manipulation; }
-@media (hover: hover) {
-.camera-view-controls button:hover:not(:disabled) { background: #ffffffa8; color: #b57250; } }
-.camera-view-controls button:focus-visible { outline: 2px solid #bc8560; outline-offset: 2px; }
-.camera-view-controls button:disabled { opacity: .35; cursor: default; }
-.camera-view-controls output { min-width: 44px; text-align: center; font-size: var(--fs-12); font-variant-numeric: tabular-nums; }
-.camera-control-divider { align-self: stretch; width: 1px; margin: 8px 4px; background: #aab7b34f; }
-.camera-view-gesture { padding: 0 8px; color: #72817d; font-size: var(--fs-12); white-space: nowrap; }
-.map-scene-panel .camera-view-controls { left: 18px; bottom: 47px; }
-@media (max-width: 1180px) { .camera-view-gesture { display: none; } }
-@media (max-width: 760px) { .camera-view-controls { left: 16px; bottom: calc(var(--stage-source-bottom, 9px) + 49px); } }
-.scene-source-plate { position: absolute; z-index: 3; bottom: 15px; left: var(--stage-content-left, 108px); display: flex; align-items: center; gap: 9px; padding: 9px 11px; border: 1px solid #ffffffb5; border-radius: 13px; background: #ffffffa8; backdrop-filter: blur(16px); color: #858c91; }
-.map-scene-stage .scene-source-plate { bottom: var(--stage-source-bottom, 146px); }
-/* Keep the lower storefront departure visible beneath the existing glass HUD. */
-@media (min-width: 701px) {
-  .workspace-stage .map-scene-stage .scene-source-plate {
-    top: calc(var(--stage-controls-top, 200px) + 116px);
-    bottom: auto;
-    left: auto;
-    right: calc(var(--stage-overlay-width, 340px) + 24px);
-  }
-}
-.scene-source-dot { width: 5px; height: 5px; border-radius: 50%; background: #97a39b; flex: none; }
-.live-source .scene-source-dot { background: #38835f; box-shadow: 0 0 0 3px #38835f12; }
-.stale-source .scene-source-dot { background: #af7948; }
-.stale-source strong { color: #976237; }
-.scene-source-plate > .live-lock-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: auto; height: 31px; margin-left: 6px; padding: 0 10px; color: #a65c3b; font-size: var(--fs-12); border-radius: 9px; background: #ffffff9c; white-space: nowrap; }
-.scene-source-plate > .live-lock-button:disabled { color: #999d9c; }
-.live-motion-note { display: inline-flex; align-items: center; gap: 5px; padding-left: 8px; font-size: var(--fs-12); color: #77847e; white-space: nowrap; }
-.scene-camera-source button { padding: 0 10px; font-size: var(--fs-12); }
-.scene-camera-source button.selected { background: #ebf0ec; }
-.scene-source-plate strong { display: block; color: #687176; font-size: var(--fs-12); font-weight: 500; line-height: 1.4; }
-.scene-source-plate > div > span { display: block; margin-top: 2px; font-size: var(--fs-12); line-height: 1.4; color: #8e979b; }
-.scene-source-plate > button { display: grid; place-items: center; width: 25px; height: 28px; padding: 0; margin-left: 9px; color: #8c969b; }
 .scene-error { position: absolute; z-index: 8; top: calc(var(--stage-controls-top, 200px) + 48px); left: var(--stage-content-left, 108px); right: calc(var(--stage-overlay-width, 340px) + 24px); display: flex; align-items: flex-start; gap: 8px; border: 1px solid #efdcd0; border-radius: 14px; background: #fff9f3ed; padding: 11px 13px; font-size: var(--fs-12); color: #9e6a50; line-height: 1.5; backdrop-filter: blur(16px); }
 .scene-error > span { min-width: 0; flex: 1; overflow-wrap: anywhere; }
 .scene-error > svg { flex: none; }
