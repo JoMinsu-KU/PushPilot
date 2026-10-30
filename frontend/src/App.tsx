@@ -1,19 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { EvidenceEvent, ProviderMode, ReviewVerdict, SignalColor, WorkspaceSnapshot } from '../../contracts/workspace';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ProviderMode, ReviewVerdict, SignalColor, WorkspaceSnapshot } from '../../contracts/workspace';
 import type { SceneSnapshot, TemporaryMap } from '../../contracts/scene';
 import type { RecordedActionReviewCommand } from '../../contracts/action-review';
-import { BrandMark, Icon, type IconName } from './Icons';
+import { BrandMark, Icon } from './Icons';
 import { MapScene } from './MapScene';
 import { createRequestId } from './requestId';
 import { ActionReviewPanel } from './ActionReview';
 import { LiveEvidence } from './LiveEvidence';
-import { ViewportDialog, PlanBrowser, EvidenceBrowser, PhysicalHistoryBrowser, PhysicalReviewPanel, PhysicalRouteBrowser, PhysicalStatusPanel, TextPages } from './WorkspaceUI';
+import { ViewportDialog, PlanBrowser, EvidenceBrowser, PhysicalHistoryBrowser, PhysicalReviewPanel, PhysicalRouteBrowser, PhysicalStatusPanel, TextPages, SelectField, executionStepLabel, physicalSequenceFocus, signalGateLabel } from './WorkspaceUI';
 import { GoalIntentBar, VoiceInputOptions } from './GoalIntent';
 import { destinationGoal, destinationOptions, destinationPage, drawingDistance, nodeLabel, planStepLabel } from './mapMetadata';
 import { currentSignalJunction, signalDisplay } from './routeProgress';
 import { commandErrorMessage, readableError } from './commandError';
+import { usePhysicalDisplay, displaySignalLabel } from './usePhysicalDisplay';
 import { usePhysicalMission } from './usePhysicalMission';
-import { physicalAvailable, physicalModeLabel, physicalProgress, physicalReviewLabel, physicalRouteContext, physicalTelemetry, physicalDestinationBlocker, physicalDetail, physicalFinished, physicalMatchesPlan, physicalParkingEnabled, physicalRunning, physicalSignalLabel, physicalStartCommand, physicalTitle, physicalVisionActive, type ExecutionMode } from './physicalMission';
+import { physicalAvailable, physicalProgress, physicalReviewLabel, physicalTelemetry, physicalDestinationBlocker, physicalDetail, physicalFinished, physicalMatchesPlan, physicalParkingEnabled, physicalRunning, physicalStartCommand, physicalTitle, physicalVisionActive, type ExecutionMode } from './physicalMission';
 
 type View = 'Workspace' | 'Plan' | 'Replay';
 const terminalStates = new Set(['COMPLETED', 'CANCELLED', 'FAULT', 'RECOVERY_REQUIRED']);
@@ -22,7 +23,6 @@ const stateLabels: Record<string, string> = {
   REVIEW_REQUIRED: 'Review required', WAITING_SIGNAL: 'Waiting for green', REOBSERVE: 'New observation required',
   COMPLETED: 'Mission complete', CANCELLED: 'Mission cancelled', FAULT: 'Review failed', RECOVERY_REQUIRED: 'Reconciliation required',
 };
-const stepIcons: Record<string, IconName> = { PUSH: 'car', STOP: 'pause', CROSS: 'route', VERIFY: 'eye' };
 const stepDescriptions: Record<string, string> = {
   PUSH: 'Surface push to the next waypoint.',
   STOP: 'Full stop before checking the signal.',
@@ -53,6 +53,13 @@ export function App() {
   const [actionReviewPending, setActionReviewPending] = useState(false);
   const [localVisionRequest, setLocalVisionRequest] = useState<'plan' | 'car' | 'signal' | null>(null);
   const [imageToolsRequest, setImageToolsRequest] = useState(0);
+  const [missionCollapsed, setMissionCollapsed] = useState(false);
+  const [sceneInsetRight, setSceneInsetRight] = useState(0);
+  const [cameraPreview, setCameraPreview] = useState(false);
+  const stageRef = useRef<HTMLElement>(null);
+  const missionRef = useRef<HTMLElement>(null);
+  const stepsRef = useRef<HTMLOListElement>(null);
+  const planReveal = useRef<{ id: string | undefined; at: number }>({ id: undefined, at: 0 });
   const physical = usePhysicalMission();
   // An unavailable first status must not opt the tablet into simulated data.
   const [executionMode, setExecutionMode] = useState<ExecutionMode>('physical');
@@ -95,7 +102,6 @@ export function App() {
   }, [physical.status, physical.connected, physicalUnconfirmed]);
   useEffect(() => {
     setGoalPage(0);
-    if (mapSnapshot?.destinations.length) setDraft(value => value || destinationGoal(mapSnapshot, mapSnapshot.destinations[0]));
   }, [mapSnapshot?.id, mapSnapshot?.version, mapSnapshot?.geometry_hash]);
 
   async function command(endpoint: string, data: Record<string, unknown> = {}) {
@@ -120,7 +126,7 @@ export function App() {
     finally { setBusy(false); if (liveInference) { setActionReviewPending(false); setLocalVisionRequest(null); } }
   }
   async function physicalCommand(kind: 'start' | 'stop') {
-    if (physicalBusy || physicalUnconfirmed === kind || view === 'Replay' || !physical.status) return;
+    if (physicalBusy || physicalUnconfirmed === kind || (kind === 'start' && view === 'Replay') || !physical.status) return;
     setPhysicalBusy(true); setError('');
     let submitted = false;
     let responseConfirmed = false;
@@ -172,12 +178,14 @@ export function App() {
   const state = workspace?.state ?? 'IDLE';
   const robotRunning = physicalRunning(physical.status);
   const robotMode = executionMode === 'physical' || robotRunning;
+  const display = usePhysicalDisplay(physical.status, robotMode && physical.connected);
+  const sceneReadOnly = actionReviewPending || robotRunning || physicalBusy || Boolean(physicalUnconfirmed);
   const robotStatusDialog = robotMode || modal === 'robot';
   const robotMission = robotMode && (robotRunning || physicalMatchesPlan(physical.status, workspace));
   const robotFinished = robotMission && physicalFinished(physical.status);
   const robotTelemetry = robotMode ? physicalTelemetry(physical.status, workspace, physical.connected) : null;
+  const robotFocus = physicalSequenceFocus(robotTelemetry?.sequence ?? [], robotTelemetry?.current_step_id);
   const robotProgress = physicalProgress(physical.status, robotTelemetry);
-  const robotContext = physicalRouteContext(robotTelemetry);
   const missionStatus = robotMission ? physical.status : null;
   const canEditGoal = Boolean(workspace && ['IDLE', 'PLAN_READY'].includes(state) && online && !busy && !actionReviewPending && !robotRunning && !physicalBusy && !physicalUnconfirmed);
   const active = Boolean(workspace?.approved && !terminalStates.has(state));
@@ -199,7 +207,6 @@ export function App() {
   const admittedCrossing = active && currentStep?.kind === 'CROSS';
   const signalCardLabel = admittedCrossing ? 'Crossing admitted' : signalReading === 'stale' ? 'Signal expired'
     : signalReading === 'unknown' ? 'Awaiting signal' : signalReading === 'red' ? 'Stop and wait' : 'Green observed';
-  const title = workspace?.planning_pending ? 'Planning from the live view.' : state === 'IDLE' ? 'Ready for a goal.' : state === 'WAITING_SIGNAL' ? 'Waiting for green.' : state === 'COMPLETED' ? 'Destination verified.' : state === 'REVIEW_REQUIRED' ? 'Review the result.' : `Route to ${destinationName}`;
   const completedSteps = robotMode ? robotProgress?.completed ?? 0 : workspace?.plan?.steps.filter(step => step.status === 'complete').length ?? 0;
   const totalSteps = robotMode ? robotProgress?.total ?? 0 : workspace?.plan?.steps.length ?? 0;
   const robotStatusTitle = physicalTitle(physical.status, physical.connected);
@@ -219,15 +226,54 @@ export function App() {
       : robotParkingEnabled ? 'Start once. The executor handles movement, signal waits, parking and return.'
       : 'Start once. The executor handles delivery, signal waits and return.')
     : 'Choose a destination and review the MUSE route.';
-  const robotSource = robotMode ? !physical.connected ? 'Robot status unavailable'
-    : physical.status?.robot.connected ? physical.status.capabilities.release_mode === 'site_trial' ? 'Physical robot · current-site test' : 'Physical robot · autonomous execution' : 'Physical robot · disconnected'
-    : physical.status?.enabled && !physical.status.available ? 'Simulation · robot not available' : 'Simulation · no physical motion';
+
+
+  // Layout and read-only presentation effects never dispatch robot commands.
+  const planId = robotMode ? physical.status?.mission_id ?? undefined : workspace?.plan?.id;
+  if (planReveal.current.id !== planId) planReveal.current = { id: planId, at: performance.now() };
+  const stepReveal = useMemo(() => {
+    const elapsed = performance.now() - planReveal.current.at;
+    return !robotMode && planId && !missionCollapsed && elapsed < 3000
+      ? { '--reveal': `${Math.round(Math.max(0, 1750 - elapsed))}ms` } as React.CSSProperties : undefined;
+  }, [planId, missionCollapsed, robotMode]);
+  const liveMode = robotMode;
+  const devices: [string, boolean][] = [
+    ['Robot', physical.connected && Boolean(physical.status?.robot.connected)],
+    ['Camera', cameraPreview], ['MUSE', Boolean(workspace?.capabilities.muse_configured)],
+  ];
+  useEffect(() => {
+    if (robotMode ? ['WAITING_SIGNAL', 'HOLD', 'HELD', 'STOPPING', 'FAULT', 'FAILED'].includes(physical.status?.state ?? '')
+      : ['PLAN_READY', 'REVIEW_REQUIRED', 'WAITING_SIGNAL', 'REOBSERVE', 'FAULT', 'RECOVERY_REQUIRED'].includes(state)) setMissionCollapsed(false);
+  }, [state, robotMode, physical.status?.state]);
+  useEffect(() => {
+    const list = stepsRef.current, focused = list?.querySelector<HTMLElement>('li.focused');
+    if (list && focused) {
+      const anchor = focused.previousElementSibling as HTMLElement | null;
+      list.scrollTo({ top: Math.max(0, (anchor ?? focused).offsetTop - list.offsetTop - 8), behavior: 'smooth' });
+    }
+  }, [workspace?.current_step, workspace?.plan?.id, robotFocus, planId, missionCollapsed]);
+  useEffect(() => {
+    const stage = stageRef.current, panel = missionRef.current;
+    if (!stage || !panel) return;
+    const measure = () => {
+      const stageBox = stage.getBoundingClientRect(), panelBox = panel.getBoundingClientRect();
+      setSceneInsetRight(missionCollapsed || panelBox.width === 0 ? 0 : Math.max(0, Math.round(stageBox.right - panelBox.left)));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(stage); observer.observe(panel);
+    return () => observer.disconnect();
+  }, [missionCollapsed]);
+
+  function renderStopAction() {
+    return <button className="primary-button physical-stop" disabled={physicalBusy || physicalUnconfirmed === 'stop'} onClick={() => void physicalCommand('stop')}><Icon name="pause"/>{physicalBusy ? 'Sending request…' : physical.status?.state === 'STOPPING' || physicalUnconfirmed === 'stop' ? 'Stop requested' : 'Stop robot mission'}</button>;
+  }
 
   function renderPrimaryAction() {
     if (!workspace) return <button className="primary-button" disabled>Connecting to workspace…</button>;
     if (robotMode && robotMission) {
       if (robotFinished) return <button className="primary-button" disabled={physicalBusy || busy || !online || !physical.connected || !physical.status?.robot.stationary} onClick={() => void command('reset')}><Icon name="refresh"/>Plan the next mission</button>;
-      return <button className="primary-button physical-stop" disabled={physicalBusy || physicalUnconfirmed === 'stop'} onClick={() => void physicalCommand('stop')}><Icon name="pause"/>{physicalBusy ? 'Sending request…' : physical.status?.state === 'STOPPING' || physicalUnconfirmed === 'stop' ? 'Stop requested' : 'Stop robot mission'}</button>;
+      return renderStopAction();
     }
     if (state === 'IDLE') return <button className="primary-button" disabled={!canEditGoal || !draft.trim()} onClick={() => void command('goals', { text: draft, provider, source: 'typed' })}><Icon name="spark"/>Create a plan<Icon name="arrow"/></button>;
     if (robotMode && state === 'PLAN_READY') return <button className="primary-button" disabled={!robotCanStart || physicalBusy || busy || actionReviewPending || !online} onClick={() => void physicalCommand('start')}><Icon name="play"/>{physicalBusy ? 'Starting mission…' : physicalUnconfirmed ? 'Confirming robot status…' : 'Start robot mission'}<Icon name="arrow"/></button>;
@@ -243,56 +289,45 @@ export function App() {
 
   const route = workspace?.plan?.route;
   const steps = workspace?.plan?.steps ?? [];
-  const contextStart = Math.max(0, Math.min(workspace?.current_step ?? 0, steps.length - 3));
-  const visibleSteps = steps.slice(contextStart, contextStart + 3);
   const inspection = sceneSnapshot?.inspection;
   const modelLabel = actionReviewPending ? 'Reviewing images' : workspace?.review ? workspace.review.verdict : inspection?.verdict ?? 'No image review';
-  const openImageTools = () => { setModal(null); setView('Workspace'); window.setTimeout(() => setImageToolsRequest(value => value + 1), 0); };
-  const openGoal = () => { setGoalMode(canEditGoal ? 'text' : 'query'); setView('Workspace'); setModal('goal'); };
+  const openImageTools = () => { if (sceneReadOnly) return; setModal(null); setView('Workspace'); window.setTimeout(() => setImageToolsRequest(value => value + 1), 0); };
   const openVoice = () => { setGoalMode('voice'); setView('Workspace'); setModal('goal'); };
   const openQuery = () => { setGoalMode(workspace?.goal ? 'query' : 'text'); setView('Workspace'); setModal('goal'); };
 
   return <div className="app-shell">
-    <aside className="side-rail" aria-label="Workspace tools">
-      <a className="brand" href="#workspace" aria-label="PushPilot workspace" onClick={event => { event.preventDefault(); setView('Workspace'); }}><BrandMark/></a>
-      <span className="rail-section-label">MAIN</span>
-      <button title="Workspace" aria-label="Workspace" className={view === 'Workspace' ? 'active' : ''} onClick={() => setView('Workspace')}><Icon name="home"/></button>
-      <button title="Route plan" aria-label="Route plan" className={view === 'Plan' ? 'active' : ''} onClick={() => setView('Plan')}><Icon name="route"/></button>
-      <button title="Replay" aria-label="Evidence replay" className={view === 'Replay' ? 'active' : ''} onClick={() => setView('Replay')}><Icon name="clock"/></button>
-      <button title={robotMode || physical.status?.enabled ? 'Robot status' : 'Simulation inputs'} aria-label={robotMode || physical.status?.enabled ? 'Robot status' : 'Simulation inputs'} onClick={() => robotMode || physical.status?.enabled ? setModal('robot') : setShowDemo(true)}><Icon name="settings"/></button>
-      <div className="rail-bottom"><span/><button title="Future glasses companion" aria-label="Glasses concept" onClick={() => setModal('companion')}><Icon name="glasses"/></button><small>0.1</small></div>
-    </aside>
     <header className="topbar">
-      <div className="header-title"><strong>PushPilot</strong><span>/</span><h1>Workspace</h1></div>
-      <nav className="topnav" aria-label="Main navigation">{(['Workspace', 'Plan', 'Replay'] as View[]).map(tab => <button className={view === tab ? 'active' : ''} key={tab} onClick={() => setView(tab)} aria-current={view === tab ? 'page' : undefined}>{tab}</button>)}</nav>
-      <div className="header-status"><span className="backend-status"><i className={(robotMode ? physical.connected : online) ? 'online' : ''}/>{(robotMode ? physical.connected : online) ? 'Connected' : 'Offline'}</span><select className="mode-label" aria-label="Execution mode" value={robotMode ? 'physical' : 'simulation'} disabled={robotRunning || physicalBusy || Boolean(physicalUnconfirmed) || busy || actionReviewPending || (!robotMode && active)} onChange={event => { modeChosen.current = true; setExecutionMode(event.target.value as ExecutionMode); if (event.target.value === 'physical') setProvider('meta'); }}><option value="simulation">Simulation</option><option value="physical" disabled={!physical.connected || !physical.status?.enabled}>{physicalModeLabel(physical.status)}</option></select><button className="header-concept" aria-label="Glasses companion concept" onClick={() => setModal('companion')}><Icon name="glasses" size={18}/><span>Companion concept</span></button></div>
+      <div className="header-title"><span className="brand" aria-hidden="true"><BrandMark/></span><h1>PushPilot</h1>{mapSnapshot && <span className="header-map"><span aria-hidden="true">/</span>{mapSnapshot.title}</span>}</div>
+      <div className="header-status"><ul className="device-status" aria-label="Connections">{devices.map(([name, on]) => <li key={name} className={on ? 'on' : ''}><i key={String(on)} aria-hidden="true"/>{name}<span className="sr-only">{name === 'MUSE' ? on ? ' configured' : ' not configured' : on ? ' connected' : ' offline'}</span></li>)}</ul>
+        <select className={`mode-label ${liveMode ? 'live' : ''}`} aria-label="Execution mode" value={robotMode ? 'physical' : 'simulation'} disabled={robotRunning || physicalBusy || Boolean(physicalUnconfirmed) || busy || actionReviewPending || (!robotMode && active)} onChange={event => { modeChosen.current = true; setExecutionMode(event.target.value as ExecutionMode); if (event.target.value === 'physical') setProvider('meta'); }}><option value="simulation">Simulation</option><option value="physical" disabled={!physical.connected || !physical.status?.enabled}>Robot</option></select>
+        <button className={`header-replay ${view === 'Replay' ? 'active' : ''}`} aria-pressed={view === 'Replay'} onClick={() => setView('Replay')}><Icon name="clock" size={18}/><span>Mission Log</span></button></div>
     </header>
-    <main className={`workspace-stage ${mobileMission ? 'mission-visible' : ''}`}>
-      <MapScene presentation="stage" workspace={workspace} physicalLabel={robotMode ? robotMission ? robotStatusTitle : 'Awaiting robot execution' : undefined} onSnapshot={setSceneSnapshot} onMapSnapshot={setMapSnapshot} onPreviewSource={setPreviewSource} readOnly={actionReviewPending || robotRunning || physicalBusy} openToolsRequest={imageToolsRequest}/>
-      <div className="scene-heading"><div className="scene-context"><span>Temporary workspace</span><h2 title={mapSnapshot?.title}>{mapSnapshot?.title ?? 'Loading map…'}</h2></div><GoalIntentBar query={workspace?.goal?.text ?? null} source={workspace?.goal?.source ?? null} onQuery={openQuery} onVoice={openVoice}/></div>
+    <main ref={stageRef} className={`workspace-stage ${mobileMission ? 'mission-visible' : ''}`}>
+      <MapScene presentation="stage" workspace={workspace} physicalLabel={robotMode ? robotMission ? robotStatusTitle : 'Awaiting robot execution' : undefined} physicalDisplay={display.snapshot} onSnapshot={setSceneSnapshot} onMapSnapshot={setMapSnapshot} onPreviewSource={setPreviewSource} onLiveCamera={setCameraPreview} sceneInsetRight={sceneInsetRight} readOnly={sceneReadOnly} openToolsRequest={imageToolsRequest}/>
+      <div className="scene-heading"><GoalIntentBar query={workspace?.goal?.text ?? null} source={workspace?.goal?.source ?? null} onQuery={openQuery} onVoice={openVoice}/></div>
       <button className="mobile-mission-switch glass-surface" onClick={() => setMobileMission(value => !value)} aria-expanded={mobileMission}>{mobileMission ? 'Show scene' : 'Mission'}<Icon name={mobileMission ? 'close' : 'chevron'} size={16}/></button>
       {(error || !online) && <div className={`stage-notice ${error ? 'error' : ''}`} role={error ? 'alert' : 'status'}><Icon name="shield" size={17}/><span>{error || 'Backend unavailable. Refresh before taking action.'}</span><button aria-label={error ? 'Dismiss error' : 'Retry connection'} onClick={() => error ? setError('') : void refresh()}><Icon name={error ? 'close' : 'refresh'} size={16}/></button></div>}
 
-      <aside className="floating-mission glass-surface" aria-label="Mission and execution controls">
-        <div className="mission-heading"><span><i/>Active mission</span><button className="icon-button" onClick={openGoal} disabled={!canEditGoal} aria-label="Edit mission goal"><Icon name="settings" size={17}/></button></div>
-        <div className="mission-intro"><span className="mission-provider">{robotMode ? liveBacked && workspace?.goal?.provider === 'meta' ? 'MUSE · physical robot mission' : 'Robot mission · awaiting MUSE plan' : liveBacked ? 'MUSE · live image + road graph' : workspace?.goal?.provider === 'meta' ? 'MUSE interpretation' : 'Demo interpretation'}</span><h2 title={destinationName}>{workspace?.planning_pending ? 'Planning…' : state === 'IDLE' && !robotMission ? 'Where to next?' : `To ${destinationName}`}</h2><div className="mission-journey"><span title={startName}>{startName}</span><Icon name="arrow" size={18}/><strong title={destinationName}>{destinationName}</strong></div></div>
-        <div className="mission-progress"><div><span>Mission progress</span><strong>{robotMode && !robotProgress ? physical.connected ? 'Awaiting execution' : 'Unavailable' : <>{completedSteps}<small> / {totalSteps} {robotMode ? 'receipts' : 'actions'}</small></>}</strong></div><progress aria-label={robotMode ? "Native executor receipts" : "Completed mission actions"} value={completedSteps} max={totalSteps || 1}/></div>
+      <aside ref={missionRef} className={`floating-mission glass-surface ${missionCollapsed ? 'collapsed' : ''}`} aria-label="Mission and execution controls">
+        <div className="mission-heading"><span>Active mission</span><button className="mission-collapse" aria-expanded={!missionCollapsed} aria-label={missionCollapsed ? 'Expand mission panel' : 'Collapse mission panel'} onClick={() => setMissionCollapsed(value => !value)}><Icon name="chevron" size={16}/></button></div>
+        <div className="mission-intro"><dl className="mission-journey"><div><dt>From</dt><dd>{startName}</dd></div><div><dt>To</dt><dd className={destination || workspace?.planning_pending ? '' : 'pending'}>{workspace?.planning_pending ? 'Planning…' : destination ? destinationName : 'Choose a destination'}</dd></div></dl>{missionCollapsed && <p className="mission-compact-state">{robotMode ? robotCheckTitle : stateLabels[state]}{totalSteps ? ` · ${completedSteps} / ${totalSteps} ${robotMode ? 'receipts' : 'actions'}` : ''}</p>}</div>
+        {!missionCollapsed && <><div className="mission-progress"><div><span>Mission progress</span><strong>{robotMode && !robotProgress ? physical.connected ? 'Awaiting execution' : 'Unavailable' : <><span key={completedSteps} className="count-pop">{completedSteps}</span><small> / {totalSteps} {robotMode ? 'receipts' : 'actions'}</small></>}</strong></div><div className="mission-progress-bar" role="progressbar" aria-label={robotMode ? 'Native executor receipts' : 'Completed mission actions'} aria-valuemin={0} aria-valuemax={totalSteps || 1} aria-valuenow={completedSteps}><span style={{ width: `${totalSteps ? completedSteps / totalSteps * 100 : 0}%` }}/></div></div>
         <section className="mission-context"><div className="section-caption"><h3>Route sequence</h3><button onClick={() => setView('Plan')} aria-label="View full route">View all<Icon name="chevron" size={13}/></button></div>
-          {robotMode ? robotContext.steps.length ? <ol className="context-steps" aria-label="Robot route context">{robotContext.steps.map((step, index) => <li key={step.id} className={`${step.status} ${step.id === robotTelemetry?.current_step_id ? 'focused' : ''}`}><span className="context-number">{step.status === 'complete' ? <Icon name="check" size={12}/> : String(robotContext.start + index + 1).padStart(2, '0')}</span><div><strong title={step.label}>{step.label}</strong><small title={step.detail}>{step.detail || step.status}</small></div></li>)}</ol> : <p className="empty-copy">{physical.connected ? 'Awaiting the executor sequence.' : 'Robot sequence unavailable.'}</p> : visibleSteps.length ? <ol className="context-steps" aria-label="Current route context">{visibleSteps.map((step, index) => <li key={step.id} className={`${step.status} ${workspace?.current_step === contextStart + index ? 'focused' : ''}`}><span className="context-number">{step.status === 'complete' ? <Icon name="check" size={12}/> : String(contextStart + index + 1).padStart(2, '0')}</span><div><strong>{planStepLabel(mapSnapshot, step)}</strong><small>{stepDescriptions[step.kind]}</small></div></li>)}</ol> : <p className="empty-copy">Choose a destination from the selected map to build a route.</p>}
+          {robotMode ? robotTelemetry?.sequence.length ? <ol ref={stepsRef} className="context-steps" aria-label="Robot route context">{robotTelemetry.sequence.map((step, index) => <li key={step.id} className={`${step.status} ${index === robotFocus ? `focused${step.id !== robotTelemetry.current_step_id ? ' display-anchor' : ''}` : ''}`}><span className="context-number">{step.status === 'complete' ? <Icon name="check" size={12}/> : String(index + 1).padStart(2, '0')}</span><div><strong title={step.label}>{executionStepLabel(step)}</strong>{index === robotFocus && <small title={step.detail}>{step.detail || step.status}</small>}</div></li>)}</ol> : <p className="empty-copy">{physical.connected ? 'Awaiting the executor sequence.' : 'Robot sequence unavailable.'}</p> : steps.length ? <ol key={planId} ref={stepsRef} className={`context-steps${stepReveal ? ' stagger' : ''}`} style={stepReveal} aria-label="Current route context">{steps.map((step, index) => <li key={step.id} style={{ '--i': index } as React.CSSProperties} className={`${step.status} ${!terminalStates.has(state) && workspace?.current_step === index ? 'focused' : ''}`}><span className="context-number">{step.status === 'complete' ? <Icon name="check" size={12}/> : String(index + 1).padStart(2, '0')}</span><div><strong>{planStepLabel(mapSnapshot, step)}</strong>{workspace?.current_step === index && <small>{stepDescriptions[step.kind]}</small>}</div></li>)}</ol> : <p className="empty-copy">The route's actions appear here once a plan is created.</p>}
         </section>
-        <section className={`next-check ${robotMode ? 'physical-check' : ''}`} aria-live="polite"><div><Icon name={(robotMode ? physical.status?.signal.waiting : state === 'WAITING_SIGNAL') ? 'pause' : 'shield'} size={16}/><h3>{robotMode ? robotCheckTitle : stateLabels[state]}</h3></div><p title={robotMode ? robotCheckDetail : undefined}>{robotMode ? robotCheckDetail : workspace?.next_check ?? 'Set a goal and inspect the proposed route.'}</p>{robotMode && <button className="physical-detail-link" onClick={() => setModal('robot')}>Robot status<Icon name="chevron" size={12}/></button>}</section>
-        <div className="mission-actions">{renderPrimaryAction()}{!robotMode && signalWatchRunning && <button className="secondary-button" disabled={busy || !online} onClick={() => void command('live-signals/watch/stop')}>Stop signal watch<Icon name="pause" size={16}/></button>}{!robotMode && state === 'WAITING_SIGNAL' && !liveBacked && <button className="secondary-button" onClick={() => setShowDemo(true)}>Signal controls<Icon name="chevron" size={16}/></button>}{state === 'PLAN_READY' && !robotMission && <button className="edit-goal-link" disabled={!canEditGoal} onClick={openGoal}>Edit goal</button>}{!robotMode && pendingReview && !liveBacked && <button className="edit-goal-link" onClick={() => setShowDemo(true)}>Demo review inputs</button>}{!robotMode && (active || workspace?.planning_pending) && <button className="cancel-button" disabled={(busy && !actionReviewPending) || !online} onClick={() => void command('cancel')}>End simulation</button>}<span className="execution-source">{robotSource}</span></div>
+        {(robotMode || state !== 'READY') && <section className={`next-check ${robotMode ? 'physical-check' : ''}`} aria-live="polite"><div><Icon name={(robotMode ? physical.status?.signal.waiting : state === 'WAITING_SIGNAL') ? 'pause' : 'shield'} size={16}/><h3>{robotMode ? robotCheckTitle : stateLabels[state]}</h3></div><p>{robotMode ? robotCheckDetail : workspace?.next_check ?? 'Set a goal and inspect the proposed route.'}</p>{robotMode && <button className="physical-detail-link" onClick={() => setModal('robot')}>Robot status<Icon name="chevron" size={12}/></button>}</section>}</>}
+        <div className="mission-actions">{!robotMode && signalWatchRunning && <button className="secondary-button" disabled={busy || !online} onClick={() => void command('live-signals/watch/stop')}>Stop signal watch<Icon name="pause" size={16}/></button>}{!robotMode && (active || workspace?.planning_pending) && <button className="cancel-button" disabled={(busy && !actionReviewPending) || !online} onClick={() => void command('cancel')}>End simulation</button>}{renderPrimaryAction()}</div>
       </aside>
 
       <div className="status-dock" aria-label="Workspace status">
-        <button className="status-card glass-surface" onClick={() => setView('Plan')}><span className="status-card-top"><i className="accent-dot"/>Route overview<Icon name="chevron" size={14}/></span><span className="status-card-value">{robotMode ? robotProgress ? <>{completedSteps}<small>/ {totalSteps} receipts</small></> : 'Awaiting execution' : <>{drawingDistance(route?.distance_mm)}<small>drawing mm</small></>}</span><span className="status-card-bottom">{robotMode ? robotTelemetry?.distance_source === 'native_tcp' ? `TCP travel · ${robotTelemetry.distance_mm!.toFixed(1)} mm` : 'TCP travel not measured' : `${route?.junction_ids.length ?? '—'} junction checks`}<span>{robotMode ? 'Executor' : `${completedSteps}/${totalSteps} actions`}</span></span></button>
-        <button className={`status-card glass-surface ${signalScanning ? 'is-scanning' : ''} signal-${robotMode ? physical.connected && missionStatus ? missionStatus.signal.color.toLowerCase() : 'unknown' : admittedCrossing ? 'green' : signalReading}`} onClick={() => robotMode ? setModal('robot') : liveBacked ? setView('Replay') : setShowDemo(true)}><span className="status-card-top"><i/>Signal {robotMode ? robotTelemetry?.signal_gate_id ? `· ${nodeLabel(mapSnapshot, robotTelemetry.signal_gate_id)}` : '' : signalJunction ? `· ${nodeLabel(mapSnapshot, signalJunction)}` : ''}<Icon name="chevron" size={14}/></span><span className="status-card-value">{robotMode ? physicalSignalLabel(missionStatus, physical.connected) : signalScanning ? 'Checking signal · MUSE' : signalCardLabel}</span><span className="status-card-bottom">{robotMode ? signalScanning ? 'Reading a fresh camera image' : missionStatus?.signal.waiting ? 'Waiting for confirmed green' : robotTelemetry?.signal_observed_at != null ? `Observed ${timeLabel(new Date(robotTelemetry.signal_observed_at * 1000).toISOString())}` : 'No robot signal observation' : admittedCrossing ? 'Accepted entry · review required' : workspace?.stopped ? 'Simulated stop confirmed' : 'Mandatory stop before entry'}<span>{robotMode ? 'Robot' : 'Simulation'}</span></span></button>
-        <button className={`status-card glass-surface ${carScanning || signalScanning ? 'is-scanning' : ''}`} onClick={() => robotMode || workspace?.review ? setModal('review') : openImageTools()}><span className="status-card-top"><i className="model-dot"/>Visual review<Icon name="chevron" size={14}/></span><span className="status-card-value model-value">{robotMode ? physicalReviewLabel(missionStatus, robotTelemetry, physical.connected) : localVisionRequest === 'plan' ? 'Planning route · MUSE' : localVisionRequest === 'car' ? 'Checking images · MUSE' : modelLabel === 'USABLE' ? 'Scene inspected' : modelLabel}</span><span className="status-card-bottom">{robotMode ? robotTelemetry?.review ? `MUSE · ${timeLabel(new Date(robotTelemetry.review.observed_at * 1000).toISOString())}` : 'Awaiting robot image evidence' : workspace?.review ? liveBacked ? liveReviewEvidence ? 'MUSE · native live pair' : 'Native pair pending' : workspace.review.source === 'meta' ? 'MUSE · recorded pair' : 'Demo action review' : inspection ? 'MUSE · recorded scene' : 'Awaiting image evidence'}<span>{robotMode ? 'Robot' : workspace?.review ? 'Action' : 'Scene'}</span></span></button>
+        <button className="status-card glass-surface" onClick={() => setView('Plan')}><span className="status-card-top">Route overview<Icon name="chevron" size={14}/></span><span className="status-card-value value-swap">{robotMode ? robotProgress ? <>{completedSteps}<small>/ {totalSteps} receipts</small></> : 'Awaiting execution' : <>{drawingDistance(route?.distance_mm)}<small>drawing mm</small></>}</span><span className="status-card-bottom">{robotMode ? robotTelemetry?.distance_source === 'native_tcp' ? `TCP travel · ${robotTelemetry.distance_mm!.toFixed(1)} mm` : 'TCP travel not measured' : `${route?.junction_ids.length ?? '—'} junction checks`}<span>{robotMode ? 'Executor' : `${completedSteps}/${totalSteps} actions`}</span></span></button>
+        <button className={`status-card glass-surface ${signalScanning ? 'is-scanning' : ''} signal-${robotMode ? physical.connected && missionStatus ? missionStatus.signal.color.toLowerCase() : 'unknown' : admittedCrossing ? 'green' : signalReading}`} onClick={() => robotMode ? setModal('robot') : liveBacked ? setView('Replay') : setShowDemo(true)}><span className="status-card-top"><i/>Signal {robotMode ? robotTelemetry?.signal_gate_id ? `· ${signalGateLabel(robotTelemetry.signal_gate_id)}` : '' : signalJunction ? `· ${nodeLabel(mapSnapshot, signalJunction)}` : ''}<Icon name="chevron" size={14}/></span><span className="status-card-value value-swap">{robotMode ? displaySignalLabel(missionStatus, physical.connected, display.snapshot) : signalScanning ? 'Checking signal · MUSE' : signalCardLabel}</span><span className="status-card-bottom">{robotMode ? signalScanning ? 'Reading a fresh camera image' : missionStatus?.signal.waiting ? 'Waiting for confirmed green' : robotTelemetry?.signal_observed_at != null ? `Observed ${timeLabel(new Date(robotTelemetry.signal_observed_at * 1000).toISOString())}` : 'No robot signal observation' : admittedCrossing ? 'Accepted entry · review required' : workspace?.stopped ? 'Simulated stop confirmed' : 'Mandatory stop before entry'}<span>{robotMode ? 'Robot' : 'Simulation'}</span></span></button>
+        <button className={`status-card glass-surface ${carScanning || signalScanning ? 'is-scanning' : ''}`} onClick={() => robotMode || workspace?.review ? setModal('review') : openImageTools()}><span className="status-card-top"><i className="model-dot"/>Visual review<Icon name="chevron" size={14}/></span><span className="status-card-value model-value value-swap">{robotMode ? physicalReviewLabel(missionStatus, robotTelemetry, physical.connected) : localVisionRequest === 'plan' ? 'Planning route · MUSE' : localVisionRequest === 'car' ? 'Checking images · MUSE' : modelLabel === 'USABLE' ? 'Scene inspected' : modelLabel}</span><span className="status-card-bottom">{robotMode ? robotTelemetry?.review ? `MUSE · ${timeLabel(new Date(robotTelemetry.review.observed_at * 1000).toISOString())}` : 'Awaiting robot image evidence' : workspace?.review ? liveBacked ? liveReviewEvidence ? 'MUSE · native live pair' : 'Native pair pending' : workspace.review.source === 'meta' ? 'MUSE · recorded pair' : 'Demo action review' : inspection ? 'MUSE · recorded scene' : 'Awaiting image evidence'}<span>{robotMode ? 'Robot' : workspace?.review ? 'Action' : 'Scene'}</span></span></button>
       </div>
-      <div className="stage-bottom-line"><span>{previewSource ?? sceneSnapshot?.frame?.source ?? 'No image'} · {robotMode ? 'Planned route · robot status in mission panel' : 'car pose unmeasured'}</span><span>{robotMode ? `Robot revision ${physical.status?.revision ?? '—'}` : workspace ? `Session revision ${workspace.revision}` : 'Offline'}</span></div>
+
     </main>
 
-    <ViewportDialog open={modal === 'goal'} title="Mission goal" subtitle="SET THE INTENT" onClose={() => setModal(null)} className="goal-dialog">
+    <ViewportDialog actions={robotMission && !robotFinished ? renderStopAction() : undefined} open={modal === 'goal'} title="Mission goal" subtitle="SET THE INTENT" onClose={() => setModal(null)} className="goal-dialog">
       <nav className="goal-modal-tabs" role="tablist" aria-label="Goal input sections"><button role="tab" aria-selected={goalMode === 'text'} disabled={!canEditGoal} onClick={() => setGoalMode('text')}>Type a goal</button><button role="tab" aria-selected={goalMode === 'voice'} onClick={() => setGoalMode('voice')}><Icon name="mic" size={15}/>Voice input</button>{workspace?.goal && <button role="tab" aria-selected={goalMode === 'query'} onClick={() => setGoalMode('query')}>Original query</button>}</nav>
       <div className="goal-mode-panel" role="tabpanel" aria-label={goalMode === 'voice' ? 'Voice input options' : goalMode === 'query' ? 'Original user query' : 'Typed goal input'}>
       {goalMode === 'voice' ? <VoiceInputOptions canEdit={canEditGoal} onContinue={() => setGoalMode(canEditGoal ? 'text' : 'query')}/>
@@ -300,15 +335,16 @@ export function App() {
         : <form className="goal-form" onSubmit={event => { event.preventDefault(); if (canEditGoal && draft.trim()) { void command('goals', { text: draft, provider, source: 'typed' }); setModal(null); } }}>
         <div className="goal-choices"><div className="goal-destinations">{goalChoices.items.map(place => <button type="button" key={place.id} title={`${place.label} · ${place.id}`} disabled={!canEditGoal} onClick={() => mapSnapshot && setDraft(destinationGoal(mapSnapshot, place.id))}><span>{place.label}</span><Icon name="arrow" size={16}/></button>)}</div>{goalChoices.pages > 1 && <nav className="goal-choice-pager" aria-label="Destination pages"><button type="button" disabled={goalChoices.page === 0} onClick={() => setGoalPage(value => value - 1)} aria-label="Previous destinations"><Icon name="chevron" className="reverse" size={14}/></button><span>{goalChoices.page + 1} / {goalChoices.pages}</span><button type="button" disabled={goalChoices.page + 1 >= goalChoices.pages} onClick={() => setGoalPage(value => value + 1)} aria-label="Next destinations"><Icon name="chevron" size={14}/></button></nav>}</div>
         <label htmlFor="goal-input">Your goal<input ref={goalInput} id="goal-input" value={draft} onChange={event => setDraft(event.target.value)} disabled={!canEditGoal} maxLength={500} aria-label="Your mission goal"/></label>
-        <label htmlFor="provider-mode">Goal interpreter<select id="provider-mode" value={provider} disabled={!canEditGoal} onChange={event => setProvider(event.target.value as ProviderMode)}><option value="demo" disabled={robotMode}>Demo interpreter</option><option value="meta" disabled={!workspace?.capabilities.muse_configured}>MUSE · Meta API{!workspace?.capabilities.muse_configured ? ' (not configured)' : ''}</option></select></label>
+        <SelectField id="provider-mode" label="Goal interpreter" value={provider} disabled={!canEditGoal} onChange={setProvider} options={[{ value: 'demo', label: 'Demo interpreter', disabled: robotMode }, { value: 'meta', label: `MUSE · Meta API${workspace?.capabilities.muse_configured ? '' : ' (not configured)'}`, disabled: !workspace?.capabilities.muse_configured }]}/>
+
         <button className="goal-voice-shortcut" type="button" onClick={() => setGoalMode('voice')}><Icon name="mic" size={16}/><span>Voice input</span><small>Not connected</small><Icon name="chevron" size={14}/></button>
         <div className="dialog-bottom"><span>A new plan requires explicit approval.</span><button className="primary-button" type="submit" disabled={!canEditGoal || !draft.trim()}><Icon name="spark" size={17}/>Create a plan<Icon name="arrow" size={17}/></button></div>
       </form>}
       </div>
     </ViewportDialog>
-    <ViewportDialog open={view === 'Plan'} title="Route plan" subtitle="INSPECT THE SEQUENCE" onClose={() => setView('Workspace')}>{robotMode ? <PhysicalRouteBrowser status={missionStatus} telemetry={robotTelemetry} connected={physical.connected} map={mapSnapshot}/> : <PlanBrowser workspace={workspace} map={mapSnapshot}/>}</ViewportDialog>
-    <ViewportDialog open={view === 'Replay' && modal !== 'review'} title="Decision replay" subtitle="SOURCE-LABELLED EVIDENCE" onClose={() => setView('Workspace')}>{robotMode ? <PhysicalHistoryBrowser telemetry={robotTelemetry} connected={physical.connected}/> : <EvidenceBrowser events={workspace?.events ?? []} selected={selected} onSelect={setSelectedEvent} onOpenRecord={() => setModal('review')}/>}</ViewportDialog>
-    <ViewportDialog open={modal === 'review'} title={robotMode ? 'Robot visual review' : view === 'Replay' ? replayLiveEvidence ? 'Live image evidence' : 'Recorded evidence' : 'Visual action review'} subtitle={view === 'Replay' ? 'READ-ONLY REPLAY' : 'COMPARE EXPECTED AND OBSERVED'} onClose={() => setModal(null)} className="review-dialog">
+    <ViewportDialog actions={robotMission && !robotFinished ? renderStopAction() : undefined} open={view === 'Plan'} title="Route plan" subtitle="INSPECT THE SEQUENCE" onClose={() => setView('Workspace')}>{robotMode ? <PhysicalRouteBrowser status={missionStatus} telemetry={robotTelemetry} connected={physical.connected} map={mapSnapshot}/> : <PlanBrowser workspace={workspace} map={mapSnapshot}/>}</ViewportDialog>
+    <ViewportDialog actions={robotMission && !robotFinished ? renderStopAction() : undefined} open={view === 'Replay' && modal !== 'review'} title="Mission Log" subtitle="SOURCE-LABELLED EVIDENCE" onClose={() => setView('Workspace')}>{robotMode ? <PhysicalHistoryBrowser telemetry={robotTelemetry} connected={physical.connected}/> : <EvidenceBrowser events={workspace?.events ?? []} selected={selected} onSelect={setSelectedEvent} onOpenRecord={() => setModal('review')}/>}</ViewportDialog>
+    <ViewportDialog actions={robotMission && !robotFinished ? renderStopAction() : undefined} open={modal === 'review'} title={robotMode ? 'Robot visual review' : view === 'Replay' ? replayLiveEvidence ? 'Live image evidence' : 'Recorded evidence' : 'Visual action review'} subtitle={view === 'Replay' ? 'READ-ONLY REPLAY' : 'COMPARE EXPECTED AND OBSERVED'} onClose={() => setModal(null)} className="review-dialog">
       {error && <div className="dialog-error" role="alert"><Icon name="shield" size={17}/><span>{error}</span><button aria-label="Dismiss review error" onClick={() => setError('')}><Icon name="close" size={16}/></button></div>}
       {robotMode ? <PhysicalReviewPanel status={missionStatus} telemetry={robotTelemetry} connected={physical.connected}/> : view === 'Replay' && replayLiveEvidence ? <LiveEvidence key={replayLiveEvidence.id} evidence={replayLiveEvidence}/>
         : view !== 'Replay' && liveBacked ? pendingReview ? <section className="ar-workspace" aria-label="Live action review"><header className="ar-heading"><div><span className="ar-eyebrow">Server-bound native image pair</span><h2>Review live images</h2></div><span className="ar-source">MUSE · simulation only</span></header><section className="ar-stage ar-result"><TextPages text={`${workspace?.review?.expected ?? 'Inspect the current action.'}\n\nThe backend retains the original BEFORE image and selects a new AFTER image. MUSE reviews the visible result; a simulated action receipt does not prove real vehicle motion.`} size={380}/><button className="ar-review-submit" disabled={busy || actionReviewPending || !online} onClick={() => void command('live-actions/reviews', { review_id: workspace!.review!.id, expected_visual: workspace!.review!.expected })}>{actionReviewPending ? 'MUSE is reviewing…' : 'Review live images'}<Icon name="arrow" size={18}/></button></section><p className="ar-authority"><Icon name="shield" size={15}/><span>Native camera images · no physical motion authority</span></p></section>
@@ -316,7 +352,7 @@ export function App() {
             : <section className="ar-workspace"><TextPages text="Run an approved simulated action to capture its native BEFORE image and request a new AFTER-image review. No action has been physically executed."/></section>
         : <ActionReviewPanel workspace={workspace} scene={sceneSnapshot} online={online} pending={actionReviewPending} busy={busy} readOnly={view === 'Replay'} replayEvidence={replayRecordedEvidence} onReview={reviewRecordedAction} onOpenTools={openImageTools}/>}
     </ViewportDialog>
-    <ViewportDialog open={showDemo || modal === 'robot'} title={robotStatusDialog ? 'Robot status' : 'Simulation inputs'} subtitle={robotStatusDialog ? 'PHYSICAL MISSION' : 'OPERATOR-INJECTED DEMO DATA'} onClose={() => { setShowDemo(false); if (modal === 'robot') setModal(null); }} className="simulation-dialog">{robotStatusDialog ? <PhysicalStatusPanel status={physical.status} connected={physical.connected} map={mapSnapshot} missionBound={robotMission}/> : <div className="simulation-body" id="simulation-controls"><section><span className="form-eyebrow">PAPER SIGNAL STAND-IN</span><h3>{signalJunction ? `Junction ${signalJunction}` : 'Current junction'}</h3><p>{liveBacked ? 'This live-backed plan uses a fresh post-stop MUSE judgment. Manual signal inputs are disabled.' : 'Each fresh observation applies to one junction. A full stop is required before entry.'}</p><div className="signal-buttons">{(['RED', 'GREEN', 'UNKNOWN'] as SignalColor[]).map(color => <button key={color} className={`signal-option ${color.toLowerCase()} ${signal === color ? 'selected' : ''}`} disabled={liveBacked || busy || actionReviewPending || !online || !workspace || view === 'Replay'} onClick={() => void command('signal', { color })}><i/>{color[0] + color.slice(1).toLowerCase()}</button>)}</div></section><section><span className="form-eyebrow">ACTION REVIEW STAND-IN</span><h3>Demo verdict</h3><p>{liveBacked ? 'Native BEFORE and AFTER images are reviewed by MUSE. Demo verdicts cannot advance this plan.' : 'These explicit operator inputs are labelled demo. Actual MUSE review uses recorded image pairs.'}</p><div className="review-buttons">{(['PASS', 'REOBSERVE', 'UNKNOWN', 'FAIL'] as ReviewVerdict[]).map(verdict => <button key={verdict} disabled={liveBacked || !pendingReview || busy || actionReviewPending || !online || view === 'Replay'} onClick={() => void command('reviews', { review_id: workspace!.review!.id, verdict })}>{verdict === 'REOBSERVE' ? 'Re-observe' : verdict[0] + verdict.slice(1).toLowerCase()}</button>)}</div></section></div>}</ViewportDialog>
-    <ViewportDialog open={modal === 'companion'} title="A shared perspective." subtitle="FUTURE GLASSES COMPANION" onClose={() => setModal(null)} className="companion-dialog"><div className="companion-concept"><span className="concept-pill">Concept · hardware not connected</span><h3>Look.<br/>Ask.<br/>Review.</h3><p>A future wearable view can bring the same scene, intent and reviewable plan into the operator's perspective.</p><div className="concept-sequence"><span>See the workspace</span><Icon name="arrow" size={18}/><span>State the goal</span><Icon name="arrow" size={18}/><span>Review on tablet</span></div><small>Wearable capture, voice and display integration require separate validation.</small></div></ViewportDialog>
+    <ViewportDialog actions={robotMission && !robotFinished ? renderStopAction() : undefined} open={showDemo || modal === 'robot'} title={robotStatusDialog ? 'Robot status' : 'Simulation inputs'} subtitle={robotStatusDialog ? 'PHYSICAL MISSION' : 'OPERATOR-INJECTED DEMO DATA'} onClose={() => { setShowDemo(false); if (modal === 'robot') setModal(null); }} className="simulation-dialog">{robotStatusDialog ? <PhysicalStatusPanel status={physical.status} connected={physical.connected} map={mapSnapshot} missionBound={robotMission}/> : <div className="simulation-body" id="simulation-controls"><section><span className="form-eyebrow">PAPER SIGNAL STAND-IN</span><h3>{signalJunction ? `Junction ${signalJunction}` : 'Current junction'}</h3><p>{liveBacked ? 'This live-backed plan uses a fresh post-stop MUSE judgment. Manual signal inputs are disabled.' : 'Each fresh observation applies to one junction. A full stop is required before entry.'}</p><div className="signal-buttons">{(['RED', 'GREEN', 'UNKNOWN'] as SignalColor[]).map(color => <button key={color} className={`signal-option ${color.toLowerCase()} ${signal === color ? 'selected' : ''}`} disabled={liveBacked || busy || actionReviewPending || !online || !workspace || view === 'Replay'} onClick={() => void command('signal', { color })}><i/>{color[0] + color.slice(1).toLowerCase()}</button>)}</div></section><section><span className="form-eyebrow">ACTION REVIEW STAND-IN</span><h3>Demo verdict</h3><p>{liveBacked ? 'Native BEFORE and AFTER images are reviewed by MUSE. Demo verdicts cannot advance this plan.' : 'These explicit operator inputs are labelled demo. Actual MUSE review uses recorded image pairs.'}</p><div className="review-buttons">{(['PASS', 'REOBSERVE', 'UNKNOWN', 'FAIL'] as ReviewVerdict[]).map(verdict => <button key={verdict} disabled={liveBacked || !pendingReview || busy || actionReviewPending || !online || view === 'Replay'} onClick={() => void command('reviews', { review_id: workspace!.review!.id, verdict })}>{verdict === 'REOBSERVE' ? 'Re-observe' : verdict[0] + verdict.slice(1).toLowerCase()}</button>)}</div></section></div>}</ViewportDialog>
+    <ViewportDialog actions={robotMission && !robotFinished ? renderStopAction() : undefined} open={modal === 'companion'} title="A shared perspective." subtitle="FUTURE GLASSES COMPANION" onClose={() => setModal(null)} className="companion-dialog"><div className="companion-concept"><span className="concept-pill">Concept · hardware not connected</span><h3>Look.<br/>Ask.<br/>Review.</h3><p>A future wearable view can bring the same scene, intent and reviewable plan into the operator's perspective.</p><div className="concept-sequence"><span>See the workspace</span><Icon name="arrow" size={18}/><span>State the goal</span><Icon name="arrow" size={18}/><span>Review on tablet</span></div><small>Wearable capture, voice and display integration require separate validation.</small></div></ViewportDialog>
   </div>;
 }

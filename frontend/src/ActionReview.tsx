@@ -125,7 +125,7 @@ function AuthorityNote() {
 export function ActionEvidence({ evidence }: { evidence: RecordedActionEvidence }) {
   const [tab, setTab] = useState<'images' | 'result' | 'evidence'>('result');
   return <section className="ar-workspace ar-readonly" aria-label="Recorded MUSE action evidence">
-    <header className="ar-heading"><div><span className="ar-eyebrow">Evidence replay</span><h2>Recorded comparison</h2></div><span className="ar-source">MUSE · read only</span></header>
+    <header className="ar-heading"><div><span className="ar-eyebrow">Mission Log</span><h2>Recorded comparison</h2></div><span className="ar-source">MUSE · read only</span></header>
     <nav className="ar-tabs" aria-label="Recorded evidence views">{(['images', 'result', 'evidence'] as const).map(item => <button type="button" key={item} aria-pressed={tab === item} className={tab === item ? 'active' : ''} onClick={() => setTab(item)}>{item[0].toUpperCase() + item.slice(1)}</button>)}</nav>
     <div className="ar-stage">{tab === 'images' && <div className="ar-pair"><FramePreview frame={evidence.before} label="BEFORE" empty="Before recording"/><FramePreview frame={evidence.after} label="AFTER" empty="After recording"/></div>}{tab === 'result' && <ReviewResult evidence={evidence}/>} {tab === 'evidence' && <EvidenceDetails evidence={evidence}/>}</div>
     <AuthorityNote/>

@@ -1,0 +1,33 @@
+/*
+ * Typography: Pretendard for headings, body, controls and metrics.
+ * Self-hosted unmodified variable font. Imported last.
+ */
+:root {
+  --font-body: "Pretendard Variable", Pretendard, system-ui, "Segoe UI", sans-serif;
+  --font-display: "Pretendard Variable", Pretendard, system-ui, "Segoe UI", sans-serif;
+  font-family: var(--font-body);
+}
+
+/* Display headings: H1, section titles and card titles. 600 (700 for the product name), tightened tracking. */
+.header-title h1,
+.scene-context > h2,
+.section-caption h3,
+.dialog-header h2, .scene-dialog-heading h2, .ar-heading h2,
+.status-card-value:not(.metric-value),
+.decision-page h3, .simulation-body h3, .voice-input-options > h3, .no-recorded-frame h2,
+.scene-result-heading h3, .scene-evidence-page h3, .scene-empty-result h3,
+.ar-review-readiness h3, .ar-result h3, .ar-provenance h3,
+.city-model-state strong {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.header-title h1 { font-weight: 700; }
+
+/* Metrics: tabular figures so digits line up. */
+.metric-value, .mission-progress strong, .route-facts strong, .context-number, .route-number, .event-sequence,
+.camera-view-controls output, .pager > span, .event-page small, .decision-page dd, .scene-facts dd, .status-card-bottom {
+  font-family: var(--font-body);
+  font-variant-numeric: tabular-nums;
+}
+.metric-value { font-weight: 500; letter-spacing: -0.01em; }

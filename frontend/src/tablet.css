@@ -1,0 +1,432 @@
+/*
+ * iPad landscape (13-inch, ~1376 x 1032) touch and type layer.
+ * Imported last; see docs/FRONTEND_CHANGES.md for the reasons behind each block.
+ * Type scale tokens (--fs-12 … --fs-28) are declared on :root in styles.css.
+ */
+
+/* Page: no rubber-band overscroll, no double-tap zoom, no grey tap flash. */
+html, body, #root { overscroll-behavior: none; }
+.app-shell { touch-action: manipulation; }
+* { -webkit-tap-highlight-color: transparent; }
+
+/* Touch targets: every tappable control is at least 44 x 44 px. */
+button, [role="button"], [role="tab"], a[href], summary, select {
+  min-width: 44px !important;
+  min-height: 44px !important;
+}
+
+/* Tap feedback (touch has no hover). */
+button, [role="button"], [role="tab"], a[href] { transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease; }
+button:not(:disabled):active, [role="button"]:active, [role="tab"]:not(:disabled):active, a[href]:active {
+  transform: scale(.97);
+  box-shadow: inset 0 0 0 100vmax #28323a12;
+}
+
+/* Overlays above the map keep their own gestures; the map surfaces stay touch-action: none. */
+.scene-heading, .floating-mission, .status-dock, .map-scene-controls, .scene-source-plate, .stage-notice, .scene-error,
+.city-model-view-controls, .camera-view-controls, .topbar { touch-action: manipulation; }
+
+/* No side rail: header and map span the full width. */
+.app-shell { grid-template-columns: minmax(0, 1fr); }
+.topbar, .workspace-stage { grid-column: 1; }
+@media (min-width: 701px) {
+  .workspace-stage { --stage-content-left: 28px; }
+  .workspace-stage .map-scene-controls, .status-dock, .stage-notice, .workspace-stage .scene-error { left: var(--stage-content-left); }
+}
+
+/* Header: logo + product name, Evidence replay entry and one simulation badge. */
+.header-title { gap: 12px; }
+.header-title > .brand { width: 34px; height: 34px; margin: 0; color: #242a2f; }
+.header-title .brand svg { width: 30px; height: 30px; }
+.header-title h1 { font-size: var(--fs-16); font-weight: 600; letter-spacing: -.4px; color: var(--ink); }
+.header-status { margin-left: auto; gap: 12px; }
+.header-replay {
+  display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; border: 1px solid #e1e6e8; border-radius: 22px;
+  background: #ffffffb8; color: #3f4a50; font-size: var(--fs-13); font-weight: 500;
+}
+.header-replay svg { color: #c4703f; }
+.header-replay.active { background: #fae8dd; border-color: #f1d3c2; color: #9a4f2b; }
+.mode-label { font-size: var(--fs-13); padding: 7px 13px; }
+
+/* Dialog footers without a caption keep the pager on the right. */
+.plan-browser .dialog-bottom, .evidence-browser .dialog-bottom { justify-content: flex-end; }
+
+/* Goal card: the chevron is part of the one goal entry point. */
+.goal-intent-bar { gap: 10px; padding-right: 6px; }
+.goal-intent-mic { width: 52px; height: 52px; }
+.goal-intent-query { display: flex; align-items: center; gap: 8px; align-self: stretch; padding-right: 10px; }
+.goal-intent-text { flex: 1; min-width: 0; }
+.goal-intent-chevron { width: 18px; height: 18px; }
+
+/* Mission panel. */
+.mission-heading > span { font-size: var(--fs-13); }
+.mission-intro { padding-top: 12px; }
+.mission-journey { margin-top: 0; font-size: var(--fs-16); letter-spacing: 0; color: #4d5960; }
+.mission-journey strong { color: #3c4a42; }
+.mission-progress > div, .mission-progress strong { font-size: var(--fs-13); }
+.mission-progress strong small { font-size: var(--fs-12); }
+.section-caption h3 { font-size: var(--fs-14); }
+.section-caption > button { font-size: var(--fs-12); padding: 0 4px; }
+.context-steps li { min-height: 48px; }
+.context-number { width: 26px; height: 26px; font-size: var(--fs-12); }
+.context-steps strong { font-size: var(--fs-14); }
+.context-steps small { font-size: var(--fs-13); }
+.context-steps li:not(:last-child):after { left: 12.5px; top: 34px; bottom: -6px; }
+.next-check h3 { font-size: var(--fs-13); }
+.next-check p { font-size: var(--fs-13); }
+.primary-button { font-size: var(--fs-14); min-height: 48px; }
+.secondary-button { font-size: var(--fs-13); }
+.cancel-button, .edit-goal-link { font-size: var(--fs-13); padding: 0 8px; }
+
+/* Bottom status cards. */
+.status-card-top { font-size: var(--fs-12); }
+.status-card-bottom, .status-card-bottom > span { font-size: var(--fs-12); }
+.status-card-value small { font-size: var(--fs-12); }
+
+/* Map controls. */
+.scene-view-toggle { gap: 8px; }
+.scene-view-toggle button { height: 44px; font-size: var(--fs-13); }
+.scene-tools-toggle, .scene-focus-toggle { height: 44px; font-size: var(--fs-13); }
+.camera-view-controls { gap: 8px; }
+.camera-view-controls output, .camera-view-gesture { font-size: var(--fs-12); }
+
+/* Dialog body copy and buttons. */
+.dialog-header .icon-button, .scene-dialog-heading > button { width: 44px; height: 44px; }
+.route-page p, .simulation-body p, .voice-input-options > p, .no-recorded-frame p, .empty-copy { font-size: var(--fs-13); }
+.goal-destinations > button, .goal-modal-tabs > button, .signal-option, .review-buttons > button,
+.scene-dialog-tabs > button, .scene-dialog-primary, .no-recorded-frame > button, .goal-voice-shortcut { font-size: var(--fs-13); }
+.goal-modal-tabs, .scene-dialog-tabs { gap: 8px; }
+.pager { gap: 8px; }
+
+/*
+ * Mission panel and status cards share the one .glass-surface (styles.css): white 59% -> 45%, blur 12px, 72% border.
+ * The map shows through, so their secondary text is dark enough for WCAG AA 4.5:1 over the blurred map.
+ */
+.floating-mission .mission-progress > div, .floating-mission .section-caption > button, .floating-mission .context-number,
+.floating-mission .cancel-button, .floating-mission .edit-goal-link, .floating-mission .empty-copy,
+.floating-mission .next-check h3, .floating-mission .next-check p, .floating-mission .mission-journey,
+.floating-mission .mission-heading > span { color: #2e383e; }
+.floating-mission .mission-progress strong, .floating-mission .mission-journey strong { color: #20292e; }
+.floating-mission .mission-progress strong small, .floating-mission .context-steps .complete strong,
+.floating-mission .context-steps small { color: #2e383e; }
+.floating-mission .context-steps .focused .context-number { color: #85401d; }
+.floating-mission .waiting-message { color: #614714; }
+.floating-mission .waiting-message small { color: #614714; }
+.floating-mission .primary-button { background: #b5521f; }
+@media (hover: hover) { .floating-mission .primary-button:hover:not(:disabled) { background: #a04818; } }
+.status-card-top, .status-card-top > svg, .status-card-bottom, .status-card-bottom > span, .status-card-value small { color: #2e383e; }
+.status-card-value { color: #20292e; }
+
+/* Signal card while a demo signal or demo review input is waiting: accent border and a "Tap to set" cue. */
+.status-card.needs-input { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent), 0 18px 46px -24px #37475140; }
+.status-card.needs-input .status-card-top i { background: var(--accent); }
+.status-card .tap-to-set {
+  display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-12); font-weight: 600;
+  color: color-mix(in srgb, var(--accent) 55%, #000);
+}
+.status-card .tap-to-set::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
+/*
+ * Revision 5 · full-bleed map (user request, October 29).
+ * The stage fills the window with no frame or rounded corners. The header keeps its glass and floats 12 px
+ * from the window edges; every overlay uses the same 12 px gutter, so the panels line up with the header.
+ */
+.app-shell { padding: 0; gap: 0; grid-template-rows: 84px minmax(0, 1fr); }
+.topbar { margin: 12px 12px 0; position: relative; z-index: 10; }
+.workspace-stage { border-radius: 0; box-shadow: none; }
+@media (min-width: 901px) {
+  .workspace-stage { --stage-content-left: 12px; --stage-controls-top: 176px; --stage-overlay-width: 316px; }
+  .scene-heading { left: 12px; top: 96px; width: calc(100% - 12px - var(--stage-overlay-width) - 12px); }
+  .scene-heading .goal-intent-bar { margin-top: 0; }
+  .floating-mission { top: 96px; right: 12px; bottom: 12px; }
+  .status-dock { left: 12px; right: calc(var(--stage-overlay-width) + 12px); bottom: 12px; }
+  .workspace-stage > .stage-notice { left: 12px; right: calc(var(--stage-overlay-width) + 12px); }
+  /* The camera image and 3D city start at the window edges too, not below the header. */
+  .workspace-stage .map-scene-stage .scene-visual { inset: 0; }
+}
+
+/* Header: map name beside the product name; execution mode and device connections are separate. */
+.header-title > .header-map { display: inline-flex; align-items: center; gap: 12px; font-size: var(--fs-16); font-weight: 500; color: #2e383e; white-space: nowrap; }
+.header-title > .header-map > span { color: #b9c1c6; font-weight: 300; }
+.mode-label.live { color: #1f6b43; background: #e3f4ea; border-color: #c7e6d3; }
+.device-status { display: flex; align-items: center; gap: 14px; margin: 0; padding: 0 4px; list-style: none; font-size: var(--fs-13); color: #2e383e; }
+.device-status li { display: inline-flex; align-items: center; gap: 6px; }
+.device-status i { width: 8px; height: 8px; border-radius: 50%; background: #b3bcc2; }
+.device-status li.on i { background: #2f9e62; }
+
+/* Mission panel collapse: the collapsed card keeps the state and the next action. */
+.mission-collapse { display: grid; place-items: center; width: 44px; height: 44px; margin: -12px -12px -12px 0; border-radius: 50%; color: #2e383e; }
+.mission-collapse svg { transform: rotate(-90deg); transition: transform .2s ease; }
+.mission-collapse[aria-expanded="false"] svg { transform: rotate(90deg); }
+.floating-mission.collapsed { bottom: auto; }
+.floating-mission.collapsed .mission-actions { margin-top: 0; }
+.mission-compact-state { margin-top: 8px; font-size: var(--fs-13); color: #2e383e; }
+
+/* Spatial: Reset view sits under the goal bar's right end, on the Camera/Spatial row, and appears only after the view moved. */
+@media (min-width: 901px) {
+  .workspace-stage .city-model-view-controls { left: auto; right: calc(var(--stage-overlay-width) + 12px); top: var(--stage-controls-top); bottom: auto; height: 54px; }
+}
+.city-model-view-controls .city-model-reset { width: auto; gap: 8px; padding: 0 16px; border-radius: 22px; font-size: var(--fs-13); font-weight: 500; color: #2e383e; }
+
+/* Mission panel: start and destination are the mission, so they carry the weight; route steps get more air. */
+.floating-mission .mission-journey > span, .floating-mission .mission-journey > strong { font-weight: 700; color: #20292e; }
+.floating-mission .mission-journey > strong.pending { font-weight: 400; color: #2e383e; }
+.context-steps { display: flex; flex-direction: column; gap: 10px; }
+.context-steps li { min-height: 52px; }
+.context-steps li:not(:last-child):after { bottom: -16px; }
+
+/* Revision 6: From/To stacked so long place names wrap instead of truncating. */
+.floating-mission .mission-journey { display: flex; flex-direction: column; align-items: stretch; gap: 0; margin: 0; }
+.floating-mission .mission-journey > div { padding: 10px 0; min-width: 0; }
+.floating-mission .mission-journey > div + div { border-top: 1px solid #dfe3e5; }
+.floating-mission .mission-journey dt { font-size: var(--fs-12); color: #6b767d; line-height: 1.4; }
+.floating-mission .mission-journey dd { margin: 2px 0 0; font-size: 18px; font-weight: 700; line-height: 1.3; color: #20292e; overflow-wrap: anywhere; }
+.floating-mission .mission-journey dd.pending { font-weight: 400; color: #2e383e; }
+
+/* Spatial: the tapped building's name pops up above the building with a spring and follows it while the view moves. */
+.city-model-pick-anchor { position: absolute; left: 0; top: 0; z-index: 3; width: 0; height: 0; pointer-events: none; visibility: hidden; }
+.city-model-pick-anchor .city-model-pick { position: absolute; left: 0; bottom: 12px; top: auto; right: auto; max-width: 320px; padding: 8px 14px;
+  background: #fffffff2; border-color: #ffffff; box-shadow: 0 10px 28px #2d3d3926; color: #20292e; font-size: var(--fs-13); font-weight: 600;
+  opacity: 1; transform-origin: 50% 100%; translate: -50% 0; animation: city-pick-spring .55s linear both; transition: opacity .2s, scale .2s; }
+.city-model-pick-anchor .city-model-pick::after { content: ""; position: absolute; left: 50%; bottom: -5px; width: 10px; height: 10px; translate: -50% 0; rotate: 45deg;
+  background: #fffffff2; border-radius: 0 0 2px 0; }
+.city-model-pick-anchor .city-model-pick { overflow: visible; }
+.city-model-pick-anchor .city-model-pick[data-visible="false"] { opacity: 0; scale: .85; animation: none; }
+@keyframes city-pick-spring {
+  0% { opacity: 0; scale: .4; transform: translateY(14px); }
+  35% { opacity: 1; scale: 1.1; transform: translateY(-4px); }
+  60% { scale: .95; transform: translateY(1px); }
+  80% { scale: 1.02; transform: translateY(0); }
+  100% { opacity: 1; scale: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) { .city-model-pick-anchor .city-model-pick { animation: none; } }
+
+/* Mission panel: every route step is listed, matching View all; the list scrolls when it is longer than the panel. */
+.floating-mission:not(.collapsed) .mission-context { display: flex; flex-direction: column; flex: 0 1 auto; min-height: 120px; }
+.floating-mission .context-steps { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
+  /* Room inside the scroll box for the current step's glow ring, offset so the list stays aligned. */
+  padding: 8px 4px 8px 8px; margin: -8px 0 -8px -8px; }
+.floating-mission .context-steps li { flex: none; align-items: flex-start; min-height: 0; }
+.floating-mission .context-steps li > div { padding-top: 3px; }
+.floating-mission .context-steps li:not(:last-child):after { top: 30px; bottom: -8px; }
+.floating-mission .context-steps small { line-height: 1.45; }
+.floating-mission .context-steps { gap: 16px; }
+.floating-mission .context-steps li:not(:last-child):after { bottom: -14px; }
+
+/* Mission actions: orange buttons have no outline; End simulation is a red text action right above the primary button. */
+.primary-button { border: 0; }
+.floating-mission .mission-actions .cancel-button { align-self: center; min-height: 44px; padding: 0 16px; color: #c4362b; font-weight: 500; }
+@media (hover: hover) { .floating-mission .mission-actions .cancel-button:hover:not(:disabled) { color: #a32a20; } }
+
+/* Select field: same box as the text inputs; chevron with the input's inner padding; the list opens below the field. */
+.select-field { position: relative; display: flex; flex-direction: column; gap: 7px; color: #889da9; font-size: var(--fs-12); }
+.select-field-control { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 44px;
+  padding: 0 13px; border: 1px solid #dce5eb; border-radius: 15px; background: #ffffffad; color: #587486; font-size: var(--fs-14); text-align: left; }
+.goal-dialog .goal-form input { min-height: 44px; }
+.select-field-control > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.select-field-control > svg { flex: none; color: #7b8f9b; transform: rotate(90deg); transition: transform .2s; }
+.select-field.open .select-field-control { border-color: #e4b69c; background: #fff; }
+.select-field.open .select-field-control > svg { transform: rotate(-90deg); }
+.select-field-control:focus-visible { outline: 2px solid #bc8560; outline-offset: 2px; }
+.select-field-list { position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 6px); margin: 0; padding: 6px; list-style: none;
+  border: 1px solid #dce5eb; border-radius: 15px; background: #fff; box-shadow: 0 14px 32px #26364124; }
+.select-field-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 0 12px;
+  border-radius: 10px; color: #3a4a54; font-size: var(--fs-14); cursor: pointer; }
+.select-field-list li.active { background: #fff0e6; }
+.select-field-list li[aria-selected="true"] { color: #b5521f; font-weight: 500; }
+.select-field-list li[aria-disabled="true"] { color: #a9b4ba; cursor: not-allowed; }
+.select-field-list li > svg { flex: none; color: #b5521f; }
+
+/* Route overview: the distance is the card's key figure, one step larger and bolder than the other card values. */
+@media (min-width: 901px) {
+  .status-card-value.metric-value { font-size: 24px; font-weight: 600; }
+}
+
+/* ---- Revision 7 (Oct 30): Mission Log list, modal text tones ---------------------------------------------- */
+/* Mission Log: the whole timeline scrolls in the left column (no pager), larger rows with a weight hierarchy. */
+.evidence-columns { padding-bottom: 0; }
+.event-page { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; overscroll-behavior: contain;
+  padding-right: 6px; scrollbar-width: thin; }
+.event-page > button { flex: none; min-height: 72px; padding: 14px 16px; gap: 14px;
+  transition: background-color .18s ease, border-color .18s ease; }
+.event-page > button:hover:not(.selected) { background: #ffffff8c; }
+.event-page > button:active { transform: scale(.99); }
+.event-page > button > span:nth-child(2) { gap: 5px; }
+.event-sequence { font-size: 13px; font-weight: 600; color: #a2532a; min-width: 30px; }
+.event-page strong { font-size: 16px; font-weight: 600; line-height: 1.35; color: #20292e; }
+.event-page small { font-size: 13px; font-weight: 400; color: #55646d; }
+.event-page svg { color: #7c8a93; }
+.event-page > button.selected { border-color: #f0d2bf; background: #fff1e7; }
+.event-page > button.selected strong { color: #1a2328; }
+
+/* Modal text tones: one scale for every dialog (Mission Log, Route plan, Visual action review, Recorded image
+   tools, Mission goal, Simulation inputs). Titles #1f2a30 → body #34434c → secondary #4f5f69 → labels #5f6e78,
+   all at least 4.5:1 on the dialog's near-white surface. */
+.dialog-header > div > span, .scene-dialog-heading > div > span { color: #5f6e78; font-weight: 600; }
+.dialog-header h2, .scene-dialog-heading h2 { color: #1f2a30; }
+.dialog-header .icon-button, .scene-dialog-heading > button { color: #4f5f69; }
+.dialog-bottom > span, .empty-copy, .pager > span > span, .form-note { color: #5f6e78; }
+.pager > span, .pager > button { color: #4f5f69; }
+.text-pages > p { color: #34434c; }
+.decision-label { color: #5f6e78; font-weight: 500; }
+.decision-page h3 { color: #1f2a30; font-weight: 600; }
+.decision-page dt { color: #5f6e78; }
+.decision-page dd { color: #34434c; font-weight: 500; }
+.route-facts small { color: #5f6e78; }
+.route-facts strong { color: #1f2a30; font-weight: 600; }
+.route-page strong { color: #20292e; font-weight: 600; }
+.route-page p { color: #4f5f69; }
+.route-number { color: #5f6e78; }
+.route-kind { color: #4f5f69; }
+.goal-destinations > button { color: #34434c; }
+.goal-destinations svg { color: #6b7a84; }
+.goal-form > label, .scene-field, .select-field { color: #4f5f69; }
+.goal-form input, .goal-form select, .select-field-control { color: #20292e; }
+.simulation-body h3 { color: #1f2a30; }
+.simulation-body p { color: #4f5f69; }
+.form-eyebrow { color: #5f6e78; }
+.signal-option, .review-buttons > button { color: #34434c; }
+.voice-input-heading, .voice-input-guide li, .goal-voice-shortcut { color: #4f5f69; }
+.voice-input-options > h3 { color: #1f2a30; }
+.voice-input-options > p, .voice-input-guide > span, .voice-input-options > footer > span,
+.original-query-panel > footer > span, .original-query-source, .goal-voice-shortcut > small { color: #5f6e78; }
+.original-query-panel > .text-pages > p { color: #20292e; }
+.scene-dialog-tabs > button { color: #4f5f69; }
+.scene-dialog-tabs > button.selected { color: #1f2a30; font-weight: 600; }
+.scene-field > span, .scene-image-fields > p, .scene-dialog-note, .scene-inspect-actions > span,
+.scene-facts dt, .scene-result-metrics span, .scene-dialog-footer { color: #5f6e78; }
+.scene-facts dd, .scene-result-metrics strong { color: #34434c; font-weight: 500; }
+.ar-eyebrow, .ar-authority, .ar-frame figcaption, .ar-text-button, .ar-expected > p, .ar-editor-tools,
+.ar-readiness-reason, .ar-review-readiness small, .ar-pair-status > span, .ar-metadata dt,
+.ar-pagination > span > span, .ar-authority > span > span { color: #5f6e78; }
+.ar-frame figcaption strong, .ar-expected > label { color: #1f2a30; }
+.ar-text-page { color: #34434c; }
+.ar-metadata dd, .ar-pagination > span { color: #34434c; }
+
+/* ---- Route sequence reveal: after Create Plan, steps appear one by one once the route has drawn ------------ */
+.context-steps.stagger > li { animation: step-in .32s cubic-bezier(.2, .8, .2, 1) both;
+  animation-delay: calc(var(--reveal, 1750ms) + var(--i, 0) * 90ms); }
+@keyframes step-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .context-steps.stagger > li { animation: none; } }
+
+/* ---- Micro-interactions (Oct 30). Short (0.2–0.4 s); all off under reduced motion. ------------------------ */
+/* 1. Press feedback on buttons and cards. */
+.primary-button, .secondary-button, .cancel-button, .status-card, .header-replay, .mission-collapse,
+.goal-destinations > button, .signal-option, .review-buttons > button, .select-field-control, .icon-button {
+  transition: transform .14s ease, background-color .18s ease, border-color .18s ease, box-shadow .18s ease, color .18s ease; }
+.primary-button:active:not(:disabled), .secondary-button:active:not(:disabled), .cancel-button:active:not(:disabled),
+.header-replay:active, .mission-collapse:active, .goal-destinations > button:active, .signal-option:active:not(:disabled),
+.review-buttons > button:active:not(:disabled), .select-field-control:active:not(:disabled), .icon-button:active { transform: scale(.97); }
+.status-card:active { transform: scale(.985); }
+
+/* 2. Mission progress: the bar fills smoothly and the count pops when it changes. */
+.mission-progress-bar { width: 100%; height: 7px; border-radius: 20px; overflow: hidden; background: #e7e9e978; }
+.mission-progress-bar > span { display: block; height: 100%; border-radius: inherit;
+  background: linear-gradient(90deg, #e88453, #f2c5ad); transition: width .6s cubic-bezier(.2, .8, .2, 1); }
+.count-pop { display: inline-block; animation: count-pop .36s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes count-pop { from { transform: scale(.6); opacity: .3; } to { transform: none; opacity: 1; } }
+
+/* 3. Route sequence: the check draws itself when a step completes; the current step's marker breathes. */
+.context-steps .complete .context-number svg path { stroke-dasharray: 22; animation: check-draw .4s ease-out both; }
+@keyframes check-draw { from { stroke-dashoffset: 22; } to { stroke-dashoffset: 0; } }
+.floating-mission .context-steps .focused .context-number { animation: step-breathe 2.4s ease-in-out infinite; }
+@keyframes step-breathe { 0%, 100% { box-shadow: 0 0 0 0 #ff7a2f00; } 50% { box-shadow: 0 0 0 5px #ff7a2f24; } }
+
+/* 4. Status card values slide up when they change. */
+.value-swap { display: block; animation: value-swap .32s cubic-bezier(.2, .8, .2, 1); }
+@keyframes value-swap { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* 5. Dialogs grow in from slightly below and fade out on close; the backdrop blur fades with them. */
+.viewport-dialog, .scene-tools-dialog { transition: opacity .22s ease, transform .26s cubic-bezier(.2, .8, .2, 1),
+  overlay .26s allow-discrete, display .26s allow-discrete; }
+.viewport-dialog:not([open]), .scene-tools-dialog:not([open]) { opacity: 0; transform: translateY(14px) scale(.97); }
+.viewport-dialog[open], .scene-tools-dialog[open] { opacity: 1; transform: none; }
+@starting-style { .viewport-dialog[open], .scene-tools-dialog[open] { opacity: 0; transform: translateY(14px) scale(.97); } }
+.viewport-dialog::backdrop, .scene-tools-dialog::backdrop { transition: opacity .26s ease, overlay .26s allow-discrete, display .26s allow-discrete; }
+.viewport-dialog:not([open])::backdrop, .scene-tools-dialog:not([open])::backdrop { opacity: 0; }
+@starting-style { .viewport-dialog[open]::backdrop, .scene-tools-dialog[open]::backdrop { opacity: 0; } }
+
+/* 6. Mission Log: the decision detail fades in when another entry is chosen. */
+.decision-page { animation: detail-in .24s ease-out; }
+@keyframes detail-in { from { opacity: 0; transform: translateX(6px); } to { opacity: 1; transform: none; } }
+
+/* 7. Header: a connection dot sends out one ring when it comes online. */
+.device-status li.on i { animation: dot-ping .9s ease-out 1; }
+@keyframes dot-ping { 0% { box-shadow: 0 0 0 0 #2f9e6266; } 100% { box-shadow: 0 0 0 7px #2f9e6200; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .count-pop, .value-swap, .decision-page, .device-status li.on i, .context-steps .complete .context-number svg path,
+  .floating-mission .context-steps .focused .context-number { animation: none; }
+  .mission-progress-bar > span, .viewport-dialog, .scene-tools-dialog { transition: none; }
+}
+
+/* ---- Route plan (Oct 30): the whole sequence scrolls (no pager); step kinds are colour-coded ---------------- */
+/* Kind colours follow the map overlay: push = route orange, stop = stop-line red, cross = signal amber,
+   verify = review blue. Text keeps 4.5:1 on its tint. */
+.route-page { display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; padding-right: 6px; scrollbar-width: thin; }
+.route-page > li { flex: none; min-height: 76px; padding: 14px 4px; }
+.route-kind { font-weight: 600; letter-spacing: .4px; border-color: transparent; }
+.route-kind.kind-push { color: #a2471a; background: #fff0e6; }
+.route-kind.kind-stop { color: #b3322a; background: #fdebe9; }
+.route-kind.kind-cross { color: #8a5a00; background: #fdf3d8; }
+.route-kind.kind-verify { color: #2d5f9a; background: #e9f1fb; }
+
+/* Spatial: the destination dot fades out under the arrived car. */
+[data-endpoint-dot] { transition: opacity .3s ease; }
+
+/* Operational data keeps its existing semantics inside the new surfaces. */
+.physical-check p { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.physical-detail-link { display: flex; align-items: center; gap: 4px; margin-top: 5px; color: #75818a; font-size: 10px; }
+.physical-stop { background: #a95f49; border-color: #a95f49; }
+.physical-stop:hover:not(:disabled) { background: #934f3b; }
+.physical-status-panel { display: flex; flex-direction: column; gap: 15px; min-height: 0; }
+.physical-status-panel > h3 { font-size: 22px; font-weight: 500; color: #344650; }
+.physical-status-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding-top: 14px; border-top: 1px solid #dce3e6; }
+.physical-status-facts > div { min-width: 0; }
+.physical-status-facts dt { font-size: 11px; color: #7d8b94; margin-bottom: 6px; }
+.physical-status-facts dd { margin: 0; font-size: 13px; color: #344650; overflow-wrap: anywhere; }
+.physical-stop-note { color: #7d8b94; font-size: 11px; line-height: 1.5; }
+.status-card-value { overflow: hidden; text-overflow: ellipsis; }
+.context-steps strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.context-steps small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.physical-telemetry .route-page strong, .physical-telemetry .route-kind { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.physical-telemetry .route-kind { max-width: 140px; }
+.physical-telemetry .route-page p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.physical-telemetry .route-page small { display: block; margin-top: 4px; font-size: 9px; color: #7f8c94; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.physical-telemetry .event-page strong, .physical-telemetry .decision-page h3 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.physical-telemetry .event-page button > span { min-width: 0; }
+.status-card.is-scanning .status-card-top i { background: #d28e68; animation: muse-request-pulse 1.4s ease-in-out infinite; }
+.status-card.is-scanning { box-shadow: inset 0 0 0 1px #deaa836e; }
+@keyframes muse-request-pulse { 0%, 100% { box-shadow: 0 0 0 0 #d28e6833; opacity: .65; } 50% { box-shadow: 0 0 0 5px #d28e6800; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .status-card.is-scanning .status-card-top i { animation: none; opacity: 1; } }
+
+/* The same stop request remains reachable in collapsed cards and native modal focus scopes. */
+.dialog-header .dialog-header-actions { display: flex; flex-direction: row; align-items: center; gap: 12px; flex: 0 1 auto; }
+.dialog-header-actions .physical-stop { width: auto; min-width: 170px; max-width: 250px; }
+.dialog-header-actions .physical-stop svg { margin: 0; }
+.floating-mission .physical-detail-link { min-height: 32px !important; font-size: var(--fs-12); color: #4f5f69; }
+.floating-mission .mission-actions { flex: none; }
+.floating-mission .mission-intro, .floating-mission .mission-progress, .floating-mission .next-check { flex: none; }
+.floating-mission .physical-stop { background: #a95f49; }
+@media (hover: hover) { .floating-mission .physical-stop:hover:not(:disabled) { background: #934f3b; } }
+.status-card-value { min-width: 0; }
+.physical-telemetry .event-page > button > span { display: flex; flex-direction: column; gap: 5px; }
+.physical-telemetry .decision-page dd { overflow-wrap: anywhere; }
+.physical-status-facts { margin: 0; }
+.physical-status-facts dt, .physical-stop-note { font-size: var(--fs-12); color: #5f6e78; }
+.physical-telemetry .route-page small { white-space: normal; overflow-wrap: anywhere; font-size: var(--fs-12); }
+@media (max-width: 1050px) and (min-width: 901px) {
+  .header-title h1 { display: block; }
+  .header-title > .brand { display: grid; }
+  .header-title > .header-map { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+  .header-status { gap: 8px; }
+  .device-status { gap: 8px; }
+  .header-replay { padding: 0 12px; }
+  .topbar { gap: 12px; padding: 0 18px; }
+}
+@media (max-width: 700px) {
+  .dialog-header-actions .physical-stop { min-width: 44px; max-width: 160px; font-size: var(--fs-12); }
+}
+
+/* A hold/replay anchor positions the list without implying an active robot command. */
+.floating-mission .context-steps .display-anchor .context-number { animation: none; }

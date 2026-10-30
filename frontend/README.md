@@ -6,6 +6,8 @@
 
 [Design system](../docs/DESIGN_SYSTEM.md) · [Route display](../docs/ROUTE_DISPLAY.md) · [Mission](../docs/MISSION.md) · [Architecture](../docs/ARCHITECTURE.md) · [Voice input](../docs/VOICE_INPUT.md) · [Development](../docs/DEVELOPMENT.md)
 
+> **October 30 designer integration:** the current source ports the supplied full-screen glass layout onto the existing Robot controller. Physical receipts, complete route/history lists, MUSE/signal status and Stop remain authoritative. Spatial adds a labelled, contact-receipt-driven vehicle illustration through an optional read-only display API; it performs no vision tracking or robot command. Pretendard, camera pixels and physical map/control configuration are preserved. See [implementation, checks and activation boundary](../docs/DESIGNER_LIVE_DISPLAY.md). The older simulation-slice descriptions below are historical context; they do not describe the current-site physical executor's qualification or deployment state.
+
 The runnable workspace uses React, TypeScript and Vite. The current direction follows the user's industrial references through a continuous spatial stage, large rounded translucent overlays, quiet charcoal typography and restrained orange accents. The application fits a viewport without vertical scrolling; detailed tasks use dialogs, tabs and pages. It connects to the Python mission backend through the versioned [workspace contract](../contracts/workspace.ts). Production builds are static files served by that backend; GX10 does not need Node.js to run the built application.
 
 ## The experience

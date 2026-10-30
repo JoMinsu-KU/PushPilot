@@ -9,6 +9,15 @@ export interface CityPreviewFit {
   spatial?: SpatialPreview;
 }
 export interface CityProjection { width: number; height: number; matrix: number[] }
+export interface CityDisplayManifest {
+  schema_version: 'pushpilot.city-display.v1';
+  coordinate_authority: 'display_only';
+  map_geometry_hash: string;
+  model: { id: string; sha256: string; url: string };
+  drawing_rect_mm: [number, number, number, number];
+  model_rect_xz: [number, number, number, number];
+  elevation: number;
+}
 
 // Legacy maps keep an explicitly unaligned, complete-graph preview.
 const cityRoadEnvelope = { width: 472, depth: 298, elevation: 2 };
@@ -52,6 +61,33 @@ export function cityPreviewFit(map: TemporaryMap | null, binding: CityModelBindi
 export function cityPreviewLabel(fit: CityPreviewFit | null): string {
   return !fit ? 'Route correspondence unavailable' : fit.spatial
     ? 'Drawing-aligned route · display only' : '2D route preview · alignment pending';
+}
+
+/** The new artwork is independently bound. Never mutate the physical map to display a model. */
+export function cityDisplayFit(map: TemporaryMap | null, manifest: CityDisplayManifest | null, actualModelSha256: string | null): CityPreviewFit | null {
+  if (!map || !manifest || manifest.schema_version !== 'pushpilot.city-display.v1'
+    || manifest.coordinate_authority !== 'display_only' || manifest.map_geometry_hash !== map.geometry_hash
+    || !/^[a-f0-9]{64}$/.test(manifest.model?.sha256 ?? '') || manifest.model.sha256 !== actualModelSha256
+    || !manifest.model.id || manifest.model.url !== '/models/private/pushpilot-city-clean-roads.glb') return null;
+  const correspondence: SpatialPreview = {
+    schema_version: 'pushpilot.spatial-preview.v1', coordinate_authority: 'display_only', alignment: 'drawing_correspondence',
+    model_id: manifest.model.id, model_sha256: manifest.model.sha256,
+    drawing_rect_mm: manifest.drawing_rect_mm, model_rect_xz: manifest.model_rect_xz, elevation: manifest.elevation,
+  };
+  // Reuse all rectangle/node containment checks against a copy, preserving the original map byte-for-byte.
+  return cityPreviewFit({ ...map, spatial_preview: correspondence }, manifest.model);
+}
+
+/** Drawing to model world, for the same display-only fit used by the route. */
+export function cityPreviewWorld(point: Point, fit: CityPreviewFit): [number, number, number] | null {
+  if (!point.every(Number.isFinite) || ![fit.left, fit.top, fit.width, fit.height].every(Number.isFinite)
+    || fit.width <= 0 || fit.height <= 0) return null;
+  const spatial = fit.spatial;
+  if (spatial && (!rect(spatial.model_rect_xz) || !Number.isFinite(spatial.elevation))) return null;
+  const [left, top, right, bottom] = spatial?.model_rect_xz ?? [-cityRoadEnvelope.width / 2, -cityRoadEnvelope.depth / 2,
+    cityRoadEnvelope.width / 2, cityRoadEnvelope.depth / 2];
+  return [left + (point[0] - fit.left) / fit.width * (right - left), spatial?.elevation ?? cityRoadEnvelope.elevation,
+    top + (point[1] - fit.top) / fit.height * (bottom - top)];
 }
 
 /** Preserve canonical path order/direction, using the exact rendered Three camera. */

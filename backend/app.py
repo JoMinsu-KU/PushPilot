@@ -29,6 +29,8 @@ from backend.signal_watch import SignalWatchService
 from backend.display_registration import DisplayRegistrationService
 from backend.physical_mission import PhysicalMissionService
 from backend.physical_api import router as physical_router
+from backend.physical_display import PhysicalDisplayService
+from backend.physical_display_api import router as physical_display_router
 
 
 class Command(BaseModel):
@@ -162,9 +164,30 @@ def create_app(settings: Settings | None = None, *, db_path: str | None = None,
             Path(scene_dir) / "physical-mission", driver=driver)
         await application.state.physical.refresh_readiness()
         application.state.physical.start_monitor()
+        # Optional read-only cache owns no driver, journal lock or control state.
+        # A broken presentation collector must not change physical startup.
+        application.state.physical_display = None
+        try:
+            display = PhysicalDisplayService(configured.physical_config_path,
+                physical_snapshot=application.state.physical.snapshot,
+                map_data=map_definition.data, map_hash=map_definition.geometry_hash)
+            application.state.physical_display = display
+            display.start()
+        except Exception:
+            try:
+                if application.state.physical_display is not None:
+                    application.state.physical_display.close()
+            except Exception:
+                pass
+            application.state.physical_display = None
         try:
             yield
         finally:
+            try:
+                if application.state.physical_display is not None:
+                    application.state.physical_display.close()
+            except Exception:
+                pass  # Display cleanup cannot delay or suppress physical close.
             await application.state.physical.close()
             await application.state.signal_watch.close()
             application.state.live_camera.close()
@@ -359,6 +382,7 @@ def create_app(settings: Settings | None = None, *, db_path: str | None = None,
     application.include_router(voice_router)
     application.include_router(map_router)
     application.include_router(physical_router)
+    application.include_router(physical_display_router)
 
     @application.api_route("/api", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
     @application.api_route("/api/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])

@@ -1,19 +1,18 @@
 import { Icon } from './Icons';
 
 /** The accepted request stays visible independently of the interpreted destination. */
-export function GoalIntentBar({ query, source, onQuery, onVoice }: {
-  query: string | null; source: 'typed' | 'voice' | null;
+export function GoalIntentBar({ query, onQuery, onVoice }: {
+  query: string | null; source?: 'typed' | 'voice' | null;
   onQuery: () => void; onVoice: () => void;
 }) {
   return <div className="goal-intent-bar glass-surface" role="group" aria-label="Goal input and original query">
-    <button className="goal-intent-mic" onClick={onVoice} aria-label="Voice input options" title="Voice input is not connected yet.">
-      <Icon name="mic" size={22}/><span>Voice</span>
+    <button className="goal-intent-mic" onClick={onVoice} aria-label="Voice input options">
+      <Icon name="mic" size={22}/>
     </button>
-    <button className="goal-intent-query" onClick={onQuery} aria-label={query ? 'View original user query' : 'Enter a mission goal'} title={query ?? 'Enter your goal'}>
-      <span className="goal-intent-meta"><strong>Your goal</strong><span>{source === 'voice' ? 'Voice' : source === 'typed' ? 'Typed' : 'Start here'}</span></span>
+    <button className="goal-intent-query" onClick={onQuery} aria-label={query ? 'View or edit the mission goal' : 'Enter a mission goal'}>
       <span className={`goal-intent-text ${query ? '' : 'empty'}`}>{query ?? 'Tell PushPilot where to go.'}</span>
+      <Icon name="chevron" className="goal-intent-chevron" size={18}/>
     </button>
-    <Icon name="chevron" className="goal-intent-chevron" size={15}/>
   </div>;
 }
 

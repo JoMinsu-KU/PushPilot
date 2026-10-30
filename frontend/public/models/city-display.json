@@ -1,0 +1,13 @@
+{
+  "schema_version": "pushpilot.city-display.v1",
+  "coordinate_authority": "display_only",
+  "map_geometry_hash": "9fea848ee172ea6779edda861ddb15c51ba562117d77a3558eb8a85811aefb50",
+  "model": {
+    "id": "pushpilot-seoul-city-toy3d",
+    "sha256": "842a7c32e9c8634a9eef12a741e3d4f5ea7727710b88353dc116095d309d9bf2",
+    "url": "/models/private/pushpilot-city-clean-roads.glb"
+  },
+  "drawing_rect_mm": [39.539623717, 39.542128603, 380.340649943, 257.398004435],
+  "model_rect_xz": [-241, -154, 241, 154],
+  "elevation": 0.6
+}

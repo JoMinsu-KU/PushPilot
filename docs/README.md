@@ -24,6 +24,7 @@ The current [visual direction](DESIGN_SYSTEM.md) follows the user's industrial r
 | Confirm the intersection scenario | [MUSE signal gate](MUSE_SIGNAL_GATE.md) | Implemented native-frame judgments after simulated stop receipts; physical stopping remains unqualified |
 | Follow MUSE route selection and native-frame reviews | [Live intelligence](LIVE_INTELLIGENCE.md) | [Live contracts](../contracts/live-intelligence.ts) and [backend](../backend/README.md) |
 | Design the operator workspace | [Design system](DESIGN_SYSTEM.md) | [Frontend](../frontend/README.md) |
+| Review the designer layout and read-only execution display | [Designer live display](DESIGNER_LIVE_DISPLAY.md) | Preserved physical controller, estimated Spatial car and isolated rollout |
 | Follow route progress or replace the drawing | [Route display](ROUTE_DISPLAY.md) | [Map validation and replacement](MAP_REPLACEMENT.md) |
 | Use the placed City A3 print | [City A3](CITY_A3.md) | New places and shared Camera/Spatial drawing correspondence; physical geometry remains unqualified |
 | Understand the system | [Architecture](ARCHITECTURE.md) | [Service composition](SERVICE_COMPOSITION.md) |

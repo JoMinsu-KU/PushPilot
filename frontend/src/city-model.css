@@ -1,35 +1,33 @@
 .city-model-view { position: relative; width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; isolation: isolate; }
 .city-model-host { position: absolute; inset: 0; }
-.city-model-host { background: radial-gradient(ellipse at 42% 48%, #f6f7f4 0, #e9edeb70 67%, transparent 100%); }
+.city-model-host { background: #d8e6f7; }
 .city-model-canvas { display: block; width: 100%; height: 100%; outline: none; touch-action: none; }
 .city-route-preview { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; pointer-events: none; overflow: hidden; }
-.city-model-state { position: absolute; z-index: 2; left: calc(var(--stage-content-left, 108px) + 12px); top: 40%; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; max-width: min(350px, calc(100% - var(--stage-content-left, 108px) - 30px)); padding: 19px 21px; border: 1px solid #ffffffcd; border-radius: 22px; background: #ffffffa3; box-shadow: 0 13px 48px #2d3d3910; backdrop-filter: blur(14px); color: #7c878a; font-size: 12px; line-height: 1.6; }
-.city-model-state strong { color: #535e61; font-size: 15px; font-weight: 500; letter-spacing: -.3px; }
+.city-model-state { position: absolute; z-index: 2; left: calc(var(--stage-content-left, 108px) + 12px); top: 40%; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; max-width: min(350px, calc(100% - var(--stage-content-left, 108px) - 30px)); padding: 19px 21px; border: 1px solid #ffffffcd; border-radius: 22px; background: #ffffffa3; box-shadow: 0 13px 48px #2d3d3910; backdrop-filter: blur(14px); color: #7c878a; font-size: var(--fs-12); line-height: 1.6; }
+.city-model-state strong { color: #535e61; font-size: var(--fs-16); font-weight: 500; letter-spacing: -.3px; }
 .city-model-state > span { max-width: 100%; overflow-wrap: anywhere; }
-.city-model-state button { min-height: 34px; padding: 7px 11px; margin-top: 4px; border: 1px solid #e3d2c7; border-radius: 11px; background: #fff9f3cd; color: #a56849; font-size: 11px; }
+.city-model-state button { min-height: 34px; padding: 7px 11px; margin-top: 4px; border: 1px solid #e3d2c7; border-radius: 11px; background: #fff9f3cd; color: #a56849; font-size: var(--fs-12); }
 .city-model-loading-dot { width: 6px; height: 6px; border-radius: 50%; background: #db8c65; box-shadow: 0 0 0 4px #db8c6511; }
 .city-model-state-error, .city-model-state-lost { background: #fffaf4dc; border-color: #ead8c5d6; }
-.city-model-view-controls { position: absolute; z-index: 3; left: var(--stage-content-left, 108px); bottom: calc(var(--stage-source-bottom, 146px) + 91px); display: flex; align-items: center; gap: 7px; max-width: calc(100% - var(--stage-content-left, 108px) - var(--stage-overlay-width, 340px) - 20px); padding: 5px 7px; border: 1px solid #ffffffba; border-radius: 14px; background: #ffffff93; box-shadow: 0 5px 22px #2c3c3208; backdrop-filter: blur(13px); color: #85908e; }
-.city-model-concept { padding: 0 5px; font-size: 9px; font-weight: 500; letter-spacing: .3px; white-space: nowrap; }
-.city-model-presets { display: flex; align-items: center; gap: 2px; }
-.city-model-view-controls button { display: inline-flex; align-items: center; justify-content: center; height: 29px; padding: 0 10px; border-radius: 9px; color: #7d8889; font-size: 10px; white-space: nowrap; }
-.city-model-view-controls button[aria-pressed="true"] { background: #f7f9f6cf; color: #a66c49; box-shadow: 0 1px 4px #283f3105; }
-.city-model-view-controls button:hover:not(:disabled) { background: #ffffffa8; color: #b57250; }
+.city-model-view-controls { position: absolute; z-index: 3; left: var(--stage-content-left, 108px); bottom: calc(var(--stage-source-bottom, 146px) + 91px); display: flex; align-items: center; }
+.city-model-view-controls button { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: 1px solid #ffffffc4; border-radius: 50%; background: #ffffffc7; box-shadow: 0 5px 18px #2c3c3214; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); color: #4f5d60; }
+@media (hover: hover) {
+.city-model-view-controls button:hover:not(:disabled) { background: #ffffffeb; color: #b57250; } }
 .city-model-view-controls button:focus-visible, .city-model-state button:focus-visible { outline: 2px solid #bc8560; outline-offset: 3px; }
 .city-model-view-controls button:disabled { opacity: .45; cursor: default; }
-.city-model-view-controls .city-model-reset { width: 29px; padding: 0; border-left: 1px solid #d6dfd957; border-radius: 7px; }
-.city-model-gesture { font-size: 9px; color: #8e9999; white-space: nowrap; padding: 0 4px; }
-.map-scene-panel .city-model-view-controls { left: 18px; bottom: 47px; max-width: calc(100% - 36px); }
+.city-model-view-controls .city-model-reset svg { width: 18px; height: 18px; }
+.city-model-pick { position: absolute; left: 0; bottom: calc(100% + 10px); max-width: min(360px, calc(100vw - 64px)); padding: 7px 15px; border: 1px solid #ffffffcd; border-radius: 999px; background: #ffffffa3; box-shadow: 0 8px 28px #2d3d3912; backdrop-filter: blur(12px) saturate(105%); color: #3a4446; font-size: var(--fs-13); font-weight: 500; letter-spacing: -.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; opacity: 0; transition: opacity .2s; }
+.city-model-pick[data-visible="true"] { opacity: 1; }
+.city-model-pick:empty { padding: 0; border: 0; }
+.map-scene-panel .city-model-view-controls { left: 18px; bottom: 47px; }
 .map-scene-panel .city-model-state { left: 24px; max-width: min(350px, calc(100% - 48px)); }
-@media (max-width: 1180px) {
-  .city-model-gesture { display: none; }
-  .city-model-view-controls { gap: 4px; }
-}
 @media (max-width: 760px) {
-  .city-model-view-controls { left: 16px; bottom: calc(var(--stage-source-bottom, 9px) + 49px); max-width: calc(100% - 32px); }
+  .city-model-view-controls { left: 16px; bottom: calc(var(--stage-source-bottom, 9px) + 49px); }
   .city-model-state { left: 24px; top: 36%; max-width: min(330px, calc(100% - 48px)); padding: 16px 18px; }
-  .city-model-view-controls button { height: 28px; }
 }
 @media (max-height: 650px) and (min-width: 761px) {
   .city-model-state { padding: 14px 17px; gap: 5px; }
 }
+
+.city-display-caption { position:absolute; z-index:2; right:24px; bottom:20px; display:flex; gap:9px; padding:7px 11px; border:1px solid #ffffffa8; border-radius:99px; color:#647076; background:#ffffff8a; backdrop-filter:blur(12px); font-size:11px; pointer-events:none; }
+.city-display-caption span { color:#8c969c; }
