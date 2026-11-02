@@ -30,11 +30,6 @@ class ResetCommand(PhysicalCommand):
     reason: str = Field(min_length=10, max_length=500)
 
 
-class CommissioningCommand(PhysicalCommand):
-    owner_id: str = Field(min_length=8, max_length=100, pattern=r"^[A-Za-z0-9_-]+$")
-    reason: str = Field(min_length=10, max_length=500)
-
-
 def same_origin(request):
     origin = request.headers.get("origin")
     parsed = urlsplit(origin or "")
@@ -59,18 +54,6 @@ async def start(command: StartCommand, request: Request):
 async def stop(command: PhysicalCommand, request: Request):
     same_origin(request)
     return await request.app.state.physical.stop(command.model_dump(mode="json"))
-
-
-@router.post("/commissioning/acquire")
-async def commissioning_acquire(command: CommissioningCommand, request: Request):
-    same_origin(request)
-    return await request.app.state.physical.commissioning_acquire(command.model_dump(mode="json"))
-
-
-@router.post("/commissioning/release")
-async def commissioning_release(command: CommissioningCommand, request: Request):
-    same_origin(request)
-    return await request.app.state.physical.commissioning_release(command.model_dump(mode="json"))
 
 
 @router.post("/reset")

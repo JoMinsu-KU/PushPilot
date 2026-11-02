@@ -20,7 +20,6 @@ Start with the [demo and recorded-decision guide](DEMO.md) for actual tablet foo
 |---|---|
 | Know what is implemented, demonstrated or still unqualified | [Current status](CURRENT_STATUS.md) · [Known limitations](KNOWN_LIMITATIONS.md) |
 | Prepare a mission, stop, return, reset or recover | [Robot operations](ROBOT_OPERATIONS.md) |
-| Inspect and execute one reviewed B/C/D unit in an isolated GUI | [Commissioning console](COMMISSIONING_CONSOLE.md) |
 | Understand the B/Office, C/Villa and D/Hanok delivery scope | [Delivery-first site trial](DELIVERY_SITE_TRIAL.md) · [Autonomous policy and trial boundary](AUTONOMOUS_EXECUTOR.md) |
 | Review the paper-signal admission | [Single signal departure](SINGLE_SIGNAL_DEPARTURE.md) · [Signal wait reference](ROBOT_SIGNAL_WAIT.md) · [Signal service scopes](MUSE_SIGNAL_GATE.md) |
 | Review C's endpoint and visual policies | [C26 delivery endpoint](C26_DELIVERY_ENDPOINT.md) · [C intermediate review matrix](C_INTERMEDIATE_PROGRESS_REVIEW.md) |

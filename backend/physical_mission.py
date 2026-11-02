@@ -45,7 +45,6 @@ class PhysicalMissionService:
         self.stop_generation = 0
         row = self.db.execute("SELECT value FROM state WHERE id=1").fetchone()
         self.status = json.loads(row[0]) if row else self._empty()
-        self.status.setdefault("commissioning", {"reserved": False, "owner_id": None})
         self.status.setdefault("telemetry", self._empty_telemetry())
         self.status["vision"].update(in_flight=False, kind=None, started_at=None)
         if row and self.status["state"] not in {"DISABLED", "READY", "COMPLETE", "HOLD"}:
@@ -155,9 +154,6 @@ class PhysicalMissionService:
                         self._persist("READINESS_CHANGED")
 
     async def refresh_readiness(self):
-        if self.status.get("commissioning", {}).get("reserved"):
-            self.status.update(available=False, blockers=["COMMISSIONING_RESERVED"])
-            return self.snapshot()
         if self.driver is None:
             self._disable_unconfigured()
             return self.snapshot()
@@ -219,80 +215,8 @@ class PhysicalMissionService:
                             (command["request_id"], json.dumps(command), json.dumps(response)))
         return response
 
-    def _require_production_owner(self):
-        if self.status.get("commissioning", {}).get("reserved"):
-            raise CommandError("COMMISSIONING_RESERVED: the separate commissioning owner controls this session.", 409)
-
-    async def commissioning_acquire(self, command):
-        """Reserve an inactive executor; this endpoint never stops an active mission."""
-        async with self.lock:
-            prior = self._existing(command)
-            if prior is not None:
-                return prior
-            self._require_production_owner()
-            if (command["expected_revision"] != self.status["revision"]
-                    or self.task and not self.task.done()
-                    or not (self.status["state"] == "COMPLETE" or
-                            self.status["state"] == "READY" and self.status["mission_id"] is None)):
-                raise CommandError("COMMISSIONING_PRODUCTION_BUSY: finish the current mission before reserving commissioning.", 409)
-            handoff = getattr(self.driver, "commissioning_handoff", None)
-            if not callable(handoff):
-                raise CommandError("COMMISSIONING_UNSUPPORTED: the installed driver has no no-motion handoff.", 409)
-            generation = self.stop_generation
-            # Durable reservation precedes releasing the OS journal owner. On
-            # restart, the monitor must not reacquire that lock from the tester.
-            self.status["commissioning"] = {"reserved": True, "owner_id": command["owner_id"]}
-            self.status.update(available=False, blockers=["COMMISSIONING_RESERVED"])
-            self._persist("COMMISSIONING_RESERVATION_REQUESTED", command)
-            try:
-                proof = await asyncio.to_thread(handoff, command["owner_id"], command["reason"])
-                if (not isinstance(proof, dict) or proof.get("motion_issued") is not False
-                        or proof.get("ownership_released") is not True or self.stop_generation != generation):
-                    raise ValueError("No-motion ownership handoff did not verify.")
-            except Exception as error:
-                # A failed handoff is never reported as permission to execute.
-                # Keep the reservation if ownership might have been released.
-                if not getattr(self.driver, "_commissioning_detached", False):
-                    self.status["commissioning"] = {"reserved": False, "owner_id": None}
-                    self.status["blockers"] = ["COMMISSIONING_HANDOFF_UNCONFIRMED"]
-                self._persist("COMMISSIONING_RESERVATION_BLOCKED", {"code": getattr(error, "code", type(error).__name__)})
-                raise CommandError("Commissioning handoff blocked: " + getattr(error, "code", type(error).__name__), 409) from error
-            self._persist("COMMISSIONING_RESERVED", {"owner_id": command["owner_id"], "proof": proof})
-            return self._save_request(command)
-
-    async def commissioning_release(self, command):
-        """Rejoin only at independently verified common START, without motion."""
-        async with self.lock:
-            prior = self._existing(command)
-            if prior is not None:
-                return prior
-            reservation = self.status.get("commissioning", {})
-            if (command["expected_revision"] != self.status["revision"]
-                    or reservation.get("reserved") is not True
-                    or reservation.get("owner_id") != command["owner_id"]
-                    or self.task and not self.task.done()):
-                raise CommandError("COMMISSIONING_OWNER_MISMATCH: release only the exact reserved owner.", 409)
-            release = getattr(self.driver, "commissioning_rejoin", None)
-            if not callable(release):
-                raise CommandError("COMMISSIONING_UNSUPPORTED", 409)
-            try:
-                proof = await asyncio.to_thread(release, command["owner_id"], command["reason"])
-                if (not isinstance(proof, dict) or proof.get("motion_issued") is not False
-                        or proof.get("at_start") is not True or proof.get("stationary") is not True):
-                    raise ValueError("A fresh no-motion common START proof is required.")
-            except Exception as error:
-                self._persist("COMMISSIONING_RELEASE_BLOCKED", {"code": getattr(error, "code", type(error).__name__)})
-                raise CommandError("Commissioning release blocked: " + getattr(error, "code", type(error).__name__), 409) from error
-            self.status["commissioning"] = {"reserved": False, "owner_id": None}
-            self.status.update(available=False, blockers=["READINESS_REFRESH_REQUIRED"])
-            self._persist("COMMISSIONING_RELEASED_AT_START", {"owner_id": command["owner_id"], "proof": proof})
-            # Preserve old COMPLETE/READY, receipts and errors. Never reset the
-            # workspace or silently start a fresh mission as part of handback.
-            return self._save_request(command)
-
     async def start(self, command):
         async with self.lock:
-            self._require_production_owner()
             prior = self._existing(command)
             if prior is not None:
                 return prior
@@ -339,7 +263,6 @@ class PhysicalMissionService:
             return response
 
     async def stop(self, command):
-        self._require_production_owner()
         # Signal cancellation before waiting for a potentially slow prepare().
         self.stop_generation += 1
         self.stopping.set()
@@ -373,7 +296,6 @@ class PhysicalMissionService:
     async def reset(self, command):
         """Retire an ended mission after independent START proof, never resume it."""
         async with self.lock:
-            self._require_production_owner()
             prior = self._existing(command)
             if prior is not None:
                 return prior
@@ -438,7 +360,6 @@ class PhysicalMissionService:
         from backend.robot_control.mission_resume import state_from_dict
         from backend.robot_control.boundary_recovery import prepare
         async with self.lock:
-            self._require_production_owner()
             prior = self._existing(command)
             if prior is not None:
                 return prior
@@ -481,7 +402,6 @@ class PhysicalMissionService:
         from backend.robot_control.mission_driver import plan_from_dict
         from backend.robot_control.mission_resume import state_from_dict
         async with self.lock:
-            self._require_production_owner()
             prior=self._existing(command)
             if prior is not None:
                 return prior
@@ -528,7 +448,6 @@ class PhysicalMissionService:
         from backend.robot_control.mission_driver import plan_from_dict
         from backend.robot_control.mission_resume import REVIEW_HOLD, C19_REVIEW_HOLD, state_from_dict
         async with self.lock:
-            self._require_production_owner()
             omit_c19 = command.get('omit_c19_review') is True
             native_interruption = self.status.get('error') == 'PHYSICAL_STATUS_REQUIRED'
             prior = self._existing(command)
