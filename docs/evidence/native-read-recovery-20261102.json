@@ -4,7 +4,7 @@
   "timezone": "Asia/Seoul",
   "source_commit": "bcac7696bcc9714c3d5cf35dc0b4b7ef73e9b0d6",
   "host_release": "20261102-native-recovery-bcac769",
-  "status": "deployed_waiting_for_manual_play",
+  "status": "deployed_live_idle_verified",
   "changes": [
     "Read-only Native reacquisition with legal same-owner IDLE keepalive",
     "Non-idle native_wait publication blocks dispatch during unavailable telemetry",
@@ -27,7 +27,17 @@
         "Consumed request expires during preflight acquisition without PREPARE or GO"
       ]
     },
-    "actual_connected_idle_soak": "pending_operator_manual_play",
+    "actual_connected_idle_soak": {
+      "passed": true,
+      "first_event_kst": "2026-11-02T13:35:44.064157+09:00",
+      "last_event_kst": "2026-11-02T13:41:52.985315+09:00",
+      "same_session_and_sequence": true,
+      "original_host_journal_native_proof_valid": true,
+      "actual_outage_recovery_observed": false,
+      "read_failure_events": 0,
+      "motion_or_profile_dispatch_observed": false,
+      "validator_socket_calls": 0
+    },
     "physical_movement_performed": false,
     "loaded_route_repeatability_qualified": false
   },
@@ -47,6 +57,8 @@
     "An expired request at the final pre-PREPARE boundary can still close the session before GO",
     "Wire loss, malformed state, unexpected motion and disk errors remain explicit failures",
     "Unknown physical outcomes are not automatically cleared or replayed",
-    "Controller-internal cause of delayed Modbus replies is not established"
+    "Controller-internal cause of delayed Modbus replies is not established",
+    "No real read outage occurred during this six-minute idle observation; outage recovery remains fault-injection evidence",
+    "The new session requires a separate stationary START reference binding before tablet mission admission; no reference/profile change was made during this observation"
   ]
 }
