@@ -1,0 +1,52 @@
+{
+  "schema": "pushpilot.host-native-recovery-evidence.v1",
+  "date": "2026-11-02",
+  "timezone": "Asia/Seoul",
+  "source_commit": "bcac7696bcc9714c3d5cf35dc0b4b7ef73e9b0d6",
+  "host_release": "20261102-native-recovery-bcac769",
+  "status": "deployed_waiting_for_manual_play",
+  "changes": [
+    "Read-only Native reacquisition with legal same-owner IDLE keepalive",
+    "Non-idle native_wait publication blocks dispatch during unavailable telemetry",
+    "Fresh sample pair and endpoint stationary interval required after read failure",
+    "Redundant pre-HELLO acquisition removed; inherited startup validation retained",
+    "Journal cleanup retained when session archive writing fails"
+  ],
+  "validation": {
+    "local_backend_tests": {"run": 1199, "skipped": 5, "failures": 0},
+    "frontend_tests": {"run": 143, "failures": 0},
+    "frontend_typecheck_and_build": "passed",
+    "new_equipment_free_recovery_tests": 21,
+    "gx10_related_tests": {"run": 80, "failures": 0},
+    "gx10_inherited_exchange_offline": {
+      "passed": true,
+      "socket_calls": 0,
+      "scenarios": [
+        "Four idle read timeouts recover in the same session and preserve host-journal proof",
+        "Four post-DONE read timeouts recover with next-sequence IDLE and no GO replay",
+        "Consumed request expires during preflight acquisition without PREPARE or GO"
+      ]
+    },
+    "actual_connected_idle_soak": "pending_operator_manual_play",
+    "physical_movement_performed": false,
+    "loaded_route_repeatability_qualified": false
+  },
+  "preserved": {
+    "installed_rodi_sha256": "889b79b44e3c1729597b767c506d7cb4ce993fe37e7855bea1b49453dbec6938",
+    "all_inherited_runtime_hashes": "unchanged",
+    "startup_profile_and_delivery_configuration": "unchanged",
+    "web_and_robot_api_processes": "unchanged",
+    "camera_epoch_and_registration": "unchanged",
+    "frontend_static_overlay": "unchanged",
+    "robot_held_disarmed": true,
+    "active_mission": false,
+    "motion_commands_submitted": 0
+  },
+  "limits": [
+    "HELLO/BEGIN and READY/GO handshakes do not accept inserted IDLE",
+    "An expired request at the final pre-PREPARE boundary can still close the session before GO",
+    "Wire loss, malformed state, unexpected motion and disk errors remain explicit failures",
+    "Unknown physical outcomes are not automatically cleared or replayed",
+    "Controller-internal cause of delayed Modbus replies is not established"
+  ]
+}

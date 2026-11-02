@@ -32,6 +32,8 @@ An extended outage after request preflight but before its final PREPARE can stil
 
 Equipment-free fault tests cover sustained outages, reset samples, legal and illegal wire phases, next sequence/profile identity, GO disconnect without replay, fatal measured/disk faults, settling and the existing host-journal proof. Synthetic checks are not loaded-route repeatability evidence. A separate private offline integration check runs the actual hash-verified inherited exchange against fake sockets/Native rows with network creation forbidden.
 
+Source `bcac769` was deployed to GX10 host release `20261102-native-recovery-bcac769`. Only the disconnected host service restarted; the inherited runtime/script, startup profile, delivery configuration, camera identities, existing web/API processes and static frontend overlay matched before and after activation. The listener reached manual-PLAY readiness with no mission or movement submitted. Actual connected-idle observation remains a separate check after local PLAY. [Dated evidence](evidence/native-read-recovery-20261102.json)
+
 Deploy to a separate host release and switch only `pushpilot-robot-control/host-current` after confirming no active mission, pending command or connected pendant session. Preserve original source/profile/camera hashes and web/API process identities. The host restart prepares the listener; it neither presses PLAY nor starts a mission. A fresh local PLAY is needed to exercise a real idle session after activation.
 
 Physical network loss, pendant faults and unavailable measurements inside the protocol's non-idle handshakes remain explicit limitations. This repair contains known read transport failures; it is not an uninterrupted-operation guarantee.
