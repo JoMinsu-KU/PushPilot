@@ -4,7 +4,7 @@
   "timezone": "Asia/Seoul",
   "source_commit": "bcac7696bcc9714c3d5cf35dc0b4b7ef73e9b0d6",
   "host_release": "20261102-native-recovery-bcac769",
-  "status": "deployed_live_idle_verified",
+  "status": "deployed_live_idle_and_actual_read_recovery_verified",
   "changes": [
     "Read-only Native reacquisition with legal same-owner IDLE keepalive",
     "Non-idle native_wait publication blocks dispatch during unavailable telemetry",
@@ -30,11 +30,14 @@
     "actual_connected_idle_soak": {
       "passed": true,
       "first_event_kst": "2026-11-02T13:35:44.064157+09:00",
-      "last_event_kst": "2026-11-02T13:41:52.985315+09:00",
+      "last_event_kst": "2026-11-02T13:45:54.641460+09:00",
       "same_session_and_sequence": true,
       "original_host_journal_native_proof_valid": true,
-      "actual_outage_recovery_observed": false,
-      "read_failure_events": 0,
+      "actual_outage_recovery_observed": true,
+      "read_failure_events": 1,
+      "actual_timeout_kst": "2026-11-02T13:42:35.507970+09:00",
+      "two_new_native_samples_observed_by_kst": "2026-11-02T13:42:37.325859+09:00",
+      "initial_six_minute_interval_had_no_read_failure": true,
       "motion_or_profile_dispatch_observed": false,
       "validator_socket_calls": 0
     },
@@ -58,7 +61,7 @@
     "Wire loss, malformed state, unexpected motion and disk errors remain explicit failures",
     "Unknown physical outcomes are not automatically cleared or replayed",
     "Controller-internal cause of delayed Modbus replies is not established",
-    "No real read outage occurred during this six-minute idle observation; outage recovery remains fault-injection evidence",
+    "One real idle read timeout recovered in the observed session; this is not qualification of every protocol phase or a loaded route",
     "The new session requires a separate stationary START reference binding before tablet mission admission; no reference/profile change was made during this observation"
   ]
 }
