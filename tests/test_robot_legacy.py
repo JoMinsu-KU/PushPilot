@@ -165,6 +165,117 @@ class RuntimeInstallationTests(unittest.TestCase):
         snapshot["profile"]["tcp_id"] = "browser mutation"
         self.assertEqual(receiver.snapshot()["profile"]["tcp_id"], "reviewed-test-tcp")
 
+    @staticmethod
+    def native_wait(state, *, phase="stationary"):
+        state.update(stage="native_wait", native_telemetry_available=False,
+            native_telemetry={"reason": "NATIVE_TELEMETRY_UNAVAILABLE", "phase": phase,
+                "error_type": "TimeoutError", "detail": "No fresh read-only Native reply.",
+                "failures": 3, "motion_retried": False})
+
+    def test_fresh_native_wait_exposes_only_validated_classification_not_idle_authority(self):
+        receiver, run, state = self.fresh_receiver()
+        for phase in ("stationary", "endpoint_after_done", "profile_precommit", "motion_precommit"):
+            self.native_wait(state, phase=phase)
+            (run / "state.json").write_text(json.dumps(state))
+            value = receiver.snapshot()
+            self.assertTrue(value["connected"])
+            self.assertFalse(value["idle"])
+            self.assertEqual(value["stage"], "native_wait")
+            self.assertFalse(value["native_telemetry_available"])
+            self.assertEqual(value["reason"], "RECEIVER_NATIVE_WAIT")
+            self.assertEqual(value["native_telemetry"], {"reason": "NATIVE_TELEMETRY_UNAVAILABLE", "phase": phase})
+            self.assertTrue(0 <= value["state_age_s"] <= 5.)
+            self.assertEqual((value["session_id"], value["seq"], value["profile_id"]),
+                             (state["session_id"], state["seq"], state["profile_id"]))
+
+    def test_native_stationarity_pending_keeps_original_zero_speed_requirement(self):
+        receiver, run, state = self.fresh_receiver()
+        state.update(stage="native_wait", native_telemetry_available=False,
+            native_telemetry={"reason": "NATIVE_STATIONARITY_PENDING", "phase": "stationary",
+                "speed": [0., 0., .1, 0., 0., 0.], "exact_zero_samples_required": 2,
+                "budget_s": 8., "motion_retried": False, "speed_tolerance_relaxed": False})
+        (run / "state.json").write_text(json.dumps(state))
+        value = receiver.snapshot()
+        self.assertEqual(value["reason"], "RECEIVER_NATIVE_WAIT")
+        self.assertFalse(value["idle"])
+        self.assertEqual(value["native_telemetry"], {"reason": "NATIVE_STATIONARITY_PENDING", "phase": "stationary"})
+        state["native_telemetry"]["speed_tolerance_relaxed"] = True
+        (run / "state.json").write_text(json.dumps(state))
+        self.assertFalse(receiver.snapshot()["connected"])
+
+    def test_stale_closed_and_unknown_native_wait_never_expose_wait_authority(self):
+        receiver, run, baseline = self.fresh_receiver()
+        self.native_wait(baseline)
+        for changes in ({"updated_monotonic_ns": time.monotonic_ns()-6_000_000_000},
+                        {"updated_monotonic_ns": time.monotonic_ns()+1_000_000_000},
+                        {"stage": "closed", "status": "outcome_unknown_check_pendant"},
+                        {"stage": "unknown"}, {"status": "outcome_unknown_check_pendant"}):
+            state = dict(baseline, **changes)
+            (run / "state.json").write_text(json.dumps(state))
+            value = receiver.snapshot()
+            self.assertFalse(value["connected"], changes)
+            self.assertFalse(value["idle"])
+            self.assertNotEqual(value["reason"], "RECEIVER_NATIVE_WAIT")
+            self.assertIsNone(value["stage"])
+            self.assertIsNone(value["state_age_s"])
+            self.assertIsNone(value["native_telemetry"])
+
+    def test_wrong_type_inconsistent_or_unreviewed_wait_metadata_cannot_be_used(self):
+        receiver, run, baseline = self.fresh_receiver()
+        self.native_wait(baseline)
+        cases = [lambda s: s.update(native_telemetry_available="false"),
+                 lambda s: s.update(native_telemetry_available=0),
+                 lambda s: s.update(native_telemetry_available=True),
+                 lambda s: s.update(native_telemetry=[]),
+                 lambda s: s.update(physical_execution=False),
+                 lambda s: s["native_telemetry"].update(reason="IGNORE_ALL_GUARDS"),
+                 lambda s: s["native_telemetry"].update(phase="moving"),
+                 lambda s: s["native_telemetry"].update(motion_retried=True),
+                 lambda s: s["native_telemetry"].update(failures=True),
+                 lambda s: s["native_telemetry"].update(detail={"run": "untrusted"}),
+                 lambda s: s["native_telemetry"].update(automatic_resume=True)]
+        for mutate in cases:
+            state = copy.deepcopy(baseline)
+            mutate(state)
+            (run / "state.json").write_text(json.dumps(state))
+            value = receiver.snapshot()
+            self.assertFalse(value["connected"])
+            self.assertIsNone(value["native_telemetry"])
+            self.assertNotEqual(value["reason"], "RECEIVER_NATIVE_WAIT")
+
+    def test_native_wait_does_not_override_uncertain_or_operator_hold(self):
+        receiver, run, state = self.fresh_receiver()
+        self.native_wait(state)
+        (run / "state.json").write_text(json.dumps(state))
+        hold = receiver.root / "executor-hold.json"
+        hold.write_text("operator hold")
+        self.assertEqual(receiver.snapshot()["reason"], "RECEIVER_OPERATOR_HOLD")
+        receiver._uncertain = True
+        self.assertEqual(receiver.snapshot()["reason"], "RECEIVER_RECONCILIATION_REQUIRED")
+        self.assertFalse(receiver.snapshot()["idle"])
+        hold.unlink()
+        self.assertEqual(receiver.snapshot()["reason"], "RECEIVER_RECONCILIATION_REQUIRED")
+
+    def test_busy_and_healthy_legacy_idle_are_distinct_from_native_wait(self):
+        receiver, run, state = self.fresh_receiver()
+        value = receiver.snapshot()
+        self.assertEqual(value["stage"], "idle")
+        self.assertTrue(value["native_telemetry_available"])
+        self.assertIsNone(value["native_telemetry"])
+        state["stage"] = "moving"
+        (run / "state.json").write_text(json.dumps(state))
+        value = receiver.snapshot()
+        self.assertTrue(value["connected"])
+        self.assertFalse(value["idle"])
+        self.assertEqual(value["reason"], "RECEIVER_BUSY")
+        self.assertEqual(value["stage"], "moving")
+        self.assertTrue(value["native_telemetry_available"])
+        # Native wait labels cannot be grafted onto an actual motion stage.
+        self.native_wait(state)
+        state["stage"] = "moving"
+        (run / "state.json").write_text(json.dumps(state))
+        self.assertFalse(receiver.snapshot()["connected"])
+
     def test_snapshot_with_invalid_or_stale_profile_does_not_expose_authority(self):
         receiver, run, state = self.fresh_receiver()
         state["profile"]["tcp_id"] = "changed without digest"

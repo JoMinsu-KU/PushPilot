@@ -235,6 +235,25 @@ class PhysicalMissionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.driver.commands, [])
         self.assertIn("STOP_DURING_PREPARATION", self.driver.holds)
 
+    async def test_stop_signals_driver_wait_before_acquiring_start_lock(self):
+        entered, cancelled = threading.Event(), threading.Event()
+        def waiting_prepare():
+            entered.set()
+            if not cancelled.wait(2.):
+                raise AssertionError("Stop did not reach the waiting driver before the service lock")
+        self.driver.prepare_hook = waiting_prepare
+        self.driver.request_stop = cancelled.set  # Pure event signal; no network.
+        preparing = asyncio.create_task(self.service.start(command_for(self.service, self.store)))
+        await event_seen(entered)
+        stopping = asyncio.create_task(self.service.stop({"request_id": str(uuid4()), "expected_revision": 0}))
+        with self.assertRaises(CommandError):
+            await asyncio.wait_for(preparing, 2.)
+        stopped = await asyncio.wait_for(stopping, 2.)
+        self.assertTrue(cancelled.is_set())
+        self.assertEqual(stopped["state"], "HOLD")
+        self.assertIsNone(self.service.task)
+        self.assertEqual(self.driver.commands, [])
+
     async def test_map_change_during_model_inference_holds_without_dispatch(self):
         def change(_state):
             self.store.map_definition.geometry_hash = "b" * 64

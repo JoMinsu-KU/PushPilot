@@ -156,10 +156,12 @@ def prepare(driver, workspace, old_plan, interrupted):
                 and fresh.sequence==native.sequence and fresh.profile_id==native.profile_id,'BOUNDARY_SOURCE_CHANGED')
         driver._pin(probe._status())
         driver.ports,driver.raw_api = probe,raw
+        probe.status_wait_stop_check = driver._status_wait_not_stopped
         probe.api = _StopAwareAPI(raw,driver.stop_latch,driver._validate_profile)
         driver.profile_preparer = ReviewedProfilePreparer(api=lambda p,v=None:raw.call(p,v),journal=journal,
             native_snapshot=lambda:checked_snapshot(probe,driver.coordinate_binding,5.),
-            receiver_policy=load_runtime(Path(driver.config['ports']['runtime']))['policy'], stop_check=driver._not_stopped)
+            receiver_policy=load_runtime(Path(driver.config['ports']['runtime']))['policy'], stop_check=driver._not_stopped,
+            status_wait_timeout_s=driver.config['ports'].get('status_wait_timeout_s',120.))
         driver.currentplan=driver.plan=plan
         driver.workspace_binding=dict(workspace)
         driver.current_context_id=context

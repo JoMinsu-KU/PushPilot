@@ -36,6 +36,35 @@ NOT_COMMITTED_NATIVE_TIMEOUT_CODES = frozenset({
     "PROFILE_NOT_COMMITTED_NATIVE_TIMEOUT", "MOTION_NOT_COMMITTED_NATIVE_TIMEOUT"})
 
 
+def _native_wait_detail(value):
+    """Expose only the reviewed host's bounded no-retry wait classification."""
+    if type(value) is not dict or value.get("motion_retried") is not False:
+        raise ValueError("Invalid Native wait metadata")
+    reason, phase = value.get("reason"), value.get("phase")
+    if type(reason) is not str or type(phase) is not str:
+        raise ValueError("Invalid Native wait classification")
+    if reason == "NATIVE_TELEMETRY_UNAVAILABLE":
+        if (set(value) != {"reason", "phase", "error_type", "detail", "failures", "motion_retried"}
+                or phase not in {"stationary", "endpoint_after_done", "profile_precommit", "motion_precommit"}
+                or type(value["error_type"]) is not str or not 1 <= len(value["error_type"]) <= 64
+                or type(value["detail"]) is not str or len(value["detail"]) > 256
+                or type(value["failures"]) is not int or value["failures"] < 1):
+            raise ValueError("Invalid Native read wait metadata")
+    elif reason == "NATIVE_STATIONARITY_PENDING":
+        if (set(value) != {"reason", "phase", "speed", "exact_zero_samples_required", "budget_s",
+                           "motion_retried", "speed_tolerance_relaxed"}
+                or phase != "stationary" or value["speed_tolerance_relaxed"] is not False
+                or type(value["exact_zero_samples_required"]) is not int or value["exact_zero_samples_required"] != 2
+                or type(value["budget_s"]) not in (float, int) or value["budget_s"] != 8.
+                or type(value["speed"]) is not list or len(value["speed"]) != 6
+                or any(type(v) not in (int, float) or not math.isfinite(v) or abs(v) > .1 for v in value["speed"])
+                or not any(v != 0 for v in value["speed"])):
+            raise ValueError("Invalid Native stationary wait metadata")
+    else:
+        raise ValueError("Unknown Native wait reason")
+    return {"reason": reason, "phase": phase}
+
+
 def _not_committed_timeout_code(kind, data, identity):
     """Classify exact host evidence without clearing an unknown-publication latch."""
     phase, code = ({"profile_update": ("profile_precommit", "PROFILE_NOT_COMMITTED_NATIVE_TIMEOUT"),
@@ -186,6 +215,7 @@ class LegacyReceiver:
     def snapshot(self) -> dict:
         result = dict(connected=False, idle=False, session_id=None, seq=None, profile_id=None,
                       actual_pose=None, actual_joint=None, profile=None, physical_execution=False,
+                      stage=None, state_age_s=None, native_telemetry_available=False, native_telemetry=None,
                       reason="RECEIVER_NOT_CONNECTED")
         try:
             _, state = self._state()
@@ -203,7 +233,8 @@ class LegacyReceiver:
                 any(c not in "0123456789abcdef" for c in profile_id)):
                 raise ValueError("Invalid receiver identity")
             stamp = state.get("updated_monotonic_ns")
-            if type(stamp) is not int or not 0 <= time.monotonic_ns() - stamp <= 5_000_000_000:
+            age_ns = time.monotonic_ns() - stamp if type(stamp) is int else None
+            if age_ns is None or not 0 <= age_ns <= 5_000_000_000:
                 result["reason"] = "RECEIVER_STATE_STALE"
                 return result
             self.policy.vector(state.get("actual_pose"), 6)
@@ -218,11 +249,27 @@ class LegacyReceiver:
             self.policy.inside(profile, state["planned_pose"])
             self.policy.orientation(profile, state["actual_pose"])
             self.policy.orientation(profile, state["planned_pose"])
-            result.update(connected=True, idle=state["stage"] == "idle", session_id=session,
+            stage = state.get("stage")
+            if type(stage) is not str or stage not in {"idle", "native_wait", "inspecting_ik", "updating_profile",
+                    "validating", "moving", "checking_target", "finished"}:
+                raise ValueError("Unknown receiver stage")
+            available = state.get("native_telemetry_available", stage != "native_wait")
+            if type(available) is not bool:
+                raise ValueError("Invalid Native telemetry availability")
+            detail = None
+            if stage == "native_wait":
+                if available or state["physical_execution"] is not True or state.get("status") is not None:
+                    raise ValueError("Invalid Native wait state")
+                detail = _native_wait_detail(state.get("native_telemetry"))
+            elif not available or state.get("native_telemetry") is not None:
+                raise ValueError("Inconsistent Native telemetry state")
+            result.update(connected=True, idle=stage == "idle", session_id=session,
                           seq=seq, profile_id=profile_id, actual_pose=state["actual_pose"],
                           actual_joint=state["actual_joint"], physical_execution=state["physical_execution"],
-                          profile=copy.deepcopy(profile),
-                          reason="RECEIVER_IDLE" if state["stage"] == "idle" else "RECEIVER_BUSY")
+                          profile=copy.deepcopy(profile), stage=stage, state_age_s=age_ns / 1_000_000_000,
+                          native_telemetry_available=available, native_telemetry=detail,
+                          reason=("RECEIVER_NATIVE_WAIT" if stage == "native_wait" else
+                                  "RECEIVER_IDLE" if stage == "idle" else "RECEIVER_BUSY"))
             if self._uncertain:
                 result["reason"] = "RECEIVER_RECONCILIATION_REQUIRED"
             elif (self.root / "executor-hold.json").exists():

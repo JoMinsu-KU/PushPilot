@@ -1,5 +1,11 @@
 # Retain the connection. Reacquire the measurement.
 
+The subsequent [executor Native-wait update](EXECUTOR_NATIVE_WAIT.md) lets an
+explicitly configured mission wait through fresh, unchanged `native_wait`
+publications and then acquire new evidence, rather than immediately ending at
+`PHYSICAL_STATUS_REQUIRED`. Its source implementation, deployment checkpoint and
+validation scope are separate from the host-only history below.
+
 The subsequent [negotiated commit-wait update](NEGOTIATED_COMMIT_WAIT.md) supports
 a separately installed pendant variant at the two protected commit waits. The
 unchanged-script behavior and dated validation below remain their original scope.

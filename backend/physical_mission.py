@@ -9,6 +9,7 @@ import asyncio
 from copy import deepcopy
 from dataclasses import asdict
 import json
+import math
 from pathlib import Path
 import sqlite3
 import time
@@ -265,6 +266,9 @@ class PhysicalMissionService:
         # Signal cancellation before waiting for a potentially slow prepare().
         self.stop_generation += 1
         self.stopping.set()
+        request_stop = getattr(self.driver, "request_stop", None)
+        if callable(request_stop):
+            request_stop()  # Pure signal: unblock a wait inside start's lock.
         async with self.lock:
             prior = self._existing(command)
             if prior is not None:
@@ -445,12 +449,15 @@ class PhysicalMissionService:
         from backend.robot_control.mission_resume import REVIEW_HOLD, C19_REVIEW_HOLD, state_from_dict
         async with self.lock:
             omit_c19 = command.get('omit_c19_review') is True
+            native_interruption = self.status.get('error') == 'PHYSICAL_STATUS_REQUIRED'
             prior = self._existing(command)
             if prior is not None:
                 return prior
             if (command['expected_revision'] != self.status['revision']
                     or command['mission_id'] != self.status['mission_id']
-                    or self.status['state'] != 'HOLD' or self.status['error'] != (C19_REVIEW_HOLD if omit_c19 else REVIEW_HOLD)
+                    or self.status['state'] != 'HOLD'
+                    or (not native_interruption and self.status['error'] != (C19_REVIEW_HOLD if omit_c19 else REVIEW_HOLD))
+                    or (native_interruption and omit_c19)
                     or self.task and not self.task.done()):
                 raise CommandError('Resume requires the exact ended visual-review hold and current revision.', 409)
             prepare = getattr(self.driver, 'resume_review', None)
@@ -464,7 +471,7 @@ class PhysicalMissionService:
                 raise CommandError('The original accepted mission is unavailable.', 409)
             accepted = accepted[0]
             later = [r for r in rows if r[0] > accepted[0]]
-            held = [r for r in later if r[1] == 'MISSION_HELD']
+            held = [r for r in later if r[1] == ('MISSION_INTERRUPTED' if native_interruption else 'MISSION_HELD')]
             receipts = [r for r in later if r[1] == 'PRIMITIVE_RECEIPT']
             attempts = [r for r in later if held and r[0] > held[-1][0] and r[1] == 'MISSION_RESUME_REQUESTED']
             failures = [r for r in later if attempts and r[0] > attempts[-1][0] and r[1] == 'MISSION_RESUME_BLOCKED']
@@ -480,6 +487,19 @@ class PhysicalMissionService:
             original = accepted[2]
             workspace = original['workspace']
             self._bound_workspace(workspace)
+            native_options = {}
+            if native_interruption:
+                dispatches = [r for r in later if r[1] == 'PRIMITIVE_DISPATCH_INTENT'
+                              and r[2].get('command_id') == receipts[-1][2]['receipt']['command_id']]
+                if len(dispatches) != 1:
+                    raise CommandError('The original completed C4 capture interval is not uniquely bound.',409)
+                dispatch_at = self.db.execute('SELECT at FROM events WHERE seq=?',(dispatches[0][0],)).fetchone()[0]
+                if (dispatches[0][2].get('primitive') != receipts[-1][2]['receipt']['primitive_id']
+                        or not dispatches[0][0] < receipts[-1][0] < held[-1][0]
+                        or type(dispatch_at) not in (int,float) or not math.isfinite(dispatch_at)
+                        or not dispatch_at < receipts[-1][2]['receipt']['completed_at_s']):
+                    raise CommandError('The original C4 dispatch and completion evidence disagree.',409)
+                native_options = {'native_interruption':True, 'capture_after_s':dispatch_at}
             generation = self.stop_generation
             self._persist('MISSION_RESUME_REQUESTED', {'request_id':command['request_id'],
                 'mission_id':command['mission_id'], 'reason':command['reason'],
@@ -492,7 +512,7 @@ class PhysicalMissionService:
                 plan, state, observation, proof = await asyncio.to_thread(prepare, workspace,
                     plan_from_dict(original['policy']), state_from_dict(held[-1][2]['state']),
                     state_from_dict(receipts[-1][2]['state']), receipts[-1][2]['receipt'],
-                    **({'omit_c19_review':True} if omit_c19 else {}))
+                    **({'omit_c19_review':True} if omit_c19 else native_options))
                 self._bound_workspace(workspace)
                 if self.stop_generation != generation or proof.get('motion_issued') is not False:
                     raise ValueError('A stop or invalid preparation prevents continuation.')
@@ -637,6 +657,10 @@ class PhysicalMissionService:
 
     async def close(self):
         self.closing.set()
+        self.stopping.set()
+        request_stop = getattr(self.driver, "request_stop", None)
+        if callable(request_stop):
+            request_stop()
         if self.monitor_task:
             await self.monitor_task
         self.stopping.set()

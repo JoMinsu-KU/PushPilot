@@ -26,6 +26,8 @@ if TYPE_CHECKING:
 from .gates import admit, validate_contact_profile, validate_contact_turn_profile
 from .legacy import load_runtime, verify_runtime
 from .service import ProcessLock
+from .status_wait import (native_wait_eligible, require_idle_status, require_same_stationary_status,
+                          wait_for_stationary_status)
 from .taught_executor import (ClearanceReview, ExecutionBlocked, Frame, MotionIntent, MotionReceipt,
                               Snapshot, TaughtAdapter, VehicleReview, _require)
 from tools.check_muse_api import MODELS, NoRedirect, load_key, request_json
@@ -300,9 +302,20 @@ def prove_host_journal_cycle(state, raw, *, now_monotonic_ns, expected_receiver=
             "joint": last["data"]["joint"], "motion_issued": False, "extra_fc03_queries": 0}
 
 
+class _HostNativeWait(ExecutionBlocked):
+    def __init__(self, status, before):
+        super().__init__("HOST_NATIVE_WAIT", "Coherent host source explicitly entered Native recovery; acquire new evidence after recovery.")
+        self.status, self.before = status, before
+
+
+class _NativeEvidenceInvalidated(RuntimeError):
+    pass
+
+
 def host_journal_native_capture(runtime, journal, *, expected_receiver=None, publication_after_ns=None,
                                 max_wait_s=4., verifier=verify_runtime, clock=time.time,
-                                monotonic=time.monotonic, monotonic_ns=time.monotonic_ns, sleep=time.sleep):
+                                monotonic=time.monotonic, monotonic_ns=time.monotonic_ns, sleep=time.sleep,
+                                stop_check=None, status_check=None):
     """Read only current host files; wait boundedly for completed source evidence."""
     if not 0 <= max_wait_s <= 8:
         raise ValueError("Use a finite zero-to-eight-second journal observation budget.")
@@ -312,6 +325,8 @@ def host_journal_native_capture(runtime, journal, *, expected_receiver=None, pub
     deadline, last_error = monotonic()+max_wait_s, None
     initial_publication = publication_after_ns
     while True:
+        if stop_check is not None:
+            stop_check()
         pointer_raw = state_raw = raw = None
         try:
             pointer_path = runtime / "current_session.json"
@@ -341,6 +356,8 @@ def host_journal_native_capture(runtime, journal, *, expected_receiver=None, pub
             _require(len(raw) <= 2_000_000 and pointer_path.read_bytes() == pointer_raw
                      and state_path.read_bytes() == state_raw and not (run / "command.json").exists(),
                      "HOST_SOURCE_CHANGED", "Reobserve a coherent pointer/publication/journal read with no pending command.")
+            if status_check is not None:
+                status_check(state)
             proof = prove_host_journal_cycle(state, raw, now_monotonic_ns=monotonic_ns(),
                 expected_receiver=expected_receiver, publication_after_ns=initial_publication)
             proof.update(source_offset_bytes=offset, source_code_sha256=code_hashes,
@@ -352,7 +369,8 @@ def host_journal_native_capture(runtime, journal, *, expected_receiver=None, pub
             return NativeObservation(tuple(proof["pose"]), tuple(proof["joint"]), clock()-source_age, digest)
         except (ExecutionBlocked, OSError, ValueError, KeyError, TypeError) as error:
             last_error = error
-            if monotonic() >= deadline:
+            if isinstance(error, _HostNativeWait) or getattr(error, "code", None) in {
+                    "MISSION_STOPPED", "NATIVE_BASELINE_CHANGED", "PHYSICAL_STATUS_REQUIRED"} or monotonic() >= deadline:
                 failure = {"source": "persistent_host_native_fc03_journal",
                     "error_type": type(last_error).__name__, "code": getattr(last_error, "code", "HOST_SOURCE_UNAVAILABLE"),
                     "motion_issued": False, "extra_fc03_queries": 0}
@@ -456,6 +474,7 @@ class RealTaughtPorts:
                  command_timeout_s=60., api=None, camera=None, native_capture=None,
                  native_observation_source="quiet_query",
                  confirm_joint_publication=False,
+                 status_wait_timeout_s=120., status_wait_poll_s=.2, status_wait_stop_check=None,
                  provider_request=request_json, provider_opener=None, clock=time.time,
                  monotonic=time.monotonic, sleep=time.sleep):
         if (not 1 <= command_timeout_s <= 180 or not camera_epoch or not registration_id
@@ -464,6 +483,16 @@ class RealTaughtPorts:
         self.adapter, self.journal, self.runtime = adapter, journal, Path(runtime)
         self.meta_env_file, self.camera_epoch, self.registration_id = Path(meta_env_file), camera_epoch, registration_id
         self.expected_visual, self.command_timeout_s = expected_visual, command_timeout_s
+        if (status_wait_timeout_s is not None and (type(status_wait_timeout_s) not in (int, float)
+                or not math.isfinite(status_wait_timeout_s) or status_wait_timeout_s < 0)) or (
+                type(status_wait_poll_s) not in (int, float) or not math.isfinite(status_wait_poll_s)
+                or not .01 <= status_wait_poll_s <= 1):
+            raise ValueError("Use a finite nonnegative Native wait or explicit None and a short polling interval.")
+        if status_wait_stop_check is not None and not callable(status_wait_stop_check):
+            raise ValueError("The optional execution Stop check must be callable.")
+        self.status_wait_timeout_s, self.status_wait_poll_s = status_wait_timeout_s, status_wait_poll_s
+        self.status_wait_stop_check = status_wait_stop_check
+        self._native_wait_generation = 0
         for policy in adapter.observation_clearances:
             target = policy.required_signal_observation
             if target is not None and (target.camera_epoch, target.registration_id) != (camera_epoch, registration_id):
@@ -493,12 +522,11 @@ class RealTaughtPorts:
     def load_checkpoint(self):
         return self.journal.load()
 
-    def _status(self):
-        status = self.api.call("/v1/status")
+    def _validate_status(self, status):
         receiver, installation = status["receiver"], status["installation"]
         _require(status.get("mode") == "physical_commissioning" and status.get("hardware_connected") is True
                  and status.get("armed") is False and status.get("hold") is True and status.get("active_commands") == []
-                 and receiver.get("connected") is True and receiver.get("idle") is True
+                 and receiver.get("connected") is True
                  and receiver.get("physical_execution") is True
                  and installation.get("scope") in {"local_contact_commissioning", "local_contact_turn_commissioning"},
                  "PHYSICAL_STATUS_REQUIRED", "Require the actual held, disarmed physical contact service and idle receiver.")
@@ -506,6 +534,25 @@ class RealTaughtPorts:
         # independently loosening their meaning in the runner.
         validator = validate_contact_turn_profile if installation["scope"] == "local_contact_turn_commissioning" else validate_contact_profile
         validator(installation, receiver)
+
+    def _invalidate_native_wait(self):
+        self._native_cache = None
+        self._native_wait_generation += 1
+
+    def status_nowait(self):
+        return self._status(wait=False)
+
+    def _status(self, *, wait=True, initial_status=None, expected_status=None):
+        if wait:
+            return wait_for_stationary_status(lambda: self.api.call("/v1/status"), self.journal,
+                self.status_wait_stop_check, timeout_s=self.status_wait_timeout_s, poll_s=self.status_wait_poll_s,
+                monotonic=self.monotonic, sleep=self.sleep, validate_status=self._validate_status,
+                initial_status=initial_status, expected_status=expected_status, on_wait=self._invalidate_native_wait)
+        status = self.api.call("/v1/status")
+        self._validate_status(status)
+        _require(not native_wait_eligible(status), "NATIVE_STATUS_PENDING",
+                 "The receiver is connected and held while fresh Native stationary verification is pending.")
+        require_idle_status(status)
         return status
 
     def snapshot(self):
@@ -542,8 +589,26 @@ class RealTaughtPorts:
         return samples[-1]
 
     def _snapshot_once(self):
+        while True:
+            try:
+                return self._snapshot_attempt()
+            except _HostNativeWait as error:
+                self._invalidate_native_wait()
+                self._status(initial_status=error.status, expected_status=error.before)
+                self.journal.append("native_snapshot_restarted", {"reason": "HOST_NATIVE_WAIT", "commands_issued": 0})
+            except _NativeEvidenceInvalidated:
+                self._native_cache = None
+                self.journal.append("native_snapshot_restarted", {"reason": "RECOVERY_DURING_CAPTURE", "commands_issued": 0})
+            except Exception:
+                # A capture whose final guards failed is not reusable evidence
+                # on a subsequent explicit attempt, even inside the .5s cache.
+                self._native_cache = None
+                raise
+
+    def _snapshot_attempt(self):
         self._joint_publication_conflict = None
         before = self._status()
+        generation = self._native_wait_generation
         receiver, installation = before["receiver"], before["installation"]
         identity = (receiver["session_id"], receiver["seq"], receiver["profile_id"],
                     tuple(receiver["actual_pose"]), tuple(receiver["actual_joint"]), installation["installation_id"])
@@ -555,11 +620,14 @@ class RealTaughtPorts:
             elif self.native_observation_source == "host_journal":
                 native = host_journal_native_capture(self.runtime, self.journal,
                     expected_receiver={key: receiver[key] for key in ("session_id", "seq", "profile_id")},
-                    max_wait_s=8.)
+                    max_wait_s=8., stop_check=self.status_wait_stop_check,
+                    status_check=lambda state: self._host_capture_status(state, before))
             else:
                 native = quiet_native_capture(self.runtime, self.journal)
             self._native_cache = identity, native
-        after = self._status()
+        after = self._status(expected_status=before)
+        if generation != self._native_wait_generation:
+            raise _NativeEvidenceInvalidated()
         ar = after["receiver"]
         after_identity = (ar["session_id"], ar["seq"], ar["profile_id"], tuple(ar["actual_pose"]),
                           tuple(ar["actual_joint"]), after["installation"]["installation_id"])
@@ -597,6 +665,30 @@ class RealTaughtPorts:
             tuple(receiver["actual_pose"]), tuple(receiver["actual_joint"]), native.pose, native.sha256,
             native.observed_at, True, installation["scope"], installation["tcp_definition_sha256"], installation["tool_id"],
             installation["car_id"], installation["surface_id"], limit, edges, runtime_hash)
+
+    def _host_capture_status(self, state, before):
+        """Do not mistake a generic failed proof for an eligible recovery."""
+        if self.status_wait_stop_check is not None:
+            self.status_wait_stop_check()
+        status = self.api.call("/v1/status")
+        self._validate_status(status)
+        require_same_stationary_status(before, status)
+        if native_wait_eligible(status):
+            receiver = status["receiver"]
+            stamp = state.get("updated_monotonic_ns")
+            _require(state.get("stage") == "native_wait" and state.get("physical_execution") is True
+                     and state.get("schema") == "pushpilot.hcr1-pose.experimental-v1"
+                     and all(state.get(key) == receiver[key] for key in ("session_id", "seq", "profile_id"))
+                     and state.get("actual_pose") == receiver["actual_pose"]
+                     and state.get("profile") == receiver["profile"]
+                     and state.get("native_telemetry_available") is False
+                     and isinstance(state.get("native_telemetry"), dict)
+                     and all(state["native_telemetry"].get(key) == value
+                             for key, value in receiver["native_telemetry"].items())
+                     and type(stamp) is int and 0 <= time.monotonic_ns()-stamp <= 5_000_000_000,
+                     "HOST_SOURCE_CHANGED", "A Native wait must agree with the coherent fresh original host publication.")
+            raise _HostNativeWait(status, before)
+        require_idle_status(status)
 
     def _camera_status(self):
         value = self.camera.call("/api/v1/live-camera")

@@ -3,6 +3,7 @@ from copy import deepcopy
 from dataclasses import asdict, replace
 import hashlib
 import json
+import time
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase, main
@@ -16,6 +17,30 @@ from tools.prepare_local_contact import build_profile
 from tools.prepare_contact_turn import build_profile as build_turn_profile
 from tests.test_taught_executor import clearance_policy, configuration, pose, right_signal_target
 from tools.run_taught_executor import load_adapter, load_route
+from backend.robot_control.status_wait import wait_for_stationary_status
+
+
+def native_wait_status():
+    status = synthetic_status()
+    status["receiver"].update(idle=False, stage="native_wait", state_age_s=.1,
+        native_telemetry_available=False, reason="RECEIVER_NATIVE_WAIT",
+        native_telemetry={"reason": "NATIVE_TELEMETRY_UNAVAILABLE", "phase": "stationary"})
+    return status
+
+
+class VirtualTime:
+    def __init__(self):
+        self.now, self.sleeps = 0., []
+        self.after_sleep = None
+
+    def monotonic(self):
+        return self.now
+
+    def sleep(self, seconds):
+        self.sleeps.append(seconds)
+        self.now += seconds
+        if self.after_sleep:
+            self.after_sleep()
 
 
 def synthetic_status():
@@ -105,6 +130,159 @@ class RealTaughtPortsTests(TestCase):
         return MotionIntent("b3a08226-9cb7-41a1-9dcb-a52ec264353e", "synthetic-plan", 1, "PIZZA", "S",
             {"session_id": "synthetic-session", "seq": 4, "profile_id": "synthetic-profile"}, "synthetic-installation",
             pose(0), pose(10), "a"*64, {"sha256": "e"*64})
+
+    def wait_clock(self):
+        clock = VirtualTime()
+        self.ports.monotonic, self.ports.sleep = clock.monotonic, clock.sleep
+        return clock
+
+    def test_fresh_native_wait_recovers_read_only_and_invalidates_cached_evidence(self):
+        first = self.ports.snapshot()
+        clock = self.wait_clock()
+        self.api.status = native_wait_status()
+        clock.after_sleep = lambda: setattr(self.api, "status", synthetic_status())
+        self.ports.native_capture = MagicMock(return_value=NativeObservation(pose(0), (0.,)*6, 100., "a"*64))
+        result = self.ports.snapshot()
+        self.assertNotEqual(first.native_evidence_sha256, result.native_evidence_sha256)
+        self.assertEqual(result.native_evidence_sha256, "a"*64)
+        self.ports.native_capture.assert_called_once()
+        self.assertEqual(len(clock.sleeps), 1)
+        self.assertTrue(all(path == "/v1/status" and payload is None for path, payload in self.api.calls))
+        kinds = [json.loads(line)["kind"] for line in self.journal.event_path.read_text().splitlines()]
+        self.assertIn("physical_status_wait_started", kinds)
+        self.assertIn("physical_status_wait_completed", kinds)
+
+    def test_native_wait_fails_on_changed_identity_pose_profile_or_installation(self):
+        for mode in ("session_id", "seq", "profile_id", "pose", "profile", "installation", "joint_drift"):
+            with self.subTest(mode=mode):
+                clock = self.wait_clock()
+                self.api.status = native_wait_status()
+                changed = synthetic_status()
+                receiver = changed["receiver"]
+                if mode == "seq": receiver[mode] += 1
+                elif mode in {"session_id", "profile_id"}: receiver[mode] += "-changed"
+                elif mode == "pose": receiver["actual_pose"][0] += .001
+                elif mode == "profile": receiver["profile"]["translation_speed_mm_s"] -= .1
+                elif mode == "installation": changed["installation"]["review_reference"] += " changed"
+                else: receiver["actual_joint"][0] = .2
+                clock.after_sleep = lambda: setattr(self.api, "status", changed)
+                with self.assertRaises(Exception): self.ports._status()
+                self.assertEqual(len(clock.sleeps), 1)
+        self.assertFalse(self.api.command)
+
+    def test_unqualified_or_ineligible_native_wait_is_not_retried(self):
+        for mode in ("active", "closed", "unqualified", "stale", "no_age", "busy", "unknown",
+                     "wrong_phase", "available", "not_held", "not_physical", "wrong_reason"):
+            with self.subTest(mode=mode):
+                clock = self.wait_clock()
+                self.api.status = native_wait_status()
+                status, receiver = self.api.status, self.api.status["receiver"]
+                if mode == "active": status["active_commands"] = ["unresolved-command"]
+                elif mode == "closed": receiver["connected"] = False
+                elif mode == "unqualified": status["installation"]["qualified"] = False
+                elif mode == "stale": receiver["state_age_s"] = 5.001
+                elif mode == "no_age": receiver.pop("state_age_s")
+                elif mode == "busy": receiver["stage"] = "executing"
+                elif mode == "unknown": receiver["reason"] = "RECEIVER_RECONCILIATION_REQUIRED"
+                elif mode == "wrong_phase": receiver["native_telemetry"]["phase"] = "unknown"
+                elif mode == "available": receiver["native_telemetry_available"] = True
+                elif mode == "not_held": status["hold"] = False
+                elif mode == "not_physical": status["mode"] = "simulation"
+                else: receiver["reason"] = "RECEIVER_BUSY"
+                with self.assertRaises(Exception): self.ports._status()
+                self.assertEqual(clock.sleeps, [])
+        self.assertFalse(self.api.command)
+
+    def test_native_wait_deadline_is_specific_and_never_substitutes_stationarity(self):
+        clock = self.wait_clock()
+        self.ports.status_wait_timeout_s = .4
+        self.api.status = native_wait_status()
+        with self.assertRaisesRegex(ExecutionBlocked, "configured wait") as raised:
+            self.ports.snapshot()
+        self.assertEqual(raised.exception.code, "PHYSICAL_STATUS_WAIT_TIMEOUT")
+        self.assertAlmostEqual(clock.now, .4)
+        self.assertFalse(self.api.command)
+        self.assertIsNone(self.ports._native_cache)
+
+    def test_explicit_unbounded_native_wait_can_recover_after_120_seconds(self):
+        clock = self.wait_clock()
+        self.ports.status_wait_timeout_s, self.ports.status_wait_poll_s = None, 1.
+        self.api.status = native_wait_status()
+        def recover():
+            if clock.now >= 130: self.api.status = synthetic_status()
+        clock.after_sleep = recover
+        result = self.ports._status()
+        self.assertTrue(result["receiver"]["idle"])
+        self.assertEqual(clock.now, 130.)
+        self.assertFalse(self.api.command)
+
+    def test_stop_cancels_unbounded_native_wait_at_next_poll_without_command(self):
+        clock = self.wait_clock()
+        self.ports.status_wait_timeout_s = None
+        self.api.status = native_wait_status()
+        def stop_check():
+            if clock.now >= .4: raise ExecutionBlocked("MISSION_STOPPED", "Synthetic stop latch.")
+        self.ports.status_wait_stop_check = stop_check
+        with self.assertRaises(ExecutionBlocked) as raised: self.ports.snapshot()
+        self.assertEqual(raised.exception.code, "MISSION_STOPPED")
+        self.assertAlmostEqual(clock.now, .4)
+        self.assertFalse(self.api.command)
+
+    def test_readiness_native_wait_is_one_read_and_does_not_invoke_execution_stop(self):
+        clock = self.wait_clock()
+        self.api.status = native_wait_status()
+        self.ports.status_wait_stop_check = MagicMock(side_effect=AssertionError("No active mission wait"))
+        with self.assertRaises(ExecutionBlocked) as raised: self.ports.status_nowait()
+        self.assertEqual(raised.exception.code, "NATIVE_STATUS_PENDING")
+        self.assertEqual(len(self.api.calls), 1)
+        self.assertEqual(clock.sleeps, [])
+        self.ports.status_wait_stop_check.assert_not_called()
+
+    def test_snapshot_wait_during_after_status_discards_prior_native_proof(self):
+        clock = self.wait_clock()
+        captures = []
+        def capture():
+            captures.append(True)
+            if len(captures) == 1: self.api.status = native_wait_status()
+            return NativeObservation(pose(0), (0.,)*6, 100., f"{len(captures):064x}")
+        self.ports.native_capture = capture
+        clock.after_sleep = lambda: setattr(self.api, "status", synthetic_status())
+        result = self.ports.snapshot()
+        self.assertEqual(len(captures), 2)
+        self.assertEqual(result.native_evidence_sha256, f"{2:064x}")
+        self.assertFalse(self.api.command)
+
+    def test_mid_host_capture_wait_restarts_with_new_coherent_fresh_proof(self):
+        clock = self.wait_clock()
+        self.ports.native_capture = None
+        self.ports.native_observation_source = "host_journal"
+        clock.after_sleep = lambda: setattr(self.api, "status", synthetic_status())
+        calls = []
+        def host(*args, **kwargs):
+            calls.append(True)
+            if len(calls) == 1:
+                self.api.status = native_wait_status()
+                receiver = self.api.status["receiver"]
+                state = {**deepcopy(receiver), "schema": "pushpilot.hcr1-pose.experimental-v1",
+                         "updated_monotonic_ns": time.monotonic_ns()}
+                kwargs["status_check"](state)
+                self.fail("An unverified wait cannot return Native evidence")
+            return NativeObservation(pose(0), (0.,)*6, 100., "a"*64)
+        with patch("backend.robot_control.taught_ports.host_journal_native_capture", side_effect=host):
+            result = self.ports.snapshot()
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(result.native_evidence_sha256, "a"*64)
+        self.assertTrue(all(path == "/v1/status" for path, _ in self.api.calls))
+
+    def test_invalid_host_evidence_is_never_reclassified_as_recoverable_wait(self):
+        self.ports.native_capture = None
+        self.ports.native_observation_source = "host_journal"
+        with patch("backend.robot_control.taught_ports.host_journal_native_capture",
+                side_effect=ExecutionBlocked("HOST_NATIVE_INVALID", "Bad exact-zero proof")) as host:
+            with self.assertRaises(ExecutionBlocked) as raised: self.ports.snapshot()
+        self.assertEqual(raised.exception.code, "HOST_NATIVE_INVALID")
+        host.assert_called_once()
+        self.assertFalse(self.api.command)
 
     def test_actual_existing_profile_checks_and_native_record_are_used(self):
         snapshot = self.ports.snapshot()

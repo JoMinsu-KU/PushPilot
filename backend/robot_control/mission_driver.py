@@ -109,6 +109,7 @@ class ConfigBackedMissionDriver:
         self.journal_factory = journal_factory or PrivateJournal
         self.stop_latch, self.execution_lock = threading.Event(), threading.Lock()
         self._stop_lock, self._stop_generation = threading.Lock(), 0
+        self._prepare_wait_generation = None
         self.stop_latch.set()
         self.currentplan = self.plan = None
         self.ports = self.journal = None
@@ -236,6 +237,7 @@ class ConfigBackedMissionDriver:
                 raise ValueError("The private journal root must be absolute.")
             self.journal = self.journal_factory(root)
             self.ports = self.port_factory(adapter=self.coordinate_binding, journal=self.journal, **self.config["ports"])
+            self.ports.status_wait_stop_check = self._status_wait_not_stopped
             if hasattr(self.ports, "api"):
                 self.ports.api = _StopAwareAPI(self.ports.api, self.stop_latch, self._validate_profile)
 
@@ -309,7 +311,7 @@ class ConfigBackedMissionDriver:
         try:
             self._ensure_ports()
             # One held status read, never an independent second Native owner.
-            status = self.ports._status()
+            status = getattr(self.ports, "status_nowait", self.ports._status)()
             self._preflight_profile(status)
             receiver = status["receiver"]
             identity_ok = status["installation"]["installation_id"] == self.binding.installation_id
@@ -351,6 +353,7 @@ class ConfigBackedMissionDriver:
         try:
             with self._stop_lock:
                 stop_generation = self._stop_generation
+                self._prepare_wait_generation = stop_generation
             ready = self.readiness()
             if not ready["ready"]:
                 raise ExecutionBlocked("MISSION_NOT_READY", ";".join(ready["reasons"]))
@@ -378,6 +381,7 @@ class ConfigBackedMissionDriver:
                 self.stop_latch.clear()
             return plan
         finally:
+            self._prepare_wait_generation = None
             self.execution_lock.release()
 
     def context(self):
@@ -406,6 +410,17 @@ class ConfigBackedMissionDriver:
     def _not_stopped(self):
         if self.stop_latch.is_set():
             raise ExecutionBlocked("MISSION_STOPPED", "No subsequent stage may arm after Stop.")
+
+    def _status_wait_not_stopped(self):
+        # A new preparation may begin after a prior Stop. Its generation,
+        # rather than that old latch, detects a concurrent new Stop request.
+        generation = self._prepare_wait_generation
+        if generation is not None:
+            with self._stop_lock:
+                if self._stop_generation != generation:
+                    raise ExecutionBlocked("MISSION_STOPPED", "Stop cancels stationary status waiting during preparation.")
+        elif self.currentplan is not None:
+            self._not_stopped()
 
     def _prepare_measured(self, primitive_id, command_id):
         """Qualified releases have already reviewed the current whole-route profile."""
@@ -532,15 +547,26 @@ class ConfigBackedMissionDriver:
                 or math.dist(snapshot.tcp_base[:3], stage.target_base[:3]) > .1):
             raise ExecutionBlocked("MISSION_WRIST_SOURCE", "Use the actual installed directed wrist edge and source joints.")
 
-    def hold(self, reason):
-        # A concurrent prepare cannot clear a Stop that arrived after it began.
+    def request_stop(self):
+        """Signal cancellation synchronously; no network or motion operation."""
         with self._stop_lock:
             self._stop_generation += 1
-            self.stop_latch.set()  # Before any possibly blocking network operation.
+            self.stop_latch.set()
+
+    def hold(self, reason):
+        # A concurrent prepare cannot clear a Stop that arrived after it began.
+        self.request_stop()  # Before any possibly blocking network operation.
         if self.ports:
             return self.ports.hold(reason)
 
     def close(self):
-        self.hold("Physical mission driver closed; no automatic resume.")
-        if self.journal:
-            self.journal.close()
+        try:
+            self.hold("Physical mission driver closed; no automatic resume.")
+        finally:
+            # hold signals cancellation before IO. A prepare thread can exist
+            # before the service has a mission task to join; let it preserve
+            # its cancellation/failure evidence before releasing file ownership.
+            # Never retain _stop_lock while waiting for the execution owner.
+            with self.execution_lock:
+                if self.journal:
+                    self.journal.close()

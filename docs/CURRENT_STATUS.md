@@ -6,6 +6,8 @@
 
 PushPilot's original promise is unchanged: **see the scene, express a goal, inspect a shared plan, approve the mission and review the outcome**. Meta MUSE is the intelligence layer connecting the operator's intent and visual evidence to the next decision. A deterministic supervisor applies execution gates; the Robot executor follows reviewed BASE coordinates.
 
+The later November 2 [executor waiting update](EXECUTOR_NATIVE_WAIT.md) is deployed: an explicitly configured mission waits through fresh, unchanged Native recovery without replaying commands. Its 1,284-test software checkpoint, live read-only Native validation and separate no-motion C4→C5 preparation are distinct from the older recovery and START-readiness evidence below.
+
 ## Capability and evidence matrix
 
 For a first visit, [Demo and recorded decisions](DEMO.md) leads with the approved **55-second physical action → fresh MUSE review → next step** recording: C Step 1 pushes the car, the tool withdraws, a new PASS appears at 06:42:17, and C Step 2 begins. The older Camera clip is supporting post-arrival/empty-return footage; the Spatial clip shows the rendered application estimate. The public [recorded-decision explorer](https://jominsu-ku.github.io/PushPilot/) presents three existing synthetic-input Meta API records. Watching/selecting these archives invokes no new inference or equipment control. [Exact media scope](assets/PHYSICAL_MEDIA.md)

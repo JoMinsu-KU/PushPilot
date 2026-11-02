@@ -224,7 +224,8 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
         self._reload_before_first_mission()
         return super().prepare(workspace_binding)
 
-    def resume_review(self, workspace, accepted_plan, held, completed, receipt, *, omit_c19_review=False):
+    def resume_review(self, workspace, accepted_plan, held, completed, receipt, *, omit_c19_review=False,
+                      native_interruption=False, capture_after_s=None):
         """Reconcile one completed visual-review hold without replaying its motion."""
         import asyncio
         from .mission_resume import (require, resume_candidate, read_chain,
@@ -237,13 +238,19 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
         try:
             with self._stop_lock:
                 stop_generation = self._stop_generation
+                self._prepare_wait_generation = stop_generation
             require(not self._configuration_error and self.config['enabled'], 'RESUME_CONFIGURATION_INVALID')
             require(self.currentplan is None or self.currentplan.id == held.mission_id, 'RESUME_MISSION_MISMATCH')
             require(self.pending_command_id is None, 'RESUME_DISPATCH_UNRESOLVED')
             candidates = [p for key, p in self.routes if all(workspace[k] == key[k] for k in WORKSPACE_KEYS)]
             require(len(candidates) == 1, 'RESUME_ROUTE_NOT_FOUND')
-            plan, state = resume_candidate(accepted_plan, candidates[0], held, completed, receipt,
-                                           omit_c19_review=omit_c19_review)
+            if native_interruption:
+                from .completed_native_resume import candidate, recover_before_frame
+                require(not omit_c19_review, 'NATIVE_RESUME_REVIEW_REQUIRED')
+                plan, state = candidate(accepted_plan, candidates[0], held, completed, receipt)
+            else:
+                plan, state = resume_candidate(accepted_plan, candidates[0], held, completed, receipt,
+                                               omit_c19_review=omit_c19_review)
             readiness = self.observer_callback.readiness(self.config)
             require(readiness.get('ready') is True, 'RESUME_OBSERVER_UNAVAILABLE')
             self._ensure_ports()
@@ -283,41 +290,54 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
             require(native.sequence == historical['sequence'] and native.session_id == held.session_id
                     and list(native.tcp_base) == historical['tcp_base']
                     and self._matches(native.tcp_base, receipt['target_context_id']), 'RESUME_NATIVE_ENDPOINT_CHANGED')
-            observations = []
-            for path in root.glob('mission-observation-*.private.json'):
-                value = json.loads(path.read_bytes())
-                task = value.get('task', {})
-                if task.get('mission_id') == plan.id and task.get('action_command_id') == state.action_command_id:
-                    require(value['native_after']['native_sequence'] == native.sequence
-                            and value['native_after']['session_id'] == native.session_id,
-                            'RESUME_OBSERVATION_SOURCE_CHANGED')
-                    observations.append(value)
-            require(bool(observations), 'RESUME_OBSERVATION_HISTORY_MISSING')
-            original = max(observations, key=lambda o:o['frame']['captured_at'])
-            before, held_frame = (original_frame(root, original[key]) for key in ('reference','frame'))
-            require(before.epoch == held_frame.epoch == plan.binding.camera_epoch
-                    and before.sequence < held_frame.sequence
-                    and before.captured_at < state.last_motion_completed_at_s <= held_frame.captured_at,
-                    'RESUME_ORIGINAL_INTERVAL_INVALID')
+            before_provenance = None
+            if native_interruption:
+                before, old_camera, before_provenance = recover_before_frame(
+                    root, chain, state.action_command_id, capture_after_s)
+                require(before.epoch == plan.binding.camera_epoch
+                        and before.captured_at < state.last_motion_completed_at_s,
+                        'RESUME_ORIGINAL_INTERVAL_INVALID')
+                held_frame = None  # No original post-C4 photograph existed before the Native interruption.
+            else:
+                observations = []
+                for path in root.glob('mission-observation-*.private.json'):
+                    value = json.loads(path.read_bytes())
+                    task = value.get('task', {})
+                    if task.get('mission_id') == plan.id and task.get('action_command_id') == state.action_command_id:
+                        require(value['native_after']['native_sequence'] == native.sequence
+                                and value['native_after']['session_id'] == native.session_id,
+                                'RESUME_OBSERVATION_SOURCE_CHANGED')
+                        observations.append(value)
+                require(bool(observations), 'RESUME_OBSERVATION_HISTORY_MISSING')
+                original = max(observations, key=lambda o:o['frame']['captured_at'])
+                before, held_frame = (original_frame(root, original[key]) for key in ('reference','frame'))
+                require(before.epoch == held_frame.epoch == plan.binding.camera_epoch
+                        and before.sequence < held_frame.sequence
+                        and before.captured_at < state.last_motion_completed_at_s <= held_frame.captured_at,
+                        'RESUME_ORIGINAL_INTERVAL_INVALID')
             # A web restart may renew the registration ID, but never the matrix,
             # reference photo, epoch or map. Compare actual archived metadata.
-            old_camera = None
-            for path in root.glob('camera-metadata-*.private.json'):
-                if abs(path.stat().st_mtime-held_frame.captured_at) > 30:
-                    continue
-                value = json.loads(path.read_bytes())
-                if value.get('frame', {}).get('sha256') == held_frame.sha256:
-                    old_camera = value; break
+            if not native_interruption:
+                old_camera = None
+                for path in root.glob('camera-metadata-*.private.json'):
+                    if abs(path.stat().st_mtime-held_frame.captured_at) > 30:
+                        continue
+                    value = json.loads(path.read_bytes())
+                    if value.get('frame', {}).get('sha256') == held_frame.sha256:
+                        old_camera = value; break
             camera = self.ports._camera_status()
             require(old_camera is not None and camera['epoch'] == old_camera['epoch']
                     and all(camera['registration'].get(k) == old_camera['registration'].get(k)
                             for k in ('homography','reference_frame_id')), 'RESUME_CAMERA_REFERENCE_CHANGED')
             current = self.capture()
-            continuity = ({'review_omitted_by_operator': 'C-step-19', 'visual_continuity_verified': False}
+            continuity = ({'original_endpoint_image_available':False, 'fresh_progress_review_required':True,
+                           'before_provenance':before_provenance} if native_interruption else
+                          {'review_omitted_by_operator': 'C-step-19', 'visual_continuity_verified': False}
                           if omit_c19_review else asyncio.run(review_continuity(self.observer_callback.provider, held_frame, current)))
-            self.journal.artifact('resume-continuity', {'mission_id':plan.id, 'held_frame':held_frame.metadata(),
+            self.journal.artifact('resume-continuity', {'mission_id':plan.id,
+                'held_frame':held_frame.metadata() if held_frame else None,
                 'current':current.metadata(), 'result':continuity, 'native':asdict(native)})
-            require(omit_c19_review or all(continuity[k] is True for k in ('car_visible_in_both','car_position_unchanged',
+            require(native_interruption or omit_c19_review or all(continuity[k] is True for k in ('car_visible_in_both','car_position_unchanged',
                     'car_orientation_unchanged','board_view_unchanged')) and continuity['clear_problem'] is False,
                     'RESUME_SCENE_CONTINUITY_UNCONFIRMED')
             fresh = self._snapshot()
@@ -351,7 +371,8 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
                     and decision.state.pending_role == 'ROUTE', 'RESUME_PROGRESS_UNCONFIRMED')
             proof = {'mission_id':plan.id, 'completed_command_id':state.action_command_id,
                 'native_sequence':context.native_sequence, 'next_step':plan.steps[next_step_index].id,
-                'original_error':held.reason, 'old_binding':asdict(accepted_plan.binding),
+                'original_error':'PHYSICAL_STATUS_REQUIRED' if native_interruption else held.reason,
+                'native_interruption':native_interruption, 'old_binding':asdict(accepted_plan.binding),
                 'binding':asdict(plan.binding), 'continuity':continuity,
                 'fresh_review':asdict(observation['car']) if observation.get('car') else None,
                 'review_omitted': 'C-step-19' if omit_c19_review else None,
@@ -362,6 +383,7 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
             self.stop_latch.set()
             raise
         finally:
+            self._prepare_wait_generation = None
             self.execution_lock.release()
 
     def retire_at_start(self, mission_id, reason):
@@ -374,11 +396,14 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
         """
         if not self.execution_lock.acquire(blocking=False):
             raise ExecutionBlocked("MISSION_BUSY", "An in-flight operation cannot be reset.")
-        self.stop_latch.set()
+        with self._stop_lock:
+            self.stop_latch.set()
+            retirement_stop_generation = self._stop_generation
         temporary = None
         probe = None
         original_api = None
         original_registration = None
+        original_wait_stop_check = None
         config_reloaded = False
         try:
             if self._configuration_error:
@@ -407,6 +432,12 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
                 **{**self.config["ports"], "registration_id": registration})
             original_api = probe.api
             original_registration = getattr(probe, "registration_id", None)
+            original_wait_stop_check = getattr(probe, "status_wait_stop_check", None)
+            def retirement_wait_not_stopped():
+                with self._stop_lock:
+                    if self._stop_generation != retirement_stop_generation:
+                        raise ExecutionBlocked("MISSION_STOPPED", "A new Stop cancels stationary retirement waiting.")
+            probe.status_wait_stop_check = retirement_wait_not_stopped
             probe.registration_id = registration
             raw = self.raw_api if self.ports is not None else original_api
             probe.api = raw
@@ -487,6 +518,7 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
         finally:
             if probe is not None and original_api is not None:
                 probe.api = original_api
+                probe.status_wait_stop_check = original_wait_stop_check
                 if not config_reloaded and original_registration is not None:
                     probe.registration_id = original_registration
             if temporary:
@@ -559,12 +591,14 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
             if previous and previous.get("state") in {"DISPATCH_UNRESOLVED", "PROFILE_PREPARATION_UNRESOLVED", "PROFILE_PREPARATION_FAILED"}:
                 raise ExecutionBlocked("SITE_TRIAL_RECONCILIATION_REQUIRED", "An unresolved prior operation cannot be resumed or replayed.")
             ports = self.port_factory(adapter=self.coordinate_binding, journal=journal, **self.config["ports"])
+            ports.status_wait_stop_check = self._status_wait_not_stopped
             raw_api = ports.api
             ports.api = _StopAwareAPI(raw_api, self.stop_latch, self._validate_profile)
             policy = load_runtime(Path(self.config["ports"]["runtime"]))["policy"]
             preparer = ReviewedProfilePreparer(api=lambda path, payload=None: raw_api.call(path, payload),
                 journal=journal, native_snapshot=lambda: checked_snapshot(ports, self.coordinate_binding, 5.),
-                receiver_policy=policy, stop_check=self._not_stopped)
+                receiver_policy=policy, stop_check=self._not_stopped,
+                status_wait_timeout_s=self.config["ports"].get("status_wait_timeout_s", 120.))
         except Exception:
             journal.close()
             raise
@@ -600,7 +634,7 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
             self._ensure_ports()
             if self.profile_preparer.failed:
                 raise ExecutionBlocked("SITE_TRIAL_RECONCILIATION_REQUIRED", "A failed preparation cannot advertise another automatic trial.")
-            status = self.ports._status()
+            status = getattr(self.ports, "status_nowait", self.ports._status)()
             self._validate_profile(status)
             self.ports._camera_status()
             if self.pinned_profile_sha256 is None:

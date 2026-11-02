@@ -21,6 +21,7 @@ from .mission_catalog import MeasuredPrimitive, content_hash
 from .gates import NATIVE_BASELINE_COMPARISON_QUANTIZATION
 from .models import LocalContactInstallation
 from .taught_executor import ExecutionBlocked, Snapshot
+from .status_wait import wait_for_stationary_status
 from .taught_ports import write_new, sync_directory
 from .wrist_commissioning import propose_wrist_turn, verify_endpoint_ik
 from tools.prepare_local_contact import build_profile as contact_profile
@@ -204,10 +205,12 @@ class ReviewedProfilePreparer:
     A durable unresolved prep blocks a new preparer until external reconciliation.
     """
     def __init__(self, *, api, journal, native_snapshot, receiver_policy, stop_check,
-                 clock=time.time, monotonic=time.monotonic, sleep=time.sleep):
+                 clock=time.time, monotonic=time.monotonic, sleep=time.sleep,
+                 status_wait_timeout_s=120.):
         self.api, self.journal, self.native_snapshot = api, journal, native_snapshot
         self.receiver_policy, self.stop_check = receiver_policy, stop_check
         self.clock, self.monotonic, self.sleep = clock, monotonic, sleep
+        self.status_wait_timeout_s = status_wait_timeout_s
         self.failed = False
         previous = journal.load()
         _require(not previous or previous.get("state") not in
@@ -215,7 +218,9 @@ class ReviewedProfilePreparer:
 
     def _idle(self):
         self.stop_check()
-        status = self.api("/v1/status")
+        status = wait_for_stationary_status(lambda: self.api("/v1/status"),
+            journal=self.journal, stop_check=self.stop_check,
+            timeout_s=self.status_wait_timeout_s, monotonic=self.monotonic, sleep=self.sleep)
         receiver = status.get("receiver", {})
         _require(status.get("hold") is True and status.get("armed") is False and status.get("active_commands") == []
             and receiver.get("connected") is True and receiver.get("idle") is True
