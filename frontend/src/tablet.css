@@ -386,8 +386,8 @@ button:not(:disabled):active, [role="button"]:active, [role="tab"]:not(:disabled
 /* An accepted approval is read-only; actual execution state stays in Robot status. */
 .approval-feedback.physical-check p { display: block; overflow: visible; }
 .floating-mission .next-check.approval-approved > div,
-.floating-mission .next-check.approval-approved > div h3 { color: #538568; }
-.primary-button.mission-approved-button:disabled { background: #528a69; color: #fff; opacity: 1; cursor: default; box-shadow: none; }
+.floating-mission .next-check.approval-approved > div h3 { color: #138545; }
+.primary-button.mission-approved-button:disabled { background: #138545; color: #fff; opacity: 1; cursor: default; box-shadow: none; }
 .primary-button.mission-status-button:disabled { background: #dfe6e7; color: #465d68; opacity: 1; cursor: default; box-shadow: none; }
 .physical-status-panel { display: flex; flex-direction: column; gap: 15px; min-height: 0; }
 .physical-status-panel > h3 { font-size: 22px; font-weight: 500; color: #344650; }
