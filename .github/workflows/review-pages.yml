@@ -1,0 +1,62 @@
+name: Publish recorded MUSE review
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/review/index.html
+      - docs/evidence/synthetic-action-reviews-20261027.json
+      - frontend/public/fonts/pretendard/PretendardVariable.woff2
+      - frontend/public/fonts/pretendard/OFL.txt
+      - tools/build_review_site.py
+      - tests/test_review_site.py
+      - .github/workflows/review-pages.yml
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: recorded-review-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - name: Checkout public source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Check narrow artifact boundary and original evidence
+        run: python -m unittest discover -s tests -p test_review_site.py -v
+      - name: Build read-only archive
+        run: python tools/build_review_site.py --output "$RUNNER_TEMP/pushpilot-recorded-review"
+      - name: Configure Pages metadata
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - name: Upload only the static archive
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: ${{ runner.temp }}/pushpilot-recorded-review
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish recorded review
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

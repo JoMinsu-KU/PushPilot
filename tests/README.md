@@ -28,6 +28,7 @@ The Python suite uses temporary Git/ZIP/configuration fixtures, isolated SQLite 
 | Group | Modules | Boundary exercised |
 | --- | --- | --- |
 | Source/release and provider checker | [test_release_bundle.py](test_release_bundle.py), [test_muse_api_check.py](test_muse_api_check.py) | Committed-source packaging/hash policy and bounded key/request handling with injected IO. |
+| Read-only review publication | [test_review_site.py](test_review_site.py) | Narrow static artifact, original response/image hashes, no-connection CSP, pinned font/license and safe output handling. |
 | Workspace and simulated mission | [test_mission_core.py](test_mission_core.py), [test_workspace_api.py](test_workspace_api.py), [test_action_review.py](test_action_review.py), [test_voice.py](test_voice.py) | Approval/revision/stop/review/restart behavior, recorded-input binding, API validation and text-only voice boundaries. |
 | Maps and provider planning | [test_temporary_map.py](test_temporary_map.py), [test_map_api.py](test_map_api.py), [test_planning_routes.py](test_planning_routes.py), [test_planning_provider.py](test_planning_provider.py), [test_city_a3_map.py](test_city_a3_map.py), [test_spatial_only_map.py](test_spatial_only_map.py) | Map identity/replacement, exact connected routes, B/C/D frontage intent, provider contract and separate 3D display metadata. |
 | Scene and display registration | [test_scene.py](test_scene.py), [test_display_registration.py](test_display_registration.py), [test_display_revision.py](test_display_revision.py), [test_live_reference.py](test_live_reference.py), [test_live_occlusion.py](test_live_occlusion.py) | Original frames, lock/reference identity, expected occlusion, changed-view inhibition and exact display revision. |
@@ -50,7 +51,7 @@ No offline test contacts Meta, Native, Rodi or a camera. Real provider/capture/p
 
 ## Release checkpoints
 
-The November 2 source publication reported 1,177 Python tests run with five skipped, 126 frontend tests and a successful frontend build. This is the recorded pre-documentation release checkpoint, not a fresh result from reading this page. Older test counts in dated records remain valid for their own source cutoff. Record the actual new result when checking a later commit.
+The initial November 2 source publication at `7aa7753` reported 1,177 Python tests run with five skipped, 126 frontend tests and a successful frontend build. The later Native recovery checkpoint `bcac769` records 1,199 backend tests run with five skipped and zero failures, 143 frontend tests with zero failures, and a passing build. [Verification](../docs/VERIFICATION.md) keeps these checkpoints distinct. Older counts remain valid for their own source cutoff; record the actual new result when checking a later commit.
 
 GREEN admission, native endpoint receipt, MUSE car review and empty START return are distinct test contracts. Under configured `single_departure`, accepted GREEN is consumed once and recontact does not reopen a color wait. Optional C19 review omission is exact-step scoped; it never creates a synthetic PASS. Unknown movement remains unresolved, regardless of a successful policy replay.
 
