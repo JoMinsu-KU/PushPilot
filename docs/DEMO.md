@@ -34,13 +34,11 @@ The user supplied the following tablet recordings and setup photograph from the 
 
 ## Explore three recorded decisions
 
-The [recorded review explorer](review/index.html) puts **the actual input pair, original MUSE judgment and resulting simulated supervisor state** on one page. It is a self-contained HTML file. No key, server, robot, camera or new inference is needed.
+**[Explore 3 recorded Muse decisions →](https://jominsu-ku.github.io/PushPilot/)**
 
-1. Download and extract the repository, or clone it with Git.
-2. Open `docs/review/index.html` in a browser directly from the extracted folder.
-3. Select **Progress visible**, **No progress** and **View occluded**. Compare the depicted change, the original MUSE response and the recorded state. Expand provenance to inspect hashes and the full public record.
+The public read-only explorer puts **the actual input pair, original MUSE judgment and resulting simulated supervisor state** on one page. Open the link, then select **Progress visible**, **No progress** or **View occluded**. Expand provenance to inspect hashes and the full public record. No download, account, equipment or API key is needed, and no new inference occurs.
 
-GitHub displays HTML source instead of running this page. Use the Markdown table below for an immediate GitHub preview, or open the downloaded file to explore the image pairs.
+For offline use, download/extract or clone this repository and open [`docs/review/index.html`](review/index.html) directly in a browser. The Markdown table below remains an immediate GitHub preview. [Hosting scope and reproduction](REVIEW_HOSTING.md)
 
 | Designed input condition | Original Meta MUSE judgment | Recorded supervisor state | What the example makes visible |
 |---|---|---|---|

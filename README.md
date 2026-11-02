@@ -2,18 +2,12 @@
 
 # PushPilot
 
-### From sight to action.
-#### Give the robot a goal. See the plan. Review the result.
+### Give the robot a goal. See the plan. Review the result.
 
-**A Meta Muse Spark 1.3-powered workspace for supervised robot tasks.**
+A **Meta Muse Spark 1.3** workspace for operators running robot demos and pilot tasks,<br>
+bringing the goal, execution feedback and visual result into one view.
 
-PushPilot helps operators of prepared robot tasks describe a goal, review the plan,<br>
-and understand what happened after the robot acts.
-
-MUSE interprets the request and camera evidence.<br>
-A supervised executor carries out reviewed robot motions.
-
-[Watch the physical recording](https://drive.google.com/file/d/1Hflx4wuoLFTQvOuHA_Aqk8_FBQhNt1bp/view) · [Explore recorded decisions](docs/DEMO.md) · [How MUSE is used](#how-muse-changes-the-next-step)
+[Watch the physical recording](https://drive.google.com/file/d/1Hflx4wuoLFTQvOuHA_Aqk8_FBQhNt1bp/view) · [Explore 3 recorded Muse decisions](https://jominsu-ku.github.io/PushPilot/) · [How MUSE is used](#how-muse-changes-the-next-step)
 
 </div>
 
@@ -28,7 +22,7 @@ A supervised executor carries out reviewed robot motions.
 
 **A robot can finish a motion without finishing the task.** A completed command tells the operator where the tool went. It does not establish that a freely sliding car reached the intended place.
 
-Our initial user is the operator of a prepared robot demonstration, pilot or teaching task. They need to compare the intended goal, controller feedback and visible result. PushPilot brings these into one tablet workspace and shows the basis for continuing, observing again or holding. This is the initial user hypothesis; broader customer validation remains future work.
+Our initial users are operators running robot demos and pilot tasks. They can follow the goal, controller feedback and visual result together, without reconstructing the trial across separate logs and camera views. PushPilot shows the basis for continuing, observing again or holding. This is the initial user hypothesis; broader customer validation remains future work.
 
 ## How MUSE changes the next step
 
@@ -40,7 +34,7 @@ Our initial user is the operator of a prepared robot demonstration, pilot or tea
 | **At the signal stop** | Fresh observations of the selected paper signal | Why the system waits for RED/uncertainty or admits departure after accepted GREEN. |
 | **After an action unit** | Expected outcome and source-bound observations of the car | Whether there is visible progress, a clear problem, insufficient evidence or arrival. |
 
-MUSE's judgment feeds a deterministic supervisor. Source identity, fresh evidence, completed robot motion and the applicable signal/mission checks determine whether that judgment can advance execution. The coordinate executor does not need to find the gripper tip in every image.
+MUSE interprets the request and visual evidence; a supervised executor carries out reviewed robot motions. Source identity, fresh evidence, controller completion and the applicable signal/mission checks determine whether a judgment can advance execution. [Technical boundaries](docs/META_INTELLIGENCE.md)
 
 **Same expected action. Different observations. Different recorded states.**
 
@@ -68,7 +62,7 @@ Camera shows the actual perspective with an AR route. Spatial shows the same sel
 |---|---|
 | **Physical robot trials** | Historical Office, Villa and Hanok arrivals are recorded. Office has an actual MUSE arrival review; Villa's earlier arrival was accepted by the operator with its negative model judgment preserved; Hanok has an original-image arrival PASS after recovery trials. [Physical evidence guide](docs/DEMO.md#read-the-physical-evidence) |
 | **Actual Meta integration** | `muse-spark-1.3` goal, graph/image planning and visual-review integration, with dated provider records. [API record](docs/META_API_CHECK.md) |
-| **Software verification · November 2** | 1,177 backend tests run, five skipped; 126 frontend tests and the production build passed. These are software checks, not a physical success rate. [Verification](docs/VERIFICATION.md) |
+| **Software verification · recovery checkpoint `bcac769` · November 2** | The published recovery record reports 1,199 backend tests run, five skipped and zero failures; 143 frontend tests and the production build passed. These are software checks, not a physical success rate. [Checkpoint evidence](docs/evidence/native-read-recovery-20261102.json) · [Verification](docs/VERIFICATION.md) |
 | **Current scope** | An explicitly configured, supervised tabletop site trial. Derived recipes are not qualified for general unattended repeatability; numeric straightening and parallel parking are deferred. [Current status](docs/CURRENT_STATUS.md) |
 
 The short recording above is a later tablet capture. It is not substituted for the separate October 29 B/C/D records or presented as one uninterrupted proof of every route.
@@ -92,9 +86,11 @@ The work builds on earlier tabletop experiments, inherited robot transport and s
 
 ## Try the recorded review
 
-Start with the [recorded decision walkthrough](docs/DEMO.md). It links the physical recordings, public trial summaries and an interactive read-only explorer for the three archived synthetic cases.
+**[Explore 3 recorded Muse decisions →](https://jominsu-ku.github.io/PushPilot/)**
 
-For the explorer, clone/download this repository and open [`docs/review/index.html`](docs/review/index.html) in a browser. It needs **no robot, server, API key or private city assets**. Its inputs and responses are archived; it does not run new inference or operate equipment.
+Open the page and select **Progress visible**, **No progress** or **View occluded** to compare the original input pair, MUSE response and resulting simulated state. No download, equipment or API key is required. These are archived synthetic-input cases; the page does not run new inference or operate equipment. [Recording and evidence guide](docs/DEMO.md)
+
+For offline use, clone/download the repository and open [`docs/review/index.html`](docs/review/index.html) directly in a browser.
 
 <details>
 <summary><strong>Developer setup · run the application locally</strong></summary>
