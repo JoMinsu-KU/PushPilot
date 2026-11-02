@@ -4,6 +4,8 @@ The [recorded review](review/index.html) is an equipment-free, read-only explore
 
 The configured public site address is [jominsu-ku.github.io/PushPilot/](https://jominsu-ku.github.io/PushPilot/). Availability depends on the latest successful Pages deployment.
 
+The November 2, 2026 deployment of source `89d0b36` completed successfully in [Actions run 41392714598](https://github.com/JoMinsu-KU/PushPilot/actions/runs/41392714598). The public page was then checked in a browser: all three cases selected correctly, PASS led to READY, FAIL to FAULT, and the occluded case to REOBSERVE. Both input images and the local Pretendard font loaded, with no horizontal overflow in the inspected viewport. These checks verify the hosted recorded interface, not new model inference or robot operation.
+
 The dedicated [workflow](../.github/workflows/review-pages.yml) publishes only a four-file artifact:
 
 | Artifact file | Source and purpose |
