@@ -32,6 +32,24 @@ class OutcomeUnknown(RuntimeError):
     """Publication or completion is uncertain. Never resend automatically."""
 
 
+NOT_COMMITTED_NATIVE_TIMEOUT_CODES = frozenset({
+    "PROFILE_NOT_COMMITTED_NATIVE_TIMEOUT", "MOTION_NOT_COMMITTED_NATIVE_TIMEOUT"})
+
+
+def _not_committed_timeout_code(kind, data, identity):
+    """Classify exact host evidence without clearing an unknown-publication latch."""
+    phase, code = ({"profile_update": ("profile_precommit", "PROFILE_NOT_COMMITTED_NATIVE_TIMEOUT"),
+                   "translate": ("motion_precommit", "MOTION_NOT_COMMITTED_NATIVE_TIMEOUT"),
+                   "rotate": ("motion_precommit", "MOTION_NOT_COMMITTED_NATIVE_TIMEOUT")}.get(kind, (None, None)))
+    if (phase is not None and all(type(data.get(key)) is type(value) and data.get(key) == value
+                                for key, value in identity.items())
+            and data.get("phase") == phase and data.get("code") == "NATIVE_PRECOMMIT_VERIFICATION_TIMEOUT"
+            and data.get("commit_sent") is False and data.get("motion_sent") is False
+            and data.get("fresh_connection_required") is True):
+        return code
+    return None
+
+
 class _ConfirmedPrewireRejection(PrewireRejected):
     pass
 
@@ -307,6 +325,8 @@ class LegacyReceiver:
             deadline = time.monotonic() + timeout
             partial = ""
             terminal = None
+            commit_seen = False
+            not_committed_code = None
             last_read_failure = None
             while time.monotonic() < deadline:
                 try:
@@ -322,6 +342,14 @@ class LegacyReceiver:
                         except (ValueError, TypeError, RecursionError) as error:
                             raise OutcomeUnknown("RECEIVER_EVENT_LOG_CORRUPT") from error
                         data = event.get("data", {})
+                        # Raw wire packets intentionally omit request_id for
+                        # target motions. Never overlook a matching GO/commit
+                        # merely because it cannot pass the lifecycle filter.
+                        if (isinstance(data, dict) and event.get("kind") == "tx_intent"
+                                and data.get("type") in {"go", "profile_commit"}
+                                and all(data.get(key) == identity[key] for key in
+                                        ("session_id", "seq", "profile_id", "command_digest"))):
+                            commit_seen = True
                         if not isinstance(data, dict) or data.get("request_id") != wire_command["request_id"]:
                             continue
                         if any(data.get(key) != identity[key] for key in ("session_id", "seq")):
@@ -332,11 +360,21 @@ class LegacyReceiver:
                             raise _ConfirmedPrewireRejection("RECEIVER_REJECTED_BEFORE_WIRE: " + str(data.get("reason")))
                         if data.get("command_digest") != wire_command["command_digest"]:
                             raise OutcomeUnknown("RECEIVER_EVENT_DIGEST_MISMATCH")
+                        if event_kind in {"motion_commit_intent", "motion_entering_reported", "motion_done_reported",
+                                          "motion_endpoint_verified", "profile_commit_intent", "profile_applied_verified"}:
+                            commit_seen = True
+                        if event_kind == "command_not_committed":
+                            not_committed_code = _not_committed_timeout_code(kind, data, identity)
                         on_event("wire_" + str(event_kind), data)
                         if event_kind == self.TERMINAL[kind]:
                             if kind.startswith("inspect") and (data.get("status") != "ok" or data.get("motion_issued") is not False):
                                 raise OutcomeUnknown("RECEIVER_INSPECTION_NOT_VERIFIED")
                             terminal = event
+                    if not_committed_code is not None and not commit_seen:
+                        # This diagnosis is NOT a prewire rejection or replay
+                        # authority. A published command still needs explicit
+                        # reconciliation and a fresh receiver connection.
+                        raise OutcomeUnknown(not_committed_code)
                     current_run, current = self._state()
                     if current_run != run or current.get("stage") == "closed":
                         raise OutcomeUnknown("RECEIVER_SESSION_CLOSED_OR_REPLACED")

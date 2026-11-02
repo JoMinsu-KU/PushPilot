@@ -238,7 +238,9 @@ class ReviewedProfilePreparer:
         self._same_source(current, source, joints, expected["session_id"])
         command = {"request_id": str(uuid4()), "kind": kind, "purpose": "commissioning",
             "installation_id": installation_id, "expected_receiver": expected,
-            "timeout_seconds": 30., "admission_timeout_seconds": 10.}
+            # Outer receipt/acknowledgment window only. The inherited command
+            # keeps its original 30s wire lifetime; admission is still 10s.
+            "timeout_seconds": 60., "admission_timeout_seconds": 10.}
         if target is not None:
             command["target"] = list(target)
         if profile is not None:
@@ -246,7 +248,7 @@ class ReviewedProfilePreparer:
         self.journal.artifact("profile-query-intent", command)
         self.stop_check()
         self.api("/v1/commands", command)  # Exactly once, even after transport ambiguity.
-        deadline = self.monotonic()+40.
+        deadline = self.monotonic()+70.
         while True:
             self.stop_check()
             job = self.api("/v1/commands/"+command["request_id"])
@@ -255,6 +257,9 @@ class ReviewedProfilePreparer:
             _require(self.monotonic() < deadline, "PROFILE_QUERY_OUTCOME_UNRESOLVED")
             self.sleep(.15)
         self.journal.artifact("profile-query-result", job)
+        if (kind == "profile_update" and job.get("state") == "outcome_unknown"
+                and job.get("error") == "PROFILE_NOT_COMMITTED_NATIVE_TIMEOUT"):
+            _require(False, "PROFILE_NOT_COMMITTED_NATIVE_TIMEOUT")
         _require(job.get("state") == "complete", "PROFILE_QUERY_OUTCOME_UNRESOLVED")
         receipt = job.get("result", {}).get("robot_receipt", {})
         expected_kind = "profile_applied_verified" if kind == "profile_update" else "ik_result_verified"

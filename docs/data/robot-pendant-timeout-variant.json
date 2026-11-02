@@ -1,0 +1,21 @@
+{
+  "schema": "pushpilot.pendant-timeout-variant.v1",
+  "capability": "bounded-commit-wait-30s-v1",
+  "original": {
+    "sha256": "889b79b44e3c1729597b767c506d7cb4ce993fe37e7855bea1b49453dbec6938",
+    "bytes": 38730
+  },
+  "candidate": {
+    "filename": "hcr1_pose_receiver.commit-wait-30s-v1.script",
+    "sha256": "b9b122cac554183cb99ce90b4f7f4a0fd97e51d7a782437da6e2faf5bea29ffb",
+    "bytes": 38994,
+    "distribution": "private full-file handoff; manual pendant installation required"
+  },
+  "protected_wait_ms": 30000,
+  "host_protected_budget_s": 20,
+  "protected_calls": ["PROFILE_READY_TO_PROFILE_COMMIT", "READY_TO_GO"],
+  "unchanged_packet_wait_ms": 10000,
+  "inherited_runtime_files_modified": false,
+  "physical_installation_verified": false,
+  "physical_route_requalification_claimed": false
+}

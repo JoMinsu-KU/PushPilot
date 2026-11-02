@@ -91,6 +91,7 @@ class FakeGuardedAPI:
         self.wrist, self.failure, self.after_call = wrist, None, None
         self.inspected_joints, self.target_inspection_joints = None, None
         self.query_validator, self.ik_baseline = None, False
+        self.profile_error = None
 
     def __call__(self, path, payload=None):
         self.calls.append((path, deepcopy(payload)))
@@ -103,6 +104,9 @@ class FakeGuardedAPI:
             receiver = self.status["receiver"]
             admit(payload, self.status["installation"], receiver, None, armed=False, held=True,
                   now=1000., require_profile_binding=True)
+            if payload["kind"] == "profile_update" and self.profile_error is not None:
+                self.jobs[payload["request_id"]] = {"state": "outcome_unknown", "error": self.profile_error}
+                return {"accepted": True}
             if payload["kind"] == "profile_update":
                 receiver["profile"] = deepcopy(payload["profile"])
                 receiver["profile_id"] = content_hash(payload["profile"])
@@ -427,6 +431,39 @@ class MissionProfileTests(unittest.TestCase):
             self.preparer()
         self.assertEqual(len(self.commands()), count)
         self.assertEqual(self.journal.load()["state"], "PROFILE_PREPARATION_FAILED")
+
+    def test_profile_native_timeout_keeps_original_artifact_and_exact_diagnosis_without_retry(self):
+        self.api.profile_error = "PROFILE_NOT_COMMITTED_NATIVE_TIMEOUT"
+        with self.assertRaises(ExecutionBlocked) as caught:
+            self.prepare()
+        self.assertEqual(caught.exception.code, "PROFILE_NOT_COMMITTED_NATIVE_TIMEOUT")
+        self.assertEqual(self.journal.load()["error_code"], "PROFILE_NOT_COMMITTED_NATIVE_TIMEOUT")
+        self.assertEqual([c["kind"] for c in self.commands()], ["inspect_current", "profile_update"])
+        artifacts = list(Path(self.directory.name).glob("profile-query-result-*.private.json"))
+        self.assertTrue(any('"PROFILE_NOT_COMMITTED_NATIVE_TIMEOUT"' in path.read_text() for path in artifacts))
+        self.assert_failed_preparation_remains_held_without_motion()
+
+    def test_generic_profile_unknown_does_not_become_native_timeout(self):
+        self.api.profile_error = "Unproven reply loss after profile commit"
+        with self.assertRaises(ExecutionBlocked) as caught:
+            self.prepare()
+        self.assertEqual(caught.exception.code, "PROFILE_QUERY_OUTCOME_UNRESOLVED")
+        self.assert_failed_preparation_remains_held_without_motion()
+
+    def test_outer_acknowledgment_budget_allows_slow_result_without_extending_admission(self):
+        original_api = self.api.__call__
+        def slow_result(path, payload=None):
+            if path.startswith("/v1/commands/") and self.tick < 45.:
+                return {"state": "running"}
+            return original_api(path, payload)
+        preparer = self.preparer()
+        preparer.api = slow_result
+        preparer.monotonic = lambda: self.tick
+        preparer.sleep = lambda _: setattr(self, "tick", self.tick+5.)
+        self.prepare(preparer=preparer)
+        self.assertEqual(self.tick, 45.)
+        self.assertTrue(all(c["timeout_seconds"] == 60. and c["admission_timeout_seconds"] == 10.
+                            and "expires_monotonic_ns" not in c for c in self.commands()))
 
     def test_preparation_identity_is_durable_and_cannot_be_replayed(self):
         self.prepare()

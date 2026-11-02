@@ -1,5 +1,9 @@
 # Retain the connection. Reacquire the measurement.
 
+The subsequent [negotiated commit-wait update](NEGOTIATED_COMMIT_WAIT.md) supports
+a separately installed pendant variant at the two protected commit waits. The
+unchanged-script behavior and dated validation below remain their original scope.
+
 **November 2, 2026 · server-only recovery for the unchanged installed Rodi script.**
 
 The passive diagnosis captured FC03 replies arriving after the original two-second Native deadline, including a 5.049-second reply after the controller had acknowledged the request. Three acquisition failures previously escaped from the synchronous guard and closed the separate Rodi session. This change contains that read failure at legal idle boundaries. It does not claim to repair the controller's internal response latency.

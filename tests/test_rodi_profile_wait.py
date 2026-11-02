@@ -94,7 +94,7 @@ def fixture_modules(wires):
         "transport": SimpleNamespace(Journal=SyntheticJournal, Wire=Mock(side_effect=wire), Native=Mock(),
                                      strict_json=json.loads, read_stationary=Mock(), wait_endpoint_settled=Mock()),
         "server": SimpleNamespace(exchange=Mock(), atomic_json=atomic, environment_check=Mock(),
-                                  legacy_receiver_absent=Mock()),
+                                  legacy_receiver_absent=Mock(), preflight_request=Mock(), fresh=Mock()),
     }
 
 

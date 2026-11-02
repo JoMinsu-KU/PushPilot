@@ -11,7 +11,10 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock
 
-from backend.robot_control.host_resilience import NativeRecovery, RecoveryWire, read_unavailable
+from backend.robot_control.host_resilience import (
+    COMMIT_WAIT_CAPABILITY, NativeRecovery, PrecommitReadTimeout, RecoveryWire,
+    bind_request_lifetime, read_unavailable,
+)
 from backend.robot_control.taught_executor import ExecutionBlocked
 from backend.robot_control.taught_ports import prove_host_journal_cycle
 
@@ -374,6 +377,197 @@ class EndpointReacquisitionTests(unittest.TestCase):
         self.assertEqual(h.recovery.settled(POSE, True), {'original': 'settled'})
         h.transport.wait_endpoint_settled.assert_called_once_with(h.native, POSE, True)
         self.assertEqual(len(h.inner.sent), 1)
+
+
+class ProtectedCommitWaitTests(unittest.TestCase):
+    def ready(self, h, kind='profile_prepare', *, capability=True):
+        h.inner.responses.append({'type': 'hello', 'capabilities':
+                                  [COMMIT_WAIT_CAPABILITY] if capability else []})
+        h.wire.receive()
+        h.wire.send({**HEADER, 'type': kind})
+        h.wire.receive()
+
+    def test_negotiated_profile_and_motion_wait_recover_after_four_timeouts(self):
+        for kind in ('profile_prepare', 'prepare'):
+            with self.subTest(kind=kind):
+                h = Harness([(2., TimeoutError('late Native'))] * 4 + [native_row(), native_row()])
+                self.ready(h, kind)
+                self.assertEqual(h.recovery.stationary(POSE, (2,), True), native_row())
+                self.assertEqual(len(h.native.calls), 6)
+                self.assertFalse(h.recovery.unavailable)
+                self.assertEqual([p['type'] for p in h.inner.sent], [kind])
+                self.assertTrue(all(0 < n <= 2 for n in h.native.calls))
+                self.assertTrue(all('precommit' in c[1]['phase'] for c in h.waiting_calls))
+
+    def test_deadline_is_absolute_and_timeout_never_sends_idle_or_commit(self):
+        h = Harness([(2., TimeoutError('continuous outage'))] * 20)
+        self.ready(h)
+        deadline = h.wire.protected_deadline
+        with self.assertRaisesRegex(PrecommitReadTimeout, 'profile_precommit'):
+            h.recovery.stationary(POSE, (2,), True)
+        self.assertLessEqual(h.clock(), deadline + .001)
+        self.assertTrue(h.recovery.unavailable)
+        self.assertEqual([p['type'] for p in h.inner.sent], ['profile_prepare'])
+
+    def test_timeout_invalidates_previous_success(self):
+        h = Harness([native_row(), (2., TimeoutError('gap')), native_row(), native_row()])
+        self.ready(h)
+        h.recovery.stationary(POSE, (2,), True)
+        self.assertEqual(len(h.native.calls), 4)
+
+    def test_old_or_wrong_capability_retains_original_bounded_guard(self):
+        for capability in ([], ['bounded-commit-wait-60s-v1']):
+            h = Harness()
+            h.inner.responses.append({'type': 'hello', 'capabilities': capability})
+            h.wire.receive()
+            h.wire.send({**HEADER, 'type': 'profile_prepare'})
+            h.wire.receive()
+            self.assertEqual(h.recovery.stationary(POSE, (2,), True), {'original': 'stationary'})
+            self.assertEqual(h.native.calls, [])
+
+    def test_capability_does_not_extend_begin_or_entering(self):
+        for kind, response in [('begin', 'hello_invalid'), ('go', 'entering')]:
+            h = Harness()
+            h.inner.responses.append({'type': 'hello', 'capabilities': [COMMIT_WAIT_CAPABILITY]})
+            h.wire.receive()
+            h.wire.send({**HEADER, 'type': kind})
+            h.inner.responses.append({**HEADER, 'type': response})
+            h.wire.receive()
+            h.recovery.stationary(POSE, (2,), True)
+            h.transport.read_stationary.assert_called_once()
+            self.assertIsNone(h.wire.protected_deadline)
+
+    def test_wrong_ready_identity_cannot_negotiate_extended_wait(self):
+        h = Harness()
+        h.inner.responses.append({'type': 'hello', 'capabilities': [COMMIT_WAIT_CAPABILITY]})
+        h.wire.receive()
+        h.wire.send({**HEADER, 'type': 'prepare'})
+        h.inner.responses.append({**HEADER, 'type': 'ready', 'seq': 999})
+        h.wire.receive()
+        self.assertIsNone(h.wire.protected_deadline)
+
+    def test_delayed_ready_consumes_budget_from_prepare_send(self):
+        h = Harness()
+        h.inner.responses.append({'type': 'hello', 'capabilities': [COMMIT_WAIT_CAPABILITY]})
+        h.wire.receive()
+        h.wire.send({**HEADER, 'type': 'prepare'})
+        sent_at = h.wire.sent_at
+        h.clock.sleep(9.)
+        h.wire.receive()
+        self.assertAlmostEqual(h.wire.protected_deadline, sent_at + 20.)
+
+    def test_owner_or_native_delay_past_deadline_cannot_authorize(self):
+        h = Harness([(20.1, native_row()), native_row()])
+        self.ready(h)
+        with self.assertRaises(PrecommitReadTimeout):
+            h.recovery.stationary(POSE, (2,), True)
+        self.assertEqual(len(h.native.calls), 1)
+
+    def test_invalid_measured_state_and_journal_failure_are_not_retryable(self):
+        for action in (native_row(flags=[1, 1, 1, 0, 0, 0]),
+                       native_row(speed=[.1, 0, 0, 0, 0, 0]),
+                       native_row(pose=[11., *POSE[1:]]),
+                       ValueError('malformed Modbus'), OSError(errno.ENOSPC, 'journal full')):
+            h = Harness([action])
+            self.ready(h)
+            with self.assertRaises((ValueError, OSError)):
+                h.recovery.stationary(POSE, (2,), True)
+            self.assertEqual(len(h.native.calls), 1)
+            self.assertEqual(h.waiting_calls, [])
+
+
+class RequestLifetimeBoundaryTests(unittest.TestCase):
+    def request(self, h, **changes):
+        command = {**HEADER, 'type': 'target', 'request_id': 'd' * 32,
+                   'command_digest': 'e' * 64, 'previous': list(POSE), 'target': list(POSE),
+                   'expires_monotonic_ns': h.clock.ns() + 30_000_000_000}
+        command.update(changes)
+        return command
+
+    def fresh(self, h):
+        def check(command):
+            if h.clock.ns() >= command['expires_monotonic_ns']:
+                raise ValueError('Expired command')
+        return check
+
+    def packet(self, command, kind):
+        return {k: deepcopy(v) for k, v in {**command, 'type': kind}.items()
+                if k != 'expires_monotonic_ns'}
+
+    def test_production_wire_requires_accepted_lifetime(self):
+        h = Harness()
+        h.wire.require_request = True
+        with self.assertRaisesRegex(RuntimeError, 'lifetime'):
+            h.wire.send({**HEADER, 'type': 'prepare'})
+        self.assertEqual(h.inner.sent, [])
+
+    def test_original_expiry_checked_again_after_guard_before_prepare(self):
+        h = Harness()
+        command = self.request(h)
+        h.wire.bind_request(command, self.fresh(h))
+        command['expires_monotonic_ns'] += 999_000_000_000  # Caller mutation cannot extend it.
+        h.clock.sleep(30.)
+        with self.assertRaisesRegex(ValueError, 'Expired'):
+            h.wire.send(self.packet(command, 'prepare'))
+        self.assertEqual(h.inner.sent, [])
+
+    def test_original_expiry_checked_before_go_and_profile_commit(self):
+        for request_kind, prepare, commit in [('target', 'prepare', 'go'),
+                ('profile_update', 'profile_prepare', 'profile_commit')]:
+            h = Harness()
+            command = self.request(h, type=request_kind)
+            h.wire.bind_request(command, self.fresh(h))
+            h.wire.send(self.packet(command, prepare))
+            h.wire.receive()
+            h.clock.sleep(31.)
+            with self.assertRaisesRegex(ValueError, 'Expired'):
+                h.wire.send(self.packet(command, commit))
+            self.assertEqual([p['type'] for p in h.inner.sent], [prepare])
+
+    def test_protected_recovery_does_not_refresh_original_command(self):
+        h = Harness([(2., TimeoutError('retry'))] * 4)
+        command = self.request(h, expires_monotonic_ns=h.clock.ns() + 5_000_000_000)
+        h.wire.bind_request(command, self.fresh(h))
+        h.wire.capabilities = frozenset([COMMIT_WAIT_CAPABILITY])
+        h.wire.send(self.packet(command, 'prepare'))
+        h.wire.receive()
+        with self.assertRaisesRegex(ValueError, 'Expired'):
+            h.recovery.stationary(POSE, (2,), True)
+        self.assertEqual([p['type'] for p in h.inner.sent], ['prepare'])
+
+    def test_identity_and_geometry_cannot_borrow_another_lifetime(self):
+        for change in ({'seq': 99}, {'command_digest': 'f' * 64}, {'type': 'profile_commit'},
+                       {'target': [99., *POSE[1:]]}):
+            h = Harness()
+            command = self.request(h)
+            h.wire.bind_request(command, self.fresh(h))
+            with self.assertRaises(ValueError):
+                h.wire.send({**self.packet(command, 'prepare'), **change})
+            self.assertEqual(h.inner.sent, [])
+
+    def test_scoped_adapter_restores_and_clears_on_base_exception(self):
+        h = Harness()
+        original = Mock()
+        server = SimpleNamespace(preflight_request=original, fresh=self.fresh(h))
+        command = self.request(h)
+        with self.assertRaises(KeyboardInterrupt):
+            with bind_request_lifetime(server, h.wire):
+                server.preflight_request(command, 'reviewed arguments')
+                self.assertEqual(h.wire.request, command)
+                raise KeyboardInterrupt()
+        original.assert_called_once_with(command, 'reviewed arguments')
+        self.assertIs(server.preflight_request, original)
+        self.assertIsNone(h.wire.request)
+        self.assertIsNone(Harness().wire.request)
+
+    def test_rejected_original_preflight_never_binds_request(self):
+        h = Harness()
+        server = SimpleNamespace(preflight_request=Mock(side_effect=ValueError('rejected')),
+                                 fresh=self.fresh(h))
+        with bind_request_lifetime(server, h.wire):
+            with self.assertRaises(ValueError):
+                server.preflight_request(self.request(h))
+            self.assertIsNone(h.wire.request)
 
 
 if __name__ == '__main__':

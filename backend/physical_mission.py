@@ -611,11 +611,20 @@ class PhysicalMissionService:
                     return
         except Exception as error:
             code = getattr(error, "code", None) or (str(error) if str(error) == "OBSERVATION_SERVICE_UNAVAILABLE" else "PHYSICAL_MISSION_INTERRUPTED")
-            self.status.update(state="HOLD", error=code, available=False, stage_label="Mission stopped · Review required")
+            self.status.update(state="HOLD", error=code, available=False,
+                               stage_label="Mission held · Robot status unconfirmed")
+            # A failed command/context read cannot preserve the previous stage's
+            # live robot facts. False means unconfirmed here, not a measured
+            # stop or movement. Keep completed receipts and mission state intact;
+            # this display invalidation performs no additional hardware read.
+            self.status["robot"] = {"connected": False, "stationary": False, "at_start": False}
             active_id = self.status["telemetry"]["current_step_id"]
             if active_id:
                 self._sequence_status(active_id, "held", "Completion not confirmed")
             self._telemetry_event("hold", "Mission interrupted", code)
+            self._telemetry_event("robot_status", "Robot status unconfirmed",
+                "Robot status has not been reverified after " + code +
+                ". HOLD inhibits further dispatch; it does not confirm a physical stop.")
             self._persist("MISSION_INTERRUPTED", {"exception_type": type(error).__name__, "state": asdict(state)})
             try:
                 await asyncio.to_thread(self.driver.hold, code)

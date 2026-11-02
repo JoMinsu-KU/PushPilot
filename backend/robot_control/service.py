@@ -7,7 +7,7 @@ import threading
 import time
 
 from .gates import GuardError, admit, validate_contact_profile, validate_contact_turn_profile, validate_local_profile, validate_planar_teaching_profile
-from .legacy import PrewireRejected
+from .legacy import NOT_COMMITTED_NATIVE_TIMEOUT_CODES, OutcomeUnknown, PrewireRejected
 from .store import ControlError, Journal, encode
 
 
@@ -255,8 +255,12 @@ class RobotService:
             self.journal.update(request_id, "waiting_observation" if error.retryable else "rejected", error=error.code)
         except PrewireRejected as error:
             self.journal.update(request_id, "rejected", error=getattr(error, "code", "REJECTED_BEFORE_WIRE"))
-        except Exception:
-            self.journal.update(request_id, "outcome_unknown", error="Dispatch outcome is unknown. Inspect receiver and reconcile; do not resend.")
+        except Exception as error:
+            # Preserve only explicitly recognized transport diagnoses. Arbitrary
+            # exception/provider text is never promoted to an execution result.
+            safe_code = str(error) if isinstance(error, OutcomeUnknown) and str(error) in NOT_COMMITTED_NATIVE_TIMEOUT_CODES else None
+            self.journal.update(request_id, "outcome_unknown", error=safe_code or
+                "Dispatch outcome is unknown. Inspect receiver and reconcile; do not resend.")
             self.journal.set_meta("armed", False)
             if job["payload"]["purpose"] in {"contact_trial", "contact_turn_trial"}:
                 self.journal.set_meta("hold", True)

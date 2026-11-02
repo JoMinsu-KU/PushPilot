@@ -278,11 +278,39 @@ class PhysicalMissionTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_execute_connection_failure_has_no_retry(self):
         self.driver.execute_error = ConnectionError("Synthetic lost receipt after dispatch")
-        await self.service.start(command_for(self.service, self.store))
+        accepted = await self.service.start(command_for(self.service, self.store))
         result = await self.finish()
         self.assertEqual(result["state"], "HOLD")
         self.assertEqual(len(self.driver.commands), 1)
         self.assertEqual(result["error"], "PHYSICAL_MISSION_INTERRUPTED")
+        self.assertEqual(result["mission_id"], accepted["mission_id"])
+        self.assertEqual(result["robot"], {"connected": False, "stationary": False, "at_start": False})
+        self.assertEqual(result["progress"], {"completed": 0, "total": 2})
+        self.assertEqual([row["status"] for row in result["telemetry"]["sequence"]], ["held", "pending"])
+        self.assertFalse(self.service.db.execute(
+            "SELECT 1 FROM events WHERE kind='PRIMITIVE_RECEIPT'").fetchone())
+        self.assertIn("unconfirmed", result["stage_label"])
+        self.assertTrue(any(row["kind"] == "robot_status" and "does not confirm a physical stop" in row["detail"]
+                            for row in result["telemetry"]["history"]))
+
+    async def test_context_failure_after_completed_receipt_invalidates_display_only(self):
+        self.driver.context_error_at = 4
+        accepted = await self.service.start(command_for(self.service, self.store))
+        result = await self.finish()
+        self.assertEqual(result["state"], "HOLD")
+        self.assertEqual(result["error"], "PHYSICAL_MISSION_INTERRUPTED")
+        self.assertEqual(result["mission_id"], accepted["mission_id"])
+        self.assertEqual(result["robot"], {"connected": False, "stationary": False, "at_start": False})
+        self.assertEqual(result["progress"], {"completed": 1, "total": 2})
+        self.assertEqual([row["status"] for row in result["telemetry"]["sequence"]], ["complete", "pending"])
+        self.assertEqual([primitive for primitive, _ in self.driver.commands], ["delivery-unit"])
+        receipts = [json.loads(row[0]) for row in self.service.db.execute(
+            "SELECT value FROM events WHERE kind='PRIMITIVE_RECEIPT' ORDER BY seq")]
+        self.assertEqual(len(receipts), 1)
+        self.assertEqual(receipts[0]["receipt"]["outcome"], "COMPLETED")
+        self.assertTrue(receipts[0]["receipt"]["native_verified"])
+        self.assertTrue(any(row["source"] == "native" and row["detail"] == "delivery-unit"
+                            for row in result["telemetry"]["history"]))
 
     async def test_readonly_provider_failures_are_finite_without_motion_retry(self):
         self.driver.observe_error = TimeoutError("Synthetic model unavailable")
@@ -298,6 +326,8 @@ class PhysicalMissionTests(unittest.IsolatedAsyncioTestCase):
         result = await self.finish()
         self.assertEqual(result["state"], "HOLD")
         self.assertEqual(self.driver.commands, [])
+        self.assertEqual(result["robot"], {"connected": False, "stationary": False, "at_start": False})
+        self.assertEqual(self.driver.context_calls, 2)
 
     async def test_two_transient_arrival_timeouts_reobserve_without_replaying_motion(self):
         self.driver.plan = replace(self.driver.plan, parking=ParkingTarget(0., mode="delivery_only"))

@@ -346,6 +346,80 @@ class ReceiverPublicationTests(unittest.TestCase):
         with self.assertRaisesRegex(legacy.OutcomeUnknown, "CLOSED"):
             self.execute()
 
+    def not_committed(self, submit, *, phase="motion_precommit", **changes):
+        values = dict(phase=phase, code="NATIVE_PRECOMMIT_VERIFICATION_TIMEOUT",
+            commit_sent=False, motion_sent=False, fresh_connection_required=True, profile_id=PID)
+        values.update(changes)
+        submit.event("command_not_committed", **values)
+        submit.state["stage"] = "closed"
+        submit.write_state()
+
+    def test_exact_native_precommit_timeout_is_diagnosed_but_unknown_cannot_replay(self):
+        self.receiver.submit.callback = lambda submit, wire: self.not_committed(submit)
+        with self.assertRaisesRegex(legacy.OutcomeUnknown, "^MOTION_NOT_COMMITTED_NATIVE_TIMEOUT$"):
+            self.execute()
+        self.assertTrue(self.receiver._uncertain)
+        with self.assertRaisesRegex(legacy.OutcomeUnknown, "RECONCILIATION_REQUIRED"):
+            self.execute()
+        self.assertEqual(self.receiver.submit.publications, 1)
+        self.assertIn("wire_command_not_committed", [kind for kind, _ in self.events])
+
+    def test_profile_timeout_diagnosis_binds_profile_phase(self):
+        self.command["kind"] = "profile_update"
+        self.receiver.submit.callback = lambda submit, wire: self.not_committed(submit, phase="profile_precommit")
+        with self.assertRaisesRegex(legacy.OutcomeUnknown, "^PROFILE_NOT_COMMITTED_NATIVE_TIMEOUT$"):
+            self.execute()
+        self.assertTrue(self.receiver._uncertain)
+        self.assertEqual(self.receiver.submit.publications, 1)
+
+    def test_incomplete_or_wrong_no_commit_evidence_keeps_generic_unknown(self):
+        cases = ({"phase": "profile_precommit"}, {"motion_sent": 0}, {"commit_sent": True},
+                 {"fresh_connection_required": False}, {"code": "UNTRUSTED_TIMEOUT"})
+        for changes in cases:
+            with self.subTest(changes=changes):
+                self.receiver._uncertain = False
+                self.receiver.submit = FakeSubmit(self.run)
+                (self.run / "events.jsonl").write_text("")
+                self.receiver.submit.callback = lambda submit, wire: self.not_committed(submit, **changes)
+                with self.assertRaisesRegex(legacy.OutcomeUnknown, "CLOSED"):
+                    self.execute()
+
+    def test_go_or_commit_evidence_prevents_no_commit_diagnosis(self):
+        for event_kind in ("motion_commit_intent", "motion_entering_reported", "motion_done_reported"):
+            with self.subTest(kind=event_kind):
+                self.receiver._uncertain = False
+                self.receiver.submit = FakeSubmit(self.run)
+                (self.run / "events.jsonl").write_text("")
+                def after_commit(submit, wire):
+                    # Even contradictory later no-commit evidence cannot erase
+                    # an already recorded possibility of a motion permission.
+                    submit.event(event_kind)
+                    self.not_committed(submit)
+                self.receiver.submit.callback = after_commit
+                with self.assertRaisesRegex(legacy.OutcomeUnknown, "CLOSED"):
+                    self.execute()
+
+    def test_raw_go_without_request_id_blocks_no_commit_diagnosis(self):
+        def after_raw_go(submit, wire):
+            self.not_committed(submit)
+            packet = {key: wire[key] for key in ("session_id", "seq", "profile_id", "command_digest")}
+            packet["type"] = "go"
+            with (self.run / "events.jsonl").open("a") as stream:
+                stream.write(json.dumps({"kind": "tx_intent", "data": packet}) + "\n")
+        self.receiver.submit.callback = after_raw_go
+        with self.assertRaisesRegex(legacy.OutcomeUnknown, "CLOSED"):
+            self.execute()
+
+    def test_profile_commit_intent_cannot_be_reclassified_as_not_committed(self):
+        self.command["kind"] = "profile_update"
+        def after_commit(submit, wire):
+            submit.event("profile_commit_intent")
+            self.not_committed(submit, phase="profile_precommit")
+        self.receiver.submit.callback = after_commit
+        with self.assertRaisesRegex(legacy.OutcomeUnknown, "CLOSED"):
+            self.execute()
+        self.assertTrue(self.receiver._uncertain)
+
     def test_mismatched_terminal_digest_is_unknown(self):
         def mismatch(submit, wire):
             with (self.run / "events.jsonl").open("a") as stream:
@@ -449,7 +523,8 @@ class HostSessionTests(unittest.TestCase):
         self.policy = SimpleNamespace(SCHEMA="fixture", require=lambda ok, message: None if ok else (_ for _ in ()).throw(ValueError(message)),
                                       near=Mock())
         self.server = SimpleNamespace(environment_check=Mock(), legacy_receiver_absent=Mock(),
-                                     atomic_json=atomic, exchange=self.exchange)
+                                     atomic_json=atomic, exchange=self.exchange,
+                                     preflight_request=Mock(), fresh=Mock())
         self.modules = {"server": self.server, "policy": self.policy,
                         "transport": SimpleNamespace(Journal=Journal, Native=self.native,
                             read_stationary=Mock(return_value={"joint": [0] * 6}),
@@ -485,6 +560,16 @@ class HostSessionTests(unittest.TestCase):
         self.assertEqual(result["status"], "blocked")
         self.native.assert_not_called()
         self.exchange.assert_not_called()
+
+    def test_lifetime_preflight_hook_is_scoped_and_restored_after_interrupt(self):
+        original = self.server.preflight_request
+        def interrupt(*args, **kwargs):
+            self.assertIsNot(self.server.preflight_request, original)
+            raise KeyboardInterrupt()
+        self.exchange.side_effect = interrupt
+        with self.assertRaises(KeyboardInterrupt):
+            self.run_session()
+        self.assertIs(self.server.preflight_request, original)
 
     def test_accepted_pendant_is_checked_in_running_program_state(self):
         def exchange(wire, guard, profile, motion, report, publish, command, emit, settle):

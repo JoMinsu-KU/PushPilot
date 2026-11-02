@@ -21,7 +21,9 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from backend.robot_control.legacy import DEFAULT_RUNTIME, PrewireRejected, load_runtime
-from backend.robot_control.host_resilience import NativeRecovery, RecoveryWire
+from backend.robot_control.host_resilience import (
+    NativeRecovery, PrecommitReadTimeout, RecoveryWire, bind_request_lifetime,
+)
 
 
 def read_profile(path, modules, motion):
@@ -112,6 +114,7 @@ def run_session(connection, peer, runtime, profile_path, modules, motion=True):
     journal = transport.Journal(path)
     report = dict(schema=g.SCHEMA, status="preparing", completed=0, in_flight=None,
                   motion_permission_may_have_been_sent=False, physical_execution=motion, errors=[])
+    wire = None
     try:
         g.require(peer[0] == "192.168.10.10", "Unexpected pendant peer")
         raw, profile = read_profile(profile_path, modules, motion)
@@ -119,7 +122,7 @@ def run_session(connection, peer, runtime, profile_path, modules, motion=True):
         server.environment_check(journal)
         server.legacy_receiver_absent(journal)
         native = transport.Native(journal)
-        wire = RecoveryWire(transport.Wire(connection, journal), server)
+        wire = RecoveryWire(transport.Wire(connection, journal), server, require_request=True)
         last_publication = None
 
         def waiting(detail):
@@ -158,10 +161,32 @@ def run_session(connection, peer, runtime, profile_path, modules, motion=True):
                 "server_exit_is_robot_stop": False})
 
         server.atomic_json(Path(runtime) / "current_session.json", {"path": name})
-        server.exchange(wire, guard, profile, motion, report, publish,
-                        path / "command.json", journal.event,
-                        settle=lambda endpoint: recovery.settled(endpoint, motion))
+        with bind_request_lifetime(server, wire):
+            server.exchange(wire, guard, profile, motion, report, publish,
+                            path / "command.json", journal.event,
+                            settle=lambda endpoint: recovery.settled(endpoint, motion))
     except Exception as error:
+        # Diagnose only this request before either committing operation could
+        # have been transmitted. This does not clear the durable API unknown
+        # latch or manufacture a terminal receipt. A sent COMMIT/GO remains
+        # uncertain even if its acknowledgement is missing.
+        if (isinstance(error, PrecommitReadTimeout) and wire is not None
+                and wire.protected_phase is not None and type(wire.sent) is dict
+                and wire.sent.get("type") in ("prepare", "profile_prepare")
+                and not report["motion_permission_may_have_been_sent"]
+                and not report.get("profile_commit_may_have_been_sent")):
+            packet = wire.sent
+            request = wire.last_request_identity or {}
+            detail = {key: packet.get(key) for key in
+                      ("session_id", "seq", "profile_id", "command_digest")}
+            # The adapter is already restored; only the accepted identity is
+            # retained for this failed session's diagnostic event.
+            detail.update(request_id=packet.get("request_id", request.get("request_id")),
+                phase=wire.protected_phase, code="NATIVE_PRECOMMIT_VERIFICATION_TIMEOUT",
+                commit_sent=False, motion_sent=False, fresh_connection_required=True)
+            if detail["request_id"] is not None:
+                journal.event("command_not_committed", detail)
+                report["failure_context"] = detail
         report["errors"].append(type(error).__name__ + ": " + str(error)[:512])
         report["status"] = ("outcome_unknown_check_pendant" if report["motion_permission_may_have_been_sent"] else
                             "profile_outcome_unknown_no_targets" if report.get("profile_commit_may_have_been_sent") else "blocked")

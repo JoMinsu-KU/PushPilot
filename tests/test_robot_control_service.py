@@ -506,12 +506,29 @@ class RobotControlServiceTests(unittest.TestCase):
         self.assertEqual(self.post("/v1/commands", self.command()).status_code, 409)
         self.assertEqual(len(self.receiver.calls), 1)
         self.assertTrue(self.get("/v1/status").json()["worker_alive"])
+        return unknown
 
     def test_completion_loss_is_unknown_and_duplicate_id_never_retries(self):
         self.assert_unknown_without_retry(OutcomeUnknown("Synthetic DONE loss."))
 
     def test_unexpected_backend_exception_is_unknown_and_never_retries(self):
         self.assert_unknown_without_retry(RuntimeError("Synthetic backend exception."))
+
+    def test_typed_profile_native_timeout_retains_safe_diagnosis_and_unknown_latch(self):
+        unknown = self.assert_unknown_without_retry(OutcomeUnknown("PROFILE_NOT_COMMITTED_NATIVE_TIMEOUT"))
+        self.assertEqual(unknown["error"], "PROFILE_NOT_COMMITTED_NATIVE_TIMEOUT")
+
+    def test_typed_motion_native_timeout_retains_safe_diagnosis_and_unknown_latch(self):
+        unknown = self.assert_unknown_without_retry(OutcomeUnknown("MOTION_NOT_COMMITTED_NATIVE_TIMEOUT"))
+        self.assertEqual(unknown["error"], "MOTION_NOT_COMMITTED_NATIVE_TIMEOUT")
+
+    def test_untyped_exception_cannot_promote_safe_diagnosis_by_message(self):
+        unknown = self.assert_unknown_without_retry(RuntimeError("PROFILE_NOT_COMMITTED_NATIVE_TIMEOUT"))
+        self.assertNotEqual(unknown["error"], "PROFILE_NOT_COMMITTED_NATIVE_TIMEOUT")
+
+    def test_unknown_exception_text_is_not_published_as_safe_code(self):
+        unknown = self.assert_unknown_without_retry(OutcomeUnknown("UNRECOGNIZED_PRIVATE_EXCEPTION_DETAIL"))
+        self.assertNotIn("UNRECOGNIZED_PRIVATE_EXCEPTION_DETAIL", unknown["error"])
 
     def test_operator_reconciliation_resets_bound_transport_without_replay_or_rearming(self):
         self.start()
