@@ -3,10 +3,24 @@
   "selected_on": "2026-11-02",
   "timezone": "Asia/Seoul",
   "source": "User-supplied Google Drive archive, selected explicitly for repository feedback update",
-  "scope": "Selected real tablet captures and setup photograph; not a continuous full-route or repeatability claim",
+  "scope": "Selected real tablet captures, one continuous physical-action/review clip and setup photograph; not a continuous full-route or repeatability claim",
   "source_timing_note": "Device clocks and Drive timestamps differ; no cross-file timing alignment is asserted.",
-  "processing": "OpenCV frame extraction and JPEG encoding only for video frames. Photograph retains identical primary compressed image data and decoded pixels; metadata and auxiliary gain-map trailer removed. No crop, resize, overlays, compositing or generative edits.",
+  "processing": "Earlier video frames use extraction/JPEG encoding only. The new 55-second clip uses one continuous cut, half-size/frame-rate resampling and H264 encoding without audio or source container metadata; its full-frame poster adds JPEG encoding only. Photograph retains identical primary compressed image data and decoded pixels; identifying metadata and auxiliary gain-map trailer removed, color-profile metadata retained. No crop, overlays, compositing or generative edits.",
   "assets": [
+    {
+      "file": "physical-action-muse-review.jpg",
+      "source_drive_id": "1TSuzN94-EOozUoWs5WLEXWVgjVezt0j9",
+      "origin": "Full decoded frame from the approved 55-second H264 physical-action viewing derivative",
+      "requested_video_time_seconds": 50,
+      "original_archive_time_seconds": 120,
+      "width_px": 1376,
+      "height_px": 1032,
+      "bytes": 278984,
+      "sha256": "526eaa34702357cb2775bec91d0937fdecfab4c8d905d2597fadafc14fc6a3d5",
+      "generative_editing": false,
+      "exif_xmp_iptc_location_metadata_present": false,
+      "visible_state": "New MUSE PASS timestamp 06:42:17 and C Step 2 Robot command in progress"
+    },
     {
       "file": "robot-tablet-recording.jpg",
       "source_drive_id": "1Hflx4wuoLFTQvOuHA_Aqk8_FBQhNt1bp",
@@ -52,6 +66,34 @@
     }
   ],
   "source_videos": [
+    {
+      "source_drive_id": "1TSuzN94-EOozUoWs5WLEXWVgjVezt0j9",
+      "origin": "Approved continuous viewing derivative from archived Camera tablet recording 1",
+      "original_archive_interval_seconds": [70, 125],
+      "full_original_archive_downloaded": false,
+      "full_original_archive_sha256": null,
+      "bytes": 9418812,
+      "sha256": "8a8dbacfb9868c076b58db2ef59c4526ff14e2871a76512d5b4dd8eb3e49f14d",
+      "decoded_width_px": 1376,
+      "decoded_height_px": 1032,
+      "reported_duration_seconds": 55,
+      "frames_per_second": 15,
+      "decoded_frames": 825,
+      "codec": "H264 avc1 High / yuv420p",
+      "faststart": true,
+      "audio": false,
+      "browser_playback_verified": true,
+      "bundled_in_repository": false,
+      "publication_explicitly_approved_on": "2026-11-02",
+      "scene_samples": [
+        {"seconds": 0, "visible": "Physical car push in C Step 1"},
+        {"seconds": 25, "visible": "Tool withdrawal"},
+        {"seconds": 35, "visible": "Checking car MUSE"},
+        {"seconds": 45, "visible": "New PASS timestamp 06:42:17"},
+        {"seconds": 50, "visible": "C Step 2 executing"}
+      ],
+      "limits": "One action/review/continuation interval; original brief AR redraw interruption retained; no signal-admission, arrival, parking or repeatability claim"
+    },
     {
       "source_drive_id": "1Hflx4wuoLFTQvOuHA_Aqk8_FBQhNt1bp",
       "bytes": 258155682,

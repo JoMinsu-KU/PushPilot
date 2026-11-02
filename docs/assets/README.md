@@ -12,11 +12,12 @@ The generated cover has moved to the README's **Product vision** section. It is 
 
 | Asset | Origin and purpose |
 |---|---|
-| [`robot-tablet-recording.jpg`](robot-tablet-recording.jpg) | Full decoded frame from the user's actual Camera tablet recording, at a requested 30 seconds. Current README thumbnail; car at Villa, empty-tool return and last recorded MUSE PASS. |
+| [`physical-action-muse-review.jpg`](physical-action-muse-review.jpg) | Current README thumbnail from the approved continuous 55-second physical-action clip at 0:50. New MUSE PASS at 06:42:17 and C Step 2 executing. |
+| [`robot-tablet-recording.jpg`](robot-tablet-recording.jpg) | Full decoded frame from the user's actual Camera tablet recording, at a requested 30 seconds. Supporting car-at-Villa, empty-tool return and prior MUSE PASS capture. |
 | [`spatial-tablet-recording.jpg`](spatial-tablet-recording.jpg) | First decoded frame of the actual Spatial tablet recording. Rendered city/application view; the car is an execution estimate. |
 | [`robot-tabletop-setup.jpg`](robot-tabletop-setup.jpg) | User-supplied setup photograph with metadata removed and identical decoded pixels. Actual robot/tool/camera installation; no mission-success inference. |
 
-The [physical media record](PHYSICAL_MEDIA.md) links the verified source files and defines each clip's scope. [physical-media.json](physical-media.json) records dimensions, source IDs, extraction positions and hashes. The two recording frames use decoding/JPEG encoding only; there is no generative editing or visual alteration. Original videos remain in Drive. The [read-only decision explorer](../review/index.html) separately embeds original synthetic inputs and archived provider results; its cases are not physical recordings.
+The [physical media record](PHYSICAL_MEDIA.md) links the selected recordings and defines each clip's scope. [physical-media.json](physical-media.json) records dimensions, source IDs, extraction positions, per-asset processing and hashes. The new clip is a continuous resized/frame-rate-resampled H.264 derivative; its poster adds JPEG encoding only. Earlier recording frames use decoding/JPEG encoding only. There is no generative editing or compositing. Video bytes remain in Drive. The [read-only decision explorer](../review/index.html) separately embeds original synthetic inputs and archived provider results; its cases are not physical recordings.
 
 ## Current illustrations
 

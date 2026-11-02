@@ -12,15 +12,20 @@ The user supplied the following tablet recordings and setup photograph from the 
 
 | Watch | What is visible | Scope |
 |---|---|---|
+| **[Physical action → fresh MUSE review → next step](https://drive.google.com/file/d/1TSuzN94-EOozUoWs5WLEXWVgjVezt0j9/view) · 0:55** | C Step 1 pushes the car; the tool withdraws; Checking car · MUSE changes to a new PASS at 06:42:17; C Step 2 begins. | One continuous action/review/continuation interval from an archived actual tablet recording. Not a full delivery, signal-admission or repeatability claim. |
 | [Camera · Villa and empty-tool return](https://drive.google.com/file/d/1Hflx4wuoLFTQvOuHA_Aqk8_FBQhNt1bp/view) · about 2:19 | Actual robot/car, AR route, return receipts and the last recorded MUSE PASS. | The clip begins after arrival, with return already in progress. It does not show the full delivery or new inference during return. |
 | [Spatial · route and sequence](https://drive.google.com/file/d/1ZxNHMMrLSJfVC78_qcFdsB_DVkqEp-f3/view) · about 2:14 | Actual rendered application view, selected route and sequence-details dialog during return. | The rendered car is an execution estimate, not measured vehicle tracking. No synchronization with the separate Camera recording is claimed. |
 
-<a href="https://drive.google.com/file/d/1Hflx4wuoLFTQvOuHA_Aqk8_FBQhNt1bp/view"><img src="assets/robot-tablet-recording.jpg" width="960" alt="Actual tablet Camera recording showing the physical car at Villa and the empty robot returning, with the last recorded MUSE PASS."></a>
+<a href="https://drive.google.com/file/d/1TSuzN94-EOozUoWs5WLEXWVgjVezt0j9/view"><img src="assets/physical-action-muse-review.jpg" width="960" alt="Actual tablet capture showing a new MUSE PASS at 06:42:17 and C Step 2 executing after the car push and clear-view review."></a>
 
-*Click the image for the Camera recording. Source-video clocks differ; filenames are not used to assert cross-recording timing. [Source/extraction record](assets/PHYSICAL_MEDIA.md)*
+*Click the image for the 55-second recording. Sampled moments: 0:00 push · 0:25 tool withdrawal · 0:35 MUSE review · 0:45 new PASS · 0:50 next step. These are observation positions, not exact transition timestamps. The original brief AR redraw interruption remains visible. [Source/extraction record](assets/PHYSICAL_MEDIA.md)*
 
 <details>
 <summary><strong>Actual setup and Spatial view</strong></summary>
+
+<a href="https://drive.google.com/file/d/1Hflx4wuoLFTQvOuHA_Aqk8_FBQhNt1bp/view"><img src="assets/robot-tablet-recording.jpg" width="960" alt="Supporting actual Camera recording of the car at Villa and empty-tool return, with a prior MUSE PASS."></a>
+
+*Supporting post-arrival/empty-return recording; the displayed PASS is a prior result.*
 
 <img src="assets/robot-tabletop-setup.jpg" width="700" alt="User-supplied photograph of the actual robot, rubber pushing tool, printed tabletop and camera installation.">
 

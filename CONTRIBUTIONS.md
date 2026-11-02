@@ -78,6 +78,8 @@ Keep mock, recorded, live-provider and physical-run evidence separate. A real Me
 
 ## Current public disclosure
 
+The subsequent November 2 media refinement selects 55 continuous seconds from the existing actual Camera tablet archive: physical push, tool withdrawal, a new MUSE PASS and the next action. The user separately approved publishing this short viewing derivative and its representative frame. Its cut/resampling/encoding, exact hashes and limits are recorded in [physical media provenance](docs/assets/PHYSICAL_MEDIA.md); no new provider request, robot trial or repeatability result was created.
+
 The later November 2 presentation refinement adds a narrow static-site builder and GitHub Pages workflow so the existing archived-decision explorer opens directly. The package contains only its original public HTML, pinned font/license and static marker; archived judgments/images remain unchanged. The README opening is compressed and verification totals identify their source checkpoints. This work does not add a new model evaluation, robot operation or physical success claim.
 
 The November 2 judge-facing update reorganizes the README around the intended operator, actual selected tablet media, MUSE-dependent decisions and scoped evidence. It adds a self-contained read-only explorer of the three already-public synthetic review cases. The original provider results and regenerated input bytes are checked against their public hashes; no new provider evaluation or physical trial is claimed. Selected user-supplied presentation media retain their provenance in [the media record](docs/assets/PHYSICAL_MEDIA.md). Generated product artwork remains labelled vision rather than a camera result.

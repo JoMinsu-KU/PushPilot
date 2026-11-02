@@ -7,13 +7,13 @@
 A **Meta Muse Spark 1.3** workspace for operators running robot demos and pilot tasks,<br>
 bringing the goal, execution feedback and visual result into one view.
 
-[Watch the physical recording](https://drive.google.com/file/d/1Hflx4wuoLFTQvOuHA_Aqk8_FBQhNt1bp/view) · [Explore 3 recorded Muse decisions](https://jominsu-ku.github.io/PushPilot/) · [How MUSE is used](#how-muse-changes-the-next-step)
+[Watch 55 seconds: motion → new MUSE review → next step](https://drive.google.com/file/d/1TSuzN94-EOozUoWs5WLEXWVgjVezt0j9/view) · [Explore 3 recorded Muse decisions](https://jominsu-ku.github.io/PushPilot/) · [How MUSE is used](#how-muse-changes-the-next-step)
 
 </div>
 
 <p align="center">
-  <a href="https://drive.google.com/file/d/1Hflx4wuoLFTQvOuHA_Aqk8_FBQhNt1bp/view"><img src="docs/assets/robot-tablet-recording.jpg" width="1180" alt="Actual tablet recording: physical robot and model car, Pizza-to-Villa AR route, controller progress, a recorded MUSE PASS and empty-tool return status. Click to watch the source recording."></a><br>
-  <sub>Actual tablet capture · click to watch. This short recording shows the car at Villa and the empty robot returning; the PASS is the last recorded MUSE review. It does not show the entire delivery. <a href="docs/DEMO.md#watch-the-physical-recordings">Recording guide</a> · <a href="docs/assets/PHYSICAL_MEDIA.md">Source and extraction</a></sub>
+  <a href="https://drive.google.com/file/d/1TSuzN94-EOozUoWs5WLEXWVgjVezt0j9/view"><img src="docs/assets/physical-action-muse-review.jpg" width="1180" alt="Actual tablet recording after a physical car push: new MUSE PASS at 06:42:17 and C Step 2 executing. Click to watch the continuous 55-second action, withdrawal, review and continuation."></a><br>
+  <sub>Actual tablet capture · 55 continuous seconds: car push → tool clears → Checking car · MUSE → new PASS → Step 2. One action/review interval, not a full-route claim. <a href="docs/DEMO.md#watch-the-physical-recordings">Recording guide</a> · <a href="docs/assets/PHYSICAL_MEDIA.md">Source and extraction</a></sub>
 </p>
 
 *Current demonstrator: a tabletop robot pushing a wheel-less model car along taught routes, with operator approval and visual outcome review.*
@@ -65,7 +65,7 @@ Camera shows the actual perspective with an AR route. Spatial shows the same sel
 | **Software verification · recovery checkpoint `bcac769` · November 2** | The published recovery record reports 1,199 backend tests run, five skipped and zero failures; 143 frontend tests and the production build passed. These are software checks, not a physical success rate. [Checkpoint evidence](docs/evidence/native-read-recovery-20261102.json) · [Verification](docs/VERIFICATION.md) |
 | **Current scope** | An explicitly configured, supervised tabletop site trial. Derived recipes are not qualified for general unattended repeatability; numeric straightening and parallel parking are deferred. [Current status](docs/CURRENT_STATUS.md) |
 
-The short recording above is a later tablet capture. It is not substituted for the separate October 29 B/C/D records or presented as one uninterrupted proof of every route.
+The short recording above shows one physical action, a new MUSE review and continuation. It is separate from the October 29 B/C/D arrival records. The earlier [post-arrival/empty-return recording](docs/DEMO.md#watch-the-physical-recordings) remains supporting material.
 
 ## How it is built
 
