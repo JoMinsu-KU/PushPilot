@@ -1,5 +1,7 @@
 # Physical taught-course executor
 
+> **Compatibility contract, documented November 2, 2026.** This page describes `taught_executor.py` and its October 29 commissioning checkpoints. The active opt-in product route uses `SiteTrialMissionDriver` and coordinate units, with whole-unit review after withdrawal. Its B/C/D delivery support and C26 terminal criteria are described in [Delivery trial](DELIVERY_SITE_TRIAL.md). Per-action reviews, absent adapters and C/D-incomplete statements below apply to this compatibility runner or the named historical cutoff; they do not describe the current product bridge. See [Robot operations](ROBOT_OPERATIONS.md).
+
 `backend/robot_control/taught_executor.py` is an offline-tested coordinator and
 port contract. It is not connected to the web application's simulated action
 runner, and its tests do not qualify any physical road or destination.

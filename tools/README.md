@@ -6,38 +6,45 @@
 
 [Development](../docs/DEVELOPMENT.md) · [Live camera](../docs/LIVE_CAMERA.md) · [Tests](../tests/README.md) · [Deployment](../deploy/README.md)
 
-## Available commands
+## Catalogue and access boundaries
 
-Run from the repository root with **Python 3.12+**. Install `requirements.lock` for application startup and the full test suite. Source syntax checks, source packaging, and the standalone connection checker use the standard library; release operations and release tests also require **Git on `PATH`**.
+**Reviewed November 2, 2026 against source baseline `7aa7753`.** Run from the repository root with Python 3.12+ and the pinned environment. Table entries are files/tools, not instructions to activate equipment. `--help` describes the current arguments; do not assume every helper exposes a command-line interface.
 
-| Command | What it does |
-| :--- | :--- |
-| `python tools/dev.py check` | Parses Python and JSON source syntax; does not import application modules or initialize services. |
-| `python tools/dev.py test` | Runs offline `unittest` discovery in `tests/` with bytecode writing disabled. |
-| `python tools/serve.py` | Serves built `frontend/dist` and the simulation API on loopback port 8080, one worker. |
-| `python tools/serve.py --api-only` | Starts the API without requiring compiled frontend assets. |
-| `python tools/serve_robot_control.py --backend mock` | Starts a separate commissioning API on loopback 8897, equipment-free and disarmed. |
-| `python tools/robotctl.py status` | Authenticated local commissioning client; token stays in its private file. |
-| `python tools/install_robot_runtime.py --help` | Hash-verified private import of unchanged inherited runtime; excludes profiles/mailboxes/runs. |
-| `python tools/prepare_robot_installation.py --help` | Offline fresh-profile preparation from explicitly reviewed measured installation, current TCP/joints and payload. |
-| `python tools/serve_rodi_host.py --help` | Separate opt-in persistent-receiver host; never auto-replays a command or PLAYs the pendant. |
-| `python tools/serve.py --live-camera-url http://127.0.0.1:8895` | Explicitly connects the application to an already-running loopback live preview; does not start a camera process. |
-| `python3 tools/camera_preview.py --device /dev/video0 --camera-id '<reviewed-camera-identity>' --port 8084` | Deliberately starts one standalone Linux native MJPEG preview helper on loopback. Requires `ffmpeg` and device permission; owns only its capture child. |
-| `python tools/build_release.py --output <archive.zip>` | Packages allowlisted blobs from a clean committed HEAD and writes a hash manifest. |
-| `python tools/build_release.py --verify <archive.zip>` | Validates ZIP paths, metadata, policy, sizes, and SHA-256 values without extracting. |
-| `python tools/check_muse_api.py` | Opt-in live Meta check: reads the ignored local key, queries models and sends one bounded text completion. |
-| `python tools/evaluate_action_reviews.py --output <new-directory>` | Generates original labelled synthetic image fixtures and a manifest outside the repository; no provider request. |
-| `python tools/evaluate_action_reviews.py --output <new-directory> --call-meta` | Sends three synthetic before/after pairs through isolated application action-review sessions; records actual verdicts, supervisor states, elapsed time and reported tokens. |
+| Group | Tools / files | External access and effect |
+| --- | --- | --- |
+| Source-only checks and packaging | `dev.py check`, `dev.py test`, [build_release.py](build_release.py) | Syntax, offline suite, committed-source archive/verification. No equipment/provider calls; release tools need Git. Tests do not activate services. |
+| Drawing and route preparation | [validate_map.py](validate_map.py), [preview_taught_roads.py](preview_taught_roads.py), [calibrate_robot_board.py](calibrate_robot_board.py) | Offline map/graph or measured-pair analysis. Outputs are candidates/private measurements, not physical calibration acceptance or motion authority. |
+| Private model preparation | [install_city_model.py](install_city_model.py), [clean_city_roads.py](clean_city_roads.py) | Read a reviewed supplied GLB/package and write private model derivatives. No package scripts or network. Follow the current [Spatial manifest](../docs/SPATIAL_3D.md); the historical installer alone may not match the current viewer. |
+| Private source/profile preparation | [install_robot_runtime.py](install_robot_runtime.py), [prepare_robot_installation.py](prepare_robot_installation.py), [prepare_local_commissioning.py](prepare_local_commissioning.py), [prepare_local_contact.py](prepare_local_contact.py), [prepare_contact_turn.py](prepare_contact_turn.py) | Offline allowlisted import/profile generation using explicit measured review. Does not measure clearance, apply a profile or open robot sockets. |
+| Private recipe analysis | [build_measured_mission_catalog.py](build_measured_mission_catalog.py), [build_delivery_release.py](build_delivery_release.py), [screen_delivery_clearance.py](screen_delivery_clearance.py), [revise_delivery_endpoint.py](revise_delivery_endpoint.py), [revise_c_progress_review.py](revise_c_progress_review.py) | Offline catalogue/compiler/screening helpers, some imported as functions. Retain source hashes and old outcomes. Geometry screening is not contact physics or activation. |
+| Synthetic review fixtures | [action_review_fixtures.py](action_review_fixtures.py), [evaluate_action_reviews.py](evaluate_action_reviews.py) without `--call-meta` | Self-authored fixture generation and offline case setup only. Outputs remain outside source; real photographs/coordinates are not fixtures. |
+| Provider requests | [check_muse_api.py](check_muse_api.py), `evaluate_action_reviews.py --call-meta` | Explicit real Meta API calls; key stays server-side/private and calls can consume credits. Not part of offline checks or hardware qualification. |
+| Read-only robot acquisition | [read_robot_pose.py](read_robot_pose.py), [capture_fixed_start.py](capture_fixed_start.py) | Contacts Native FC03; fixed-start capture also reads the local robot API. No movement. Coordinate freshness and target ownership still matter; do not introduce a competing Native poller during a live mission. |
+| Camera acquisition and target | [capture_camera_intrinsics.py](capture_camera_intrinsics.py), [camera_calibration_target.html](camera_calibration_target.html) | Reads the existing preview for bounded private checkerboard captures; requires separately proven optics identity. Target HTML displays a pattern. No robot commands, but real camera acquisition is not an offline test. |
+| Application/mock startup | [serve.py](serve.py), `serve_robot_control.py --backend mock` | Starts local HTTP services. Main app defaults to simulation; explicitly configured live-camera/physical adapters can read their services. It does not install services, PLAY Rodi or automatically start a route. |
+| Real camera helper | [camera_preview.py](camera_preview.py) | Explicit Linux capture with device permission and ffmpeg; owns its own capture child. No MUSE or robot commands. Do not restart it for a frontend change. |
+| Commissioning API/client | `serve_robot_control.py --backend legacy`, [robotctl.py](robotctl.py) | Real backend owns the mailbox ledger and reads current host state. Client status/events are reads; arm/command/profile/reconcile operations mutate control state and can issue physical motion. Verify selected target and private token. |
+| Persistent host | [serve_rodi_host.py](serve_rodi_host.py) | Without `--listen --motion`, validates the supplied profile offline. With both flags, opens the real pendant listener and uses Native/wire IO. `--wait-for-profile` waits before binding. Never replays, performs PLAY or fixes idle Native timeouts. |
+| Physical commissioning runners | [run_coordinate_unit.py](run_coordinate_unit.py), [run_taught_executor.py](run_taught_executor.py) | Offline validation unless `--execute` is explicit. Execution uses real robot/camera/provider ports and new private journals. Coordinate-unit runner matches current whole-unit mechanics; taught runner is the separate compatibility per-action path. |
 
-Commands return a nonzero exit code on failure. Successful check/build/verify commands print a compact JSON result. The test runner prints its normal test report.
+All Python tools and the camera target in `tools/` are covered above. Commands fail nonzero on rejected input; this does not imply a controller stopped. Never run a live provider check, real capture, profile activation or physical runner as part of a documentation/source validation task.
 
-The Meta checker explicitly contacts a provider and may consume API credits. It is never invoked by `dev.py check` or `dev.py test`. The application launcher makes no automatic provider request; an operator can deliberately select a backend Meta goal request or a frame-bound recorded-scene inspection. See [connection setup and observed results](../docs/META_API_CHECK.md). The standalone checker is separate from `backend/meta.py` and is not an image-review test.
+Meta MUSE is the configured visual reasoning service for route interpretation and original-image progress, signal and arrival review. A provider failure remains an error/pending review; no silent mock fallback supplies a PASS. [Action reviews](../docs/ACTION_REVIEWS.md) separates recorded simulation from the live physical observer.
 
-The synthetic action-review evaluator also contacts Meta only with its explicit `--call-meta` flag. Its three cases test expected progress, no progress and occlusion on self-authored diagrams, not photographs or physical robot outcomes. It makes no camera or robot connection, leaves running workspaces untouched and refuses to overwrite its output directory. See [Action reviews](../docs/ACTION_REVIEWS.md) and the [actual result record](../docs/evidence/synthetic-action-reviews-20261027.json).
+## Common source checks
 
-Build the frontend locally using Node 24 and `npm ci && npm run build` in `frontend/`. GX10 serves those compiled assets using Python without Node. The launcher supports explicit `--host`, `--port`, and `--state-path`, validates them before startup, disables reload, and starts no equipment processes. Locked runtime dependencies include OpenCV and NumPy for temporary-map marker detection. `PUSHPILOT_MAP_PATH` selects temporary geometry; `PUSHPILOT_SCENE_DIR` selects private uploaded-frame/registration/inspection storage. See [Development](../docs/DEVELOPMENT.md).
+```sh
+python tools/dev.py check
+python tools/dev.py test
+cd frontend
+npm ci
+npm test
+npm run build
+```
 
-The camera helper is a separate explicitly invoked tool, not part of `serve.py` startup or a service manager. It copies native 1920 × 1080 MJPEG JPEGs without resizing/re-encoding or server frame files, uses a bounded latest-frame buffer, and marks timestamps as host receive rather than sensor exposure. It neither changes permissions nor terminates an existing camera owner; closing it cleans up its own child. [Live camera](../docs/LIVE_CAMERA.md) gives the reviewed helper → SSH forward → application workflow, optional `PUSHPILOT_LIVE_CAMERA_URL`, source/age semantics and display-only lock. Preview does not call Meta, populate recorded evidence or mutate a mission. Do not restart the helper merely to update frontend code.
+Build with Node 24 locally; GX10 serves compiled assets with Python. `serve.py` defaults to loopback 8080 and one worker. `--api-only` omits static assets. `PUSHPILOT_MAP_PATH`, `PUSHPILOT_SCENE_DIR` and optional `PUSHPILOT_LIVE_CAMERA_URL` select current private map/media/preview inputs; `PUSHPILOT_PHYSICAL_CONFIG` explicitly opts into a reviewed private physical driver. An unconfigured checkout has no Robot authority. See [deployment prerequisites](../deploy/README.md#private-deployment-prerequisites).
+
+The native preview helper preserves JPEG bytes in a bounded latest-frame buffer and labels host-receive time separately from sensor exposure. Preview itself never authorizes a movement. The [operations runbook](../docs/ROBOT_OPERATIONS.md) covers actual START/reset/resume/reconnect decisions; reset is not a return command.
 
 ## Build a source release
 

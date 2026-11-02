@@ -4,19 +4,21 @@
 
 [Temporary map](TEMPORARY_MAP.md) · [Route display](ROUTE_DISPLAY.md) · [Live camera](LIVE_CAMERA.md) · [MUSE signal gate](MUSE_SIGNAL_GATE.md)
 
+**Reviewed November 2, 2026.** This is an installation procedure, not a statement that the current robot/camera is connected. See [Current status](CURRENT_STATUS.md).
+
 The user replaced the Little Town print with the supplied Seoul City artwork on October 28, confirming nominal A3 landscape. The separate [`seoul-city-a3.json`](../backend/data/seoul-city-a3.json) adapter records the reviewed drawing and exact source hash. It is selected explicitly on GX10; the historical Little Town file/default remains a compatibility fixture. See [City A3 registration](CITY_A3.md) for drawing provenance, intended waypoints and shared Camera/Spatial display correspondence. No drawing establishes robot BASE geometry, measured car pose or a qualified signal region.
 
 ## Final A3 print, October 28
 
 Version `2026-10-28.4` binds the installed `PushPilot_map2d_toy_A3_100pct.pdf`: one nominal 420 × 297 mm page and its unchanged 7016 × 4961 JPEG stream. Source PDF/JPEG hashes and native pixel derivation are recorded in the city adapter. The pink rectangle is the nominal Pizza start anchor; all three logical destinations and east-first frontage routes are retained. See [City A3](CITY_A3.md).
 
-This is a replaced physical sheet. Explicitly register a fresh four-marker view and establish a new robot start/installation before further physical motion. Retain camera and persistent Rodi services, the disarmed/held robot API and private historical evidence. No final-map car push, turn or destination is qualified by the drawing update.
+This is a replaced physical sheet. Explicitly register a fresh four-marker view and establish a new robot start/installation before further physical motion. Retain camera and persistent Rodi services, the disarmed/held robot API and private historical evidence. The October 28 drawing update itself qualified no car push, turn or destination. Later private B/C/D site recipes and their evidence are separate; this procedure must not overwrite their map, START or BASE bindings. Public `temporary: true` / `physical_execution_enabled: false` describe the drawing adapter, not whether that separate executor is configured.
 
 ## Spatial-only map definitions
 
 An optional `camera_registration_supported` boolean separates spatial drawing geometry from a camera-registerable print. Omitted or explicitly `true` retains the existing requirement for at least four declared, unique markers and preserves the legacy geometry hash. Explicit `false` joins the geometry hash and permits `markers: []`. The retained `marker_dictionary` names the file format's supported dictionary; it does not claim that physical markers exist or are in use.
 
-The separately supplied 3D asset uses an A2 594 × 420 mm model frame and remains a display reference. Planning now uses the final A3 420 × 297 mm city adapter; the older Little Town 400 × 250 mm print remains a historical fixture. These identities and dimensions must remain distinct. A spatial-only model may supply a validated graph, labels and drawing geometry without guessed marker placements. Its `camera_registration_supported: false` appears in the public map snapshot, planning graph, audit and validation preview. The validation preview warns that live camera registration and live-image planning are unavailable for that candidate.
+The original October 27 3D export used an A2 594 × 420 model frame. The current toy3d viewer instead uses the independently pinned [display manifest](../frontend/public/models/city-display.json), with model rectangle `[-241,-154,241,154]` and elevation `0.6`. Both are display references, not surveyed physical dimensions. Planning now uses the final A3 420 × 297 mm city adapter; the older Little Town 400 × 250 mm print remains a historical fixture. These identities and dimensions must remain distinct. A spatial-only model may supply a validated graph, labels and drawing geometry without guessed marker placements. Its `camera_registration_supported: false` appears in the public map snapshot, planning graph, audit and validation preview. The validation preview warns that live camera registration and live-image planning are unavailable for that candidate.
 
 This flag does not relax graph connectivity, metric drawing lengths, page bounds, signal-target metadata or the requirement for `physical_execution_enabled: false`. It does not install the map, change the current camera source or authorize camera registration. Camera and live-operation endpoints must reject a spatial-only map until an explicitly reviewed camera-compatible definition exists.
 
@@ -87,7 +89,7 @@ Collection bounds are checked before map construction. Duplicate JSON keys, nonf
 
 ## Install a reviewed replacement
 
-1. Finish or explicitly terminate the current simulated mission and reconcile its state. Preserve its map, private evidence and database history.
+1. Finish or explicitly terminate the current simulated mission and reconcile it. If Robot mode is configured, independently stop/reconcile that physical mission and confirm its inactive boundary through [Robot operations](ROBOT_OPERATIONS.md). Preserve map, private evidence and history; stopping the web process does not stop the robot.
 2. Save the reviewed definition as a new private file. Do not overwrite the definition used by an active installation.
 3. Start a separate application release or restart only this application with `python tools/serve.py --map-path <reviewed-map.json> --state-path <private-workspace.sqlite3>`. `PUSHPILOT_MAP_PATH` remains the environment alternative. Keep the camera helper, Rodi and POC services untouched.
 4. Verify the reported map ID, version, geometry hash and supported destinations. Incompatible stored plans must be invalidated; create a new plan. Do not restore pending historical robot commands or coordinates.
@@ -116,6 +118,6 @@ The fragment below is a **synthetic example for the Harbor software fixture**, n
 }
 ```
 
-The shipped Little Town map has **no configured signal targets**. A stopped-live signal request must remain unavailable until the applicable region is reviewed and configured. `signal_target(junction_id, approach_from)` returns that exact isolated metadata or `None`; it does not infer a region from road geometry, marker positions or another approach's signal.
+The shipped Little Town and City drawing adapters have **no configured `signal_targets`**. That public drawing-bound stopped-live request remains unavailable until a region is reviewed/configured. The configured physical mission uses separate private gate/observation context; do not erase that distinction or invent public regions to match it. `signal_target(junction_id, approach_from)` returns that exact isolated metadata or `None`; it does not infer a region from road geometry, marker positions or another approach's signal.
 
 At a configured junction, the intended flow is mandatory stop, verified stop context, a new source-bound image, MUSE color judgment, then deterministic context/freshness checks. RED, UNKNOWN, occlusion, stale context or provider failure keep the mission stopped. A valid current GREEN can admit the crossing. Signal regions are observation context, never robot targets or independent proof of a physical stop.

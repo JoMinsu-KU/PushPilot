@@ -1,10 +1,18 @@
 <sub>[PushPilot](../README.md) / [Documentation](README.md) / Development</sub>
 
-# Run the temporary-map workspace
+# Build the workspace, select the execution scope
 
-**Build the operator interface, run one Python service, and verify each simulated decision.**
+**Build the operator interface, run one Python service, and keep execution sources explicit.**
 
 [Architecture](ARCHITECTURE.md) · [Services](SERVICE_COMPOSITION.md) · [Voice input](VOICE_INPUT.md) · [Roadmap](ROADMAP.md) · [Deployment](../deploy/README.md)
+
+## Current source scope · November 2, 2026
+
+The public clone starts equipment-free simulation by default. The configured City deployment uses `seoul-city-a3` v`2026-10-28.4`, with Pizza-front departure and Office Building/Villa/Hanok destinations. Select the reviewed JSON explicitly through `PUSHPILOT_MAP_PATH`; Little Town remains the default compatibility example used below.
+
+Physical site-trial code is implemented separately under `/api/v1/physical/*`. It requires explicit private `PUSHPILOT_PHYSICAL_CONFIG`, taught packet/review geometry, verified controller runtime, profiles, source-bound receiver state and installed camera/signal configuration. These are intentionally not published in a public clone. Read [Current status](CURRENT_STATUS.md), [Robot operations](ROBOT_OPERATIONS.md) and [deployment prerequisites](../deploy/ROBOT_CONTROL.md) before configuring equipment access. A successful source build alone cannot reproduce the installed Robot mode.
+
+The November 2 publication recorded 1,177 backend tests run with five skipped, 126 frontend tests and a successful build. This is a software checkpoint; earlier dated evidence/counts remain in [Verification](VERIFICATION.md). No provider or hardware call is required to check documentation or the default offline suite.
 
 ## Runtime and dependency setup
 
@@ -47,7 +55,7 @@ python tools/serve.py
 
 Open `http://127.0.0.1:8080`. The same Python process serves `frontend/dist` and `/api`; no frontend development server is required. `GET /api/health` identifies simulation with robot/qualified hardware disconnected and separately reports `camera_preview_connected` when an opt-in preview is live.
 
-The launcher defaults to loopback and one worker. It has no reload loop, dependency installer, provider preflight, robot connection, camera ownership, service-manager integration, or GX10 transfer. Set an unused port explicitly when necessary:
+With optional equipment configuration absent, the launcher defaults to loopback and one worker, with no robot connection or camera ownership. It has no reload loop, dependency installer, automatic provider preflight, service-manager activation or GX10 transfer. Explicit physical configuration enables driver readiness/status access; process startup still does not authorize or dispatch motion. Set an unused port explicitly when necessary:
 
 ```sh
 python tools/serve.py --host 127.0.0.1 --port 8080
@@ -118,7 +126,9 @@ The separate [Meta connection check](META_API_CHECK.md) makes a real provider re
 
 `PUSHPILOT_STATE_PATH` selects SQLite; the launcher also exposes `--state-path`. The default is ignored `runtime/workspace.sqlite3`. `PUSHPILOT_SCENE_DIR` optionally selects private frame/registration/inspection storage; by default it is `scene/` beside the SQLite file. `PUSHPILOT_MAP_PATH` selects a validated, explicitly temporary map JSON, defaulting to the bundled sanitized definition. Restart with deliberate state reconciliation after changing map configuration; incompatible plan/registration hashes cannot carry over. `PUSHPILOT_FRONTEND_DIST` is an optional process-environment asset-directory override. Credentials, private frames, configuration and runtime state must not enter browser build variables, Git, source packages, or public screenshots.
 
-`PUSHPILOT_LIVE_CAMERA_URL` is an explicit process-environment opt-in, also accepted through `--live-camera-url`. It names an existing numeric loopback HTTP preview service with a port; it is not a camera device selector or a startup command. Do not put private device identities or connection details in committed configuration. Live display locks and frames remain in memory and disappear on application restart.
+`PUSHPILOT_LIVE_CAMERA_URL` is an explicit process-environment opt-in, also accepted through `--live-camera-url`. It names an existing numeric loopback HTTP preview service with a port; it is not a camera device selector or a startup command. Do not put private device identities or connection details in committed configuration. Preview frames remain bounded RAM. A fixed display reference can have a private persisted receipt and explicit checked resume after application memory is lost; this restores neither physical coordinates nor old plan/signal authority. See [Live camera](LIVE_CAMERA.md).
+
+`PUSHPILOT_PHYSICAL_CONFIG` is a separate process-environment path to a private site-trial configuration. Do not place route coordinates, hardware credentials, profiles or runtime archives in `.env.example` or public JSON. An enabled driver may access equipment readiness/status; startup does not run a mission. To develop without equipment, leave this setting absent and use isolated state. Robot mode has its own physical revision and source binding rather than changing the legacy simulation capability flags.
 
 ## Repository discipline
 
@@ -151,12 +161,12 @@ The builder refuses an existing output path. The manifest binds committed source
 
 | Area | Current boundary |
 | :--- | :--- |
-| Map | Replaceable temporary drawing graph and board-to-image test overlays. Production routes, robot/BASE transforms, qualified stop lines, and live signal ROIs remain unresolved. |
-| Hardware | No robot transport, physical execution, profile replay, mailbox restoration or existing operating-service restart. The optional explicitly started standalone helper owns only its selected camera and `ffmpeg` child. |
+| Map | Replaceable City/Little Town drawing graph and board-to-image display overlays; physical recipes remain private taught BASE data, separate from display geometry. General calibration qualification is open. |
+| Hardware | Default startup is equipment-free. Explicit site-trial configuration enables separate driver/API/receiver access; never restore old profiles, mailboxes or unknown commands as part of development. |
 | Live preview | Ephemeral native JPEG display, source/age labels and explicit fixed display lock. It does not mutate mission/evidence state, call MUSE or qualify robot observations. |
-| Signals | Simulated source only in this slice. Full stop even on GREEN; RED, unknown, stale, and obscured observations must inhibit physical admission later. |
-| Review | Scene-only inspection cannot advance actions. Bound recorded-pair MUSE results can review simulation alongside explicit demo inputs; live receipt-bound capture and physical checks remain future work. |
-| Voice | Planned bounded backend Meta transcription, editable transcript confirmation, common goal interpretation, and explicit plan approval. Capture and normalization are not established by this slice. |
+| Signals | Simulation has per-junction gates. Configured physical `single_departure` uses one accepted stopped GREEN, measured recontact and continuation without a second color wait; new missions need new admission. |
+| Review | Scene-only inspection cannot advance actions. Simulation and physical Native/MUSE review keep separate receipts and authority; C-specific progress/arrival policies have narrow documented scope. |
+| Voice | Finite supported PCM upload/transcription and bound candidates are implemented. Browser capture/PCM encoding/editor, trusted tablet HTTPS and actual ASR acceptance remain pending. |
 | Models | Validated goal interpretation; no generated robot scripts or authoritative coordinates. |
 | Evidence | Source-labelled event history. A provider call is not evidence of physical execution. |
 | Stops | UI HOLD and process exit do not imply immediate in-flight robot stopping. |
@@ -167,7 +177,7 @@ Push-to-talk will require trusted target-device HTTPS, secure-context and permis
 
 Runtime state belongs in ignored `runtime/` locally or dedicated shared storage on GX10. SQLite contains mission state/events and command receipts; the private scene directory contains frames, hashes, map/reference bindings, and validated inspection records. Preserve both deliberately across updates, restrict access, and apply a reviewed media retention policy. A rollback must not overwrite newer history.
 
-After restart, an active mission enters non-executing recovery. Pending work, admitted crossings, previous approval, and old GREEN observations do not automatically regain authority. Reconcile or terminate the prior simulation explicitly before starting another.
+After restart, active work remains non-executing. Pending commands, admitted crossings, previous approval and old GREEN observations do not automatically regain authority. Simulation reconciliation and physical reset/resume are separate operations. Never automatically replay an unknown motion; follow [Robot operations](ROBOT_OPERATIONS.md) for exact completed-boundary continuation and START preparation. Native idle-timeout repair remains unimplemented, and an HTTP HOLD is not a hardware emergency stop.
 
 ---
 

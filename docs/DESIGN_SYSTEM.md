@@ -2,6 +2,8 @@
 
 # The operator workspace design
 
+**November 2, 2026 source review.** Preserve the original product concept, **From sight to action** and **Observe → Plan → Approve → Act → Verify**. Current status and qualification are separate from this visual specification; see [Current status](CURRENT_STATUS.md).
+
 **One fixed spatial stage, with rounded translucent information layered over it.**
 
 The user selected two industrial operations-dashboard references on October 27, 2026 and then rejected the first implementation as insufficiently similar, too toy-like and too dependent on scrolling. This specification supersedes that implementation and the earlier navy/cyan direction. A light palette alone is not a reference match: composition, surface depth, information density and restraint must match the reference's visual logic.
@@ -23,7 +25,7 @@ The rejected screen treated the map as a bordered diagram inside a white card, t
 
 ## Fixed viewport composition
 
-The application fits one viewport without vertical page scrolling or vertically scrolling panels. The user explicitly allows horizontal paging and carousels. At normal browser zoom, all essential operational information and the next permitted action must be visible simultaneously. More content uses a different view, horizontal pages or a bounded dialog; it does not extend the workspace vertically. The document itself must not overflow sideways. Horizontal movement belongs to an intentional, labelled page or carousel region with visible navigation.
+The user requires one viewport without vertical **page** scrolling, primarily on a 13-inch landscape tablet, and allows horizontal paging/carousels. Current source disables page scrolling but uses internal route/history/dialog list scrolling. Earlier wording also prohibited all vertically scrolling panels: that broader gate was not met, and there is no recorded approval to relax it. **Open UX acceptance decision:** retain bounded internal lists or replace them with explicit paging. This documentation update does not silently approve either choice or change UI behavior. At normal browser zoom, all essential operational information and the next permitted action must be visible simultaneously. More content uses a different view, horizontal pages or a bounded dialog; it does not extend the workspace vertically. The document itself must not overflow sideways. Horizontal movement belongs to an intentional, labelled page or carousel region with visible navigation.
 
 | Region | Landscape tablet and desktop starting target | Visual role |
 | :--- | :--- | :--- |
@@ -38,7 +40,7 @@ The application fits one viewport without vertical page scrolling or vertically 
 
 These values are starting ranges, not rigid sizes that override readability. Camera imagery extends beneath the glass rail, header and cards so those surfaces have a real visual backdrop. The mission overlay and summaries may overlap map imagery, while the start, goal, route turns and current action need clear viewing space. Check these points in the actual viewport rather than assuming transparency makes all underlying detail inspectable. Keep Full frame available for the complete camera context. Never move a camera annotation with an unrelated CSS offset to make room.
 
-Do not add a large full-width goal card above the scene. Show the current goal as concise scene context, with an explicit edit/open affordance during permitted preparation. Goal entry belongs in a bounded preparation view or dialog. Do not display the same destination, route, source and explanation in several panels.
+The current accepted-query bar is concise scene context with explicit full-text/edit access during permitted preparation. The collapsible glass mission panel uses **From / To**, actual sequence/receipt progress, next check and Start/Stop. Preserve original query separately from interpreted destination. Goal entry belongs in a bounded preparation view/dialog; avoid repeating identical route/source explanations across cards.
 
 ## Rounded glass surfaces
 
@@ -62,11 +64,11 @@ Use a slightly cool, off-white shell and a warm, pale architectural scene or neu
 
 These are the current implementation's material choices, derived from the reference's character rather than claims about the original designer's CSS. Lower alpha alone cannot create glass if the underlying scene is absent. Keep the actual camera backdrop under the surfaces and use darker operational text instead of making the entire panel opaque. Do not apply `opacity` to a panel parent, because that also fades its text and controls. Where backdrop filtering is unavailable, use a softly opaque off-white fallback that preserves contrast. Avoid several nested borders, hard drop shadows, glossy gradients, neon route glows and decorative accent outlines. Do not animate blur or large shadows.
 
-The 12 px blur belongs to the glass material, not the camera image. The image element, its parent scene and the page have no blur/filter or opacity treatment. Preserve the original image URL and SVG coordinate system; do not create a smaller canvas copy, recompress the image or resample its board geometry for this design. Ordinary browser sizing does not add source detail. Scene content under a glass panel is intentionally softened and partially covered, so this is not a claim that every underlying pixel remains fully inspectable or that image quality has been enhanced.
+The 12 px blur belongs to the glass material, not the camera image. The image element, its parent scene and the page have no blur/filter or opacity treatment. Preserve original JPEG bytes and the intrinsic SVG coordinate system; do not create a smaller canvas copy, recompress the image or resample its board geometry for this design. Ordinary browser sizing does not add source detail. Scene content under a glass panel is intentionally softened and partially covered, so this is not a claim that every underlying pixel remains fully inspectable or that image quality has been enhanced.
 
 The route uses one controlled accent and a quiet contrasting casing. Traffic red, green and amber retain their real semantic role and always have a label. Do not use green to imply a connected robot, a fresh signal or a measured pose when those facts are absent.
 
-Route progress uses distinct line treatment for completed, current and remaining portions, supported by direction arrows and a concise text legend. Keep the current junction's mandatory stop, signal wait and review context anchored to map-derived drawing geometry. A highlighted segment means the supervisor selected that simulated action; it is not a live car-position marker or proof of motion. Stop lines are illustrative until independently qualified. Preserve the selected source and simulation labels when live video and simulated progress appear together. See [Route display](ROUTE_DISPLAY.md).
+Route progress uses distinct line treatment for completed, current and remaining portions, supported by direction arrows and a concise text legend. Keep the current junction's mandatory stop, signal wait and review context anchored to map-derived drawing geometry. In Simulation, a highlighted segment means the supervisor selected that symbolic action. In Robot mode, sequence/receipt telemetry comes from physical status; neither line emphasis nor receipt completion measures live car pose. Stop lines are illustrative until independently qualified. Preserve the selected source and simulation labels when live video and simulated progress appear together. See [Route display](ROUTE_DISPLAY.md).
 
 ## Typography, icons and tone
 
@@ -76,7 +78,7 @@ Suggested desktop sizes are 24–30 px for the workspace heading, 21–25 px for
 
 Use one consistent set of fine outline icons, typically 1.5–1.8 px strokes at a 20–22 px size. Icons support a label or a known navigation pattern; they are not illustrations. Limit uppercase to short metadata where it helps. Avoid excessive pills, dot badges, emoji, repeated chevrons and decorative identity numbers.
 
-The spatial view should read as a measured drawing preview: thin structural lines, restrained material fills, soft contact shadows and quiet labels. If perspective is used, apply one coherent scene transform and keep geometry, route and hit targets aligned. A perspective illustration is still a drawing preview, not recovered 3D geometry or a calibrated world model. Do not add unrelated factory machines to imitate the reference's complexity.
+The spatial view should read as a clear architectural display: thin structural lines, restrained material fills, soft contact shadows and quiet labels. If perspective is used, apply one coherent scene transform and keep geometry, route and hit targets aligned. The supplied authored city geometry is a display model, not camera-recovered 3D geometry or a calibrated world model. Do not add unrelated factory machines to imitate the reference's complexity.
 
 Remove or subordinate decorative car and glasses renderings that resemble toys or occupy space needed for mission information. A glasses companion remains a small, explicitly labelled concept. No fabricated operator portrait, job title, production percentage or hardware telemetry is allowed.
 
@@ -84,16 +86,16 @@ All authored UI copy, accessibility text, source code and development documentat
 
 ## No-vertical-scroll information architecture
 
-The no-vertical-scroll requirement applies to Workspace, Plan, Replay, image tools and review dialogs. Horizontal paging and carousels are allowed. It is not satisfied by hiding an overflowing page or clipping essential content.
+The no-vertical-page-scroll requirement applies across Workspace, Plan, Mission Log, image tools and review dialogs. Current long lists scroll internally; the broader no-panel-scroll aspiration is an unresolved acceptance item, not a verified result. Paging and carousels remain valid alternatives. Hiding overflow or clipping essential information does not satisfy the requirement.
 
 - **Workspace:** show the current action, one preceding/next context item, the signal or review wait when relevant, next check and the primary action. The complete action list opens in Plan. Secondary summary cards may form a horizontal carousel with visible previous/next controls and a page indicator.
-- **Plan:** show a fixed number of route steps with explicit previous/next page controls and an action count. The selected/current action stays identifiable. Avoid an eight-row timeline squeezed into the mission overlay.
-- **Replay:** show a bounded event list and explicit pagination, with one selected event and its evidence in a second pane. Do not append an unbounded history.
+- **Plan:** expose the complete route within a bounded view; current source scrolls internally, while explicit paging remains the alternative requiring a UX decision. The selected/current action stays identifiable. Avoid an eight-row timeline squeezed into the mission overlay.
+- **Mission Log:** show a bounded complete event list (currently internally scrolling), with one selected event and its evidence in a second pane. Do not append an unbounded history.
 - **Scene details:** show source, registration status and one concise inspection outcome. Full MUSE text, frame identity and limitations belong in a detail view with bounded sections or pages.
 - **Action review:** show before/after images and the verdict first. Expected outcome, reasoning and immutable receipt details use tabs or short paged sections. All pages retain source and authority labels.
 - **Preparation:** use a dialog or dedicated pane for goal entry, frame upload, registration and provider options. Separate these tasks into tabs rather than exposing every control in the default scene.
 
-Visible text may be intentionally summarized only when a clear control opens the complete text. Do not silently truncate warnings, uncertainty, approval scope or the next action. Dialogs must fit the viewport without vertical scrolling, with keyboard-accessible tab/page controls and a visible close action. Keyboard focus must remain visible and return to the opening control. Horizontal carousel interaction must work with explicit buttons and keyboard navigation as well as a pointer or touch gesture.
+Visible text may be intentionally summarized only when a clear control opens the complete text. Do not silently truncate warnings, uncertainty, approval scope or the next action. Dialog shells must fit the viewport with a visible close action and keyboard-accessible controls. Current dialog bodies may scroll internally; preserve Stop and critical state while browsing, and review that behavior against the unresolved no-panel-scroll requirement. Keyboard focus must remain visible and return to the opening control. Horizontal carousel interaction must work with explicit buttons and keyboard navigation as well as a pointer or touch gesture.
 
 On compact tablets, reduce the summary count before reducing legibility. On narrow screens, switch between Scene, Mission and Evidence panes instead of stacking all desktop panels. The current state and next permitted action remain visible in the active pane. Do not reproduce a miniature desktop dashboard on a phone or make a vertical page to accommodate it.
 
@@ -113,7 +115,7 @@ The default presentation is Camera, with independent Live and Recorded sources. 
 | :--- | :--- |
 | Camera · Full frame | The complete selected live or recorded image, with correctly projected test overlays when that source's display registration is valid. Source and age stay visible. |
 | Camera · Board focus | The same camera perspective and geometry, with pixels outside the registered board polygon masked by a neutral tabletop backdrop. The board is not rectified or resampled. |
-| Spatial map | The deterministic drawing preview with its route, independent of camera-image resolution. It is not evidence of actual object position. |
+| Spatial | Private manifest-verified city and the same selected 2D route. A contact-receipt vehicle illustration is labelled Execution estimate / Display only; no actual object position/yaw is measured. |
 
 Board focus uses the same valid board-to-image geometry as the overlay, with map identity/version/hash, frame identity and view checks intact. It masks the image background without changing the board's perspective, original pixels or overlay alignment. It cannot recover hidden surfaces, remove occlusion, add source detail or improve physical accuracy.
 
@@ -123,7 +125,7 @@ Live preview has its own explicit display lock and does not reuse a recorded ref
 
 Keep original image bytes, frame identifiers and hashes unchanged for MUSE input, action-pair selection, immutable evidence and replay. Do not substitute the display mask or a screenshot for captured evidence. Board focus cannot establish camera-to-BASE registration, car pose, metric accuracy, signal freshness, action completion or motion authority.
 
-The spatial schematic is a drawing preview. A route over a recorded photograph is a test overlay. Neither is measured robot motion or qualified metric AR. Keep source labels independent and legible without flooding the main stage with caveats:
+Spatial is a drawing-aligned model display; its vehicle estimate follows confirmed contact receipts, not vision tracking. A route over a photograph is a display overlay. Neither is measured car pose or qualified metric AR. The separately configured Robot mode has actual sequence/Native receipts and reviews; do not substitute simulation data when physical status is absent. Keep source labels independent and legible without flooding the main stage with caveats:
 
 - Recorded/uploaded image, simulation, demo verdict and actual MUSE call are distinct sources.
 - MUSE scene inspection is distinct from action-bound verification and deterministic signal admission.
@@ -140,30 +142,30 @@ Verify actual rendered screens rather than assuming that CSS tokens match the re
 
 | Check | Pass condition |
 | :--- | :--- |
-| Fixed tablet stage | At 1194 × 834, 1366 × 1024 and 1024 × 768, document dimensions do not exceed the viewport and no panel offers vertical scrolling. Intentional horizontal pages remain bounded and navigable. |
+| Fixed tablet stage | At 1194 × 834, 1366 × 1024 and 1024 × 768, document dimensions do not exceed the viewport. Record current internal-list scrolling separately; the older blanket no-panel-scroll gate remains unmet/pending UX acceptance. |
 | Wider desktop | At 1440 × 900 and 1280 × 800, the scene remains dominant and panels do not expand into sparse, oversized blocks. |
 | Compact layout | At 390 × 844, pane switching keeps the current state and next action readable without a vertical stack or document overflow. Horizontal paging remains explicit. |
 | Scene hierarchy | The first impression is a continuous spatial scene with rounded floating information, not a form or a grid of unrelated white cards. |
 | Material | The actual scene extends behind the rail, header and mission/status glass. Its colors and structure are perceptible through the overlays, while darker text and controls remain readable. No blank reserved column substitutes for the scene. |
 | Operational hierarchy | State, current action, next check and the one primary action are findable immediately. Secondary tools do not compete with them. |
 | Route visibility | Start, destination, turns, direction arrows and current action are visible and aligned in Camera Board focus, Full frame and the drawing preview. |
-| Progress and waits | Completed/current/remaining route portions and mandatory stop, signal or review context are distinguishable without relying on color alone. Labels state simulation; no moving car pose is invented. |
+| Progress and waits | Distinguish source-labelled simulation actions from Robot sequence/Native receipt totals and MUSE/signal waits. Spatial car interpolation must say Execution estimate / Display only, freeze outside contact phases and never imply measured car pose. |
 | Replaceable map | Names and route geometry follow the selected map; mismatched old plans/registrations are withheld, and legacy plans without segment bindings remain planned-only. |
 | Board-focus integrity | Valid locked registration enables the display mask; missing, changed or mismatched registration produces the full Camera fallback. Camera perspective, overlay geometry and the raw evidence frame remain unchanged. |
-| Camera presentation | The original image URL and SVG coordinates are retained. No global blur, image opacity, canvas recompression or board resampling is introduced by the glass layout. Only overlay backdrops receive the material treatment. |
+| Camera presentation | Original JPEG bytes and SVG coordinates are retained; current live transport shares an exact-byte Blob URL. No global blur, image opacity, canvas recompression or board resampling is introduced by the glass layout. Only overlay backdrops receive the material treatment. |
 | Real states | Preparation, approval, mandatory stop, red/unknown wait, review, fault and completion fit the same frame without lost controls. |
 | Long content | Long goals, model reasoning, route lists and replay history use explicit bounded navigation. No warning or action is silently clipped. |
 | Interaction | Keyboard focus, dialogs, tabs, pagination and reduced-motion preferences work; there are no decorative controls that promise unavailable behavior. |
 
-Test no-vertical-scroll behavior by checking document dimensions and elements whose `scrollHeight` exceeds their client height. Check width overflow separately: only an explicitly designed horizontal carousel/page region may have more content than its client width, with navigation exposing that content. Fix content distribution rather than setting `overflow: hidden` over unreadable content. A successful build and a lack of horizontal overflow alone do not satisfy this design requirement.
+Test page fit using document dimensions, and separately inventory elements whose `scrollHeight` exceeds their client height so internal scrolling is not hidden in acceptance reports. Check width overflow separately: only an explicitly designed horizontal carousel/page region may have more content than its client width, with navigation exposing that content. Fix content distribution rather than setting `overflow: hidden` over unreadable content. A successful build and a lack of horizontal overflow alone do not satisfy this design requirement.
 
 These visual and interaction checks have a stated scope in verification. They do not by themselves establish full accessibility conformance, perfect readability over every possible camera scene or complete visibility underneath overlays.
 
 The frontend remains React/TypeScript with a locally built Vite bundle. GX10 serves the compiled frontend with Python. This direction requires no remote font, runtime Node.js, graphics service or device dependency. Use restrained CSS effects and deterministic SVG where suitable. Frontend changes do not require restarting robot, camera or POC services.
 
-## Visible goal entry
+## Current goal and execution context
 
-The current goal entry is a compact glass bar beneath a small map-context row. A quiet microphone control and **Your goal** label frame the accepted original query, with a separate Typed/Voice source badge. The right mission card continues to show the interpreted destination and plan, so the user's words remain distinct from model interpretation. Selecting the query opens bounded full-text pages. The voice panel clearly states **Not connected**, keeps capture disabled and offers text entry; no decorative waveform or listening animation implies an active microphone. The bar, camera controls and route legend keep separate vertical space without changing source-image geometry.
+The current goal entry is a compact accepted-query glass bar layered over the scene. A quiet microphone control and **Your goal** label frame the accepted original query, with a separate Typed/Voice source badge. The collapsible right mission card shows **From / To**, the interpreted plan and source-correct execution state, so the user's words remain distinct from model interpretation. Selecting the query opens bounded full-text pages. The voice panel clearly states **Not connected**, keeps capture disabled and offers text entry; no decorative waveform or listening animation implies an active microphone. The bar, camera controls and route legend keep separate vertical space without changing source-image geometry.
 
 ## Historical assets
 

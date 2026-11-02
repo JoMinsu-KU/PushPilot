@@ -2,6 +2,23 @@
 
 [Documentation](README.md) · [Meta intelligence](META_INTELLIGENCE.md) · [Tools](../tools/README.md)
 
+## Current evidence map · November 2, 2026
+
+The detailed October 27 records below retain their original request/input/version scope. They are not the complete current product capability list. Later source includes live route prompt v3, physical observation v4, opted-in C qualitative progress v2 and the separate physical site-trial coordinator. [Meta intelligence](META_INTELLIGENCE.md) and the [prompt catalogue](../prompts/README.md) describe the current contracts.
+
+| Later reference | What it establishes / does not establish |
+|---|---|
+| [Measured route catalogue](MEASURED_ROUTE_CATALOGUE.md) and [evidence index](evidence/README.md) | Dated B/C/D controller-confirmed motion and actual MUSE arrival records; not a general accuracy rate or repeatable later recipe |
+| [C intermediate review](C_INTERMEDIATE_PROGRESS_REVIEW.md) | Archived physical-image API replays, scoped C4/C6 crops, C14 wider lineage, qualitative C17 and retained rejected/time-out variants; not a fresh course replay |
+| [C26 delivery endpoint](C26_DELIVERY_ENDPOINT.md) | Archived destination-only arrival checks and fresh start-box rejection; no numeric parallel-parking claim |
+| [Single signal departure](SINGLE_SIGNAL_DEPARTURE.md) | Active one-acceptance policy and source binding; archived signal judgments retain manual-mask ambiguity and do not establish all-scene accuracy |
+| [Explicit review continuation](EXPLICIT_REVIEW_CONTINUATION.md) | Original failed review retained, with separately checked continuation/omission; no synthetic PASS or replay |
+| [Voice backend](VOICE_BACKEND.md) | Implemented finite-upload transport and offline validation; actual ASR account access/device quality remains unverified |
+
+The documentation refresh made no new provider request and adds no offline-model evaluation artifacts. Raw operational images, responses, credentials and private source data remain outside Git. Historical FAIL/UNKNOWN, API timeouts and then-current pending descriptions are preserved below. Missing cost is unknown, never zero.
+
+## Historical integration record · October 27, 2026
+
 **Verified scope: authentication, enabled-model discovery, structured application goals, one recorded-image scene inspection, and action-bound review on three synthetic image pairs.** Real-car outcome accuracy, fresh live observations and voice remain unverified.
 
 ## Verified request
@@ -93,7 +110,7 @@ python tools/evaluate_action_reviews.py --output ../evaluation-run --call-meta
 
 Omitting `--call-meta` only creates the labelled fixtures and manifest. The actual-provider mode makes three requests and never opens a camera or robot. See [Action reviews](ACTION_REVIEWS.md).
 
-## Remaining integration work
+## Remaining integration work at the October 27 checkpoint
 
 ### Native-image graph planning, October 27
 

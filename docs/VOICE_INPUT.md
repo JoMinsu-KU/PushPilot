@@ -14,15 +14,15 @@
 
 ## Visible goal and voice entry
 
-A compact glass **Your goal** bar sits beneath the selected map title, above camera controls. Its text is the current accepted `goal.text`, independently labelled **Typed** or **Voice** from `goal.source`; an unsent editor draft does not replace it. Selecting the text opens the complete original request through bounded pages. The current plan can be inspected during execution while goal editing remains restricted to preparation.
+The current workspace uses compact glass **From / To** preparation controls and a goal dialog. The accepted goal remains distinct from an unsent editor draft; its source is **Typed** or **Voice** from `goal.source`. The current plan can be inspected during execution while goal editing remains restricted to preparation. See [Current status](CURRENT_STATUS.md) and [Design system](DESIGN_SYSTEM.md) for the active layout.
 
 The microphone opens **Voice input**, explaining the future hold → speak → review-text → create-plan sequence. Its capture button remains disabled and explicitly disconnected. **Type a goal** preserves the existing text/MUSE workflow and explicit plan approval. This interface is not a connected speech recognizer or an invented transcript.
 
 ## The first voice experience
 
-[![Planned voice input: push-to-talk recording passes through the backend and dedicated Meta transcription adapter; the operator checks and edits the transcript before accepting a goal; Spark interpretation and explicit tablet plan approval precede any admitted action.](assets/voice-input-flow.png)](assets/voice-input-flow.png)
+[![Current voice architecture illustration: implemented finite PCM upload and backend transcription produce a bound candidate; browser capture and transcript editing remain pending before explicit accepted-text planning and approval.](assets/voice-current.png)](assets/voice-current.png)
 
-*Proposed interaction, not a connected microphone or an executed mission. Select the image for the full-size view.*
+*Current architecture illustration, not evidence of connected microphone capture or an executed mission. The [original planned-only voice diagram](assets/voice-input-flow.png) is retained as dated design history; its backend-unimplemented label is no longer current.*
 
 The planned capture implementation uses a **finite push-to-talk recording**. The operator records a goal, receives a transcript, corrects it when necessary and chooses **Use goal**. Only that explicit action submits the accepted text for MUSE goal interpretation. The resulting plan still needs explicit tablet approval before the mission supervisor may admit an action.
 
@@ -39,7 +39,7 @@ Typing remains available whenever goal entry is allowed. A microphone denial, un
 
 ### Input eligibility and device setup
 
-The initial application accepts new typed or spoken goals only in a non-executing preparation state. Disable recording, transcript submission and goal edits while a mission is active, including RED waiting, observation review and crossing. A replacement goal requires an explicitly completed or terminated mission and non-executing state reconciliation. Cancelling a voice capture does not terminate or stop a mission.
+New typed or spoken goals belong to non-executing preparation. Simulation APIs reject goal replacement outside workspace preparation, and the tablet disables editing while a Robot mission is active, including RED waiting, observation review and crossing. The current workspace/voice APIs check workspace state rather than independently locking against the separate physical coordinator; Robot UI protection is not a server-enforced cross-service lock. Browser capture remains pending, and its completed acceptance path must preserve this restriction across both services. A replacement Robot goal follows explicit completion/termination and state reconciliation. Cancelling a voice capture does not terminate or stop a mission.
 
 Before recording, check `isSecureContext` and microphone API/device availability. The actual tablet deployment needs HTTPS trusted by that device; a plain HTTP LAN address is not the local-development `localhost` exception. Permission denial, an unavailable device or an unsuitable origin should show an actionable English status and preserve eligible text entry. See [browser microphone requirements](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia).
 
@@ -95,8 +95,8 @@ Audio source and provider source are independent. **A real Meta request on a rec
 - Cancelling a recording or transcription invalidates that capture for acceptance. A late result may be retained as a cancelled diagnostic outcome, but must not overwrite the active transcript or create a mission.
 - A newer capture or transcript revision supersedes older candidates. Results arriving out of order must be matched by identity before display or use.
 - `Record again` creates a new capture, not a duplicate mission. Repeated delivery of one `Use goal` event must not create additional missions.
-- In eligible non-executing preparation, editing an accepted goal creates a new interpretation/plan revision and invalidates approval of the previous revision. Active missions reject this operation.
-- A late transcript cannot modify an active mission or regain authority after mission completion, cancellation or restart.
+- In eligible non-executing preparation, editing an accepted goal creates a new interpretation/plan revision and invalidates approval of the previous revision. Simulation APIs reject edits outside preparation; the Robot tablet disables them while its mission is active.
+- Transcript candidates must match their initiating workspace/session/map binding and never grant approval automatically. Complete cross-service prevention of direct voice/goal API use during a Robot mission remains an acceptance requirement, beyond the current UI gate.
 - A transcription retry is not permission to retry a physical action. Voice acceptance never supplies execution authority by itself.
 
 ## Safety and retention
@@ -117,7 +117,7 @@ Retain the minimum causal evidence needed to explain the accepted goal: capture 
 | Language | Korean and English examples, original transcript preservation and operator correction before acceptance |
 | Causality | Cancelled, late and reordered results cannot replace the active revision or create duplicate missions |
 | Approval | No mission submission before `Use goal`; no action admission before approval of the latest plan |
-| Active mission | Typed and spoken goal creation/editing are rejected during execution, RED waiting and review; late results cannot change the active mission |
+| Active mission | Both UI and API must reject typed/spoken replacement during simulation and Robot execution, RED waiting and review; current cross-service API enforcement remains acceptance work |
 | Sources | Fixture, live capture, simulated result and real provider call remain distinguishable |
 | Retention | Audio expires under every terminal outcome; evidence contains no keys or credential payloads |
 | End-to-end | Spoken goal → editable transcript → interpretation → approved simulated mission, with traceable revisions |

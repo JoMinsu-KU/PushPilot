@@ -2,13 +2,13 @@
 
 # Versioned workspace boundaries
 
-**Keep the UI, provider, and simulator aligned without granting model output execution authority.**
+**Keep UI, provider, simulation and physical execution aligned through separate, versioned authority boundaries.**
 
 [Architecture](../docs/ARCHITECTURE.md) · [Backend](../backend/README.md) · [Live intelligence](../docs/LIVE_INTELLIGENCE.md) · [Voice backend](../docs/VOICE_BACKEND.md)
 
-> **Implemented:** [`workspace.ts`](workspace.ts) describes `pushpilot.workspace.v1`; [`scene.ts`](scene.ts) describes map/routes, optional route-display geometry and recorded-scene state; [`live-camera.ts`](live-camera.ts) describes ephemeral preview; [`action-review.ts`](action-review.ts) describes recorded-action evidence; [`live-intelligence.ts`](live-intelligence.ts) adds native-frame planning, action/signal operations and their selected evidence. Backend request models validate commands, with bounded manual parsers for map JSON and voice multipart uploads. These interfaces are not a standalone formal JSON Schema catalog. Physical observation qualification and hardware receipts remain future contracts.
+> **Implemented:** [`workspace.ts`](workspace.ts) describes `pushpilot.workspace.v1`; [`scene.ts`](scene.ts) describes map/routes, optional route-display geometry and recorded-scene state; [`live-camera.ts`](live-camera.ts) describes ephemeral preview; [`action-review.ts`](action-review.ts) describes recorded-action evidence; [`live-intelligence.ts`](live-intelligence.ts) adds native-frame planning, action/signal operations and their selected evidence. Backend request models validate commands, with bounded manual parsers for map JSON and voice multipart uploads. These interfaces are not a standalone formal JSON Schema catalog. [`physical.ts`](physical.ts) describes the separate `pushpilot.physical.v1` service; [`physical-display.ts`](physical-display.ts) describes the GET-only `pushpilot.physical-display.v1` presentation cache. These implemented site-trial interfaces do not establish general physical qualification.
 
-## Current API
+## Workspace and simulation API
 
 | Endpoint | Input beyond the command base | Result |
 | :--- | :--- | :--- |
@@ -38,6 +38,27 @@ The same request ID and identical payload return the original receipt without ru
 `source: "voice"` now requires a current workspace/map-bound transcript receipt plus the explicitly accepted text. The backend preserves original versus confirmed text and still requires plan approval. Browser recording and transcript editing are not connected; the type does not claim a supported microphone.
 
 `provider: "meta"` defaults to live planning when a camera URL is configured. Explicit `planning_mode: "symbolic"` requests text-only legacy interpretation. Without a configured camera, the omitted-mode default remains symbolic for compatibility; a failed live request never substitutes it. Live-backed plans reject manual signal injection and demo/recorded review verdicts. See [live intelligence](../docs/LIVE_INTELLIGENCE.md) for exact operation and evidence semantics.
+
+## Physical API: separate revision and source binding
+
+These routes are prefixed `/api/v1/physical`. The current service is opt-in through private `PUSHPILOT_PHYSICAL_CONFIG`; absence means unavailable, not a simulation fallback. Physical `expected_revision` comes from `/physical/status`, not `/state`. Mutating routes require a same-origin browser `Origin`/Host binding; the hardware token remains server-side.
+
+| Endpoint | Input beyond physical command base | Behavior |
+|---|---|---|
+| `GET /status` | None | Actual connection, mission/progress, signal, review activity, blockers, capabilities and telemetry |
+| `GET /display` | None | GET-only receipt-driven display/Spatial estimate; `motion_authority: false` |
+| `POST /start` | `workspace_session_id`, `plan_id`, `plan_revision`, `destination`, `route_nodes`, `map_id`, `map_version`, `map_hash` | Bind the current live MUSE plan in PLAN_READY and begin the eligible private taught recipe through explicit Robot approval/start |
+| `POST /stop` | None | Request supported software hold; no hardware emergency-stop guarantee |
+| `POST /reset` | `mission_id`, `reason` (10–500 characters) | Retire an eligible ended mission while preserving evidence; does not return the robot |
+| `POST /resume` | `mission_id`, `reason` | Explicit checked continuation from a known completed review boundary; no completed contact replay |
+| `POST /prepare-boundary` | `mission_id`, `reason` | Prepare the narrow C11 recovery boundary with source/camera/MUSE/IK checks; no route action |
+| `POST /continue-c19` | `mission_id`, `reason` | Explicit C19 review omission from its exact eligible hold; preserve original NO_PROGRESS and record omission, never PASS |
+
+The command base is UUID `request_id` plus strict non-negative `expected_revision`; unknown fields reject. Start requires the exact current live MUSE plan in **PLAN_READY**: the tablet's **Start robot mission** is its approval/start action. Do not call simulation `/approve` first; that separate operation changes the workspace state. Stop deliberately remains deliverable while status revisions advance during movement. Requests/recovery remain mission and exact source bound. Start accepts no TCP positions or executable model commands. Read [robot operations](../docs/ROBOT_OPERATIONS.md), [C11 recovery](../docs/C11_BOUNDARY_RECOVERY.md) and [START reference](../docs/SESSION_START_REFERENCE.md) before treating a reset, preparation, reconnect or resume as interchangeable.
+
+`PhysicalStatus` reports actual executor receipt progress, optional Native TCP travel (`distance_source: native_tcp`) and independent `car.arrived`/`aligned` fields. Absence of measured travel stays null; drawing distance must not fill it. `parking_alignment` requires explicit true, and the current delivery-only release defers parking. `PhysicalDisplay` carries producer epoch/sequence, mission/plan/map binding and confirmed-only estimate updates. Its vehicle is always `estimated: true`; display intent or elapsed time cannot invent measured car motion. This optional cache cannot dispatch commands or fail the control endpoint.
+
+Process restart does not automatically start a worker, resend unknown movement or restore an old signal admission. The one-time physical GREEN policy differs from the generic per-junction simulation gates. A new mission needs new admission; existing stop/Native/session guards remain active after recontact. [Current status](../docs/CURRENT_STATUS.md) and [known limitations](../docs/KNOWN_LIMITATIONS.md) describe qualification and unresolved idle-timeout behavior.
 
 ## Independent map and scene API
 
@@ -73,7 +94,7 @@ Its source is `meta`, input kind is `operator_selected_recorded_pair`, and scope
 
 The legacy Meta adapter's strict `pushpilot_goal_v1` response schema remains in `backend/meta.py`. It receives symbolic place labels/aliases, selects only a destination and permits the legacy deterministic router to prepare a symbolic plan. It does not receive a camera image or select a road path.
 
-`backend/planning_provider.py` implements the separate native-frame/graph response: destination, English summary, exact `route_nodes`, clarification, structured constraints and scene assessment. Its allowed node/destination IDs come from the selected map. The backend compiles and checks that exact connected directed path and derives AR geometry locally; the model cannot change map coordinates or emit robot targets/commands. Prompt/result versions are `pushpilot.live-route.prompt.v2` and `pushpilot.live-route.result.v1`.
+`backend/planning_provider.py` implements the separate native-frame/graph response: destination, English summary, exact `route_nodes`, clarification, structured constraints and scene assessment. Its allowed node/destination IDs come from the selected map. The backend compiles and checks that exact connected directed path and derives AR geometry locally; the model cannot change map coordinates or emit robot targets/commands. Prompt/result versions are `pushpilot.live-route.prompt.v3` and `pushpilot.live-route.result.v1`. The selected map owns the allowed destination/node vocabulary; City and Little Town do not share a fixed hard-coded place list.
 
 Live action and signal providers use `pushpilot.live-action.prompt.v1` / `pushpilot.live-action.result.v1` and `pushpilot.live-signal.prompt.v1` / `pushpilot.live-signal.result.v1`. The strict local validators reject malformed results independently of upstream schema claims. No model result supplies plan approval or physical motion authority, and no actual-provider failure falls back to a demo parser.
 
@@ -90,15 +111,15 @@ Live action and signal providers use `pushpilot.live-action.prompt.v1` / `pushpi
 
 The [voice backend](../docs/VOICE_BACKEND.md) implements `GET /api/v1/voice`, finite multipart `POST /api/v1/voice/transcriptions`, and candidate `GET`/`DELETE /api/v1/voice/transcriptions/{transcript_id}`. Upload fields are `file`, `expected_revision`, `capture_id`, `audio_source` and optional `language`. It accepts bounded mono PCM16 WAV at 16/24 kHz, returns original-language text and a workspace/map-bound candidate, and retains no raw audio. The candidate registry is in RAM, bounded to 32 records/30 minutes. Browser capture/editing is still unconnected; original-versus-confirmed text is preserved when a live goal explicitly accepts a current receipt. No ASR confidence is invented.
 
-Recorded-scene files bind original frame bytes/SHA-256, source, receive time, optional operator-provided capture time, map identity, registration reference and validated inspection. Recorded-action evidence adds its own pending-action binding, validated result, versions, elapsed time and reported usage; accepted events retain that record. Trusted physical capture/receipt linkage, crop lineage, qualified local findings and complete raw provider envelopes remain future work.
+Recorded-scene files bind original frame bytes/SHA-256, source, receive time, optional operator-provided capture time, map identity, registration reference and validated inspection. Recorded-action evidence adds its own pending-action binding, validated result, versions, elapsed time and reported usage; accepted events retain that record. The physical trial separately records Native/action linkage and its selected original/crop lineage. This does not upgrade recorded uploads into trusted post-action captures. General calibration/measurement qualification and a complete unified provider-envelope/export policy remain open.
 
 ## Deliberately absent
 
-The temporary definition contains drawing coordinates, graph edges, marker geometry and test-only board-to-image projection. Optional reviewed `signal_targets` bind an active-paper region to a specific junction and incoming node; the current map has none. The definition supplies no robot coordinates, camera-to-BASE transform, qualified stop/exit lines or swept footprint. Follow [map replacement](../docs/MAP_REPLACEMENT.md) and label private inputs under [Test inputs](../docs/TEST_INPUTS.md).
+The temporary definition contains drawing coordinates, graph edges, marker geometry and test-only board-to-image projection. Optional reviewed `signal_targets` bind an active-paper region to a specific junction and incoming node; the bundled drawing adapter has no reviewed active-paper signal targets; the private physical signal configuration is separate. The definition supplies no robot coordinates, camera-to-BASE transform, qualified stop/exit lines or swept footprint. Follow [map replacement](../docs/MAP_REPLACEMENT.md) and label private inputs under [Test inputs](../docs/TEST_INPUTS.md).
 
-The simulator creates no native hardware receipts. Physical completion requires a separately implemented and qualified measured adapter. Credentials and model-generated executable commands do not belong in these contracts.
+The simulator creates no Native hardware receipts. The separate physical site-trial driver uses exact-source Native completion and applicable MUSE observation; its existence does not establish general physical repeatability. Credentials and model-generated executable commands do not belong in these contracts.
 
-New goal submission requires non-executing preparation. Active missions, including signal waits and reviews, reject goal replacement. Completion/termination and explicit reconciliation precede replacement.
+Workspace goal submission requires its non-executing preparation state; active simulation, including signal waits and reviews, rejects replacement. The tablet separately disables goal editing during an active Robot mission. Workspace/voice API validation currently checks workspace state, not the separate physical coordinator; this UI protection is not a server-enforced cross-service lock. New Robot intent should follow explicit completion/termination and reconciliation.
 
 Run `python tools/dev.py check` and `python tools/dev.py test` with runtime dependencies installed. The first command checks syntax; API and mission tests exercise the actual Pydantic and supervisor rejection behavior.
 

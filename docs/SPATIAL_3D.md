@@ -1,74 +1,110 @@
-# Spatial 3D city preview
+# Spatial: one city, the selected route
 
-The existing **Camera / Spatial** switch remains the only scene navigation. Spatial replaces the former illustrative grid/building drawing with the supplied city GLB; there is no separate 3D City tab. MUSE routes continue to use the active 2D map. At the user's request, Spatial previews the same selected path, arrows, stop lines and simulation progress over the model, clearly labelled **2D route preview · alignment pending**. This approximate display fit is not a registered 3D route, measured vehicle position or robot coordinate.
+**Camera and Spatial share one validated 2D plan. Spatial changes the presentation, never the executor.**
 
-The user confirmed that the supplied 3D layout is the final design reference, while the installed 2D print is provisional test material. This does not replace the currently active 2D mission profile: the latest instruction keeps routing on that profile and uses the 3D asset with an illustrative route preview until the final 2D artwork and its alignment are ready.
+[City map](CITY_A3.md) · [Route display](ROUTE_DISPLAY.md) · [Execution display](DESIGNER_LIVE_DISPLAY.md) · [Current status](CURRENT_STATUS.md)
+
+Reviewed November 2, 2026. Spatial is the existing **Camera / Spatial** scene switch, not a separate 3D navigation product. The current city model displays the active 2D path with the same node order, direction arrows and stop geometry as Camera. The camera retains its natural perspective; no live-camera top view is generated. A model's independently orbitable view does not rectify the camera image.
+
+The final A3 2D drawing adapter is `seoul-city-a3` v`2026-10-28.4`. Little Town remains the source-default compatibility fixture. Current physical recipes, camera registration and display-model fitting have separate identities and authority.
+
+## Current display binding
+
+The checked-in [city display manifest](../frontend/public/models/city-display.json) binds a private GLB to the **unchanged** map geometry hash. The viewer verifies downloaded model bytes before parsing, including LAN HTTP without WebCrypto.
+
+| Manifest field | Reviewed value |
+|---|---|
+| Schema / authority | `pushpilot.city-display.v1` / `display_only` |
+| Map geometry hash | `9fea848ee172ea6779edda861ddb15c51ba562117d77a3558eb8a85811aefb50` |
+| Model ID | `pushpilot-seoul-city-toy3d` |
+| Model SHA-256 | `842a7c32e9c8634a9eef12a741e3d4f5ea7727710b88353dc116095d309d9bf2` |
+| Private served URL | `/models/private/pushpilot-city-clean-roads.glb` |
+| Drawing rectangle, mm | `[39.539623717, 39.542128603, 380.340649943, 257.398004435]` |
+| Model X/Z rectangle | `[-241, -154, 241, 154]` |
+| Display elevation | `0.6` model units |
+
+`cityDisplayFit()` creates a display-only map copy to validate the manifest correspondence. It does **not** rewrite `backend/data/seoul-city-a3.json`, replace the physical geometry hash, migrate approvals or change taught BASE coordinates. Its private GLB hash differs from the older clean-road asset referenced by the historical map `spatial_preview`; preserve both provenance records rather than editing physical map identity to make a viewer load.
+
+Missing bytes, a wrong hash, malformed manifest or incompatible map disables the optional model/route correspondence. Camera and physical control remain separate. Do not substitute another GLB and update its hash without reviewing a new display manifest.
+
+## Install the current private display asset
+
+The required current GLB is deliberately absent from Git. Obtain the privately retained **exact** asset matching the manifest above; the original October 27 ZIP cannot generate these newer bytes. From the repository root on a POSIX development/build host, the following copies a reviewed asset only after verifying it and refuses to overwrite unrelated existing bytes:
+
+```sh
+python - /private/reviewed/pushpilot-city-clean-roads.glb <<'PY'
+import hashlib, json, shutil, struct, sys
+from pathlib import Path
+root = Path.cwd().resolve()
+manifest = json.loads((root / 'frontend/public/models/city-display.json').read_text(encoding='utf-8'))
+assert manifest['schema_version'] == 'pushpilot.city-display.v1'
+assert manifest['coordinate_authority'] == 'display_only'
+assert manifest['model']['url'] == '/models/private/pushpilot-city-clean-roads.glb'
+source = Path(sys.argv[1]).resolve(strict=True)
+data = source.read_bytes()
+assert 20 <= len(data) <= 32 * 1024 * 1024, 'Invalid model size'
+assert hashlib.sha256(data).hexdigest() == manifest['model']['sha256'], 'Wrong private model'
+magic, version, size = struct.unpack_from('<III', data)
+assert (magic, version, size) == (0x46546C67, 2, len(data)), 'Invalid GLB 2'
+destination = root / 'frontend/public/models/private/pushpilot-city-clean-roads.glb'
+assert not destination.is_symlink() and not any(p.is_symlink() for p in destination.parents)
+if destination.exists():
+    assert hashlib.sha256(destination.read_bytes()).hexdigest() == manifest['model']['sha256'], 'Preserve/review the existing different asset first'
+else:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source, destination)
+assert hashlib.sha256(destination.read_bytes()).hexdigest() == manifest['model']['sha256']
+print('Reviewed private display asset installed; no map or robot configuration changed.')
+PY
+cd frontend
+npm ci
+npm run build
+```
+
+This example is documentation, not an automatic equipment/deployment action. On PowerShell run the same Python body through a literal here-string with the asset path supplied as its argument. Keep an older conflicting model privately and review replacement deliberately; do not overwrite it to bypass the check. The build preparation copies the pinned Three.js Draco decoder locally into ignored `public/vendor/draco/`. Include that directory, the verified model, manifest and notices in the private static deployment. Source-only archives intentionally exclude private models and generated decoders.
+
+The asset archive has no complete public redistribution/licensing record. Do not publish GLBs, original print artwork or camera images merely because local use was authorized.
+
+## Route and vehicle semantics
+
+MUSE selects a grounded route using the active graph and explicit source image; the backend validates its exact connected node order and constraints. Camera and Spatial display that one route, not independent model-generated paths. MUSE also reviews deliberately selected original action/signal images through separate evidence/policy paths. A visible model review is evidence of that judgment, while the illustrated Spatial car remains a contact-receipt estimate; neither substitutes for the other.
+
+`MapScene` supplies one `RouteDisplay`. The route overlay uses the exact rendered Three.js view/projection matrix, including orbit, pan, zoom, lens offset and viewport resize. Switching views issues no plan, model-provider or robot request. Malformed/mismatched identities withhold the route instead of inventing an example. Legacy maps lacking explicit correspondence can retain a clearly labelled approximate preview; that fallback is not the current City manifest.
+
+In Robot mode the optional read-only display collector verifies journal/packet/mission/Native bindings. The Spatial vehicle follows confirmed **contact** receipts along direction-compressed drawing legs. Its short tween illustrates newly confirmed progress, not continuous physical tracking. Approach, withdrawal, unloaded wrist, signal wait, MUSE review, HOLD, stale feeds and empty home return do not animate vehicle travel. After delivery the estimate remains at the destination while the empty tool returns.
+
+The visible label is **Execution estimate / Display only**; simulation is labelled **Simulation preview**. Neither tool receipts nor drawing interpolation measure actual car slip, position, yaw or parking alignment. This display cannot accept arrival, change signal admission or authorize continuation. See [Execution display](DESIGNER_LIVE_DISPLAY.md).
+
+The viewer lazy-loads, caps initial DPR at 1.5, uses 1024-pixel shadows, pauses rendering when hidden and disposes resources on unmount. Named model meshes remain available for picking; baked signal colors are neutralized as artwork. WebGL/model failure keeps Camera navigation available. Sustained target-tablet performance still needs device measurements.
 
 ## User-confirmed block names
 
-Confirmed on October 27, 2026 from the user's annotated 3D reference:
+Confirmed October 27, 2026 from the annotated reference:
 
-| Position in the supplied view | Canonical ID | English UI name | Scope |
+| Reference quadrant | Canonical ID | English UI name | Scope |
 |---|---|---|---|
-| Upper left | `VILLA` | Villa | Entire red-outlined block |
-| Upper right | `HANOK` | Hanok | Entire red-outlined block |
-| Lower left | `PIZZA` | Pizza | Entire red-outlined block, including the adjacent park |
-| Lower right | `OFFICE_BUILDING` | Office Building | Entire red-outlined block |
+| Upper left | `VILLA` | Villa | Entire block |
+| Upper right | `HANOK` | Hanok | Entire block |
+| Lower left | `PIZZA` | Pizza | Includes adjacent park |
+| Lower right | `OFFICE_BUILDING` | Office Building | Entire block |
 
-These user-confirmed names take precedence over names inferred from individual facade graphics. The model's convenience store, cafe and beauty-store details do not create additional mission destinations. The [machine-readable record](data/spatial-city-landmarks.json) records the model hash and the explicit absence of navigation/physical authority. The private annotated screenshot is retained outside the repository. Existing temporary-map Bakery, Bookstore and School identities are unchanged.
+Facade details do not create extra destinations. [Landmark provenance](data/spatial-city-landmarks.json) identifies the **older annotated source model**, not the current installed display asset. Its absence of coordinate authority remains valid; current asset installation uses `city-display.json`.
 
-## Model and origin
+## Historical October 27 asset workflow
 
-The user supplied `PushPilot_city_web_package.zip`, containing `web/PushPilot_city_web.glb`, an example HTML viewer and two Blender conversion scripts. The scripts and HTML were inspected as source material, not executed. The application uses a newly authored React/Three.js viewer; the example's Korean UI and CDN imports are not copied into the application.
+The original `PushPilot_city_web_package.zip` contained `web/PushPilot_city_web.glb`, example HTML and Blender scripts. Those scripts were inspected, not executed. Original GLB: 4,311,436 bytes; SHA-256 `8ecbdf4d4c0a5a58b502f5366a96bc37fa2ce2cbfec9af14896d63743ca49f78`. Its nominal 594 × 420 model frame is distinct from the installed A3 print. Embedded WebP/Draco data and a large staging plane belong to that export.
 
-- GLB 2 binary, 4,311,436 bytes; SHA-256 `8ecbdf4d4c0a5a58b502f5366a96bc37fa2ce2cbfec9af14896d63743ca49f78`.
-- Supplied board dimensions: 594 x 420 model units, described as millimetres; centered origin, Y up. These model dimensions do not measure the installed physical print.
-- Buildings contain 3D height geometry. Repeated vegetation uses crossed texture cards; it is not fully modeled botanical geometry.
-- Embedded WebP textures and Draco mesh compression; no external texture URLs are needed for this supplied model.
-- The model includes a 6000-unit background plane. The viewer frames the city board/preset camera rather than fitting the entire ground plane.
-- Baked red/green signal appearances are neutralized in the runtime view so that static artwork cannot suggest a current MUSE signal observation. Original GLB bytes remain unchanged.
-- The user requested new-road appearance on October 27, 2026. Cracks are in the exclusive `asphalt_photo` base-color texture, not geometry. The private derived model replaces only that material's base-color texture with matte charcoal (`#454c50`, roughness 0.95, metalness 0). All six road planes, UVs, nodes, buildings, sidewalks, lane markings, stop lines and crosswalk geometry remain unchanged. The original model is retained alongside the derived file.
-- The archive does not include a complete asset-licensing/provenance record. The user-supplied model stays in ignored private runtime assets, outside Git and public source archives. No public redistribution rights are inferred.
-
-## Local assets and build
-
-Install frontend dependencies from the lockfile, then install the private model using:
+The historical commands below preserve that original and derive its matte charcoal road material. They are **not installation instructions for the current toy3d manifest**:
 
 ```sh
-python tools/install_city_model.py /path/to/PushPilot_city_web_package.zip
+python tools/install_city_model.py /private/archive/PushPilot_city_web_package.zip
+python tools/clean_city_roads.py
 ```
 
-The installer reads only the expected GLB entry, validates its identity and preserves it at `frontend/public/models/private/pushpilot-city.glb`. It also creates `pushpilot-city-clean-roads.glb` in the same ignored private directory; Spatial loads this clean-road variant. The variant changes only the named road material in the GLB JSON chunk and copies all remaining binary chunks byte-for-byte. Embedded source textures remain in the binary but the road material no longer uses the cracked texture. This is a native material edit, with no generated image, mesh conversion or Draco re-encoding.
+The derivative's SHA-256 is `f5fb0b2524d6bee45f5b939f121b29d5eac274ea34e670895dada3a2b70b39d7`. Only the exclusive `asphalt_photo` material changed; original geometry and post-JSON binary chunks remained identical. These tools are intentionally pinned to old source bytes and refuse unrelated replacements. Run them only in a separate historical asset workspace, since their destination filename overlaps the current private asset.
 
-For an already installed original, generate the same variant independently with `python tools/clean_city_roads.py`. The tool validates the reviewed source hash and refuses symlinks, overwriting the original or replacing an unrelated existing file. The frontend preparation script copies pinned Draco decoder assets from the installed Three.js package to ignored `public/vendor/draco/` before build/dev. The built static frontend includes the private variant and local decoders, so the private deployment does not need a model or decoder CDN. Source releases built from committed Git blobs exclude private models and generated decoders; reinstall them when preparing a private deployment.
+## Historical verification and current limits
 
-The viewer is lazy-loaded only when Spatial is selected. Drag to orbit, pinch/wheel to zoom, and use City, Intersection or Reset for the predefined views. Pixel ratio is capped, shadows use a modest map and repeated planting is instanced; compatible opaque city meshes are batched. Rendering runs in the viewing browser's WebGL context; GX10 serves the static files rather than rendering frames for the tablet. Actual browser/tablet performance still requires measurement. Three.js and Draco notices are copied with the static frontend.
+The initial route-preview revision passed 52 frontend/290 Python tests and its build. The clean-road revision passed 53 frontend/322 Python tests and native GLB comparisons. Dated browser checks covered identical selected segment order, orbit/presets, no console errors and no vertical **page** overflow at 1194 × 834, 1366 × 1024 and 1024 × 768. Private screenshots remain outside Git under `output/spatial-city-20261027/`. These results describe those earlier revisions, not the new model or a fresh hardware test.
 
-All existing glass cards, navigation, font and stage dimensions remain in place. Spatial changes its scene content and adds only small scoped view controls. The oversized export staging plane is given a neutral runtime tabletop material; the city textures and original GLB bytes are preserved. A scoped error boundary keeps failed lazy-chunk loading from removing Camera navigation, and WebGL recovery remains explicit.
-
-## Route preview and later alignment
-
-`MapScene` supplies the same validated `RouteDisplay` to Camera and Spatial. No plan request, alternate graph search, mission mutation, registration update or provider call is triggered by switching views. If map identity/version/hash validation fails, neither view receives that route. No invented example is substituted when a plan is absent.
-
-`cityRoutePreview.ts` keeps the temporary display fit separate from both camera registration and the mission graph. It fits the complete active graph's X/Y extent into the supplied model's illustrative road envelope (X -236 to 236, Z -149 to 149, Y 2). It never fits just the current route or binds old 2D destination names to city buildings. Replacement map coordinates recompute that fit without old place IDs. This generic envelope fit can put paths across city artwork; the user explicitly accepted approximate placement at this stage.
-
-The SVG route layer uses the exact Three camera view/projection matrix, including lens offset, orbit, zoom, pan and viewport resize. Path, arrows and junction geometry share one projection. The layer does not intercept pointer input or test model occlusion; it remains a visible illustrative overlay. Points behind the camera or outside its depth range withhold the preview. Workspace updates change the route without recreating the WebGL renderer or loading the model again. The existing legend retains its planned/simulated source and receipt-derived progress; it never displays measured car pose.
-
-When the final 2D map is ready, replace this approximate display fit with an explicit binding of map identity, road graph, block/arrival anchors and signal approach targets. Preserve the same MUSE-selected node/edge order and executor receipts in both views. Physical camera/BASE/contact geometry remain separate measurements. The current preview grants no physical execution authority.
-
-## Verification
-
-The initial route-preview revision passed its frontend build, 52 frontend tests, repository checks and 290 Python tests. The focused route-preview tests cover replacement graph fitting, exact Three-camera projection, orbit changes, degenerate input and behind-camera/depth rejection. Four private-model import tests cover fixed-entry reads without script execution, unreviewed bytes, external texture references and duplicate entries.
-
-Browser verification on the running application confirmed:
-
-- Scene navigation contains exactly Camera and Spatial; Spatial renders the supplied city and current 2D route preview.
-- Camera and Spatial expose the same selected route segment IDs and planned phases. Switching views preserves the current pending mission.
-- City, Intersection and Reset presets work. Orbit and wheel zoom update the route projection while it remains visible.
-- At 1194 x 834, 1366 x 1024 and 1024 x 768, document/body dimensions equal viewport dimensions: no vertical page scrolling. Existing glass mission/status surfaces remain in place.
-- No browser console errors or warnings were reported during these checks.
-- No mission command, camera lock/refit, service restart or robot operation was performed for this UI change.
-
-The subsequent clean-road revision passed seven focused native GLB tests and the four existing import tests. The full frontend build, 53 frontend tests, repository checks and joint 322-test Python suite passed with the concurrent camera work present. The exported original/clean pair was compared directly: only `asphalt_photo.pbrMetallicRoughness` differs semantically, and every post-JSON binary byte is identical. Actual City and Intersection browser views show smooth matte roads with the same lane/crosswalk geometry, buildings and current route overlay, no console errors, and no document overflow at 1194 x 834. Private screenshots are `clean-roads-city-1194.png` and `clean-roads-intersection-1194.png` in the same local evidence folder; a standalone private derivative is `PushPilot_city_clean_roads.glb`.
-
-Private deployment screenshots remain outside Git under `output/spatial-city-20261027/`: `spatial-route-1194.png`, `spatial-route-1366.png`, `spatial-route-1024.png` and `spatial-route-intersection-1194.jpg`. An available city viewer is not a scan, live digital twin, recognized vehicle pose or robot test.
+The October 30 designer/display integration separately tested manifest hashes, physical journal projection, phase freezing and route/history presentation; see [its dated evidence](DESIGNER_LIVE_DISPLAY.md). Current internal list scrolling and on-device acceptance are documented in [Design system](DESIGN_SYSTEM.md). A rendered city is not a scan, a live digital twin, measured vehicle pose or proof of reliable physical execution.

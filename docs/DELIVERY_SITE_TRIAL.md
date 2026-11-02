@@ -1,5 +1,7 @@
 # Delivery first · current-site trial
 
+**Current documentation cutoff: November 2, 2026; published source `7aa7753`.** The latest read-only deployment audit identified GX10 application release `20261031-c11-activation-fix`; Git publication does not change the active release or current connection. [Robot operations](ROBOT_OPERATIONS.md) is the reset/return/resume runbook. [Known limitations](KNOWN_LIMITATIONS.md) separates current capabilities from physical qualification.
+
 The October 29 operator workflow prioritizes arrival at Office Building, Villa
 or Hanok, followed by an empty-tool return to START. Parallel parking and
 automatic numeric alignment corrections are deferred. The fixed start is the
@@ -21,14 +23,20 @@ not a fabricated live vehicle trace.
    unit with MUSE before advancing. Unloaded intermediate repositioning needs
    its actual completion receipt, without pretending that the car moved.
 5. At the selected northbound signal stop, wait at the far-right observation
-   pose. Two distinct fresh exclusive-GREEN images permit measured recontact,
-   followed by a fresh entry check. RED, both visible, neither visible and mask
-   transitions wait. The black disc/cable tie is described in the observation
+   pose. One accepted stopped GREEN judgment covering two distinct fresh
+   exclusive-GREEN images admits exact measured recontact and the immediately
+   following crossing. Selected `single_departure` does not ask for another
+   color check after recontact; later colors cannot reopen that admission.
+   Native/session/stop guards still apply. Before admission, RED, both visible,
+   neither visible and mask transitions wait. The black disc/cable tie is described in the observation
    target; it is never an implicit GREEN command.
 6. A visible, road-contained car at the correct destination with an original
-   MUSE PASS completes delivery. Parallel alignment is not required. Return
+   MUSE PASS completes delivery. C ends at C26; C27/C28 and final straightening
+   are omitted. Parallel alignment is not required. Return
    the empty tool along the explicitly reviewed clear path, preserving current
    Z and directed unloaded wrist checks. A new mission requires a car reset.
+
+The separate `fresh_entry` compatibility policy performs a second signal check; it is not selected by this release. A new mission requires a new GREEN admission. See [Single signal departure](SINGLE_SIGNAL_DEPARTURE.md) and the [versioned C review matrix](C_INTERMEDIATE_PROGRESS_REVIEW.md#current-c-review-matrix).
 
 ## Release boundary
 
@@ -51,6 +59,8 @@ timeout. The current reviewed runtime allows 120 seconds; the generic 60-second
 translation wait cannot shorten it. The outer receipt poll uses the same
 effective timeout plus 15 seconds for admission and receipt delivery. An
 unresolved outcome still holds without replay or automatic continuation.
+
+The 120-second figure above is a wrist completion budget, not a verified physical signal-wait timer. The operator requested 120 seconds for physical waiting, but the public source alone does not establish its deployed configuration. The separate simulation signal watcher defaults to 300 seconds. Native idle acquisition and pendant liveness use different clocks and can still terminate a connection; see [timeout distinctions](ROBOT_OPERATIONS.md#distinguish-the-clocks).
 
 The source includes no private coordinates, profiles, camera images or secrets.
 The packet/compiler and offline tests establish software consistency only.

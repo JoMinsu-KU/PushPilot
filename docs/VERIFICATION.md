@@ -1,12 +1,36 @@
 # Workspace verification
 
+## Current source checkpoint · November 2, 2026
+
+This is a dated verification ledger. Earlier counts, failures, screenshots and then-current limitations below remain historical records; they are not rewritten as new successes. [Current status](CURRENT_STATUS.md) summarizes present implementation, and [Known limitations](KNOWN_LIMITATIONS.md) distinguishes open qualification from implemented behavior.
+
+| Evidence category | Current reference and supported scope |
+|---|---|
+| **Published source checks** | The November 2 publication recorded **1,177 backend tests run with five skipped**, **126 frontend tests**, and a successful TypeScript/Vite build. These are offline/software checks, not provider accuracy or physical repeatability. |
+| **Documentation refresh checks** | The November 2 refresh reran **1,177 backend tests with five skipped**, **126 frontend tests**, source checks and the TypeScript/Vite build successfully. Its 65 documents contain **1,002 local references**, with no missing paths or detected missing heading anchors. All seven new image hashes/dimensions were checked and original evidence JSON remained unchanged. |
+| **Measured physical archive** | [Measured route catalogue](MEASURED_ROUTE_CATALOGUE.md) records B/Office, C/Villa and D/Hanok actual arrivals and the distinct empty-return evidence/limits. Original controller/source receipts and raw media remain private. |
+| **Current delivery policy** | [Delivery site trial](DELIVERY_SITE_TRIAL.md), [C26 endpoint](C26_DELIVERY_ENDPOINT.md) and [single signal departure](SINGLE_SIGNAL_DEPARTURE.md) describe delivery_only, C26 termination, deferred parking and one accepted GREEN followed by measured recontact. |
+| **Provider/image policy** | [C intermediate progress](C_INTERMEDIATE_PROGRESS_REVIEW.md) preserves C4/C6 false negatives/timeouts, C14 occlusion/reference lineage, qualitative C17, archived prompt variants and actual evaluation scope. [Explicit continuation](EXPLICIT_REVIEW_CONTINUATION.md) preserves original holds, including the scoped C19 omission. |
+| **Recovery** | [C11 boundary recovery](C11_BOUNDARY_RECOVERY.md) and [stationary START reference](SESSION_START_REFERENCE.md) add narrow exact-source recovery, not automatic motion replay or altered teaching geometry. |
+| **Display** | [Designer live display](DESIGNER_LIVE_DISPLAY.md), [Camera recovery](CAMERA_PREVIEW_RECOVERY.md), [Spatial 3D](SPATIAL_3D.md) and [route display](ROUTE_DISPLAY.md) describe glass From/To, original-JPEG transport and confirmed-receipt estimates. A Spatial estimate is not measured car travel. |
+| **Unresolved connection fault** | Intermittent Native stationary reads can exhaust the existing budget and close Rodi while idle. Heartbeat/read separation and bounded recovery were analyzed but are **not implemented**. |
+| **Remaining device/measurement work** | Voice browser capture/editor, trusted tablet HTTPS/actual ASR, general metric calibration, repeatable slip correction/parking and unattended route qualification remain open. |
+
+No new provider call, robot movement, service restart or camera adjustment was performed for this documentation refresh. No new percentage accuracy is inferred from archived reviews or marker samples. The physical 120-second signal budget requires exact deployed configuration evidence; simulation watch and wrist-completion limits do not prove it. [Robot operations](ROBOT_OPERATIONS.md) explains the operational distinctions.
+
+The [evidence index](evidence/README.md) links original public summaries without modifying their observations. Original navy/cyan and early light screenshots below are design history; active architecture/artwork is indexed in [Documentation artwork](assets/README.md), with generated illustrations labelled accordingly.
+
+## Historical verification ledger · October 27–28, 2026
+
+Sections below describe the software, hardware and UI state at each recorded checkpoint. Their original test totals, model responses, residuals and limitations are preserved. In particular, a historical “simulation only,” “pending” or 125 ms polling statement is a checkpoint fact, not a current system-wide claim.
+
 ## Final A3 print and quiet marker presentation, October 28
 
 The final toy-style A3 PDF now supplies the native 7016 × 4961 drawing geometry for `seoul-city-a3` version `2026-10-28.4`. Pizza starts at the printed pink rectangle. The prior sheet's plan and reference were discarded, with the evidence ledger retained. A fresh actually observed four-marker frame was explicitly locked; 40 distinct live frames retained the exact homography while two to four markers were detected. This is a short display check, not robot calibration or a recognition-rate benchmark.
 
 Transient missing/disagreeing markers no longer create large camera banners. Contradictory evidence remains visible in compact diagnostics and retains its backend admission checks; stale imagery and confirmed view changes retain prominent notices. Camera and Spatial showed the same five segments and S/C stop geometry for an unapproved demo Villa plan. Workspace had no vertical page overflow at 1366 × 1024, 1376 × 1032 and 1024 × 768; Plan and Replay were also inspected at the first size. GX10 passed 613 Python tests; the frontend passed 78 tests and its build. Only the web process restarted. Camera epoch, persistent receiver session and robot API were retained; the robot stayed disarmed/held with no command sent. See the [scoped final-print evidence](evidence/final-print-20261028.json).
 
-Initial software verification on **2026-10-27, Asia/Seoul**; the GX10 deployment follow-up on **2026-10-28** is recorded below. This record covers replaceable-map live-image planning, bound native-image action/signal services, finite voice uploads, execution-aware route display, recorded reviews and native preview. Execution remains simulated; this is not a physical mission report.
+Initial software verification on **2026-10-27, Asia/Seoul**; the GX10 deployment follow-up on **2026-10-28** is recorded below. This record covers replaceable-map live-image planning, bound native-image action/signal services, finite voice uploads, execution-aware route display, recorded reviews and native preview. That initial software slice used simulated execution; later actual physical commissioning is recorded separately below and in the current evidence index.
 
 ## Actual persistent connection and initial local commissioning, October 28
 

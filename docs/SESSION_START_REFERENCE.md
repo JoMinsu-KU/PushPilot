@@ -1,5 +1,7 @@
 # Stationary START reference
 
+**Source status: published in baseline `7aa7753`, reviewed November 2, 2026.** This document describes the implemented contract and its dated evidence; publication does not start a mission or reconnect hardware. Use [Robot operations](ROBOT_OPERATIONS.md) for the combined reset/return/resume decision and [Known limitations](KNOWN_LIMITATIONS.md) for unresolved connection and qualification limits.
+
 The original B/C/D teaching packet remains immutable. A receiver reconnect
 reports floating-point values that can differ slightly from the accepted taught
 START. This used to advertise readiness and then fail the exact primitive-source

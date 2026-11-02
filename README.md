@@ -2,113 +2,105 @@
 
 # PushPilot
 
-### A robot can finish a motion without finishing the task.
+### From sight to action.
 
-**See the scene. State the goal. Review the plan. Check the outcome.**
+**A robot can finish a motion without finishing the task.**
 
-PushPilot connects an operator's intent, a spatial plan and visual evidence in one tablet workspace.<br>
-Muse Spark selects roads from a live image and a replaceable map graph, then reviews visual outcomes; a deterministic supervisor decides what can happen next.
+See the scene. State the goal. Review the plan. Check the outcome.<br>
+Powered by **Meta MUSE**, PushPilot connects operator intent, a spatial plan, coordinate-based motion and visual evidence in one tablet workspace.
 
-[See the workspace](#the-workspace) · [How Meta is used](#what-meta-adds) · [Evidence and limits](#evidence-and-limits) · [Run it](#quick-start)
+[The workspace](#the-workspace) · [The mission](#one-start-three-destinations) · [Architecture](docs/ARCHITECTURE.md) · [Current status](docs/CURRENT_STATUS.md) · [Run it](#quick-start)
 
-<code>Live-image MUSE planning</code> &nbsp; <code>Replaceable map graph</code> &nbsp; <code>Inspectable evidence</code> &nbsp; <code>Simulated execution</code>
+<code>Meta MUSE intelligence</code> &nbsp; <code>Image-grounded route planning</code> &nbsp; <code>Visual outcome review</code> &nbsp; <code>Taught BASE motion</code>
 
 </div>
 
 <p align="center">
-  <a href="docs/assets/scene-workspace.jpg"><img src="docs/assets/scene-workspace.jpg" width="1280" alt="Actual PushPilot application: a continuous spatial workspace with rounded translucent mission and status overlays, a temporary Little Town route and explicit simulation sources."></a><br>
-  <sub>Actual local application · original spatial presentation of inherited drawing geometry · simulation. Recorded-image model findings appear as text; no camera photograph or supplied artwork is shown. <a href="docs/VERIFICATION.md">Verification record</a></sub>
+  <a href="docs/assets/workspace-concept-current.png"><img src="docs/assets/workspace-concept-current.png" width="1280" alt="PushPilot product concept: a bright spatial tabletop, a wheel-less car, a proposed AR route and rounded translucent operator panels."></a><br>
+  <sub>Original product illustration · the interaction concept, not a camera capture, application screenshot or physical-success result. <a href="docs/assets/README.md">Artwork provenance</a></sub>
 </p>
 
 ## The workspace
 
-Robot endpoint telemetry answers where the tool went. An operator still needs to know whether the object moved, whether the view is sufficient, and why the system is continuing or waiting. PushPilot puts those questions beside the scene instead of leaving them scattered across controller logs and model responses.
+Robot telemetry answers where the tool went. The operator also needs to know whether the car moved, whether the view is readable, and why the system is continuing or waiting. PushPilot keeps these questions beside the scene, with a shared route, clear source labels and a visible next decision.
 
-The demonstration mission pushes a wheel-less model car from **Pizza** to a named destination. Every controlled intersection requires a stop, a reviewed outcome and a fresh green signal before entry. One fixed spatial stage shows the proposed route, with rounded translucent mission and status panels floating over it. Map-derived route portions distinguish completed, current and remaining simulated actions, with junction stop, signal and review context. The current action, next check and primary decision remain in view; route history, image tools and detailed evidence use bounded dialogs, tabs and pages instead of a vertically scrolling workspace.
-
-**Camera** is the default view, with separate **Live** and **Recorded** sources. An explicitly configured live preview is preferred when available; recorded-image tools and MUSE evidence remain separate. Both preserve the source image's perspective and overlay geometry. Optional **Board focus** masks the surrounding desk when the selected source has a valid test lock; **Full frame** restores the complete image. **Spatial** shows the privately supplied city model with the same canonical route. The display mask adds no image detail or physical accuracy. [Live preview](docs/LIVE_CAMERA.md) does not automatically save images, call MUSE or grant motion authority.
-
-The [October 28 City A3 adapter](docs/CITY_A3.md) replaces the operating print with **Pizza, Villa, Hanok and Office Building**. Camera and the supplied Spatial model share one map-bound route, arrow, stop-line and progress contract. The model's authored drawing correspondence remains display-only; prior Little Town results below retain their original map scope.
+The original interaction remains the center of the product:
 
 | Observe | Plan | Approve | Act | Verify |
 |---|---|---|---|---|
-| Inspect a source-labelled scene. | Interpret a goal and display its route. | Approve the current plan. | Run one bounded simulated action. | Review the outcome before continuing. |
+| Inspect the scene and its source. | Interpret the goal and show the selected route. | Confirm the current mission. | Execute a bounded action unit. | Check the receipt and visual outcome before continuing. |
 
-The product direction extends this **natural-language spatial interface** beyond the tablet to a future AR-glasses companion: see the workspace, state an intention, and inspect a shared plan. The current tablet application combines optional native live preview, recorded-image analysis and test-only route overlays. Voice capture, qualified spatial AR and wearable integration are future work.
+**Camera** preserves the source image's natural perspective. Optional **Board focus** masks the surrounding desk; image, mask and AR route share the same zoom/pan transform. **Spatial** presents the private city model and the same selected drawing route. Its optional car animation is an **execution estimate**, not measured vehicle tracking.
 
-## What Meta adds
+The current interface uses Pretendard, a continuous scene, large rounded glass overlays, charcoal text and restrained orange controls. From/To, route sequence, signal state, visual review and mission history remain close to the scene. Full-page scrolling is disabled; current detailed lists scroll internally, an explicit design requirement to reconcile in the [design system](docs/DESIGN_SYSTEM.md).
 
-### Real input. Inspectable output.
+The AR-glasses companion remains the original future extension: see a workspace, express an intention and inspect a shared plan. Wearable integration and browser microphone capture remain pending; the finite-upload voice backend is implemented separately.
 
-Actual goal and single-image scene requests have been exercised through the application. The [Meta API record](docs/META_API_CHECK.md) provides their conditions and scope; action-bound comparisons are shown below.
+## One start. Three destinations.
 
-**Live-image route selection is now connected.** A deliberate planning request sends the unchanged native JPEG, projected node identities, directed graph and operator query to MUSE. The backend validates and compiles the returned node sequence into the same AR route contract. It does not replace a valid selected route with its own shortest path. In two actual prompt-v2 checks, a map-left request selected `PIZZA → W → SW → SCHOOL`; a map-right request selected the eastern loop through `C → N → NE → E → SE → BAKERY → S`. Both remained unapproved drawing previews, with no physical car present. See [live intelligence](docs/LIVE_INTELLIGENCE.md) for contracts and [provider evidence](docs/META_API_CHECK.md) for exact conditions.
+The current City A3 scenario pushes a **wheel-less model car**, starting in the fixed box **in front of Pizza**. It does not pick up or carry the car.
 
-| Input | Actual result | Consequence |
+| Destination | Reference | Intended course |
 |---|---|---|
-| `Push the car from Pizza to the Bookstore.` | Muse Spark interpreted **BOOKSTORE**. The supervisor derived a five-action temporary-map plan. | `PLAN_READY`, awaiting explicit approval. |
-| A recorded 1920 × 1080 photograph of the printed Little Town map | Four printed shops identified; **no separate physical car**; paper signal **UNKNOWN**. | Stored scene evidence, without advancing the mission. |
+| **Office Building** | B | Continue along the southern frontage road. |
+| **Villa** | C | Take the common northbound approach, then the west frontage. |
+| **Hanok** | D | Take the common northbound approach, then the east frontage. |
 
-The second case matters because printed car footprints and traffic-light decorations must not become evidence of a real car or an operator's paper signal. It is **one recorded example**, not a general image-accuracy result.
+The drawing graph supplies place names and AR geometry. The Robot executor uses a separately reviewed **private taught-BASE packet**. A camera overlay, nominal A3 scale or Spatial model does not define robot coordinates or prove an accepted map-to-BASE calibration.
 
-### Make the image review affect the next step
+The active site-trial workflow prioritizes delivery. C terminates at **C-step-26**, using a destination/zone review rather than parallel heading; the empty robot then follows its return recipe to common START. Vehicle straightening, learned drift correction and parallel parking remain deferred. Historical B/C/D arrivals are documented, while repeatability of every later derived recipe remains unqualified. [Delivery scope](docs/DELIVERY_SITE_TRIAL.md) · [C26 endpoint](docs/C26_DELIVERY_ENDPOINT.md) · [Measured history](docs/MEASURED_ROUTE_CATALOGUE.md)
 
-The action-review path sends an operator-selected **before/after recorded-image pair**, the current action and its expected outcome to Muse Spark. A validated result is bound to that exact mission, action, pending review and map. The supervisor then applies it to the simulated mission alongside the existing local gates.
+At the configured paper-signal approach, the robot completes its contact unit, releases and parks at the selected far-RIGHT observation pose. MUSE judges the two printed colors while one is manually covered: RED waits; unclear or transitioning views wait. After one accepted stopped GREEN admission, the robot recontacts the measured endpoint and proceeds **without a second color wait**. A new mission needs a new admission. [Single signal departure](docs/SINGLE_SIGNAL_DEPARTURE.md)
 
-| Review result | Supervisor behavior |
-|---|---|
-| **PASS** — the supplied evidence supports the expected outcome | Accept the review; continuation still requires the applicable approval, action and signal gates. |
-| **FAIL** — the supplied evidence contradicts the expected outcome | Enter a visible fault. |
-| **REOBSERVE / UNKNOWN** — the result cannot be established | Hold for another observation; do not replay the action. |
+## What Meta MUSE adds
 
-**Three actual MUSE calls changed the simulated next state on three original synthetic image pairs:**
-
-| Same expected approach, different synthetic evidence | Actual MUSE result | Actual supervisor state |
-|---|---|---|
-| Depicted car moved into the target | PASS | READY |
-| Depicted car stayed at the start | FAIL | FAULT |
-| Foreground occluder hid the depicted car | REOBSERVE | REOBSERVE |
-
-These are labelled schematic test inputs, **not real-car photographs or physical motion**. One call per case demonstrates the provider-to-state connection; it is not a held-out accuracy benchmark. Read the [actual API results](docs/META_API_CHECK.md) and [reproduction workflow](docs/ACTION_REVIEWS.md).
+**Meta MUSE is the intelligence layer: understand the intent, reason over the route and judge the visual outcome.**
 
 <p align="center">
-  <a href="docs/assets/recorded-action-review.jpg"><img src="docs/assets/recorded-action-review.jpg" width="1080" alt="Actual MUSE action-review panel: an original synthetic BEFORE car at PIZZA, AFTER car in the target, an actual PASS response, recorded source labels and expandable provenance."></a><br>
-  <sub>Provider evidence captured before the fixed-stage layout revision · actual Meta response · original synthetic test images · simulation only.</sub>
+  <a href="docs/assets/muse-intelligence-current.png"><img src="docs/assets/muse-intelligence-current.png" width="1180" alt="Meta MUSE at the center of PushPilot: operator goals, original images and the selected graph become structured route, signal and outcome judgments for supervised execution."></a>
 </p>
 
-### Model judgment + deterministic authority
-
-**Muse Spark** interprets intent and compares the supplied visual evidence. **The supervisor** enforces current-plan approval, request/review identity, map binding, stop policy and junction-scoped signal admission. A recorded-action PASS cannot supply the separate simulated GREEN or bypass a mandatory stop. A failed provider request never silently becomes a demo PASS.
-
-The implemented [stopped-live signal service](docs/MUSE_SIGNAL_GATE.md) makes MUSE the color judge after a matching accepted simulated stop. It selects a new image for the configured approach-specific target, waits on RED or uncertainty, and admits a simulated crossing only after stop, plan/junction/approach, frame/freshness and response bindings pass. No second local color classifier is required. A bounded wait requests new frames rather than reusing a previous signal image. Actual robot stopping and physical signal recognition remain unqualified; the current default map has no reviewed signal targets and rejects this operation until configured.
-
-SQLite events and review records connect the input, response and resulting transition for replay. Recorded imagery, actual provider responses and simulated execution retain separate source labels.
-
-The new [autonomous physical executor](docs/AUTONOMOUS_EXECUTOR.md) connects a separate Robot mode to measured primitives, post-withdrawal MUSE review, two-face paper-signal waiting/recontact, bounded correction, parking verification and empty-tool return. Its software path is implemented and tested offline. Complete physical release remains blocked by explicit car-response, signal-placement and return-path evidence gaps; simulation is still the default.
-
-## Evidence and limits
-
-| Area | Available today | Evidence boundary |
+| MUSE role | Grounded input | What becomes visible |
 |---|---|---|
-| Goal understanding | Actual strict-schema Muse Spark interpretation | Real text requests reached `PLAN_READY`; approval remains separate. |
-| Scene inspection | Actual Muse Spark analysis of a private recorded frame | The single shop/car/signal case above; no action authority. |
-| Action-bound image review | Recorded before/after pair → MUSE result → simulated supervisor decision | Three actual synthetic-input cases above; software checks in [verification](docs/VERIFICATION.md). Real-car task accuracy is unverified. |
-| Mission workflow | Three temporary graph routes, mandatory stops, red/unknown waiting, scoped green admission and replay | Software simulation; action receipts and signals are simulated. Explicit demo verdicts remain available and labelled. |
-| Image presentation and route overlay | Private upload, four-marker test lock, fixed-reference projection, Camera board-focus mask, full-frame display and execution-aware route portions | Progress comes from simulation; stop lines are illustrative. The mask preserves camera perspective and geometry; raw frames stay unchanged. No car tracking, robot/BASE registration or metric accuracy claim. |
-| Live camera preview | Opt-in native MJPEG helper, loopback transport, bounded RAM frames, source/age labels and explicit display-lock path | Preview only; current physical registration results belong in [verification](docs/VERIFICATION.md). No automatic MUSE submission, mission evidence, signal gate or robot observation. |
-| Live MUSE planning | Native JPEG + grounded graph → selected directed nodes → validated AR geometry | Actual left/right route-preview requests accepted; no measured car pose or physical action. |
-| Live action and signal services | Server-bound native BEFORE/AFTER review; new post-stop signal images and bounded RED/UNKNOWN waiting | Offline provider tests pass. Stop/action receipts remain simulated; real-car outcomes and paper-signal accuracy are unverified. |
-| Voice backend | Bounded PCM WAV → Meta adapter → editable, revision-bound transcript candidate | Implemented and tested offline. Actual ASR access and browser microphone capture are not verified. |
-| Robot execution | Separate commissioning service plus an optional autonomous measured-primitive coordinator and tablet controls | Historical B/C/D trials are preserved. Complete autonomous repeatability, correction response, parking alignment and physical signal operation are not yet qualified. See [executor evidence and limits](docs/AUTONOMOUS_EXECUTOR.md). |
-| GX10 and glasses | GX10 serves the compiled frontend and simulation backend beside the independent camera helper | A separate [robot commissioning service](docs/ROBOT_CONTROL.md) verified the persistent connection and one local tool retreat; tablet missions remain simulated. Wearable connection, boot without login and tablet HTTPS remain unverified. |
+| **Understand and plan** | Operator query, original scene and selected directed graph | Interpreted destination and the chosen route in Camera/Spatial. |
+| **Read the signal** | Fresh stopped observations of the selected paper signal | RED/UNKNOWN waiting or one bound GREEN admission. |
+| **Review the outcome** | Expected action context and source-bound original images | Visible progress, a clear problem, a new observation or destination arrival judgment. |
 
-The temporary print is replaceable through a reviewed JSON definition, map version, new plan and fresh camera display registration. Places, aliases, directed roads, marker facts and approach-specific signal regions belong to map data. Validate a candidate with `python tools/validate_map.py --map-path /private/maps/replacement.json` or `POST /api/v1/maps/validate`, then select it at startup with `--map-path`. See [map replacement](docs/MAP_REPLACEMENT.md) and [route display](docs/ROUTE_DISPLAY.md). Drawing geometry does not qualify physical stop lines, vehicle/tool clearance or contact turning. Raw map artwork, camera frames, credentials and operational archives are excluded from public source and release bundles.
+The supervisor turns an accepted, current judgment into an execution decision. MUSE does not need to estimate the gripper tip or emit TCP commands; the coordinate executor and Native receipts handle robot motion.
 
-See [Verification](docs/VERIFICATION.md) for completed checks, [Meta API evidence](docs/META_API_CHECK.md) for real requests, and the [Roadmap](docs/ROADMAP.md) for the next acceptance gates. Reported software tests establish the stated behavior; they do not establish physical task success or a general model-accuracy percentage.
+A deliberate planning request sends an original native image, the selected map's directed graph and the operator query to MUSE. Local checks validate the returned node path and its departure, turn, via and avoid constraints. Camera and Spatial consume the same resulting drawing route.
+
+During a physical action unit, approach, contact and withdrawal follow reviewed coordinates. Native receipts verify robot completion. The tool clears the view before original images and expected context reach MUSE for a vehicle outcome review. Expected gripper occlusion during approach is not a demand to visually locate the TCP.
+
+| Evidence | What it contributes |
+|---|---|
+| **Native/controller receipt** | The bounded robot action reached its verified endpoint. |
+| **Original camera images** | Visual evidence of the car and the selected paper signal. |
+| **MUSE judgment** | Structured progress, problem, signal or arrival interpretation within the current review policy. |
+| **Deterministic supervision** | Session/profile/source identity, freshness, approval, signal admission, holds and no-replay rules. |
+
+The C review policy includes same-source details for C4/C6, a clear pre-recontact reference through C14, qualitative C17 progress, an explicitly configured C19 Native-only omission, and destination-only C26 arrival. A nullable problem field remains unknown in evidence; it is not rewritten to false. [Current C review matrix](docs/C_INTERMEDIATE_PROGRESS_REVIEW.md) · [Explicit continuation](docs/EXPLICIT_REVIEW_CONTINUATION.md)
+
+Recorded-pair and simulation review remain useful independent paths. Earlier Little Town, synthetic-image and provider checks retain their original dates and scope; they are not substituted for current physical evidence. [Provider records](docs/META_API_CHECK.md) · [Evidence index](docs/evidence/README.md)
+
+## Two execution scopes. One understandable loop.
+
+<p align="center">
+  <a href="docs/assets/interaction-current.png"><img src="docs/assets/interaction-current.png" width="1180" alt="PushPilot interaction illustration: Observe, Plan, Approve, Act and Verify, with a return to observation when the result needs review."></a>
+</p>
+
+| Scope | Available behavior | Boundary |
+|---|---|---|
+| **Default simulation** | Graph planning, simulated action/stop receipts, source-labelled review and replay; runs without equipment or model credentials. | Does not move hardware. Little Town remains the source-default compatibility map; City is selected explicitly. |
+| **Configured Robot trial** | Tablet Start/Stop, taught-coordinate B/C/D units, Native receipts, post-withdrawal MUSE review, configured signal wait/recontact and empty return. | Requires private runtime, current site packet, configuration and fresh readiness. Historical demonstrations are not general production qualification. |
+| **Presentation** | Camera/Spatial route, actual physical sequence/review/history, optional receipt-driven Spatial estimate. | An estimate and drawing route are not measured car position, slip or yaw. |
+| **Voice** | Bounded PCM WAV upload, backend transcription adapter and revision-bound candidate text. | Browser capture/confirmation and actual ASR access/quality remain unverified. |
+
+Current limitations stay visible: intermittent Native reads can still close an idle Rodi session; recovery requires the appropriate explicit operation and sometimes local PLAY. Unknown motion is never automatically resent. The requested physical signal-wait duration must be verified from the selected deployment; it is not the simulation watch or wrist timeout. [Known limitations](docs/KNOWN_LIMITATIONS.md) · [Robot operation and recovery](docs/ROBOT_OPERATIONS.md)
 
 ## Quick start
 
-Use **Python 3.12+**, **Node 24 with npm** for the local frontend build, and Git for release tests. Model credentials and robot connections are unnecessary for simulation and offline tests.
+Use **Python 3.12+**, **Node 24 with npm** for frontend builds, and Git. The default local workflow requires no robot or model credentials.
 
 ```bash
 python -m venv .venv
@@ -121,35 +113,32 @@ cd ..
 python tools/serve.py --map-path backend/data/seoul-city-a3.json
 ```
 
-Open `http://127.0.0.1:8080`. Set a Villa, Hanok or Office Building goal, inspect **Spatial**, and review the simulation plan. The supplied city artwork/model is private and installed separately. Open **Simulation inputs** for clearly labelled demo signals and verdicts. **Plan**, **Replay**, image tools and recorded action review open within the fixed viewport. Optional recorded-image upload and actual MUSE requests use the [image-review workflow](docs/ACTION_REVIEWS.md). Save `META_API_KEY` only in the ignored backend `.env`; no provider request runs at startup.
+Open `http://127.0.0.1:8080` and explicitly select **Simulation** in Execution mode for an equipment-free run. The UI initially selects Robot and does not automatically fall back. Choose a Villa, Hanok or Office Building goal and inspect the labelled simulation. The private city model and camera artwork are installed separately; a source checkout does not contain those assets. [Private Spatial asset setup](docs/SPATIAL_3D.md) explains the manifest and the older model-package distinction.
 
-Live preview is off by default. With an already-running authorized loopback camera service, opt in using `python tools/serve.py --live-camera-url http://127.0.0.1:8895`. This connects to that service; it does not start a camera process. See [Live camera](docs/LIVE_CAMERA.md) for the standalone helper, SSH forward, time semantics and display-only boundary.
-
-To select a reviewed replacement map at startup, use `python tools/serve.py --map-path /private/maps/replacement.json`. This changes drawing/simulation input; it does not configure robot coordinates or reuse the previous camera lock. The bundled Little Town definition remains the default.
+Save `META_API_KEY` only in the ignored repository-root `.env` when deliberately enabling actual model requests. Live preview uses an already-running, explicitly configured loopback helper; it does not start a camera process. `PUSHPILOT_PHYSICAL_CONFIG` selects the separate private Robot configuration and readiness path. Follow [development](docs/DEVELOPMENT.md), [deployment](deploy/README.md) and the [operation runbook](docs/ROBOT_OPERATIONS.md) before using equipment; source publication never activates a mission.
 
 ```bash
 python tools/dev.py check
 python tools/dev.py test
 ```
 
-These commands perform offline verification. For Windows/Linux setup, one-worker serving and build details, read [Development](docs/DEVELOPMENT.md). GX10 serves prebuilt frontend assets with Python; it does not need Node at runtime.
+GX10 serves the compiled frontend with Python; it does not need Node at runtime. Releases keep source separate from private configuration, assets and evidence. A rollback must not restore old pending commands.
 
 ## Explore the project
 
 | Read for… | Guide |
 |---|---|
-| Product behavior and intersection rules | [Mission](docs/MISSION.md) |
-| Model input, uncertainty and recorded-action review | [Meta intelligence](docs/META_INTELLIGENCE.md) · [Action reviews](docs/ACTION_REVIEWS.md) |
-| Authority, components and data contracts | [Architecture](docs/ARCHITECTURE.md) · [Services](docs/SERVICE_COMPOSITION.md) · [Contracts](contracts/README.md) |
-| Operator experience and future voice | [Design system](docs/DESIGN_SYSTEM.md) · [Frontend](frontend/README.md) · [Voice input](docs/VOICE_INPUT.md) |
-| Route progress, map replacement and private inputs | [Route display](docs/ROUTE_DISPLAY.md) · [Temporary map](docs/TEMPORARY_MAP.md) · [Test inputs](docs/TEST_INPUTS.md) |
-| Native live preview and fixed display registration | [Live camera](docs/LIVE_CAMERA.md) |
-| Reproducible checks and isolated delivery | [Tests](tests/README.md) · [Release tools](tools/README.md) · [GX10 deployment](deploy/README.md) |
-| New work, inherited foundations and rights | [Contributions](CONTRIBUTIONS.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) |
+| Current capabilities, limits and map/source scope | [Current status](docs/CURRENT_STATUS.md) · [Roadmap](docs/ROADMAP.md) |
+| The original mission and decision loop | [Mission](docs/MISSION.md) · [Architecture](docs/ARCHITECTURE.md) |
+| Services, API and provider boundaries | [Services](docs/SERVICE_COMPOSITION.md) · [Contracts](contracts/README.md) · [Prompts](prompts/README.md) |
+| Delivery and signal behavior | [Site trial](docs/DELIVERY_SITE_TRIAL.md) · [Single signal departure](docs/SINGLE_SIGNAL_DEPARTURE.md) · [C26](docs/C26_DELIVERY_ENDPOINT.md) |
+| Start, stop, reset and recovery | [Robot operations](docs/ROBOT_OPERATIONS.md) · [START reference](docs/SESSION_START_REFERENCE.md) · [C11 boundary](docs/C11_BOUNDARY_RECOVERY.md) |
+| Current presentation and map replacement | [Design system](docs/DESIGN_SYSTEM.md) · [Designer display](docs/DESIGNER_LIVE_DISPLAY.md) · [City A3](docs/CITY_A3.md) · [Route display](docs/ROUTE_DISPLAY.md) |
+| Camera and Spatial | [Live camera](docs/LIVE_CAMERA.md) · [Camera recovery](docs/CAMERA_PREVIEW_RECOVERY.md) · [Spatial model](docs/SPATIAL_3D.md) |
+| Verification and historical provenance | [Verification](docs/VERIFICATION.md) · [Evidence index](docs/evidence/README.md) · [Contributions](CONTRIBUTIONS.md) |
+| Build, release and contribution | [Development](docs/DEVELOPMENT.md) · [GX10 deployment](deploy/README.md) · [Contributing](CONTRIBUTING.md) |
 
-The self-contained repository separates `frontend/`, `backend/`, `contracts/`, `prompts/`, `tests/`, `tools/`, `deploy/` and `docs/`. Start at the [documentation hub](docs/README.md) for component ownership and developer reading paths.
-
-PushPilot builds on earlier tabletop experiments, existing robot transport and inherited drawing facts. This repository adds its own workspace, simulation supervisor, Meta adapters and evidence workflow; earlier physical POC results are historical context. A repository license has not yet been selected.
+PushPilot builds on earlier tabletop experiments, existing robot transport and inherited drawing facts. This repository adds the workspace, supervision, provider/evidence integration and deployment tools; it does not relabel inherited controller code as newly authored. Private artwork, raw camera frames, coordinates, credentials and operating archives stay outside public source. [Third-party and inherited material](THIRD_PARTY_NOTICES.md)
 
 ---
 

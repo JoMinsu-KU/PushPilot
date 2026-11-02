@@ -2,118 +2,85 @@
 
 # The mission
 
-**A small car. A visible plan. A decision at every intersection.**
+**A small car. A visible plan. A decision at the intersection.**
 
-[Documentation](README.md) · [Architecture](ARCHITECTURE.md) · [Voice input](VOICE_INPUT.md) · [Meta intelligence](META_INTELLIGENCE.md) · [Roadmap](ROADMAP.md)
+[Documentation](README.md) · [Architecture](ARCHITECTURE.md) · [Meta intelligence](META_INTELLIGENCE.md) · [Current status](CURRENT_STATUS.md)
 
 </div>
 
 ---
 
-The intended demonstration begins at **PIZZA**. The operator states or types a destination, confirms the chosen text, reviews the understood goal and explicitly approves the mission. A robot pushes a wheel-less car across the tabletop, stops before each configured intersection, waits for a green paper signal and continues to the destination.
+The demonstration begins at **PIZZA**, in the fixed departure box in front of the shop. A robot **pushes a wheel-less car along the surface**; it does not pick up or carry it. The operator chooses a destination, reviews the interpreted intent and explicitly starts the applicable mission. During a configured Robot mission the executor uses taught coordinates, withdraws for MUSE review and handles its admitted signal wait without conversational-agent decisions.
 
-**This is the scenario specification, not a completed physical demonstration.** The current temporary-map adapter provides drawing-grounded PIZZA/BAKERY/BOOKSTORE/SCHOOL routes and abstract simulation. A recorded-image overlay is test-only. Production installation, robot coordinates, actual pushing, and turning remain unqualified.
+As of **November 2, 2026**, the current-site physical branch is implemented and dated B/C/D arrivals are documented. It is an opt-in **site trial**, not a claim of repeatable unattended success. Default startup still provides equipment-free simulation. See [current status](CURRENT_STATUS.md), [measured routes](MEASURED_ROUTE_CATALOGUE.md) and [known limitations](KNOWN_LIMITATIONS.md).
 
-The October 28 final-print design uses one proposed active paper signal for the central junction's designated PIZZA approach, with a fixed PIZZA start, initial map-east departure and mandatory passage through that controlled stop checkpoint. Junction, incoming approach and signal must be identified together; the final approach nodes and stop geometry remain pending. Proposed display names and the exact boundary are recorded in [the single-signal concept](MUSE_SIGNAL_GATE.md#single-signal-final-print-concept-october-28). The active temporary map is unchanged.
+## The three destinations
+
+| Taught route | Destination | Current intent |
+|---|---|---|
+| **B** | **Office Building** | Direct road in front of Pizza and Office |
+| **C** | **Villa** | Shared first turn/northbound controlled approach, then the Villa frontage |
+| **D** | **Hanok** | Shared first turn/northbound controlled approach, then the Hanok frontage |
+
+The City drawing is `seoul-city-a3`, version `2026-10-28.4`. Its route geometry is a display/intent interface. Private, hash-bound BASE recipes supply physical motion. Drawing distances, AR progress and the Spatial execution estimate are not measured car travel or a board-to-BASE calibration.
 
 ## Operator journey
 
-| Phase | What the operator sees | What the system must establish |
+| Phase | Operator sees | System establishes |
 |---|---|---|
-| **Observe** | Scene source and available evidence | Which inputs are simulated, recorded or live |
-| **Plan** | Understood goal, expected outcome and pending checks | A supported symbolic interpretation; no invented map grounding |
-| **Approve** | A clear review action | Approval of the current mission version |
-| **Act** | The current bounded action and progress | The selected adapter's action result |
-| **Verify** | Expected/observed comparison and MUSE decision | Fresh imagery, accepted local checks and model review |
+| **Observe** | Source-labelled Camera or Spatial and readiness | Current evidence, installed source and applicable branch |
+| **Plan** | From/To, route and interpreted request | Supported map-scoped intent; physical recipe availability is checked separately |
+| **Approve** | Explicit approval/start for the selected mode | Current session, plan/revision, map and applicable execution binding |
+| **Act** | Actual physical sequence/receipt progress, or explicitly simulated steps | One admitted action with known command source |
+| **Verify** | MUSE review, signal wait, delivery or hold cause | Native completion plus the applicable visible outcome and local checks |
 
-Each bounded action returns to verification. The current simulator accepts either an explicitly demo-sourced verdict or an action-bound MUSE review of operator-selected recorded images. Rejection and uncertainty change the next state. Recorded pairs are not fresh physical post-action evidence; see [Action reviews](ACTION_REVIEWS.md).
+Typed goals work today. The finite voice-upload backend is implemented; browser recording/editing and actual ASR/device acceptance remain pending. Voice candidate acceptance and plan approval are separate decisions. English UI copy is preserved; original-language user input remains data. [Voice input](VOICE_INPUT.md) describes the remaining interaction.
 
-## Goal entry and approval
+## Physical delivery sequence
 
-Voice input is part of the planned initial demo. The operator makes a bounded push-to-talk recording, the backend sends it to Meta Muse Voice Transcribe, and the workspace presents an editable transcript. The original provider text remains inspectable. Choosing `Use goal` submits the selected text to MUSE goal interpretation; it does not authorize execution.
+1. Prepare the fixed common START and place the car in the departure box. A robot START observation is not evidence that the human reset the car.
+2. Review the current live MUSE plan in **PLAN_READY**, then choose **Start robot mission** to approve/start Robot execution. This binds the selected B/C/D destination, plan, installed map, receiver session and private taught packet; the simulation `/approve` operation is a separate flow.
+3. Execute coordinate-based contact motion under the original speed, acceleration, height, posture and stage limits.
+4. Release normally, move to the reviewed observation pose and obtain the applicable MUSE review. A failed or occluded review does not replay the contact.
+5. At the controlled approach, stop and withdraw far RIGHT so the car and signal can be seen. Wait for an accepted stopped GREEN.
+6. Recontact through the measured path and continue under the one-time departure admission. Do not wait for a second GREEN after recontact.
+7. Verify the destination outcome. The active release is **delivery_only**; C ends at **C-step-26** with destination/zone review, omitting C27/C28 and numeric alignment correction.
+8. Return the empty tool to the original common START using the configured return path and receipts. The car stays at the destination; another run requires its physical reset.
 
-Typed text enters the same interpretation and plan-review path. The English interface may display actual Korean or English transcript data. Permission denial, empty transcription, failed requests or cancellation leave typed entry available and cannot create or approve a mission. A late result from an older recording cannot replace newer input.
+Parallel parking, a numeric final heading and general slip-correction qualification are deferred. An unconfirmed C26 arrival reobserves/holds with `GOAL_ARRIVAL_UNCONFIRMED`; it does not enter numeric alignment correction. A successful tool endpoint alone cannot establish car delivery.
 
-New typed or spoken goals are accepted only during non-executing preparation. While a mission is active, including signal waiting, observation review and crossing, reject recording, new goal submission and goal edits. A replacement goal follows explicit completion/termination and state reconciliation; capture cancellation does not stop the mission.
+## One stopped GREEN, one departure
 
-Only explicit tablet approval of the current interpreted mission version authorizes the mission to proceed through its deterministic gates. See [voice input](VOICE_INPUT.md) for the full proposed service and state contract. Microphone capture and transcription are planned, not implemented.
-
-## The nominal sequence
-
-```text
-Voice recording or typed request
-  → review/edit text and choose Use goal
-  → MUSE interpretation and plan review
-  → explicit approval of the PIZZA mission
-  → bounded push
-  → verify outcome
-  → approach an intersection
-  → stop before its stop line
-  → verify stopping and send a new image to MUSE for signal judgment
-      MUSE RED / UNKNOWN → remain stopped and observe again
-      valid current MUSE GREEN + accepted binding checks → admit crossing
-  → execute and review the qualified crossing actions
-  → continue toward the destination
-  → verify the destination outcome
-```
-
-The temporary adapter starts east-facing at PIZZA. Its default shortest drawing routes are PIZZA → C → S → BAKERY (232 mm, eight abstract steps), PIZZA → C → BOOKSTORE (148 mm, five steps), and PIZZA → C → S → SCHOOL (232 mm, eight steps). Each traversed junction receives PUSH approach, mandatory STOP, accepted action review, and separately scoped fresh simulated GREEN before CROSS. These drawing lengths and centerlines do not qualify the car/tool swept path or physical stop lines. The final production installation may change all of these details; see [Temporary map](TEMPORARY_MAP.md).
-
-## Intersection policy
-
-| Situation at the approach | Required behavior |
+| Observation at the configured stopped approach | Behavior |
 |---|---|
-| Green before arrival | Stop first; then ask MUSE to judge a new image |
-| MUSE reports RED after verified stopping | Wait without beginning the crossing |
-| Card absent, obscured, ambiguous or stale | Treat entry as inhibited |
-| Signal changes while waiting | Capture a new image and obtain another MUSE judgment |
-| MUSE reports current GREEN and stop/request checks pass | Continue automatically through the admitted crossing |
-| Application restarts while waiting or crossing | Return to review; do not restore permission from old observations |
+| GREEN before reaching the checkpoint | Stop first; no earlier color grants departure |
+| Visible RED with GREEN covered | Remain stopped and observe again |
+| Both colors substantially exposed, neither identifiable, missing target or mask transition | WAIT/UNKNOWN |
+| RED positively covered and GREEN clearly visible in the required distinct source samples | May accept GREEN after stop/session/frame/context checks |
+| GREEN accepted, measured recontact completed | Continue without a second color wait |
+| Color changes after this admission | Does not revoke the admitted departure; stop/session/Native guards still apply |
+| New mission or invalidated recovery context | Old GREEN cannot supply new authority |
 
-The simulator automatically admits one crossing after an accepted mandatory-stop review and fresh simulated GREEN bound to that same junction, without another approval. It clears stop/signal authority before the next approach, which requires its own stop and review. The corresponding physical red-to-green continuation still requires a qualified robot adapter; no pendant or robot operation is supplied by this application.
+The black circular paddle and cable tie are expected scene content. A narrow exposed color rim or small hand tremor is permitted when the intended cover is clear. Broad exposure or a substantial shift remains ambiguous. MUSE judges visual color; local checks validate applicability, source and stopping. No second local color classifier is required. This is stop-line admission, not immediate interruption of a moving robot when paper changes color. [Single signal departure](SINGLE_SIGNAL_DEPARTURE.md) defines the active policy.
 
-For the intended live scenario, **MUSE judges RED/GREEN from the image while the robot is already stopped**. A separate local color classifier is not mandatory. Local checks validate the stop receipt, current junction/approach and plan, frame provenance/freshness and exact model-request binding. The dedicated live signal-review integration is not yet implemented; the current simulation signal controls and recorded-review APIs keep their existing meaning. See [MUSE signal gate](MUSE_SIGNAL_GATE.md).
+Physical signal budgets, provider deadlines, simulated signal watch and controller timeouts differ. The public source does not establish the requested physical 120-second wait as a verified installation value. Idle Native reads can still terminate the persistent connection; [robot operations](ROBOT_OPERATIONS.md) records this unresolved limit.
 
-The scenario concerns **stop-line admission**. Changing a card during an admitted crossing is not specified as an immediate interruption request. Any later in-flight stop requirement would need a separate controller-supported design and qualification.
+## What a review means
 
-## Pushing and turning
+The C intermediate review asks whether visible translation/rotation and a clear physical problem support continuation; it does not demand a numeric angle, front/rear identity or exact printed-road heading. C4/C6 use identical-coordinate detail crops; C14 may use the same-mission clear C13 reference across recontact plus C14; C17 is qualitative. C19's explicit configured review omission is logged as an omission and never rewritten as PASS. `clear_problem: null` stays unknown; its narrow intermediate acceptance rule requires visible progress and all other guards. Start, signal and final arrival remain independent. [C review policy](C_INTERMEDIATE_PROGRESS_REVIEW.md) preserves original false negatives, occlusions and rejected variants.
 
-The car remains on the surface. It is not picked up or carried. Straight pushes and turns are distinct physical primitives that must be measured with the eventual vehicle, surface and tool.
+Native receipts answer whether the robot command completed. MUSE answers what the supplied scene supports. Neither substitutes for the other. A held mission retains original error evidence; explicit review continuation or C11 preparation has strict no-replay conditions. Reset retires old state and does not itself return the robot. [Robot operations](ROBOT_OPERATIONS.md) is the preparation/recovery guide.
 
-A turn may require changing the contact point and applying an off-center push. Rotating the robot wrist alone does not establish that the car rotated correctly. After each bounded push or turn, vehicle evidence must be checked separately from the robot's endpoint result.
+## Simulation and historical examples
 
-Tool clearance, observation poses, friction, slip, contact heights and usable turning space remain physical qualification work. The abstract simulator can test mission sequencing but cannot validate these properties.
+The default Little Town adapter supports PIZZA/BAKERY/BOOKSTORE/SCHOOL graph simulation. Those older routes, drawing lengths and recorded screenshots are retained in [Temporary map](TEMPORARY_MAP.md) and the dated [verification record](VERIFICATION.md); they are not the current physical destination list.
 
-## What completes an action?
+The simulator creates PUSH/STOP/CROSS/VERIFY receipts and can use labelled demo verdicts, selected recorded-pair review or deliberate live-frame services. Each configured simulated junction retains its own stop/review/signal gate. That generic simulation behavior is separate from the current physical single-admission recipe. An actual image or provider PASS cannot transform a simulated receipt into robot completion.
 
-The simulator advances through its simulated action receipt and a review accepted by the supervisor. That review is either an operator-injected demo verdict or a validated MUSE result bound to a selected recorded before/after pair and the exact pending action. PASS can satisfy the review gate, FAIL faults the simulation, and REOBSERVE/UNKNOWN requires a new observation binding without replaying the action. A model PASS cannot bypass RED/UNKNOWN/stale signal inhibition. Separate recorded-scene inspection cannot complete a step or supply its GREEN.
+## Presentation
 
-The future physical supervisor still needs three kinds of independently supported evidence:
-
-1. **Action evidence:** the action adapter reports the result for the correct request/session.
-2. **Local evidence:** stop/action receipts, capture provenance, freshness and current plan/junction/request bindings support accepting the applicable MUSE judgment; this does not require independent local color classification.
-3. **Model evidence:** MUSE reviews fresh imagery and supports the expected-versus-observed outcome.
-
-A successful robot movement cannot substitute for evidence that the car moved as intended. A confident model answer cannot substitute for a required local check. If the scene is hidden or the evidence conflicts, the next step is waiting, reobservation or a visible fault.
-
-## What completes the mission?
-
-Mission completion requires the approved destination outcome to be verified from the corresponding final observations and checks. The final geometry will define the destination region and acceptable pose. Until then, software tests must use clearly named symbolic completion conditions.
-
-The demonstration should leave an inspectable sequence of the goal, actions, observations, model reviews, waits and final decision. A completed simulation must remain labelled as simulation.
-
-## Interface direction
-
-The primary surface is an **English tablet workspace** following the industrial light-dashboard [design system](DESIGN_SYSTEM.md): an off-white canvas, white panels, charcoal text, a narrow icon rail and restrained orange accents. The scene is the dominant viewport, with mission decisions beside it and compact summary cards below. Its key content is:
-
-| View | Content |
-|---|---|
-| **Workspace** | Typed goal, scene/map, current action, recorded-image review, expected/observed comparison, MUSE decision and next check; voice/transcript entry remains planned |
-| **Plan** | Current symbolic interpretation, approval state and action sequence |
-| **Replay** | Source-aware timeline with images, actual review responses and transition causes |
-
-The temporary recorded-image view can project the drawing route through an explicitly locked four-marker homography. Occlusion does not trigger refitting; changed or unverifiable views withhold the overlay. This test-only projection is separate from production metric AR and robot registration. The **glasses companion** remains a clearly labelled future concept. Hardware connection, microphone capture, transcription and wearable display behavior must only be shown as live capabilities when they are actually implemented and supported by evidence. Streaming transcription and spoken feedback are later extensions.
+The English tablet workspace retains the industrial light/glass design, Pretendard, restrained orange accents and scene-first layout. Camera remains natural perspective; no low-quality top-view reconstruction is required. Route sequence, lower summaries, signal/MUSE activity and replay use physical-service data in Robot mode; missing data stays pending. Spatial shows the same planned intent and a labelled receipt-driven execution estimate. The glasses companion remains a concept.
 
 ---
 
-[← Architecture](ARCHITECTURE.md) · [Next: Meta intelligence →](META_INTELLIGENCE.md)
+[Meta intelligence →](META_INTELLIGENCE.md) · [Robot operations](ROBOT_OPERATIONS.md) · [Evidence](evidence/README.md)

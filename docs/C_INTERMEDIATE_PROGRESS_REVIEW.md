@@ -4,9 +4,24 @@ Status: activated by explicit operator request on 2026-10-30 in GX10 release `20
 
 ## Scope
 
-The optional `observations.route_review_modes.C = "intermediate_progress"` setting selects the new review for the 19 loaded, non-final C steps: 1–6, 9–15, 17, 19–21, and 23–24. Six unloaded steps retain their existing receipt checks. C26 keeps the separate destination-delivery review. Fixed-start placement and stopped signal admission retain their separate contracts. B and D geometry and intermediate policies are unchanged.
+At the initial October 30 activation, optional `observations.route_review_modes.C = "intermediate_progress"` selected 19 loaded, non-final C steps: 1–6, 9–15, 17, 19–21, and 23–24. This is a dated count before the later optional C19 omission, not a universal current-call count. Six unloaded steps retained receipt checks; C26 used separate destination delivery. Fixed-start and stopped signal checks stayed separate. B/D geometry and policies were unchanged. Exact provider-call totals depend on configured omission, reobservations and signal samples, not route-step count alone.
 
 The private candidate was loaded through the actual site-trial driver without opening hardware ports. All measured primitives and coordinate data remained equal to the original configuration. The setting changes observation policy, not taught motion or physical repeatability qualification.
+
+## Current C review matrix
+
+**November 2 source baseline `7aa7753`; private options must be selected explicitly.** These settings change review policy, not taught coordinates or the original failed evidence.
+
+| Step / version | Input and decision | Scope limit |
+| --- | --- | --- |
+| C4/C6, v2 intermediate progress | Full original BEFORE/AFTER plus identical-coordinate native detail crops; visible translation/rotation and clear problems. | Detail selection is scoped to these steps. Archived false negatives/timeouts remain; no accuracy guarantee. |
+| C13 signal | Two distinct fresh stopped frames plus same-source signal details; accepted one-time GREEN admission. | Recontact follows without another color wait under `single_departure`. |
+| C14, `c14_clear_signal_reference` | Same-mission clear C13 GREEN frame compared through exactly admitted recontact + C14. | Wider interval is labelled; it cannot isolate C14-only movement. Missing volatile lineage, restart or changed source blocks selection. |
+| C17, v2 intermediate progress | Qualitative visible translation/rotation, without numeric angle, compass heading or guessed nose direction. | Explicit problems and failed visibility/Native/context checks still hold. |
+| C19, optional `c19_native_endpoint_only` | Verified robot endpoint only; no MUSE car review when explicitly configured. Exact ended C19 review holds have a separate explicit continuation endpoint. | Omission is not PASS or proof of car movement. It applies to no other step, signal or terminal arrival. |
+| C26, destination delivery / prompt v3 | Fresh original image of visible car in the selected Villa frontage road zone; diagonal orientation alone is acceptable. | Native endpoint alone is insufficient. Unconfirmed arrival reobserves/holds; no unavailable numeric straightening is requested. |
+
+See [C19 continuation](EXPLICIT_REVIEW_CONTINUATION.md#explicit-c19-review-omission), [C26 endpoint](C26_DELIVERY_ENDPOINT.md) and [single signal departure](SINGLE_SIGNAL_DEPARTURE.md). `clear_problem: null` is preserved as unknown; eligible visible intermediate progress may advance without rewriting it to false. This does not relax start, signal, arrival or unknown-motion requirements.
 
 ## Intermediate judgment
 

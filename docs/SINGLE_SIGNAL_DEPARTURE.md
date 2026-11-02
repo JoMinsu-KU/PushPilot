@@ -1,5 +1,7 @@
 # One signal wait per departure
 
+**Current policy: `single_departure`, documentation reviewed November 2, 2026.** This page describes signal admission, not a guaranteed wait duration or receiver uptime. See [timeout distinctions](ROBOT_OPERATIONS.md#distinguish-the-clocks). Physical waiting was requested as 120 seconds; the exact deployed private timer remains to be verified separately from the 120-second wrist budget.
+
 The operator's October 30 paper-signal scenario checks the signal once at the
 selected right-side stop. One accepted MUSE result covering two distinct fresh
 GREEN-only frames admits coordinate recontact and the immediately following
@@ -49,7 +51,9 @@ step 9 candidate leaves the existing workspace; that candidate was rejected and
 the original approach retained as an unresolved physical-review item. Bounds
 were not enlarged and the finding was not converted into PASS.
 
-## Straight-run batching review only
+## Historical straight-run batching review only
+
+**Pre-C26 analysis, October 30, 2026.** The following table used the earlier 28-unit C packet. The current selected endpoint is [C26](C26_DELIVERY_ENDPOINT.md); these hypothetical grouping counts were never activated and are not current packet counts. No new counts are inferred without a pinned revised packet summary.
 
 Keeping existing contact points and merging only adjacent same-posture,
 same-direction, coincident-endpoint strokes gives these hypothetical counts:

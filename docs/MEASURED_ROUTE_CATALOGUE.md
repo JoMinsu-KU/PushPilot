@@ -1,5 +1,7 @@
 # Measured route catalogue
 
+**Catalogue cutoff: expanded October 29, 2026 archive audit; documentation reviewed November 2.** These are historical trajectories, not a live pose or the current executable packet. Later [delivery-only recipes](DELIVERY_SITE_TRIAL.md), [C26 endpoint](C26_DELIVERY_ENDPOINT.md) and [explicit recovery](ROBOT_OPERATIONS.md) have separate source and release boundaries. The [evidence index](evidence/README.md) preserves all original cutoffs. No raw coordinates or media are published here.
+
 The importer preserves the original B/Office, C/Villa and D/Hanok deliveries as historical trajectories. Recorded delivery, known robot geometry, and qualification for autonomous repetition are separate fields. A failed visual review remains failed even when its robot endpoints were verified.
 
 ```powershell

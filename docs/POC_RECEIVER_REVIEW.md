@@ -2,6 +2,8 @@
 
 # Preserve the proven receiver. Establish the current installation.
 
+> **Historical commissioning record — October 28, 2026.** “Current”, “latest” and pending-work statements below refer to that cutoff, not the November 2 product state. Use [Robot operations](ROBOT_OPERATIONS.md), [delivery trial](DELIVERY_SITE_TRIAL.md) and [known limitations](KNOWN_LIMITATIONS.md) for current behavior. Keep rejected fits, unavailable reference tools, unsuccessful observations and original outcomes intact. Later taught BASE deliveries do not validate an earlier failed global calibration or authorize replay of these trials.
+
 This review records the October 28, 2026 KST investigation of the pendant connection error and the inherited POC control path. It distinguishes the verified transport design from the still unqualified city-print installation. No motion, profile activation, calibration or receiver-script change is established by this review.
 
 [Commissioning service](ROBOT_CONTROL.md) · [Deployment](../deploy/ROBOT_CONTROL.md) · [Source manifest](data/robot-runtime-source.json) · [Contact pushing](PUSH_ALIGNMENT.md)
@@ -14,7 +16,7 @@ This review records the October 28, 2026 KST investigation of the pendant connec
 | GX10 pendant TCP listener, port `19507` | Owns the Rodi socket and exchanges the persistent receiver protocol | A listening socket is available; a validated handshake and continuing replies are still required |
 | Controller Native Modbus FC03, port `502` | Independent read-only program state, flags, TCP, joints and joint-speed checks | Current controller telemetry within its register resolution; it does not verify active TCP configuration, contact clearance or vehicle pose |
 
-The POC receiver used the pendant TCP listener and independent Native checks; the new commissioning HTTP API is a separate application layer. The controller initiates the TCP connection to the host. The HTTP API does not replace that listener and does not open a second robot-command socket. Its inherited adapter publishes one expiring, bound mailbox request for the host to consume. Camera and MUSE processing are independent of the host's idle heartbeat.
+The POC receiver used the pendant TCP listener and independent Native checks; the new commissioning HTTP API is a separate application layer. The controller initiates the TCP connection to the host. The HTTP API does not replace that listener and does not open a second robot-command socket. Its inherited adapter publishes one expiring, bound mailbox request for the host to consume. Camera and MUSE processing are separate from the host process. The host itself calls Native guards synchronously inside its exchange; an idle Native timeout can terminate that session. Heartbeat hardening remains unimplemented; see [the current operations runbook](ROBOT_OPERATIONS.md#distinguish-the-clocks).
 
 The inherited source was imported without historical operating profiles, pending mailboxes, coordinates or run state. Source verification occurs before runtime imports. The original POC operating policy is to preserve the receiver and use its profile-update exchange for ordinary target, direction and setting changes. A healthy connection does not need another PLAY for each target.
 

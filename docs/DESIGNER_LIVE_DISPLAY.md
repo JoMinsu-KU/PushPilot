@@ -1,14 +1,14 @@
 # Designer workspace and execution display
 
-Implemented on October 30, 2026, from application baseline `7e1ce59` in an isolated UI worktree. This change does not activate or qualify a physical release.
+Implemented October 30, 2026 from baseline `7e1ce59`. **November 2 source update:** this designer/display integration is included in the published application source, rather than remaining a candidate-only feature. Subsequent site deployment/reset work is recorded in [Current status](CURRENT_STATUS.md); this page does not assert a currently connected service or unattended physical qualification.
 
 ## Presentation
 
-The supplied designer layout now wraps the existing application controller: full-screen Camera/Spatial, rounded glass header and cards, From/To, a collapsible mission panel, complete route and history lists, and internally scrolling dialogs. Pretendard remains the application font. Page scrolling is disabled; long evidence stays within its own list. Stop remains accessible in the collapsed panel and open application dialogs.
+The supplied designer layout now wraps the existing application controller: full-screen Camera/Spatial, rounded glass header and cards, From/To, a collapsible mission panel, complete route and history lists, and internally scrolling dialogs. Pretendard remains the application font. Vertical page scrolling is disabled; long evidence stays within its own internally scrolling list. The earlier blanket prohibition on panel scrolling was not met and has no recorded user-approved relaxation; see the explicit acceptance boundary in [Design system](DESIGN_SYSTEM.md). Stop remains accessible in the collapsed panel and open application dialogs.
 
 Robot mode retains the existing physical status hook, explicit Start/Stop requests, request IDs, expected revisions, plan binding, uncertain-response handling and no automatic replay. Simulation remains explicit. Physical sequence, receipt totals, review, source labels, errors and history come from physical status; missing data is not filled from the symbolic simulator. A held mission without a current step scrolls to the next pending row without labelling it as moving.
 
-The original camera JPEG URL, frame dimensions, homography, board focus and shared image/route navigation remain intact. No new camera correction, top view, image recompression, segmentation or MUSE call is introduced by presentation.
+Original camera JPEG bytes, frame dimensions, homography, board focus and shared image/route navigation remain intact. Current transport shares an exact-JPEG Blob URL between decode and SVG at a 250 ms target; this is resource/transport handling, not an evidence image conversion. No new camera correction, top view, image recompression, segmentation or MUSE call is introduced by presentation.
 
 ## Optional read-only display service
 
@@ -20,11 +20,11 @@ The Spatial vehicle illustrates confirmed contact progress along direction-compr
 
 Approach, withdrawal, unloaded wrist, recontact, signal wait, MUSE review, HOLD, unavailable/stale feeds and empty home return do not animate vehicle travel. Confirmed delivery leaves the illustrated car at the destination while the empty robot returns. The view is labelled **Execution estimate / Display only**. It does not reproduce slip, exact position or yaw, and cannot establish arrival or authorize continuation.
 
-Signal presentation consumes the existing physical gate lifecycle. A completed recontact remains `Signal passed` even after the policy clears its green sample counter. The UI creates no second signal watcher, no new admission and no countdown. The separately identified physical 120-second wait-policy change is outside this migration.
+Signal presentation consumes the existing physical gate lifecycle. A completed recontact remains `Signal passed` even after the policy clears its green sample counter. The UI creates no second signal watcher, no new admission and no countdown. The user requested a 120-second physical wait, but the exact deployed private policy must be checked before publishing that value as a guarantee. The public 120-second wrist-completion budget and 300-second simulation watcher are different clocks. See [Robot operations](ROBOT_OPERATIONS.md).
 
 ## Model and map identity
 
-The new toy-city asset is fitted by `frontend/public/models/city-display.json`, separate from the physical map definition. The manifest binds the unchanged map geometry hash to the actual GLB SHA-256. Model bytes are verified before parsing, including plain LAN HTTP contexts without WebCrypto. Invalid/missing assets disable the optional viewer; physical commands and Camera remain separate.
+The toy-city asset is fitted by `frontend/public/models/city-display.json`, separate from the physical map definition. Current model SHA begins `842a7c32`, the X/Z rectangle is `[-241,-154,241,154]` and elevation is `0.6`; [Spatial](SPATIAL_3D.md) documents installation and historical asset provenance. The manifest binds the unchanged map geometry hash to the actual GLB SHA-256. Model bytes are verified before parsing, including plain LAN HTTP contexts without WebCrypto. Invalid/missing assets disable the optional viewer; physical commands and Camera remain separate.
 
 The existing physical map JSON, coordinate packet, tool/TCP/Z, motion limits, B/C/D recipes, C26 arrival rule, signal policy, receiver and robot API are not changed. The separately authored robot-progress diagnostic candidates in the shared checkout are not included.
 
@@ -39,4 +39,4 @@ Rendering starts with DPR capped at 1.5 and 1024-pixel shadows. Rendering pauses
 - Local browser QA used a captured native JPEG and captured API data; explicitly synthetic wait/return/disconnection variants were served by a loopback-only fixture server with all POST requests rejected. These are UI tests, not fresh hardware missions.
 - Landscape viewport checks cover 1376 × 1032 and 1194 × 834, including internal route/history scrolling, collapsed controls and modal Stop access. No page overflow was observed.
 
-The installed GX10 application remains untouched while its existing HOLD mission is unresolved. No robot, camera or Rodi process was restarted, no mission was reset, and no loaded trial was issued. Activation requires an inactive, reconciled boundary. Build and transfer from this isolated commit; never collect the shared dirty checkout or implicitly activate its experimental robot changes.
+At the **October 30 verification boundary**, the installed GX10 application was left untouched while its HOLD mission was unresolved; that check restarted no robot/camera/Rodi process, reset no mission and issued no loaded trial. These historical statements do not describe the later deployment or current live state. Future activation still requires an inactive, reconciled boundary and a reviewed source build; do not collect a shared dirty checkout or silently activate unrelated experimental changes.

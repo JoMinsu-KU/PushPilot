@@ -2,6 +2,8 @@
 
 # Keep the contact height. Measure the car outcome.
 
+> **Historical commissioning record — October 28–29, 2026.** “Current”, “latest” and pending-work statements below refer to that cutoff, not the November 2 product state. Use [Robot operations](ROBOT_OPERATIONS.md), [delivery trial](DELIVERY_SITE_TRIAL.md) and [known limitations](KNOWN_LIMITATIONS.md) for current behavior. Keep rejected fits, unavailable reference tools, unsuccessful observations and original outcomes intact. Later taught BASE deliveries do not validate an earlier failed global calibration or authorize replay of these trials.
+
 The operator placed the wheel-less car and pusher on the city print on October 28, 2026 and requested retaining the current contact Z while preparing XY control and drift correction. Current Native FC03 TCP/joint snapshots are stored privately. An unchanged controller Z value is a recorded starting condition, not a measured pad-to-paper clearance or a qualified working height. No physical push or correction is established by this design.
 
 ## Coordinate and tool contract

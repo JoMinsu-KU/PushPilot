@@ -1,52 +1,63 @@
 # Documentation artwork
 
-**Current spatial-stage workspace, with retained illustrations and dated design evidence.**
+**Meta MUSE at the center. From sight to action.**
 
-[Repository](../../README.md) · [Current design system](../DESIGN_SYSTEM.md) · [Architecture](../ARCHITECTURE.md) · [Generation prompts](GENERATION_PROMPTS.md) · [Voice revision prompts](VOICE_GENERATION_PROMPTS.md)
+[Repository](../../README.md) · [Current design system](../DESIGN_SYSTEM.md) · [Current status](../CURRENT_STATUS.md) · [Exact current prompts](CURRENT_GENERATION_PROMPTS.md) · [Asset hashes](current-assets.json)
 
-The main README leads with an actual application screenshot. A self-contained SVG concept cover and generated PNG process diagrams remain available as supporting design material. The PNGs display directly as images, without a diagram renderer or build step. Select a diagram in its document to inspect the full-size asset. Essential technical meaning is also retained as ordinary English text and tables.
+The public documentation uses seven new illustrations in the current light glass/orange visual language. Meta MUSE connects the operator's intent with grounded routes, signal interpretation and visual outcome review. The original **Observe → Plan → Approve → Act → Verify** loop remains the organizing idea.
 
-The user selected industrial dashboard references on October 27, 2026, then rejected the first flat light-card implementation. The current [design system](../DESIGN_SYSTEM.md) calls for a continuous spatial stage, large rounded translucent overlays and no vertical scrolling, with details in dialogs and pages. It records the requested direction, not a design approval. Earlier flat-light and navy/cyan artwork remain historical records; they do not prescribe the active composition.
+The cover is an original product concept illustration. It is deliberately labelled **CONCEPT ILLUSTRATION** and is not an actual application screenshot or the installed map. Technical diagrams describe the source architecture and its boundaries; their adjacent text and tables carry the same information in accessible English.
 
-## Asset inventory
+## Current illustrations
 
-| Asset | Canvas | Use and origin |
+| Asset | Canvas | Purpose |
 |---|---|---|
-| [`hero.svg`](hero.svg) | 1280 × 480 | Retained concept cover; original code-native vector. Its footer now acknowledges actual Meta text/image integration and pending hardware. |
-| [`scene-workspace.jpg`](scene-workspace.jpg) | Browser viewport screenshot | Active README workspace image: fixed spatial stage, rounded translucent information overlays and original presentation of inherited temporary geometry. Recorded-image model findings may appear as text. No supplied artwork or raw camera frame is visible. |
-| [`light-industrial-workspace.jpg`](light-industrial-workspace.jpg) | Browser screenshot | Historical first light-dashboard pass, rejected by the user as insufficiently similar to the references. Retained as a design-stage record, not the active visual specification or an approval. The temporary spatial schematic is self-authored; no supplied artwork or raw camera frame is visible. |
-| [`recorded-action-review.jpg`](recorded-action-review.jpg) | 957 × 623 browser region | Actual MUSE action-review panel captured October 27, 2026 at the 17:09 KST browser check, before the fixed-stage/dialog layout revision. Visible BEFORE/AFTER inputs are original code-drawn synthetic schematics, with an actual provider PASS and explicit simulation/source labels. No physical car photograph or supplied artwork is included. |
-| [`temporary-map-workspace.jpg`](temporary-map-workspace.jpg) | Browser screenshot | Retained temporary-map workspace before the light-dashboard restyle: original spatial schematic, Bakery route, source-labelled MUSE inspection and simulation controls. |
-| [`workspace-simulation.jpg`](workspace-simulation.jpg) | Browser screenshot | Retained first-slice workspace before temporary-map integration; original illustrative scene and simulation labels. |
-| [`interaction-loop.png`](interaction-loop.png) | 1983 × 793 | Retained Observe → Plan → Approve → Act → Verify design illustration; AI-generated. |
-| [`architecture-overview-voice.png`](architecture-overview-voice.png) | 1536 × 1024 | Active architecture: adds backend voice transcription, transcript review and credentials boundary; AI-generated edit. |
-| [`voice-input-flow.png`](voice-input-flow.png) | 1774 × 887 | Voice: push-to-talk, transcription, editable text, MUSE interpretation and tablet approval; AI-generated. |
-| [`architecture-overview.png`](architecture-overview.png) | 1536 × 1024 | Retained previous architecture, before voice became initial-demo scope; superseded in the architecture document. |
-| [`evidence-loop.png`](evidence-loop.png) | 1672 × 941 | Architecture: expected, observed, reviewed and decided; AI-generated. |
-| [`delivery-flow.png`](delivery-flow.png) | 1672 × 941 | Deployment: implemented source tooling and future GX10 delivery; AI-generated. |
-| [`workflow.svg`](workflow.svg) | 1280 × 254 | Retained editable source from the initial documentation design; superseded in the main README. |
+| [`workspace-concept-current.png`](workspace-concept-current.png) | 1672 × 941 | Meta MUSE-led cover, glass overlays, a wheelless sliding car and the original interaction loop. Generic buildings and route are illustrative. |
+| [`muse-intelligence-current.png`](muse-intelligence-current.png) | 1774 × 887 | Central Meta MUSE role: understand intent, reason over routes and judge fresh visual evidence. |
+| [`architecture-current.png`](architecture-current.png) | 1774 × 887 | Tablet, supervisor, MUSE/camera, simulation/site-trial adapters, Native completion and evidence. |
+| [`interaction-current.png`](interaction-current.png) | 1774 × 887 | Observe → Plan → Approve → Act → Verify; coordinate motion followed by a clear view and MUSE review. |
+| [`evidence-current.png`](evidence-current.png) | 1942 × 809 | Expected outcome, observed receipts/images, MUSE review and recorded deterministic decision. |
+| [`delivery-current.png`](delivery-current.png) | 1672 × 941 | Local development → GitHub → source release → GX10; public source and private runtime remain distinct. |
+| [`voice-current.png`](voice-current.png) | 1942 × 809 | Backend transcription, editable transcript and MUSE interpretation; browser microphone capture remains pending. |
 
-## Provenance
+All seven were generated on November 2, 2026 (Asia/Seoul) with the **built-in image generation tool** and copied unchanged into this directory. No fallback CLI, separately configured image API or programmatic raster editing was used. The workspace and architecture each received one targeted generation edit using their own initial generated draft. Exact initial/edit prompts are in [the current generation record](CURRENT_GENERATION_PROMPTS.md); dimensions, byte sizes and SHA-256 values are in [the manifest](current-assets.json).
 
-The SVGs were authored for this repository on October 27, 2026 as original geometric vectors. They embed no third-party photographs, stock illustrations, fonts or vendor logos. The workspace screenshots are local application records; their corresponding checks and limits belong in [verification](../VERIFICATION.md). The first scene's robot, wheel-less car and glasses are original SVG illustrations; the spatial schematic draws adapted map geometry with original presentation code. The earlier temporary-map screenshot includes an actual recorded-image MUSE result as text. Raw camera media and supplied map artwork remain outside the public repository. These are software/provider records, not physical-execution evidence.
+Each selected output was visually checked for English labels, arrow directions, authority boundaries and status. The architecture receipt connector was corrected before selection. The cover's wheels were removed to match the sliding model car, and Meta MUSE was made prominent in both the cover and mission card. The delivery illustration includes a stylized GitHub service mark; the artwork does not imply vendor endorsement.
 
-The `hero.svg` footer was corrected on the same date to remove the outdated statement that all model integration was future work. The vector remains a concept illustration, not an inference result or a screenshot. The active `scene-workspace.jpg` screenshot supersedes it as the first-page product evidence. The original supplied industrial-reference photographs are not repository assets and have not been copied into the product.
+## Retained design and implementation history
 
-Camera board focus masks the surrounding background while preserving the original perspective, image pixels and overlay geometry; Full frame remains available. Public screenshots use the self-authored spatial illustration; source camera photographs and map artwork stay private. The display mask never replaces original frame bytes in MUSE requests or immutable evidence.
+These original assets remain available with their original generation records and evidence scope. They are not the current architecture specification.
 
-The original four PNGs were generated on October 27, 2026 (Asia/Seoul) with the **built-in image generation tool**; their exact inputs remain in [GENERATION_PROMPTS.md](GENERATION_PROMPTS.md). A voice-enabled architecture revision and voice flow were added on the same date, with exact inputs in [VOICE_GENERATION_PROMPTS.md](VOICE_GENERATION_PROMPTS.md). The architecture revision uses the earlier repository-generated image as its sole edit target. No fallback CLI, API key or external reference image was used. Selected outputs were copied unchanged into this directory and visually reviewed for English spelling, arrows, authority boundaries, status and readability.
+| Retained asset | Origin and interpretation |
+|---|---|
+| [`hero.svg`](hero.svg) | Original October 27 geometric concept cover. Its older pending-hardware footer belongs to that stage. |
+| [`workflow.svg`](workflow.svg) | Original editable interaction-loop vector, superseded in the main README. |
+| [`scene-workspace.jpg`](scene-workspace.jpg) | Actual earlier application screenshot of the inherited temporary-map spatial stage. Superseded as the README cover. |
+| [`light-industrial-workspace.jpg`](light-industrial-workspace.jpg) | Actual first light-dashboard pass, rejected as insufficiently similar to the references. |
+| [`recorded-action-review.jpg`](recorded-action-review.jpg) | October 27 actual MUSE review panel. BEFORE/AFTER are original synthetic schematics with an actual provider PASS and simulation/source labels. |
+| [`temporary-map-workspace.jpg`](temporary-map-workspace.jpg) | Earlier temporary-map application screenshot with original schematic and a source-labelled recorded-image MUSE result. |
+| [`workspace-simulation.jpg`](workspace-simulation.jpg) | First simulation slice with an original illustrative scene and explicit simulation labels. |
+| [`interaction-loop.png`](interaction-loop.png) | Original October 27 interaction illustration. |
+| [`architecture-overview.png`](architecture-overview.png) | Initial proposed architecture, before voice integration. |
+| [`architecture-overview-voice.png`](architecture-overview-voice.png) | Earlier voice architecture revision; later physical orchestration is absent. |
+| [`voice-input-flow.png`](voice-input-flow.png) | Earlier voice interaction concept; not evidence of browser microphone implementation. |
+| [`evidence-loop.png`](evidence-loop.png) | Original conceptual evidence loop. |
+| [`delivery-flow.png`](delivery-flow.png) | Earlier source-delivery illustration with historical future/undeployed labels. |
 
-Every process illustration describes the intended design. It is not a camera observation, provider result, live deployment or evidence of physical execution. Some illustrations predate the GX10 application deployment and retain historical proposed-runtime labels. Current runtime status is documented in [GX10 deployment](../../deploy/README.md); a later qualified robot adapter remains a separate boundary. The source-release tools are implemented; generating a diagram does not implement the system it depicts.
+The earlier SVGs embed no third-party photographs, fonts or vendor logos. Historical workspace screenshots use self-authored schematics rather than supplied map artwork or raw camera frames. Their provider results and browser checks retain the limits recorded in [verification](../VERIFICATION.md). None is evidence of physical vehicle delivery.
 
-## Updating a diagram
+The original supplied industrial-reference photographs are not repository assets. Private map artwork, raw camera media and model files remain outside Git. Camera board focus preserves perspective; display masking does not replace original image bytes in MUSE requests or immutable evidence.
 
-- Follow the current [design system](../DESIGN_SYSTEM.md) for active-interface material: a continuous neutral spatial stage, large rounded glass overlays, restrained orange accents and readable English labels. Use a viewport screenshot, not a long page capture, for active product evidence. Retain exact prompts and assets when documenting earlier stages.
-- Preserve MUSE's interpretation/review role and the supervisor's deterministic admission authority.
-- Keep approval scoped to the mission; per-action reviews gate continuation.
-- Preserve planned, future and undeployed labels where applicable.
-- Do not introduce map geometry, robot coordinates, invented metrics or fabricated success evidence.
-- Regenerate a PNG with a targeted image-generation edit; review every changed label and connector.
-- Update the exact prompt, alt text, surrounding explanation and provenance with the asset.
-- Keep SVGs self-contained and maintain their accessible title/description.
+The original four generated PNG inputs remain in [GENERATION_PROMPTS.md](GENERATION_PROMPTS.md). The earlier voice architecture edit and voice-flow inputs remain in [VOICE_GENERATION_PROMPTS.md](VOICE_GENERATION_PROMPTS.md). Their exact prompts were retained rather than rewritten to match later implementation.
 
-No software or artwork license has been selected for this repository. Provenance is not a license grant.
+## Updating artwork
+
+- Preserve the initial concept and Meta MUSE's interpretation, route reasoning and visual review roles.
+- Follow the current light neutral spatial stage, large rounded translucent overlays and restrained orange accents.
+- Keep deterministic action admission, taught BASE execution and Native completion distinct from model judgments.
+- Label concepts, screenshots, historical records and physical evidence according to their actual origin.
+- Do not invent map registration, measured coordinates, success rates or repeatability.
+- Use targeted generation edits for raster changes; review changed labels and connectors before selecting the result.
+- Update prompts, alt text, explanatory prose and the hash manifest together.
+
+No software or artwork license has been selected. Provenance is not a license grant.

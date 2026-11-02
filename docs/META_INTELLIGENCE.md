@@ -4,104 +4,80 @@
 
 **Interpret intent. Compare the evidence. Make the consequence visible.**
 
-[Documentation](README.md) · [Action reviews](ACTION_REVIEWS.md) · [Architecture](ARCHITECTURE.md) · [Mission](MISSION.md) · [Roadmap](ROADMAP.md)
+[Documentation](README.md) · [Architecture](ARCHITECTURE.md) · [Mission](MISSION.md) · [Prompts](../prompts/README.md)
 
 </div>
 
 ---
 
-PushPilot uses **Muse Spark 1.3** for typed-goal interpretation, independent recorded-scene inspection and action-bound recorded-image review. All requests originate in the backend, use strict response schemas and keep credentials out of the browser. The model returns structured meaning and uncertainty; the mission supervisor retains transition authority.
+PushPilot uses backend-originated MUSE requests for map-scoped goal/route interpretation, independent scene inspection, action review and stopped paper-signal judgment. Structured outputs describe meaning and visible evidence. The supervisor owns the decision to continue, wait, reobserve or hold. **MUSE never supplies authoritative TCP coordinates or executable robot scripts.**
 
-## Actual application cases
+As of **November 2, 2026**, simulation and the configured physical site trial have separate review pipelines. [Current status](CURRENT_STATUS.md) and [API evidence](META_API_CHECK.md) distinguish implemented contracts, dated provider observations and incomplete recognition/repeatability evaluation.
 
-| Case | Model result | Application consequence |
+## Meta MUSE connects the loop
+
+[![Meta MUSE intelligence illustration: goal understanding and graph-route reasoning lead to a reviewable plan; stopped signal color and action/arrival evidence inform the next supervised decision.](assets/muse-intelligence-current.png)](assets/muse-intelligence-current.png)
+
+*Conceptual illustration of implemented intelligence boundaries, not a screenshot, provider result or physical success record.*
+
+Meta MUSE is the semantic intelligence in **From sight to action**: it turns a request into map-grounded intent, reasons over connected roads, reads the controlling paper signal while stopped and compares visible action/arrival evidence. Its contribution is visible in the next decision, including clarification, waiting and rejection. The execution layer carries out admitted taught motion and records what actually completed; MUSE then interprets what the camera can support. Keeping those roles explicit makes the reasoning inspectable without claiming that the model directly controls TCP motion or guarantees the car's outcome.
+
+## Current model boundaries
+
+| Boundary | Model input/output | Application consequence |
 |---|---|---|
-| `Push the car from Pizza to the Bookstore.` | Supported destination BOOKSTORE and an English interpretation | Supervisor derived the temporary route and entered PLAN_READY; approval still pending. |
-| Recorded 1920 × 1080 Little Town photograph | Four printed shops, no separate physical car, paper signal UNKNOWN | Stored an independent scene result, without advancing a mission. |
+| **Symbolic goal** | Selected map's allowed destinations/aliases and user text → destination/clarification | Reviewable deterministic graph plan; no automatic approval |
+| **Live route, prompt v3** | Accepted goal, original JPEG, selected directed graph and constraints → exact node path | Backend validates departure/turn/via/avoid and derives drawing AR; no graph-to-TCP conversion |
+| **Recorded scene** | Immutable uploaded image → USABLE/REOBSERVE/UNKNOWN, places, car/signal evidence | Independent inspection, never step completion or GREEN authority |
+| **Recorded/live simulation action** | Bound BEFORE/AFTER and abstract receipt → PASS/FAIL/REOBSERVE/UNKNOWN | Applies only to the pending simulated review |
+| **Physical observation v4** | Source-bound car/start/arrival context and originals → PASS/FAIL/UNCERTAIN plus structured facts | Combined with Native/session/profile/freshness checks for the configured site trial |
+| **C intermediate progress v2** | Native side-by-side comparison and scoped details → progress/no progress/uncertain/clear problem | Qualitative continuation criterion only for opted-in intermediate C reviews |
+| **Stopped physical signal** | Stopped reference and two distinct ordered samples of the configured target | Exclusive visible/covered-face evidence can support a one-time stopped departure admission |
+| **Voice transcription** | Finite supported PCM WAV → original-language candidate | Backend implemented; browser capture/editor and actual ASR access/device checks pending |
 
-These actual calls are documented in [Meta API evidence](META_API_CHECK.md). They establish the stated integration on the stated input. They do not establish a general accuracy rate, physical task completion or live-camera behavior. New action-review checks and their precise sources belong in [verification](VERIFICATION.md).
+Allowed place identities come from the selected map. City uses Pizza, Office Building, Villa and Hanok; Bakery/Bookstore/School remain Little Town compatibility vocabulary, not hard-coded production goals.
 
-An additional actual-provider run compared three original **synthetic schematic** before/after pairs for the same expected approach: depicted movement returned PASS → READY, no progress returned FAIL → FAULT, and occlusion returned REOBSERVE → REOBSERVE. There was one call per condition. This demonstrates the model-to-supervisor consequence on designed inputs, not real-car image accuracy. The [API record](META_API_CHECK.md) retains per-call timing and reported tokens.
+## Physical progress without invented precision
 
-## Implemented model boundaries
+Contact motion is coordinate based. The tool releases and moves to a reviewed observation pose before applicable visual review. A robot endpoint proves tool completion only; a visible change or arrival is assessed separately. The active delivery-only release does not claim numeric vehicle pose, exact turning angle or parallel parking.
 
-| Boundary | Input | Output | Authority |
-|---|---|---|---|
-| **Goal interpretation** | Operator text and available symbolic task context | BAKERY, BOOKSTORE, SCHOOL or UNKNOWN, summary and clarification flag | May prepare a reviewable plan; never approves it. |
-| **Scene inspection** | One immutable recorded frame and an inspection expectation | USABLE, REOBSERVE or UNKNOWN; visible places, car visibility, paper signal and limitations | Stores scene evidence; never advances a mission or supplies its GREEN. |
-| **Action review** | Current bounded action, expected outcome and an operator-selected before/after frame pair | PASS, FAIL, REOBSERVE or UNKNOWN with an expected/observed explanation | May satisfy or reject the pending simulated review through the supervisor; never bypasses local gates or proves physical freshness. |
-
-A scene being USABLE does not mean an action passed. A recorded action PASS is not an actual robot receipt. Each response retains its own source and binding.
-
-A separate **stopped-live signal review** is planned: after the robot is verified stopped at the current approach, MUSE judges RED, GREEN or UNKNOWN from a fresh original signal image. RED means wait and observe again; GREEN may admit the crossing after the supervisor validates stop, plan/junction/approach, frame/freshness and response bindings. MUSE is the signal-color judge; a second local color classifier is not required. The robot remains stopped while awaiting the response. This path is not implemented and does not promote the existing recorded-scene signal field or recorded-action PASS into crossing authority. See [MUSE signal gate](MUSE_SIGNAL_GATE.md).
-
-## Action-bound review
-
-The integrated path connects actual image judgment to the simulator's next state. Its lifecycle is:
-
-1. A bounded simulated action completes and creates a pending review binding.
-2. The operator selects immutable before/after recorded frames. The UI labels their source and selection explicitly.
-3. The backend binds the request to the current mission, action, review, map and frame identities.
-4. Muse Spark compares the expected outcome with the supplied visual evidence under a strict contract.
-5. The backend validates the response and rechecks that the request still belongs to the pending review.
-6. The supervisor applies PASS, FAIL, REOBSERVE or UNKNOWN while retaining its independent gates.
-7. The workspace shows expected versus observed, uncertainty, review source and the resulting next check.
-
-PASS may accept the review. FAIL faults the simulation. REOBSERVE or UNKNOWN requires another observation binding without resending the action. Even an accepted STOP review cannot enter an intersection on RED, UNKNOWN or stale simulated GREEN. See [Action reviews](ACTION_REVIEWS.md) for the executable API and operator workflow.
-
-**Recorded pairs do not establish fresh post-action physical evidence.** Operator-provided capture times and the order of uploads are provenance, not independent proof that a frame was captured after a real command. A live capture/receipt path and physical qualification remain separate work.
-
-## Independent recorded-scene inspection
-
-Upload a bounded JPEG/PNG and explicitly request inspection of its scene revision and frame ID. The prompt distinguishes a separate three-dimensional wheel-less car from a printed start/footprint, and an operator-placed signal card from decorative printed traffic lights.
-
-The result binds frame hash, map identity and scene revision. A superseded frame or modified file cannot acquire an accepted result. USABLE means the image supports the requested scene inspection. It is neither action completion nor a fresh physical signal. The endpoint does not advance the supervisor.
-
-## Why judgment and gates are separate
-
-Two outcomes of the same intended action should lead to different decisions when one supports success and the other does not. The model supplies that semantic comparison. The supervisor enforces the conditions the image answer cannot supply:
-
-- Explicit approval of the current plan and matching map identity.
-- A valid action result and the exact pending review binding.
-- A verified stop receipt and a signal result bound to the current junction and approach; current simulated GREEN remains separate from the planned live MUSE signal result.
-- A supported adapter and non-executing recovery after restart.
-- Rejection of stale/superseded requests and changed-payload request-ID reuse.
-
-Model responses cannot contain executable robot scripts, authoritative coordinates or unrestricted recovery commands. In the planned signal path, MUSE owns color judgment; local checks validate the stop receipt, current plan/junction/approach, frame identity and freshness, and response schema/request binding. They do not supply a second color opinion. The robot remains stopped during provider latency, timeout or uncertainty. Changing a signal during an already admitted crossing is outside the current stop-line-admission scenario.
-
-A provider timeout, malformed output or failure is exposed rather than replaced with a scripted acceptance. The separate Demo controls deliberately inject operator-sourced verdicts; their labels and evidence remain different from actual Meta responses.
-
-## What the operator sees
-
-| UI element | Question answered |
+| C review scope | Implemented policy |
 |---|---|
-| **Goal understood** | What does the system think I asked? |
-| **Scene evidence** | Which image and source support the interpretation? |
-| **Expected / Observed** | Does the supplied evidence support this action's outcome? |
-| **MUSE decision** | What did the model conclude, including uncertainty? |
-| **Next check** | Why are we continuing, waiting or observing again? |
+| **C4/C6** | Same-coordinate detail crops accompany full originals; crop lineage/hashes remain explicit. Earlier false negatives/timeouts are preserved. |
+| **C14** | Optional clear C13 GREEN reference spans exactly recontact plus C14 with same-mission/session/camera lineage. It does not attribute all movement exclusively to C14. |
+| **C17** | Qualitative visible translation/rotation, without exact angle, compass heading or front/rear demand. |
+| **C19** | Explicit configured omission/checked continuation; retain original NO_PROGRESS and record omission, never fabricate PASS or replay C19. |
+| **C26 arrival** | Visible car in the selected Villa frontage road/zone; parallel posture is not required. Unconfirmed arrival reobserves/holds rather than entering numeric correction. |
 
-The event timeline retains the decision cause. Private frame storage preserves original bytes and hashes. Review records retain the implemented contract's inputs and validated result; consult [Action reviews](ACTION_REVIEWS.md) for the actual receipt fields. Complete goal/scene provider envelopes, crop lineage and a unified export/retention policy remain later work. Missing usage or cost is unknown, never zero.
+`clear_problem: null` remains an unknown field in the original result. In the opted-in intermediate policy alone it does not stop visibly supported progress when the car is visible/unobscured and Native/context/freshness checks pass. Explicit problems, uncertain movement, occlusion and failed signal/start/arrival requirements remain independent blockers. A later review is not guaranteed to catch an earlier missed problem.
 
-## Evaluation still needed
+[C intermediate review](C_INTERMEDIATE_PROGRESS_REVIEW.md), [explicit continuation](EXPLICIT_REVIEW_CONTINUATION.md) and [C26 delivery](C26_DELIVERY_ENDPOINT.md) retain the exact limits and original failed outcomes.
 
-Software rejection tests and injected provider results verify the pipeline's behavior. Actual visual correctness needs independent labels and repeatable recorded/physical input:
+## Manual paper signal
 
-- Freeze held-out images before prompt tuning and keep their origin explicit.
-- Pair the same expected action with success, no progress, wrong movement and occlusion.
-- Separate synthetic fixtures, recorded real scenes and physical runs in every result.
-- Test missing paper cards, contradictory evidence, failures and uncertain views.
-- Compare model review with a stated baseline without weakening physical admission gates.
-- Report sample counts, false continuation, uncertainty, latency and reported usage with failures.
+The paper target permanently has red and green faces. The operator covers one with a black circular paddle on a cable tie. MUSE checks the configured physical target rather than traffic-light decoration or an expected color. Positive covered-red evidence plus visible green is needed; absence of red alone cannot mean GREEN. A narrow exposed rim/small tremor is allowed when coverage is otherwise clear. Broad exposure, both/none, uncertain placement or substantial mask movement remain UNKNOWN/WAIT.
 
-A synthetic example can demonstrate a provider/state boundary. It cannot demonstrate real-car performance. A single successful response cannot establish average latency or accuracy.
+The current `single_departure` policy accepts one stopped GREEN, performs measured recontact and continues without another color wait. Two distinct increasing-time samples, car continuity and current stop/Native/request bindings still matter. A new mission needs new admission. The provider supplies color judgment; deterministic checks supply applicability. Later color changes do not revoke an already admitted crossing. See [single signal departure](SINGLE_SIGNAL_DEPARTURE.md).
 
-## Planned voice path and privacy
+## Traceable consequence
 
-Planned [voice input](VOICE_INPUT.md) uses Meta Muse Voice Transcribe before the shared goal-understanding path. The operator reviews/edits the transcript and separately approves the resulting mission. Neither audio nor transcription grants motion authority. Capture, normalization and the Voice provider adapter remain unimplemented.
+1. Pin the applicable mission/action/step and original observation identities.
+2. Record the exact model/prompt/schema and expected visible outcome.
+3. Dispatch only the intended bounded request; a failed request never becomes a demo fallback.
+4. Validate schema, source, time and current context after inference.
+5. Retain the original result, limitations and decision cause.
+6. Continue, wait, reobserve or hold without resending a completed movement.
 
-Keep input media and credentials in ignored private runtime storage. Do not place keys in prompts, evidence, logs or release bundles. Public demonstrations need media with known origin and rights, recorded in [contributions](../CONTRIBUTIONS.md) and [third-party notices](../THIRD_PARTY_NOTICES.md).
+Private evidence retains original JPEGs, hashes, command/Native lineage and scoped crops where implemented. Unknown usage/cost stays unknown. A display estimate, USABLE scene or recorded PASS cannot create physical authority. Provider cancellation may not cancel work already accepted upstream; late results must remain locally ineligible.
+
+## Evidence and evaluation
+
+The October 27 integration records include text planning, one recorded Little Town inspection and three original synthetic action pairs with PASS/FAIL/REOBSERVE consequences. These remain dated integration examples, not the current physical accuracy claim. Later physical and archived-image review summaries are linked from [API evidence](META_API_CHECK.md) and the [evidence index](evidence/README.md). Original FAIL/UNKNOWN/timeouts and rejected prompt variants are preserved.
+
+Software checks verify contracts and rejection behavior. General accuracy requires independently labelled held-out inputs, matched success/no-progress/occlusion cases, false-continuation and uncertainty rates, latency and reported usage. Historical arrivals do not establish repeatable unattended delivery on a later recipe or installation. No new provider request was made for this documentation refresh.
+
+Keep credentials, operational photos and private geometry outside Git, prompts and public logs. The finite voice backend uses the server-held credential; it does not establish ASR access or microphone support. [Voice backend](VOICE_BACKEND.md), [contributions](../CONTRIBUTIONS.md) and [third-party notices](../THIRD_PARTY_NOTICES.md) retain implementation/provenance boundaries.
 
 ---
 
-[← Mission](MISSION.md) · [Action review workflow →](ACTION_REVIEWS.md)
+[Prompt catalogue](../prompts/README.md) · [Live intelligence](LIVE_INTELLIGENCE.md) · [Verification](VERIFICATION.md)

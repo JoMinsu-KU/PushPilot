@@ -1,83 +1,65 @@
-<sub>[PushPilot](../README.md) / Engineering / Robot commissioning</sub>
+<sub>[PushPilot](../README.md) / Engineering / Robot control</sub>
 
 # One command. One receipt. No automatic replay.
 
-**First taught destination completed:** one actual fixed-pose car-pushing course reached B / Office frontage in 12 strokes and 204.156 mm of TCP travel. The robot endpoint and a separate original-image MUSE ARRIVED judgment were recorded. Eleven empty-tool reverse strokes then returned to START before the operator reset the car. The final supplemental Native read timeout was retained and resolved by a new stationary observation without repeating motion. This is one demonstrated B pass; C/D, repeatability, contact turns and the physical web-mission bridge remain incomplete. [Actual scoped evidence](evidence/taught-B-course-20261029.json).
+**Current baseline: November 2, 2026, source `7aa7753`.** The configured Robot trial connects the tablet's live MUSE plan to coordinate action units, real robot receipts, original-frame MUSE review and a separate empty START return. The equipment-free simulator remains the default without private physical configuration. This is an opt-in current-site trial; it does not establish unattended repeatability.
 
-The separate `local_contact_turn_commissioning` scope supports explicitly reviewed fixed-Z translation and finite directed wrist experiments. It preserves the existing wrist-only MoveJ, independent nineteen-point FK/Native guards and endpoint proof. A target holds XYZ; the inherited wrist path permits a bounded 0.5 mm TCP radius, so it is not an assertion of mathematically exact fixed Z throughout the path. Each experiment holds/disarms and leaves the vehicle outcome unassessed. Offline schema/tests never qualify a car turn. [Physical taught executor](TAUGHT_EXECUTOR.md).
+[Operations and recovery](ROBOT_OPERATIONS.md) · [Delivery trial](DELIVERY_SITE_TRIAL.md) · [Known limitations](KNOWN_LIMITATIONS.md) · [Measured catalogue](MEASURED_ROUTE_CATALOGUE.md) · [GX10 deployment](../deploy/ROBOT_CONTROL.md)
 
-**Subsequent actual commissioning:** three withdrawn-tool wrist trials completed, retaining 114 original controller FK samples across READY and GO reports. The first C attempt completed seven straight approach strokes and one same-face corner experiment. MUSE requested reobservation and saw no yaw; a subsequent stationary image pair supported an unchanged car. No 90-degree car turn or C/D arrival is claimed. [Wrist evidence](evidence/wrist-reposition-20261029.json) · [First C trial evidence](evidence/taught-C-first-turn-trial-20261029.json).
+## The implemented path
 
-**October 29 straight-stroke cadence:** use one explicitly reviewed 10 mm contact stroke initially, then consider up to 20 mm when the observed car response supports continuation. The operator corrected the earlier 50 mm suggestion to 10–20 mm. Review a fresh original before/after image pair with MUSE once after each completed stroke; do not call it after internal interpolation points. The contact schema permits at most 20 mm, defaults to 1 mm, and retains the smaller configured installation/profile limit. Existing 5 mm reviews still permit only 5 mm. Preserve speed, acceleration, literal Z/orientation, independent endpoint checks and held outcome review. Turns and destination approaches require separately established shorter increments. The first actual 1.982 mm contact translation has a verified robot endpoint and an UNCERTAIN MUSE displacement judgment; it is not a qualified car destination or turn.
+Observe → Plan → Approve → Act → Verify remains the product contract. MUSE interprets a destination and reviews visible outcomes; it does not emit TCP coordinates. The physical service binds the exact approved destination/path/map to a private recipe. Coordinate approach, contact, release and withdrawal execute from taught BASE geometry with current session/profile/Native checks. A fresh car review follows withdrawal, when the selected observation pose makes it readable.
 
-**Earlier short-trial checkpoint:** one 10 mm-bounded command completed a 9.627 mm TCP translation toward taught B, with independent Native before/after checks and unchanged Z/orientation. One MUSE comparison of the original actual images supported a rightward car shift with no large yaw visible. The receiver remained connected and idle, with the API held/disarmed. At that checkpoint, a 20 mm physical stroke, car arrival and contact turning were untested; the later B-course and C-trial records above supersede only those demonstrated parts. [Scoped physical evidence](evidence/contact-stroke-20261029.json).
+| Layer | Responsibility | Boundary |
+| --- | --- | --- |
+| Tablet and main web service | Plan/approval, explicit Robot Start/Stop, actual progress/signal/review display | Simulation receipts never authorize hardware. UI Stop inhibits subsequent dispatch; it is not an emergency stop. |
+| `physical_mission.py` + `physical_api.py` | One durable mission, source-bound driver, observations, restart HOLD and explicit recovery | Unknown movement never automatically replays; browser reload does not resume. |
+| `site_trial_driver.py` + `coordinate_units.py` | Private B/Office, C/Villa and D/Hanok recipes; current-source installations/profiles; empty return | Active delivery-only scope defers numeric correction and parallel parking. |
+| Commissioning HTTP API, loopback 8897 | Authenticated ledger, installation/admission/IK/endpoint/reconciliation interfaces | Token and geometry stay server-side. Starts disarmed. |
+| `serve_rodi_host.py`, pendant listener 19507 | One persistent Rodi exchange, imported protocol/profile checks, bound state publication | No automatic PLAY, mailbox restoration or movement replay. Listener survives session failure; actual disconnect can require local PLAY. |
+| Native FC03, controller port 502 | Independent read-only TCP/joint/program/speed and endpoint/stationarity evidence | Does not prove car motion, active TCP definition or contact clearance. Synchronous acquisition can block host liveness. |
+| Camera helper and MUSE observer | Original-image provenance, fixed display references, visible progress/arrival/signal review | Display mapping is not board-to-BASE calibration; no hidden car pose becomes a TCP target. |
 
-**Latest operator direction:** [TCP coordinate control](TCP_COORDINATE_CONTROL.md) separates robot execution from vehicle/signal review. Use taught endpoint geometry and Native TCP readback; do not gate ordinary fixed-frame motion on visual gripper-tip detection. Three further noncontact fixed-pose segments completed to sequence 29. This does not qualify a whole road, car transport or contact turning.
+The inherited transport, policy and kinematic modules are imported privately through a byte/hash-verified [runtime manifest](data/robot-runtime-source.json). This wrapper does not ship a second driver or controller source. `taught_executor.py` remains a separate compatibility runner with historical per-action reviews; the current site-trial path reviews a bound approach/contact/withdrawal unit. See [TCP control](TCP_COORDINATE_CONTROL.md) and [taught runner](TAUGHT_EXECUTOR.md).
 
-**A separate GX10 commissioning service prepares bounded robot tests without converting the tablet's simulated mission into physical execution.** Implemented October 28, 2026 KST under explicit user authorization. A later current-site local profile established the persistent connection, five read-only IK queries and one real 0.5 mm tool retreat. Car pushing, turning and destination completion remain unqualified. See [current scoped evidence](evidence/robot-calibration-20261028.json).
+## Meta MUSE closes the visual loop
 
-[Source provenance](data/robot-runtime-source.json) · [Control API](../backend/robot_control/api.py) · [Offline tests](../tests/test_robot_control_service.py) · [GX10 delivery](../deploy/ROBOT_CONTROL.md)
+Meta MUSE provides the mission's visual judgment at three concrete boundaries: whether a released push produced visible vehicle progress, whether the stopped paper signal supports GREEN admission, and whether the car has arrived in the named destination road zone. The observer submits original images with exact frame/mission context and retains the explanation and provider receipt. The supervisor combines that result with known robot completion and source checks to advance, wait or hold. The tablet exposes the actual outstanding MUSE activity and resulting evidence; a coordinate receipt alone cannot answer those visual questions.
 
-The [POC receiver review](POC_RECEIVER_REVIEW.md) records the actual persistent protocol and current startup issue. The host now waits for a genuine reviewed profile **before opening the pendant port**. Missing configuration reports `waiting_reviewed_profile`, `listening: false`; it must not trigger manual PLAY. The earlier HELLO-then-close behavior below is historical. Successful HELLO capture did not establish persistent idle, and the photographed `45102` numeric error has not yet been tied to a particular argument. [Correction verification](evidence/rodi-startup-correction-20261028.json).
+## Delivery, signal and return
 
-The operator's current-Z pushing request and drift/coordinate collection plan are recorded in [Contact pushing](PUSH_ALIGNMENT.md). A private read-only stationary baseline is available; TCP identity/payload, measured drawing-to-BASE correspondences, contact clearance and physical pushing remain pending. The target pose may change without changing the TCP definition; preserving its numeric Z alone does not preserve an offset tool's physical height through rotation or a TCP-definition change.
+- **B / Office:** direct Pizza frontage route. **C / Villa** and **D / Hanok:** shared first turn and northbound signal approach before their later destination branch.
+- The signal unit completes contact, normal release and far-RIGHT parking. One accepted stopped GREEN judgment covering two distinct fresh frames admits exact measured recontact and the following crossing. Selected `single_departure` does not recheck color after recontact; each new mission requires new admission.
+- C ends at **C26**, with visible car arrival in the selected Villa road zone. Diagonal orientation alone is not a failed delivery. C27/C28 and final parallel parking are deferred.
+- Accepted arrival is followed by the reviewed empty return to the original common START and departure orientation. Robot return, car arrival and human car reset are separate states.
 
-> **Historical profile-wait startup, October 28, 2026:** the separate host from `98b2a19` opened the configured pendant port in `waiting_reviewed_profile` with no BEGIN, consumed mailbox or motion. The API remained at source `6cfe6d2`, disarmed with no installation. Web/API processes, camera epoch and exact display transform were retained. GX10 passed all 474 equipment-free tests. Persistent pendant idle was not established. [Historical scoped result](evidence/rodi-profile-wait-20261028.json).
+The reviewed site-trial release preserves fixed work height, literal translation posture, 5 mm/s speed, 10 mm/s² acceleration and 20 mm stage limit. Directed unloaded wrist operations retain installed runtime, IK and nineteen-sample FK guards. These are site-specific constraints, not permission to reuse or enlarge profiles elsewhere.
 
-> **Earlier API deployment, October 28, 2026, 01:17 KST:** source `6cfe6d2` started on loopback 8897; the pendant listener was stopped at that time. The original 414 local / 64 GX10 subset results retain their historical scope in the [earlier evidence](evidence/robot-control-20261028.json).
+## Failure and visibility
 
-## Service boundaries
+| Situation | Behavior |
+| --- | --- |
+| Expected marker occlusion with the exact fixed reference retained | Keep mapping; do not refit or use marker count as gripper control. Fresh car/signal and scene-identity checks remain separate. |
+| Car hidden after known robot completion | Reviewed observation/reobservation; no hidden pose, synthetic PASS or repeated push. |
+| Confirmed camera/map/site/profile/session mismatch | Hold; display relocking does not rewrite taught BASE coordinates. |
+| Lost DONE, ambiguous publication or interrupted movement | Preserve the unresolved command and disarm; independent reconciliation precedes new motion. |
+| API/web restart | Preserve journals; HOLD/recovery, no automatic worker or command replay. |
+| Native idle read budget exhausted | Current synchronous host closes the session. A listening port is not a connected pendant. |
+| Eligible completed visual-review hold | Explicit source/scene/Native checks can admit the next unit; the completed unit never repeats. |
 
-| Process | Responsibility | Failure behavior |
-|---|---|---|
-| `serve_robot_control.py`, loopback HTTP | Authenticated commissioning, durable SQLite commands, installation/observation admission and reconciliation | Remains available after individual request/worker errors; starts disarmed after restart |
-| `serve_rodi_host.py`, explicitly started pendant listener | Unchanged persistent protocol, independent idle heartbeat, Native FC03 state/endpoint checks | Failed session closes; listener waits for a new manual pendant connection; never republishes an old mailbox |
-| Existing camera and MUSE application | Original images, fixed display mapping and currently simulated mission judgments | Separate processes; no camera or Rodi restart to update this API |
+HTTP/MUSE/camera processing is separate from the host process. **Host heartbeat is not fully isolated from synchronous Native acquisition.** Idle-timeout hardening is unimplemented at this cutoff. A longer signal timer and START precision binding do not repair it; see [timeout distinctions](ROBOT_OPERATIONS.md#distinguish-the-clocks).
 
-The API uses the inherited mailbox interface through a hash-verified private runtime. It does not implement another robot driver. The manifest identifies each exact imported source; installer excludes old profiles, mailboxes, observations and run state. Original Rodi functions for translation, raised wrist repositioning, profile update and persistent idle are preserved.
+Admission is rechecked before durable command commit. A later HOLD/cancel cannot revoke an already admitted blocking MoveL/MoveJ operation. The installed protocol has no emergency-stop wire command. Use actual controller stop facilities when needed.
 
-The host has an explicit `--wait-for-profile` startup mode for preparing a new installation. While its named reviewed profile is absent or invalid, it waits before binding or accepting the pendant and reports `waiting_reviewed_profile`, `listening: false`, `ready: false`. It sends no BEGIN and consumes no command. A genuine reviewed profile precedes a fresh manual PLAY. The installed online script cannot accept a fabricated unqualified idle profile. See [deployment](../deploy/ROBOT_CONTROL.md#keep-preparation-alive-while-current-measurements-are-being-prepared).
+## Current-source preparation
 
-The user's later commissioning instruction explicitly includes agent-driven coordinate collection and eventual pushes/contact turns to all three destinations. Read-only coordinate acquisition and measured XY registration are now separate from receiver startup: see [Robot calibration](ROBOT_CALIBRATION.md). That request does not turn old contact heights, an image homography or a stationary TCP reading into current installation qualification. No physical destination completion is established by the calibration code.
+The original common START, TCP/tool, payload, work height, print/camera identities and private workspace/profile coverage must agree. A flexible rubber face is not a point probe. Rejected global board fits and stopped gripper-tracking experiments remain historical; taught BASE recipes do not retroactively validate them.
 
-## What is implemented
+Use [operations](ROBOT_OPERATIONS.md) for reset, return, reconnect and resume. `physical/reset` is no-motion retirement after an independently verified return. Session START precision binding is explicit, at most 0.005 mm/degree per component and valid for one receiver session; it does not move or redefine START. C11 recovery is narrowly bound to its original known/unsent command history.
 
-- Strict finite BASE TCP targets, current session/sequence/profile binding, measured workspace/Z/speed/step limits and single-command ownership.
-- Durable UUID idempotency: retry the **same ID and identical payload** to retrieve its receipt. A new ID cannot bypass an unresolved command.
-- Separate `inspect_current`, `inspect_ik`, `profile_update`, `translate` and reviewed raised-tool `rotate` operations.
-- Short push admission followed by mandatory fresh post-action vehicle review. Robot endpoint verification alone does not prove the car moved correctly.
-- Per-request exceptions, independent heartbeat, startup disarm, no automatic motion replay and explicit unknown-outcome reconciliation.
-- Equipment-free mock mode, integration/failure tests and an offline measured-installation profile generator.
+No documentation update, source release, mock run or ordinary application deployment opens hardware sockets, activates a profile or replays a historical course.
 
-This service does not yet connect the web supervisor's MUSE action/signal loop to physical execution. Self-labelled automated observations and MUSE reviews are rejected unless a trusted physical bridge validator is explicitly supplied. Operator observations/reviews support commissioning and remain labelled `operator`. Camera hashes and operator poses are submitted assertions in this mode, not independently verified sensor measurements.
-
-## Occlusion and completion
-
-| Situation | Decision | Connection |
-|---|---|---|
-| Some or all board markers covered; fixed installation identity retained | Keep exact mapping, label `marker_occluded`; do not refit | Idle heartbeat continues |
-| Car unreadable before a push | `waiting_observation`, within original admission deadline | API and receiver stay available |
-| Car unreadable after a verified robot endpoint | `awaiting_review`; fresh observation/review required before another push | Idle heartbeat continues |
-| Confirmed view/map/calibration/epoch mismatch | Reject stale geometry; installation review required | No automatic refit or motion |
-| Lost DONE, transport failure or ambiguous publication | `outcome_unknown`, disarm and block new commands | Host waits for a fresh manual connection if the link dropped |
-| API restart while queued | `interrupted_before_dispatch`; never replay | Startup disarmed |
-| Restart during dispatch/commit/run | `outcome_unknown`; inspect/reconcile | Never automatically resubmit |
-
-Admission is checked again just before a durable `committed` record. **That record is the command admission boundary.** After it, a later HOLD/cancel may arrive before mailbox publication but cannot revoke the admitted command. HOLD inhibits uncommitted commands; cancellation during dispatch/run records intent and inhibits subsequent commands. Neither sends a robot stop. The installed blocking MoveL/MoveJ protocol has no emergency-stop/cancel wire command. Use the actual controller's stop facilities when required.
-
-`done` is followed by independent Native endpoint/stationarity verification in the inherited host. A push then needs a different, fresh post-action frame bound to the installation and a visible measured car pose plus an accepted review. PASS records review acceptance and its source; it does not relabel operator assertions as independent physical evidence. UNKNOWN/REOBSERVE remain pending. FAIL disarms. No request automatically moves the tool aside to reveal the car: such a retract must be an explicitly qualified motion sequence.
-
-## Commissioning order
-
-1. Fix the actual print and camera mechanically. Record print/hash, installation and calibration identities. The temporary web overlay is not board-to-BASE calibration.
-2. Measure current TCP/tool identity, payload, workspace limits, work Z and raised Z. Capture actual TCP and six joint angles at the reviewed stationary starting pose. Never reuse POC slot coordinates.
-3. Create private measured Installation and robot-state JSON files. Run the offline profile helper with explicit site review, then validate the resulting profile using the inherited policy. No motion or network is used by this helper.
-4. Deliberately start the separate host with that profile, then PLAY the existing `poc-persistent-v1` script once. Confirm fresh idle, exact build/profile, actual pose/joints and motion mode. Start/load the API installation, inspect current/IK while disarmed, then explicitly arm.
-5. Begin with raised, short bounded translations; measure results. Qualify straight contact pushes, retract/observation pose, stop-line approaches and left/right contact turns separately. Record each outcome and fresh evidence.
-
-Car dimensions, friction, contact point and 90-degree pushing mechanics remain pending. The `rotate` endpoint rotates a **raised tool at fixed XYZ** through reviewed directed joint edges; it is not a qualified 90-degree car turn. Teaching every route combination is unnecessary: qualify reusable straight/approach/turn primitives in the installed geometry, then compile graph routes only from qualified edges. No graph-to-BASE adapter or car-turn qualification is inferred by this API.
-
-## Local mock usage
+## Local mock and client
 
 ```sh
 python tools/serve_robot_control.py --backend mock --port 8897
@@ -85,23 +67,21 @@ python tools/robotctl.py status
 python tools/robotctl.py events
 ```
 
-Only `/health` is unauthenticated. Other endpoints require the private control token, read directly by `robotctl.py`; never paste it into chat. Browser-origin control requests are refused. Run the real mailbox backend on GX10 so monotonic state freshness is evaluated on the same host.
+The mock server is equipment-free. `robotctl.py` contacts the selected API; verify its target. Only `/health` is unauthenticated. Other endpoints use the private token file; never paste it into chat, build assets or Git. Real mailbox freshness is evaluated on the same GX10 host as the receiver.
 
-| Client action | JSON input |
-|---|---|
-| `installation --data <private.json>` | Measured `Installation` |
-| `arm --data <private.json>` | Installation ID, exact receiver binding and review reason |
-| `hold --data <private.json>` | Reason; inhibits uncommitted commands only |
-| `observe --data <private.json>` | Installation/frame identity, hash/time, fixed-view status and car pose |
-| `command --data <private.json>` | UUID, kind/purpose, binding, target/profile, time budgets and expected visual outcome |
-| `get --id <UUID>` / `cancel --id <UUID>` | Existing request ID |
-| `review --id <UUID> --data <private.json>` | Fresh post-action observation ID, source, verdict and summary |
-| `reconcile --id <UUID> --data <private.json>` | Measured outcome, exact fresh idle binding and operator reason |
+| Client action | Private input / effect |
+| --- | --- |
+| `installation` / `arm` | Measured installation and exact receiver binding; arming is explicit. |
+| `hold` | Inhibit uncommitted commands, not a physical stop receipt. |
+| `observe` / `review` | Bound source-labelled frame/car/result evidence; operator assertions do not become independent measurements. |
+| `command` | One UUID, purpose, source/profile, bounded target and expectation; can issue physical motion on the legacy backend. |
+| `get` / `cancel` | Retrieve a request or inhibit eligible future dispatch. |
+| `reconcile` | Explicit measured outcome and fresh idle binding; never invent missing DONE. |
 
-Inspect the strict schemas in [models.py](../backend/robot_control/models.py) before preparing private JSON. TCP uses BASE `[x_mm, y_mm, z_mm, rx_deg, ry_deg, rz_deg]`; `car_pose` uses measured board `[x_mm, y_mm, yaw_deg]`. Workspace limits are BASE, never image pixels. Observation time is UTC Unix seconds; GX10 and camera time provenance must be qualified before an automated bridge is admitted.
+See [strict schemas](../backend/robot_control/models.py). TCP is BASE `[x_mm, y_mm, z_mm, rx_deg, ry_deg, rz_deg]`; measured car pose is a separate board quantity. Preview pixels are not BASE commands.
 
-## Honest availability limits
+## Evidence chronology
 
-Software errors and brief visual occlusion are isolated from idle heartbeat. This is not a guarantee against power, process, network or pendant failure. The unchanged pendant script has no reconnect loop: a real TCP break can require another manual PLAY. The host continues listening; reconciliation and explicit rearming precede further commands. No historical command/profile is restored to make reconnection appear seamless.
+October 28 records cover API deployment, profile-wait correction, local probes and the failed global calibration attempt. October 29 records include B/C/D actual arrivals and the selected RIGHT wait. The expanded catalogue corrects earlier incomplete archive selection. Later C26/review/recovery source is documented separately because the 31 original public JSON records end October 29. Preserve every failure and cutoff-specific claim.
 
-All commissioning state, tokens, geometry, profiles and imported runtime files live under ignored `runtime/robot-control/` or a separate private GX10 shared directory. The public repository contains new wrapper code, schemas, provenance and offline tests only.
+[Evidence index](evidence/README.md) · [B arrival](evidence/taught-B-course-20261029.json) · [C accepted arrival](evidence/taught-C-operator-arrival-20261029.json) · [D arrival](evidence/taught-D-central-recovery-20261029.json) · [C26 endpoint](C26_DELIVERY_ENDPOINT.md)

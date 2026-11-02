@@ -1,5 +1,7 @@
 # Villa delivery at C-step-26
 
+**Source status: published in baseline `7aa7753`, reviewed November 2, 2026.** This document describes the implemented contract and its dated evidence; publication does not start a mission or reconnect hardware. Use [Robot operations](ROBOT_OPERATIONS.md) for the combined reset/return/resume decision and [Known limitations](KNOWN_LIMITATIONS.md) for unresolved connection and qualification limits.
+
 The operator selected the vehicle location reached by C-step-26 as the Villa delivery endpoint on October 30. C-step-27 and C-step-28 are omitted from new C missions. B and D retain their existing routes. No final straightening or parallel parking is requested.
 
 The terminal unit still completes its original contact and withdrawal stages. A fresh original-camera MUSE review then checks that the car is visible, inside the named Villa frontage road zone and wholly on the road. A diagonal parked orientation or no additional displacement from an already-arrived reference is not a terminal failure by itself. `expected_progress` and `heading_matches_expected` remain truthful diagnostic facts. A hidden car, wrong location, uncertain boundary or negative arrival review cannot be converted to success. Native robot completion alone never proves car arrival.

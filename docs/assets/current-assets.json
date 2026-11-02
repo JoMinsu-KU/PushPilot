@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "generated_on": "2026-11-02",
+  "timezone": "Asia/Seoul",
+  "tool": "Built-in image generation tool",
+  "model_identifier": "Not exposed by the tool",
+  "classification": "Original explanatory illustrations; not execution evidence",
+  "prompt_record": "CURRENT_GENERATION_PROMPTS.md",
+  "assets": [
+    {
+      "file": "workspace-concept-current.png",
+      "width_px": 1672,
+      "height_px": 941,
+      "bytes": 1904552,
+      "sha256": "74fb9635867ea2e7c51637ffbec633ca9b974e76e04c10fc00e6310866b11c5d",
+      "role": "Original concept illustration; not an application screenshot or installed map."
+    },
+    {
+      "file": "muse-intelligence-current.png",
+      "width_px": 1774,
+      "height_px": 887,
+      "bytes": 1437906,
+      "sha256": "2c7d228c0e4ddd05078f63668d7c3002884f385ab7a858a2cbeaefac748d8b7a",
+      "role": "Meta MUSE responsibilities and the feedback loop."
+    },
+    {
+      "file": "architecture-current.png",
+      "width_px": 1774,
+      "height_px": 887,
+      "bytes": 1575430,
+      "sha256": "b6ebea8ad837eb4bdd9306f5ee94fb385b1abf93fefe6a7b38877b1bbb6a0f4a",
+      "role": "Current source components and authority boundaries."
+    },
+    {
+      "file": "interaction-current.png",
+      "width_px": 1774,
+      "height_px": 887,
+      "bytes": 1329546,
+      "sha256": "f96773e735296841b65fabc87b7b0f36c58c32af04095c218f87d73eae17b54c",
+      "role": "Observe, Plan, Approve, Act and Verify."
+    },
+    {
+      "file": "evidence-current.png",
+      "width_px": 1942,
+      "height_px": 809,
+      "bytes": 1319253,
+      "sha256": "441a12fa15381fcd5cb6ae7c6b8d14cd3cd9bcf109a5d82f2de812c6e4894542",
+      "role": "Expected, observed, reviewed and decided evidence."
+    },
+    {
+      "file": "delivery-current.png",
+      "width_px": 1672,
+      "height_px": 941,
+      "bytes": 1420001,
+      "sha256": "f375e9fcd55ec3d1a216d253b67cbbbeb7ce8fe5d6827591243f639a298a114a",
+      "role": "Public source release and private GX10 runtime separation."
+    },
+    {
+      "file": "voice-current.png",
+      "width_px": 1942,
+      "height_px": 809,
+      "bytes": 1282665,
+      "sha256": "7ea7bdb7cf54de01f7313e115f3d13d44294dae14a8410733f5cb801eeb33402",
+      "role": "Implemented backend transcription and pending browser capture."
+    }
+  ]
+}

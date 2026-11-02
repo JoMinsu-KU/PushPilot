@@ -2,6 +2,8 @@
 
 # Use a repeatable face constraint before fitting the map.
 
+> **Historical commissioning record — October 28, 2026.** “Current”, “latest” and pending-work statements below refer to that cutoff, not the November 2 product state. Use [Robot operations](ROBOT_OPERATIONS.md), [delivery trial](DELIVERY_SITE_TRIAL.md) and [known limitations](KNOWN_LIMITATIONS.md) for current behavior. Keep rejected fits, unavailable reference tools, unsuccessful observations and original outcomes intact. Later taught BASE deliveries do not validate an earlier failed global calibration or authorize replay of these trials.
+
 **Status: proposed physical acquisition procedure; not executed or qualified.**
 
 The active installation still permits free-XY teaching at one literal Z and orientation. Eleven translations have endpoint evidence, including the latest +X 10 mm, -Y 20 mm and -X 10 mm sequence. These measurements establish robot displacement, not a paper origin, car displacement or a contact-turn response. The camera, persistent receiver and current TCP definition remain unchanged. This document neither applies a profile nor authorizes a new motion.

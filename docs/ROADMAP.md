@@ -12,6 +12,36 @@
 
 Checkboxes describe implementation scope. Automated simulation tests, real provider calls, visual verification, deployment, and physical qualification are separate evidence categories.
 
+## Current delivery checkpoint · November 2, 2026
+
+The original **Observe → Plan → Approve → Act → Verify** concept remains the roadmap. The application has progressed beyond the simulation-only checkpoints preserved below: default simulation and a separately configured physical site trial are both implemented. [Current status](CURRENT_STATUS.md) is the current feature summary; [Verification](VERIFICATION.md) and the [evidence index](evidence/README.md) identify the supporting observations.
+
+| Area | Implemented / dated evidence | Still open |
+|---|---|---|
+| **Workspace** | English Pretendard/glass From/To UI, actual Robot sequence/signal/review/history, Camera and Spatial route presentation | Full keyboard/contrast audit and real-device performance acceptance |
+| **Map and model** | Final A3 City identity `2026-10-28.4`, Pizza-front departure, direct Office and Villa/Hanok frontages; separate private Spatial display manifest | General metric calibration, reproducible private artwork/model prerequisites and installation qualification |
+| **Physical execution** | Taught B/Office, C/Villa and D/Hanok recipes; archived actual arrivals; coordinate contact/release/recontact, Native completion and empty return support | Repeatable unattended end-to-end success, slip correction and fully qualified return/connector coverage |
+| **Delivery outcome** | Active delivery_only; C26 destination/zone arrival, numeric straightening/parallel parking deferred | Parking alignment and independent measured vehicle pose |
+| **MUSE** | Route v3, physical observation v4, qualitative C progress v2, C4/C6 details, C14 lineage, C17 qualitative judgment and C19 explicit omission | Held-out recognition accuracy, false-continuation analysis and stable perception across setup changes |
+| **Signal** | Far-RIGHT wait, two-source manual-mask review, single accepted stopped GREEN followed by measured recontact without a second color wait | Exact deployed physical 120-second budget evidence and broader repeatability qualification |
+| **Recovery** | Explicit review continuation, narrow C11 preparation, session-scoped stationary START reference and ended-mission reset | Native idle-read timeout/heartbeat separation and bounded connection recovery; currently unimplemented |
+| **Voice** | Finite PCM upload, transcription adapter and explicit candidate/goal binding | Browser microphone/encoder/editor, trusted tablet HTTPS and actual ASR access/quality |
+| **Publication** | November 2 source publication: 1,177 backend tests run, five skipped; 126 frontend tests and build passed | Software checks do not qualify physical or provider performance |
+
+### Next work, in order
+
+1. Repair idle connection handling without automatic replay of unknown motion; validate fault paths and no-motion soak separately from route geometry.
+2. Record repeated complete START → delivery → empty return trials for each installed B/C/D recipe, preserving failures and interruptions.
+3. Establish held-out car/signal visual evaluation and independent endpoint/vehicle measurements before expanding correction or parking claims.
+4. Complete tablet voice/device/HTTPS and accessibility acceptance without presenting pending capture as connected.
+5. Extend geometry/model/route capabilities only through explicit map/install qualification, retaining source labels and no-replay recovery.
+
+The requested physical 120-second wait is not proven by the 300-second simulation watcher or a wrist deadline. No new hardware run or provider evaluation was performed for this documentation refresh. See [Robot operations](ROBOT_OPERATIONS.md) and [Known limitations](KNOWN_LIMITATIONS.md).
+
+## Historical implementation checkpoints · October 27–28, 2026
+
+The checklists below retain their original milestone wording and scope. An unchecked historical item is not an assertion that the later implementation is absent; the current table above and linked dated records supersede status claims, while preserving the earlier evidence and remaining qualification distinctions.
+
 ## 0 · Repository foundation
 
 - [x] Establish a self-contained application workspace and component boundaries.

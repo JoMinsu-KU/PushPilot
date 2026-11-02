@@ -1,6 +1,20 @@
 # Contribution record
 
-Prepared on 2026-10-27, Asia/Seoul. Status: internal development record, not a submitted competition disclosure.
+Prepared on 2026-10-27, Asia/Seoul. Current disclosure updated on 2026-11-02. Status: development provenance record, not a submitted competition disclosure. Earlier dated rows retain the implementation/evidence scope at their original checkpoint.
+
+## Current additions recorded November 2, 2026
+
+The original **From sight to action** concept and **Observe → Plan → Approve → Act → Verify** loop are retained. Meta MUSE connects intent, graph-grounded planning, signal interpretation and visual outcome review; local supervision and taught-coordinate execution retain their separate authority.
+
+| Work interval | Added application work | Source and evidence boundary |
+|---|---|---|
+| October 29–30 | Coordinate-unit/site-trial mission coordination, private measured B/C/D delivery recipes, post-withdrawal Meta MUSE observation, configured paper-signal admission and empty return | New orchestration around the inherited controller protocol; actual trial records, derived recipes and repeatability are distinct. [Delivery scope](docs/DELIVERY_SITE_TRIAL.md) |
+| October 30 | C qualitative progress policy, source-bound details/reference lineage, C26 destination-only review and one accepted signal departure | Versioned request/policy work; preserved original failed/uncertain evidence. Numeric correction and parking remain deferred. [C reviews](docs/C_INTERMEDIATE_PROGRESS_REVIEW.md) |
+| October 30 | Designer glass workspace, actual physical telemetry and optional read-only receipt-driven Spatial estimate; exact-JPEG camera transport/recovery | New display/control integration; the illustrated car is not measured tracking. [Designer display](docs/DESIGNER_LIVE_DISPLAY.md) |
+| October 31 | Explicit completed-action/C11 recovery, verified-START retirement and session-scoped START precision handling | Original teaching and replay guards remain authoritative. It does not fix Native idle timeouts. [Operations](docs/ROBOT_OPERATIONS.md) |
+| November 2 | Publication of runtime code baseline `7aa7753`, current documentation/index reconciliation and new light-theme product/Meta/architecture illustrations | Documentation and software checks; not a new robot run, provider accuracy evaluation or deployment activation. [Artwork](docs/assets/README.md) |
+
+The inherited runtime remains a private hash-verified dependency. These changes do not claim authorship of the underlying robot driver, supplied maps/models or Pretendard font. See the [evidence index](docs/evidence/README.md), [current status](docs/CURRENT_STATUS.md) and [notices](THIRD_PARTY_NOTICES.md).
 
 PushPilot has existing POC robot transport, earlier tabletop experiments, a city-map scaffold, design references and planning documents outside this repository. Creating this workspace does not make those earlier components new work. The user selected the Startup track; detailed organizer requirements and source copies remain in the separate planning workspace.
 
@@ -64,6 +78,6 @@ Keep mock, recorded, live-provider and physical-run evidence separate. A real Me
 
 ## Current public disclosure
 
-> PushPilot builds on our earlier tabletop-control experiments, existing robot transport and an inherited Little Town drawing. This repository adds a tablet workspace with a fixed spatial stage and translucent information overlays, a replaceable-map simulation supervisor and execution-aware route display, optional native live preview, recorded-image test overlays and Camera board-focus display masking, evidence replay, Meta goal/scene/action-review adapters, verification and release tools, and original UI artwork. Route progress is simulated and its stop-line geometry is illustrative; the display does not track a physical car. Live preview remains ephemeral and separate from model/evidence inputs. Original recorded frames remain unchanged for model requests and evidence. Action review uses operator-selected recorded pairs and can affect simulation through deterministic gates. Voice, trusted action-bound physical observation and robot connection remain future integration work. Existing foundations, adapted material and external dependencies are identified in the contribution record and third-party notices. Demonstration claims distinguish simulation, synthetic fixtures, recorded real inputs, live preview, actual Meta-model calls and physical execution. The wearable companion is a future concept.
+> PushPilot builds on earlier tabletop-control experiments, existing robot transport and inherited drawing/artwork. It adds a tablet spatial workspace, graph-grounded Meta MUSE planning, source-bound visual review, deterministic mission supervision, coordinate-unit physical orchestration, evidence/replay and isolated release tools. Default simulation and explicitly configured current-site Robot trials keep separate receipts and state. MUSE reviews the car and selected signal from original images; the executor follows private taught BASE coordinates and Native completion evidence. Camera/Spatial share a drawing route; the optional Spatial car is a display estimate, not measured tracking. Historical B/C/D deliveries are documented without claiming qualified unattended repeatability, numeric drift correction or parallel parking. Voice upload/transcription is implemented on the backend; browser capture and actual ASR verification remain pending. The wearable companion remains a future concept. Original failures, inherited authorship, private assets/runtime and external dependencies retain their source and scope.
 
 Update this statement from completed work and its evidence as implementation progresses. This document records provenance; it does not authorize publication or submission.

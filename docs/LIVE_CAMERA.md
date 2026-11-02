@@ -2,13 +2,15 @@
 
 # A live view, with a separate evidence boundary
 
-**Native camera pixels in the workspace. No implied robot observation or automatic MUSE request.**
+**Native camera pixels in the workspace, with deliberate evidence selection and unchanged geometry.**
+
+Reviewed November 2, 2026. This describes implementation and dated observations, not current service availability. See [Current status](CURRENT_STATUS.md).
 
 [Frontend](../frontend/README.md) · [Backend](../backend/README.md) · [Development](DEVELOPMENT.md) · [Recorded action reviews](ACTION_REVIEWS.md) · [Verification](VERIFICATION.md)
 
-PushPilot now has an opt-in live camera preview alongside recorded images and the spatial illustration. A standalone helper reads one explicitly selected Linux camera; an existing loopback connection supplies its original JPEGs to the application. The live preview is independent of recorded `SceneStore` media, MUSE requests, action-review evidence and mission state. Connecting it does not enable robot control, physical signal admission or fresh post-action verification.
+PushPilot now has an opt-in live camera preview alongside recorded images and the spatial illustration. A standalone helper reads one explicitly selected Linux camera; an existing loopback connection supplies its original JPEGs to the application. The preview channel is independent of recorded `SceneStore` media and mission state. Explicit live-intelligence and configured physical-mission operations separately select unchanged originals into action/signal evidence. Connecting preview alone does not issue robot control, accept GREEN or verify an action.
 
-Since October 28, the GX10 deployment runs the application beside the independent camera helper and connects over host loopback. A Windows development instance can instead use the SSH-forward workflow below. Actual connection observations and registration outcomes belong in [verification](VERIFICATION.md); implementation of a lock does not establish that the current physical view has been successfully registered.
+The recorded October 28 GX10 deployment placed the application beside the independent camera helper over host loopback. The release may subsequently change; source configuration is not evidence of a currently running process. A Windows development instance can instead use the SSH-forward workflow below. Actual connection observations and registration outcomes belong in [verification](VERIFICATION.md); implementation of a lock does not establish that the current physical view has been successfully registered.
 
 ## Data path and startup
 
@@ -52,10 +54,10 @@ python tools/serve.py --port 8080 --live-camera-url http://127.0.0.1:8084
 A development computer can reach that loopback-only application through a separate forward:
 
 ```sh
-ssh -N -L 127.0.0.1:8897:127.0.0.1:8080 gx10
+ssh -N -L 127.0.0.1:8893:127.0.0.1:8080 gx10
 ```
 
-Open `http://127.0.0.1:8897` on that computer. These examples do not start or restart the camera helper.
+Open `http://127.0.0.1:8893` on that computer. Use an unused local port; do not collide with an existing robot-control API listener. These examples do not start or restart the camera helper.
 
 PowerShell users can put each command on one line rather than using the POSIX continuation characters. `PUSHPILOT_LIVE_CAMERA_URL` is the equivalent explicit process-environment configuration. The URL must be numeric loopback HTTP with an explicit port, without credentials, paths, query strings or fragments. DNS names, remote addresses and redirects are rejected. No provider key is needed for preview.
 
@@ -115,9 +117,9 @@ The user clarified that robot motion will frequently cover the printed markers. 
 
 Marker detection changes stay quiet in the operator workspace. The glass source plate reads `Fixed mapping` throughout ordinary partial or complete marker covers, with no missing-marker count or recurring banner; recorded partial registration also has no visibility banner. The live plate's on-demand tooltip retains the fresh distinct-marker count and explicitly says current alignment is unverified when visibility is insufficient. A `marker_disagreement` observation uses the compact `Alignment conflict` label and detailed tooltip, without flashing a full-width marker alert. Recorded registration tools and the live API retain their detailed diagnostics. `Fixed mapping` describes reference retention, not newly verified alignment. Stale imagery and a confirmed changed view retain prominent alerts. All existing disagreement, admission, identity and overlay guards remain unchanged. Counts remain fresh observations, rather than being smoothed, cached as detections or filled from the reference. This presentation-only policy changes no detector, transform, board mask, image pixels, MUSE eligibility or robot behavior.
 
-When markers return, compare them with the same transform. Agreement restores verified status without registration; a coherent distributed shift over three distinct new frames latches `view_changed`. While every marker is hidden, the system **cannot establish that an unseen camera or board movement did not occur**. Fix the camera mount and board mechanically before physical qualification. This application implements test display continuity and simulated admission only, not a measured physical control guarantee.
+When markers return, compare them with the same transform. Agreement restores verified status without registration; a coherent distributed shift over three distinct new frames latches `view_changed`. While every marker is hidden, the system **cannot establish that an unseen camera or board movement did not occur**. Fix the camera mount and board mechanically before physical qualification. These marker checks implement display continuity and image-admission checks; the separately configured physical executor uses its own taught BASE geometry and completion evidence. Neither retained display alignment nor successful image admission is a measured physical control guarantee.
 
-Car and signal visibility are independent: an obscured car outcome can require `REOBSERVE`, and an unreadable signal remains `UNKNOWN`. Retaining board registration cannot convert either into `PASS` or `GREEN`. Any future observation pose must be a separately qualified bounded robot action, not an automatic retreat triggered by missing board markers.
+Car and signal visibility are independent: an obscured car outcome can require `REOBSERVE`, and an unreadable signal remains `UNKNOWN`. Retaining board registration cannot convert either into `PASS` or `GREEN`. Configured physical recipes already include taught observation/withdrawal poses for car/signal visibility. Any additional pose still requires its own bounded motion review; missing board markers alone must not trigger a retreat.
 
 The [October 28 stability recheck](evidence/vision-stability-20261028.json) records the actual small-marker failure and repair. In a paired twenty-image comparison, complete recovery increased from 10 to 19 frames on both local and GX10 runtimes. A subsequent fresh 120-frame window retained the exact mapping in all frames, with 110 complete and ten three-marker observations. These short checks cover marker decoding and display continuity, not physical car/signal recognition or a moving-robot trial.
 
@@ -125,11 +127,11 @@ The [October 28 stability recheck](evidence/vision-stability-20261028.json) reco
 
 ### Tablet preview transfer
 
-The browser targets four original 1920 x 1080 frames per second. It downloads each selected JPEG once into a bounded, short-lived Blob URL, decodes it, and shares those exact bytes with the SVG display. This avoids depending on cross-element HTTP cache reuse between an HTML preload and an SVG image. The previous image remains allocated until React commits its replacement; expired downloads and component cleanup release their resources. No resize, recompression, canvas redraw or inference-input change is involved.
+The browser targets a 250 ms cycle (up to four original 1920 × 1080 frames per second), not a guaranteed achieved frame rate. It downloads each selected JPEG once into a bounded, short-lived Blob URL, decodes it, and shares those exact bytes with the SVG display. This avoids depending on cross-element HTTP cache reuse between an HTML preload and an SVG image. The previous image remains allocated until React commits its replacement; expired downloads and component cleanup release their resources. No resize, recompression, canvas redraw or inference-input change is involved.
 
 Status fetches and JPEG transfer/decode have deadlines; retries remain bounded and page visibility changes cancel suspended requests. Transport and decoding time still count against the existing 1500 ms freshness limit. Neither a Blob URL nor a repeated frame makes old pixels fresh. Actual stale images still withhold AR.
 
-A read-only October 30 sample found 80/80 live server snapshots (maximum source age 202 ms), unchanged camera epoch/homography, and 40/40 successful LAN status-plus-JPEG transfers (maximum total 106 ms). Native JPEGs reached 687 KB each, approximately 44 Mbit/s at the former eight-frame target before protocol overhead. The four-frame target halves this display traffic. These measurements do not reproduce the operator iPad's Wi-Fi stalls or prove their exact cause; iPad confirmation remains necessary. Robot commands, current mission HOLD, camera settings, and MUSE originals are independent of this preview change.
+A read-only October 30 sample found 80/80 live server snapshots (maximum source age 202 ms), unchanged camera epoch/homography, and 40/40 successful LAN status-plus-JPEG transfers (maximum total 106 ms). Native JPEGs reached 687 KB each, approximately 44 Mbit/s at the former eight-frame target before protocol overhead. The four-frame target halves this display traffic. These measurements do not reproduce the operator iPad's Wi-Fi stalls or prove their exact cause; iPad confirmation remains necessary. Robot commands, the mission HOLD observed during that check, camera settings and MUSE originals were independent of this preview change.
 
 The contract is [`contracts/live-camera.ts`](../contracts/live-camera.ts), schema `pushpilot.live-camera.v1`.
 
@@ -139,9 +141,9 @@ The contract is [`contracts/live-camera.ts`](../contracts/live-camera.ts), schem
 | `GET /api/v1/live-camera/frames/{frame_id}/image` | Original JPEG bytes from the bounded RAM cache. |
 | `POST /api/v1/live-camera/registration` | Explicit `{epoch, frame_id}` display lock, rejected for stale, changed or insufficient-marker input. |
 | `POST /api/v1/live-camera/registration/resume` | Explicit `{epoch}` request to revalidate and reuse the exact server-held display reference; client transform fields are rejected. |
-| `GET /api/health` | `camera_preview_connected` reports a currently live preview. Simulation, `robot_connected: false` and `hardware_connected: false` remain separate. |
+| `GET /api/health` | `camera_preview_connected` reports preview availability. Legacy simulation capability fields do not replace `/api/v1/physical/status` for the separately configured physical executor. |
 
-The legacy workspace `camera` capability refers to qualified control observations, not this preview connection, and remains false. Preview polling, locking and explicit display-reference resume do not change a mission revision, produce a GREEN observation, complete a step, persist a review image or call MUSE. Separate [live-intelligence operations](LIVE_INTELLIGENCE.md) deliberately select unchanged originals into their own evidence ledger for graph planning and review against simulated receipts. **Image tools** retain the independent recorded-image workflow. Neither selected native images nor continuity receipts establish measured physical actions or camera-to-robot calibration.
+The legacy workspace `camera` capability refers to qualified control observations, not this preview connection, and remains false. Preview polling, locking and explicit display-reference resume do not change a mission revision, produce a GREEN observation, complete a step, persist a review image or call MUSE. Separate [live-intelligence operations](LIVE_INTELLIGENCE.md) deliberately select unchanged originals into their ledger for graph planning and review against simulated receipts. Configured [physical operations](ROBOT_OPERATIONS.md) separately capture review/signal evidence against the taught executor and Native receipts. **Image tools** retain the independent recorded-image workflow. Neither selected native images nor continuity receipts establish measured physical actions or camera-to-robot calibration.
 
 ---
 

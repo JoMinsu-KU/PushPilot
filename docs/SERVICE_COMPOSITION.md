@@ -4,129 +4,78 @@
 
 **One application backend. Explicit provider and equipment boundaries.**
 
-[Documentation](README.md) · [Architecture](ARCHITECTURE.md) · [Live intelligence](LIVE_INTELLIGENCE.md) · [Voice backend](VOICE_BACKEND.md) · [Development](DEVELOPMENT.md) · [Deployment](../deploy/README.md)
+[Documentation](README.md) · [Architecture](ARCHITECTURE.md) · [Current status](CURRENT_STATUS.md) · [Development](DEVELOPMENT.md)
 
 </div>
 
 ---
 
-**Status: native-frame MUSE planning/action/signal services, finite voice uploads, simulation and recorded-image review are implemented.** One FastAPI/Uvicorn process serves the React/TypeScript bundle and API. SQLite stores mission decisions, command receipts and deliberate selected native-frame evidence; private scene files retain separate uploaded recordings. Preview polling remains an eight-frame RAM path. MUSE-selected graph paths and accepted bound reviews can change only simulated mission state. Browser microphone capture, qualified physical observation, robot registration and physical control remain unavailable; actual live action/signal recognition and voice access are still unverified.
+As of **November 2, 2026**, the same React/TypeScript and FastAPI application supports default equipment-free simulation and an explicitly configured Robot site trial. The original reviewed loop remains **Observe → Plan → Approve → Act → Verify**. The browser, application, camera helper, commissioning API and persistent receiver have distinct lifetimes; a frontend deployment is not a request to restart equipment services.
 
-## Initial deployment units
+## Running units
 
-The application uses a browser frontend and **one backend process containing separate modules**. A frontend development server is optional local tooling; it is not needed on GX10. Provider, observation, and action boundaries remain distinct so later integrations do not create competing mission authorities.
-
-| Unit | Responsibility | Initial scope |
+| Unit | Responsibility | State and authority |
 |---|---|---|
-| **Tablet browser** | English workspace, typed goals, graph route, recorded-frame upload/overlay, opt-in live preview, scene inspection and replay | React/TypeScript; microphone/transcript flow planned |
-| **Application backend** | Revisioned APIs, native-frame/graph planning, action/signal reviews, finite audio intake, simulation and private evidence | FastAPI/Uvicorn, one worker; OpenCV/NumPy; no physical robot transport |
-| **Standalone camera helper** | Explicit Linux camera ownership, native 1920 × 1080 MJPEG bytes and host-receive metadata over loopback | Independently started on GX10; no application deployment, persisted evidence or robot control |
-| **Meta Spark API** | Native-frame/graph route proposals, live/recorded action review and stopped-signal judgment; legacy symbolic interpretation and separate scene inspection | Provider adapter code and offline tests; actual calls keep their exact source/prompt scope in [Meta evidence](META_API_CHECK.md) |
-| **Meta Voice Transcribe API** | Finite supported PCM WAV → original-language transcript candidate | Backend adapter implemented; actual account access and quality untested |
-| **Application state storage** | Workspace/events, request journal and deliberate native originals; separate scene files and ephemeral transcript candidates | SQLite plus private scene files; preview/audio/transcript candidates remain bounded RAM paths; complete raw provider-envelope export remains later work |
-| **Qualified equipment adapters** | Action-bound camera observations and measured robot action/stop receipts | Deferred physical integration; live preview does not implement these |
+| **Tablet browser** | English From/To workspace, glass overlays, Camera/Spatial, explicit execution controls, sequence, signal and replay | Renders backend data. Spatial vehicle is an execution estimate, not car tracking. Browser microphone remains disconnected. |
+| **Application backend** | One FastAPI/Uvicorn worker serves the compiled frontend and `/api`, simulation supervisor, physical coordinator, MUSE/voice adapters and evidence | Separate workspace and physical revisions. Starting the process does not authorize motion. |
+| **Commissioning API** | Robot profile/command admission, status and source-bound hardware operations | Independent loopback service; the hardware token stays on the server. |
+| **Rodi receiver host** | Persistent pendant protocol, exact command/sequence/session binding and Native completion checks | Independent receiver journal. Unknown outcomes block replay. |
+| **Camera helper** | Owns its selected device and supplies native JPEG bytes/receive metadata over loopback | Independent device lock and process; no mission authority or automatic application-owned restart. |
+| **Meta Spark API** | Selected-image/graph interpretation, scene/action/arrival review and stopped signal observations | Structured judgment, not TCP targets or scripts. Actual failures remain failures. |
+| **Meta Voice adapter** | Finite supported PCM WAV to original-language transcript candidate | Backend implemented; ASR access, device capture and complete browser interaction unverified. |
 
-The backend serves compiled `frontend/dist` on the same origin as `/api`. Install `requirements.lock`, build locally using Node 24 and `npm ci && npm run build`, then run `python tools/serve.py`. GX10 needs Python 3.12+ for serving and no Node process. The browser receives application responses; it never receives the Meta credential.
+GX10 serves compiled frontend assets without a Node runtime. The deployed application uses port `8080`, the independent preview helper uses loopback `8084`, and the commissioning API uses loopback `8897`; the Rodi listener uses `19507`. These are installation references, not instructions to start a second copy. Windows development may use application `8893` and a helper forward `8895`. See [deployment](../deploy/README.md) for activation and private prerequisites.
 
-### Optional preview transport
-
-The authorized development preview uses the standalone camera helper at GX10 loopback `127.0.0.1:8084`, an SSH local forward at client `127.0.0.1:8895`, and the Windows application on port `8893` with `--live-camera-url http://127.0.0.1:8895`. The application accepts only an explicit numeric loopback HTTP origin with a port; it does not start the helper or tunnel, open `/dev/video0`, or restart POC/Rodi/camera services. The helper has its own device lock and refuses a detected existing owner without terminating it. It requests 30 fps MJPEG and copies native JPEG bytes; no end-to-end frame-rate or latency result is implied.
-
-`backend/live_camera.py` keeps at most eight frames in RAM. Polling does not call MUSE, persist evidence or mutate mission state. A deliberate `live_intelligence.py` operation separately selects unchanged originals and copies only those images into the private evidence ledger before dispatch. Metadata retains camera identity, epoch, sequence, native and evidence frame IDs, dimensions, hash, registration and age. Timestamps describe camera-host receive/dequeue, not sensor exposure. Upstream/transport/elapsed age count toward the 1,500 ms selection limit; repeated sequences cannot refresh it. Preview URLs may be privately browser-cached for 30 seconds. See [Live intelligence](LIVE_INTELLIGENCE.md) for durable evidence URLs and operation bindings.
-
-Live registration is an explicit fresh-frame display lock requiring all four consistent markers. Epoch, camera identity, resolution or map changes require manual relocking. Temporary occlusion retains the fixed display transform with unverified alignment; it never refits. A distributed coherent shift across at least two markers on three newly accepted frames latches `view_changed` and withholds the overlay. This is not camera-to-BASE registration, proven physical calibration, measured car pose or a valid traffic signal. The dedicated `camera_preview_connected` health flag does not change the workspace's false qualified `camera`/`robot` capabilities. See [Live camera preview](LIVE_CAMERA.md) and its [contract](../contracts/live-camera.ts).
-
-## Backend modules
+## Modules inside the web application
 
 | Module | Owns | Boundary |
 |---|---|---|
-| **API and sessions** | Session/capture/request identities, validation, cancellation and response routing | Reject stale session/revision updates; expose only supported capabilities |
-| **Speech adapter** | Finite audio upload, Meta transcription, provider errors and result normalization | Return text and provenance; never start a mission |
-| **Audio validation** | Bounded mono PCM16 WAV validation and canonical container rebuilding, preserving original samples | No general media decoder/resampler; unsupported containers/rates reject before dispatch |
-| **Goal/route interpretation** | Accepted text plus selected native image/graph → destination, complete node sequence, constraints and clarification | Compile the exact validated path; separate declared start from measured vehicle pose; keep legacy symbolic mode explicit |
-| **Mission supervisor** | Approved-plan state, sequencing, stop/wait/reobserve/fault transitions and admission | Sole application authority for action transitions |
-| **Observation adapters** | Source-labelled images, signal state, action state and timestamps | Preserve unknown/stale/occluded status |
-| **Live preview adapter** | Existing loopback helper polling, bounded RAM cache, preview age and fixed display registration | No recorded-store persistence, provider call, mission mutation or physical admission |
-| **Live intelligence service** | Explicit original-frame selection, journal reservations, frame/action/stop binding, exact graph validation and finite run/wait helpers | Revalidate after inference; reject late/superseded results; no autonomous full-mission loop or physical execution |
-| **MUSE review adapter** | Bound live/recorded comparisons and RED/GREEN/UNKNOWN judgment of a new approach-specific image after a simulated stop | Local checks validate provenance/bindings; no second local color classifier and no claimed physical stop |
-| **Action adapter** | Hardware-free bounded action simulation and corresponding result | Later physical implementation requires separate qualification |
-| **Evidence and replay** | Immutable records and causal links among inputs, revisions, checks and decisions | Replaying evidence grants no execution authority |
+| `core.py`, workspace API/store | Approved graph simulation, actions, stops, wait/review/recovery and command idempotency | Abstract receipts remain simulated even when MUSE sees real frames. |
+| `maps.py`, `planning_provider.py` | Selected directed graph, map-driven labels, v3 MUSE route proposal, departure/turn/via/avoid validation and drawing geometry | No graph-to-TCP conversion or model-generated coordinates. |
+| `live_camera.py` | Existing helper polling, eight-frame RAM cache and fixed display registration | Preview alone never calls MUSE or advances a mission. |
+| `live_intelligence.py` and live providers | Explicit original selections, frame/action/stop bindings, durable inference reservations and simulation run/wait/watch | Does not own the physical worker. Simulated signal watch is a separate service. |
+| `physical_mission.py`, `physical_api.py` | Configured site-trial lifecycle, same-origin start/stop/reset/resume, independent state/revision and telemetry | No worker auto-resume on restart. Reset does not move the robot. |
+| `robot_control/site_trial_driver.py` and mission modules | Taught B/C/D recipes, source/profile checks, coordinate contact/release/recontact, Native receipts and applicable MUSE review | Private geometry required. Active mode is delivery_only; numeric alignment/parking are deferred. |
+| `physical_display.py`, `physical_display_api.py` | GET-only cached physical presentation from actual journals/receipts | No command path or motion authority; missing data remains unavailable. |
+| `scene.py`, `action_review.py` | Separate recorded-scene inspection and selected recorded-pair simulation review | Recorded images do not establish fresh physical capture. |
+| `voice.py`, `voice_api.py` | Bounded PCM validation, finite transcription and session/map-bound candidates | No automatic goal submission or approval; browser capture/editor pending. |
 
-The modules above now implement finite voice uploads/candidates, native-frame planning, bound action comparisons and stopped-signal judgments alongside existing recorded paths. New inference runs outside workspace locks and completion rechecks the current request, revision, map and registered camera context. `/live-actions/run` performs one action or reobservation plus its review; `/live-signals/wait` makes at most three new stopped observations. The mission stays simulated and stopped while a signal result is pending. Physical stop/capture qualification, browser audio capture, actual ASR and live action/signal evaluation, and complete raw provider-envelope/export policy remain separate gates. An in-flight color-change interruption is outside this scenario.
+The physical start command binds the current live MUSE plan in workspace **PLAN_READY**, its session/plan revision, destination, route nodes, map identity/hash and **physical** revision. In Robot mode, **Start robot mission** is the explicit approval/start action; do not call the simulation `/approve` first. The private driver chooses the corresponding taught recipe. The graph is the visible intent/route interface; the BASE packet is the execution source. Replacing the print or changing the drawing cannot silently relocate a robot path.
 
-The speech and Spark adapters may share a server-side configuration boundary and the same Meta API key. They have different request formats, validation and acceptance tests. Success in one adapter does not establish the other's availability.
+## State and evidence ownership
 
-## Two input paths, one reviewed goal
+| Store | Retains | Kept separate from |
+|---|---|---|
+| Workspace SQLite | Goal/plan, simulation state/events, exact request-ID receipts | Physical command authority |
+| Selected-native ledger | Deliberately selected unchanged images, hashes, bindings and inference outcomes | Transient preview polling |
+| Recorded-scene files | Uploaded original media, marker reference and independent inspection | Trusted post-action physical chronology |
+| Physical coordinator/driver journals | Mission, issued/completed receipts, signal admission, actual reviews, errors and recovery causes | Display estimates and demo values |
+| Receiver journals | Controller session/sequence/profile, command transmission and Native evidence | MUSE claims about vehicle motion |
+| Optional physical display cache | Source-labelled phase, confirmed progress and receipt-driven Spatial estimate | Control/status endpoint reliability |
+| Voice candidate RAM | At most 32 candidates for 30 minutes, no retained audio | Durable mission approval |
 
-| Input path | Required flow |
-|---|---|
-| Typed, implemented | Edit goal → explicit submission → selected native-frame/graph MUSE plan or explicit demo/symbolic path → review/approval |
-| Voice, backend implemented | Supported PCM WAV upload → backend transcription candidate → explicit confirmed text/receipt → live MUSE planning → review/approval; browser recording/editing UI remains unconnected |
+Raw images, private controller runtime, profiles, route coordinates, operational state and secrets stay outside Git. Reset preserves historical evidence. Replaying an old receipt for inspection cannot dispatch movement, and an unknown command cannot be resent automatically.
 
-After interpretation, both paths use the same mission contract and supervisor. Recording and transcription are not mission states that authorize robot movement. Session, capture, transcript, interpretation and plan revisions prevent a delayed recognition result from changing an already reviewed plan.
+## Signal and observation lifecycle
 
-The initial input gate accepts new goals only during non-executing preparation. An active mission, including RED waiting and review, rejects new recording, text submission and goal edits. Starting a replacement goal requires explicit mission completion/termination and state reconciliation. A cancelled capture or delayed transcript cannot alter an active mission.
+The current physical northbound approach withdraws to the far-RIGHT stopped observation pose. MUSE judges the two-face paper signal with a black cover on a cable tie. Two distinct source images and the stopped-car context support the judgment; narrow exposed rims/small tremor may be accepted when coverage is otherwise clear, while a substantial mask shift or broad exposure remains UNKNOWN/WAIT.
 
-The finite-recording backend is implemented with bounded in-memory validation and candidates. Live streaming is later work with backend-managed authentication. Optional TTS is separate. See [Voice backend](VOICE_BACKEND.md) for current endpoints and format limits, and [Voice input](VOICE_INPUT.md) for the remaining UI/device gates.
+The configured `single_departure` sequence is **accepted stopped GREEN → measured recontact → continuation**, with no second color wait. A new mission needs new admission. Contact and recontact remain coordinate based. C4/C6 detail crops, C14 wider reference lineage, qualitative C17, explicit C19 omission and C26 destination-only arrival have documented scope; they do not turn every uncertainty into success. See [prompts](../prompts/README.md), [single signal departure](SINGLE_SIGNAL_DEPARTURE.md) and [C endpoint](C26_DELIVERY_ENDPOINT.md).
 
-## Voice and image service behavior
+The simulation `/live-signals/watch` defaults to a 300-second total budget and is unrelated to the requested physical 120-second wait. Provider, Native freshness, receiver read and wrist-completion clocks also differ. Idle Native timeout recovery remains unimplemented; [robot operations](ROBOT_OPERATIONS.md) explains the current disconnect/PLAY boundary.
 
-All current action/stop receipts remain simulated. A live-backed plan requires server-bound native image review and its dedicated stopped-signal path; it rejects manual colors and demo/recorded verdicts. Separate demo missions retain their explicit inputs. Independent scene inspection and preview polling cannot advance a mission. The full interaction below includes remaining browser capture/editing and future qualified physical receipts:
+## Two inputs, one reviewed goal
 
-1. The browser captures an utterance or accepts typed text. Voice audio goes only to the application backend.
-2. The speech adapter obtains a transcript. The operator checks or edits it and explicitly accepts one revision.
-3. Spark receives the confirmed goal, selected original frame and selected graph, then proposes a complete path and constraints. The backend checks the exact path. Unresolved intent or scene uncertainty requires clarification.
-4. The operator reviews and approves the current symbolic simulation plan.
-5. The supervisor admits one bounded simulated action when its applicable gates pass.
-6. Deliberately selected original BEFORE/AFTER frames and the simulated receipt feed MUSE review. Real model results remain labelled independently from image provenance and simulated actions.
-7. The supervisor records why it continues, waits, reobserves or faults. The browser renders that state and its causal evidence.
+Typed input is connected to planning and approval. Finite voice upload/transcription is implemented in the same backend, using the server-held Meta credential. A transcript candidate must be explicitly accepted and bound to the current workspace/map before MUSE planning. Browser push-to-talk, supported PCM encoding, transcript editing and trusted tablet HTTPS remain acceptance work. Realtime ASR and TTS are deferred; a second speech server is not required for the finite backend.
 
-At each intersection, the simulator records a mandatory STOP even on GREEN and requires its accepted review. The implemented live signal path then selects a new native image for the configured incoming approach, adds a projected target polygon and asks MUSE for RED/GREEN/UNKNOWN. RED/UNKNOWN waits; a current valid GREEN can admit one simulated crossing after receipt, plan/junction/approach, frame/age and response checks. No second local color classifier is required. Missing reviewed target metadata rejects before dispatch; the current map intentionally has none. The physical robot stop/continuation adapter and real signal-recognition evaluation remain unimplemented/unverified respectively. See [MUSE signal gate](MUSE_SIGNAL_GATE.md).
+New goals belong to non-executing preparation. Simulation APIs reject replacement outside their preparation states, and the tablet disables goal editing while a Robot mission is active, including signal waiting and review. The workspace/voice APIs currently validate workspace state rather than independently locking against the separate physical coordinator; Robot UI protection is not a cross-service API lock. Late results still require the original workspace/session/map binding and cannot grant plan approval. See [Voice input](VOICE_INPUT.md) and [Voice backend](VOICE_BACKEND.md).
 
-## Secrets, transport and evidence
+## Verification and delivery
 
-| Concern | Design requirement |
-|---|---|
-| **Configuration** | Development uses ignored backend-local `.env`; release configuration and secrets live outside versioned source |
-| **Browser microphone origin** | Trusted target-device HTTPS and secure-context/device preflight; a plain LAN HTTP origin cannot be assumed to allow recording |
-| **Audio format** | Accept only bounded mono PCM16 WAV at 16/24 kHz; canonicalize its container without decoding other formats or resampling |
-| **Provider authentication** | Use a fixed approved TLS origin; credential-bearing HTTP must not follow redirects to another origin |
-| **Streaming later** | Follow the documented provider handshake; keep credentials and handshake payloads exclusively on the server |
-| **Audio** | Bound duration/size and temporary memory; discard raw audio on completion, cancellation, failure or timeout by default |
-| **Evidence** | Retain minimal transcript/revision causality and provider outcomes; exclude keys, authentication payloads and environment values |
-| **Isolation** | Label robot, image, pose, signal, audio and model sources separately |
-| **Live preview** | Opt-in loopback transport and bounded RAM; only explicit live-intelligence operations may select/copy unchanged originals into separate private evidence |
-| **Restart** | Reconstruct a non-executing review state; no auto-resume from old approvals, captures, GREEN observations or pending actions |
+The public source includes offline tests and dated physical/provider summaries, not private operating prerequisites. The November 2 publication recorded 1,177 backend tests run with five skipped, 126 frontend tests and a successful frontend build. These are software checks; actual arrival records and incomplete repeatability qualification retain separate labels in [verification](VERIFICATION.md) and the [evidence index](evidence/README.md).
 
-Provider request cancellation may not stop work already accepted by the provider. The application must invalidate the corresponding capture/revision locally and prevent late completion from gaining authority.
-
-## GX10 boundary
-
-Read-only GX10 inspection on October 27, 2026 found ARM64 Ubuntu 24.04.4 and Python 3.12.3, with no Node/npm on the inspected PATH. On October 28, the compiled frontend and simulation backend were installed and started in an isolated release with fresh shared state. The independent native camera helper remained running, and the application connects to it over host loopback. Windows remains the development host. The enabled application user service starts with the user session; boot without login, trusted tablet HTTPS and microphone capture remain unverified. See [deployment verification](VERIFICATION.md#gx10-application-deployment-october-28) for the exact scope. No frontend, backend, or voice work requires restarting POC web, Rodi, camera, or receiver services.
-
-Choose HTTPS termination and a certificate trusted by the tablet. Browser capture must be tested at that origin and encode supported WAV, or add a separately reviewed conversion implementation. TLS and microphone capture remain implementation gates; the existing preview and finite-upload backend do not establish them.
-
-Final production geometry, robot coordinates, camera-to-BASE registration, qualified stop lines, live signal ROIs, and metric AR remain unqualified. The user-authorized temporary adapter supplies drawing routes and test-only recorded/live display overlays. It loads `PUSHPILOT_MAP_PATH`; map identity changes invalidate incompatible plans/references. An available live image does not establish successful registration. See [Temporary map](TEMPORARY_MAP.md) and [Live camera preview](LIVE_CAMERA.md). The glasses companion remains a labelled concept.
-
-## Implementation gates
-
-| Milestone | Complete when |
-|---|---|
-| **Select runtime — implemented** | React/Vite frontend, Python 3.12+ FastAPI/Uvicorn backend, locks and local launcher exist; host installation remains unverified |
-| **Establish contracts — implemented software boundaries** | Workspace/scene/recorded/live DTOs, bounded map/voice request validation and transcript binding exist; measured physical receipts/observations remain pending |
-| **Connect typed flow — implemented** | An approved symbolic mission runs through simulation and source-labelled SQLite events without hardware |
-| **Add voice — backend implemented, device/provider pending** | Finite PCM upload, Meta adapter and bound candidates exist; browser editing/capture and actual transcription must pass [voice gates](VOICE_INPUT.md#acceptance-gates-before-claiming-voice-support) |
-| **Inspect recorded scenes — implemented** | Explicit frame-bound MUSE request returns USABLE/REOBSERVE/UNKNOWN, visible places, car visibility and paper-signal evidence without motion authority; actual results are recorded separately in [verification](VERIFICATION.md) |
-| **Connect recorded action review — implemented** | Bound MUSE before/after result changes simulation with local gates preserved; [workflow and receipts](ACTION_REVIEWS.md) |
-| **Connect live display preview — implemented, opt-in** | Standalone helper, loopback forwarding and an ephemeral display API are separate from mission evidence; physical calibration and preview performance remain unqualified |
-| **Connect native-frame planning/review — implemented** | Exact MUSE node-path validation, immutable original selections and bound action comparison exist; actual evidence is separately recorded per operation/version |
-| **Connect stopped-live MUSE signal review — software implemented** | Simulated stop receipt → new configured-approach native frame → MUSE judgment → validated simulated wait/admission. Real target/recognition and physical stopping remain pending. [Boundary](MUSE_SIGNAL_GATE.md) |
-| **Connect fresh physical evidence — pending** | Trusted capture, action receipts and qualified local findings support the physical outcome; selected uploads do not establish this |
-| **Verify simulation — offline tested** | RED wait, accepted GREEN, review rejection/uncertainty, provider failure and restart have offline tests; actual calls and physical quality use separate records |
-| **Prepare isolated delivery — partial** | Read-only host inspection and runtime selection completed; host installation, TLS, activation and rollback checks remain |
-
-Physical qualification opens only after the map and installation are finalized. It is not implied by completing these software milestones.
+Build locally, package committed source plus matching compiled assets, verify an isolated release and deliberately activate it. Do not restore old profiles, mailboxes or pending actions during deployment. [Current status](CURRENT_STATUS.md) and [known limitations](KNOWN_LIMITATIONS.md) identify remaining work.
 
 ---
 
-[← Architecture](ARCHITECTURE.md) · [Voice input →](VOICE_INPUT.md) · [Roadmap](ROADMAP.md)
+[Architecture](ARCHITECTURE.md) · [Robot operations](ROBOT_OPERATIONS.md) · [Development](DEVELOPMENT.md)

@@ -2,6 +2,8 @@
 
 # Teach a fixed frame once. Compute the road between endpoints.
 
+> **Historical commissioning record — October 28–29, 2026.** “Current”, “latest” and pending-work statements below refer to that cutoff, not the November 2 product state. Use [Robot operations](ROBOT_OPERATIONS.md), [delivery trial](DELIVERY_SITE_TRIAL.md) and [known limitations](KNOWN_LIMITATIONS.md) for current behavior. Keep rejected fits, unavailable reference tools, unsuccessful observations and original outcomes intact. Later taught BASE deliveries do not validate an earlier failed global calibration or authorize replay of these trials.
+
 ## Execute by coordinates. Review after withdrawal.
 
 The latest October 29 operator instruction defines one finite action unit:

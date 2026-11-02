@@ -1,58 +1,64 @@
 <sub>[PushPilot](../README.md) / Operator workspace / Route display</sub>
 
-# One route, with its current state in view
+# One route, with its source and current state in view
 
-**Map-derived geometry and supervised progress share the same drawing.**
+**Map-derived geometry, real execution receipts and vehicle estimates remain distinct.**
 
-[Temporary map](TEMPORARY_MAP.md) · [Design system](DESIGN_SYSTEM.md) · [Contracts](../contracts/README.md) · [Verification](VERIFICATION.md)
+[City map](CITY_A3.md) · [Map replacement](MAP_REPLACEMENT.md) · [Spatial](SPATIAL_3D.md) · [Execution display](DESIGNER_LIVE_DISPLAY.md) · [Contracts](../contracts/README.md)
 
-The AR route is generated from the selected map and plan. It is not a fixed Bakery illustration or a replay of taught TCP poses. MUSE interprets a goal using the selected map's allowed destination identifiers; deterministic graph routing supplies the route and action sequence. The frontend presents that plan and the supervisor's state without inferring a vehicle position from the image.
+Reviewed November 2, 2026. MUSE selects a structured path in the active graph; the backend validates and compiles the exact connected node sequence. The AR line is not a fixed illustration, an inferred live-car track or a replay of taught TCP positions. Camera and Spatial show that same selected 2D path.
 
-## Geometry and progress have separate sources
+MUSE is central to scene-grounded planning and visual review: explicit live planning combines the unchanged original frame with the selected graph, while action/signal judgments bind their own captured evidence. Deterministic checks preserve route connectivity and execution context; the model's judgment, Native tool receipts and Spatial vehicle estimate must remain inspectable as separate sources.
+
+## Selected graph route
+
+The reviewed site map is `seoul-city-a3` v`2026-10-28.4`, explicitly selected at startup. Source-default Little Town is retained for compatibility and equipment-free examples.
+
+| City destination | Default node order | Nominal drawing distance |
+|---|---|---:|
+| Office Building | `PIZZA → S → OFFICE_BUILDING` | 204.732041 mm |
+| Villa | `PIZZA → S → C → VILLA` | 313.600114 mm |
+| Hanok | `PIZZA → S → C → HANOK` | 313.630045 mm |
+
+Default City departure is east from Pizza's front box. `route_from_nodes()` also validates explicit alternatives: 2–64 known nodes, declared start/destination, allowed directed edges, no repeated nodes and no skipped intermediate road nodes. Structured `departure`, `first_turn`, ordered `via_nodes` and `avoid_nodes` must match the selected path. The first turn is the maneuver at the first encountered junction, including straight. An explicit path is not silently replaced by a shortest path; the configured-heading restriction belongs to the default demo router. Unsupported or contradictory constraints fail validation.
+
+This supports exact alternative-path **planning/display**, not arbitrary obstacle avoidance or execution of every path by the private robot recipes. The operator reviews interpretation and the visible route before the relevant approval/Start action. A valid drawing path alone cannot qualify a physical maneuver.
+
+## Geometry and progress sources
 
 | Input | Responsibility | Boundary |
 |---|---|---|
-| Map definition | Drawing nodes, directed edges, dimensions, markers and display labels | Drawing facts; no robot coordinates |
-| Route visualization | Map-derived push/cross segments and illustrative junction stop lines | `drawing_only`; no qualified trajectory or stopping distance |
-| Workspace snapshot | Approved plan, current action, completed actions, review and signal wait | Simulation state; not a measured car pose |
-| Camera display registration | Projection of matching drawing geometry onto the selected camera source | Test display alignment; no camera-to-BASE calibration |
+| Map definition | Nodes, directed edges, drawing distances, labels, markers/panels | No robot BASE targets |
+| Route visualization | Stable push/cross segments, points and stop-line illustrations | `drawing_only`, not a swept car/tool path |
+| Simulation workspace | Approval, symbolic current/completed actions, review/signal context | Not physical vehicle travel |
+| Physical status | Actual sequence, current step, Native receipt totals, MUSE/signal state, faults | A completed tool command does not independently measure the car |
+| Optional physical display | Journal-verified contact progress projected onto drawing legs | Execution estimate, not actual position/yaw |
+| Camera registration / city manifest | Drawing-to-image / drawing-to-model display projection | Neither is camera-to-BASE calibration |
 
-The optional `route.visualization` payload uses schema `pushpilot.route-display.v1`. Segment identifiers bind motion steps through `PlanStep.route_segment_id`; STOP and VERIFY retain their own action semantics. This avoids indexing an arbitrary route point array as though every action were one road edge. A crossing can contain the drawing turn through a junction, while approach and departure pushes occupy their own portions.
+The optional `route.visualization` schema is `pushpilot.route-display.v1`. `PlanStep.route_segment_id` binds motion actions to stable display segments; STOP and VERIFY retain separate semantics. This avoids treating each action-list index as a road edge. Display subdivision does not change total centerline distance or physical recipe command count.
 
-Illustrative stop lines are derived from the map's junction size and incoming edge, with the offset limited to that edge. They help explain where the simulated mandatory stop belongs. They are not independently taught stop lines, measured clearance or robot stopping targets. Board-space geometry is projected through the same valid display homography as the route, never moved with unrelated screen offsets.
-
-| Visualization field | Drawing content |
+| Field | Content |
 |---|---|
 | `schema_version`, `source` | `pushpilot.route-display.v1`, `drawing_only` |
-| `segments[]` | Stable `id`, `push` or `crossing`, node/junction bindings, ordered `points_mm`, drawing `length_mm` |
-| `junctions[]` | Node/label, center, incoming stop point/line, exit point, approach and crossing segment identifiers |
+| `segments[]` | Stable ID, push/crossing, node/junction bindings, ordered `points_mm`, drawing length |
+| `junctions[]` | Center, label, incoming stop point/line, exit and bound approach/crossing segments |
 
-The incoming stop and outgoing exit offsets are each at most half the junction size or half their adjacent edge length, whichever is smaller. This prevents neighboring display divisions from reversing on a short road. The route's original node sequence and total centerline distance remain available separately; display subdivision is not a change to robot control or the supervisor's action count.
+Stop/exit offsets are limited to half the junction size or adjacent edge length, whichever is smaller. Lines are projected with the same geometry as their route. They are not measured stopping targets and must not be shifted with unrelated CSS offsets to look convenient.
 
-## What changes during a mission
+## Mission presentation
 
-The display distinguishes **completed**, **current** and **remaining** route portions through line treatment, direction arrows and a text legend. Color is supplementary. A current action can be waiting for review or a signal; highlighting it never implies that the car is moving.
+Simulation uses segment bindings for completed/current/remaining line treatment and mandatory stop/review/signal context. Physical mode instead shows its actual executor sequence and Native receipt totals; it does not relabel simulated completion as measured car travel. A highlighted action can be waiting or held; emphasis never means the car is moving.
 
-| Supervisor context | Display meaning |
-|---|---|
-| Plan awaiting approval | Planned route; approval is still required |
-| Current push or crossing | Emphasized planned portion associated with the current action |
-| Mandatory stop | Junction stop context, before entry, even if GREEN was already selected |
-| RED or UNKNOWN signal wait | Junction wait context; no continuation permission is inferred from the image |
-| GREEN after accepted stopping/review | The supervisor may admit the scoped crossing; GREEN alone is insufficient |
-| Pending or uncertain review | Review/re-observation context; the action is not silently marked successful |
-| Completed action | Accepted simulated progress; it does not establish physical arrival |
+Robot mode consumes its own existing signal lifecycle. At the taught wait/observation pose the tool clears the applicable view, the physical policy judges fresh signal evidence and waits on RED/UNKNOWN. Once the configured departure gate passes, recontact and subsequent stages do not start another watcher for that gate. `Signal passed` remains meaningful even after green sample counters clear. Simulation may retain per-junction gates; these policies must not be mixed. See [Robot operations](ROBOT_OPERATIONS.md) and [Single signal departure](SINGLE_SIGNAL_DEPARTURE.md).
 
-Signal and review annotations retain their own sources. The live image may show the real workspace while route progress and signal inputs remain simulation. An independent recorded-image MUSE inspection cannot advance that progress. A validated recorded-pair MUSE result can affect the simulated supervisor through its existing gates. Live preview does not automatically capture or submit images for either path.
+Spatial's optional vehicle illustration moves only on newly confirmed contact receipts. Approach/withdrawal, unloaded wrist, signal/MUSE waits, HOLD, stale feeds and empty home return freeze it. Delivered cars remain illustrated at the destination while the empty robot returns. The label **Execution estimate / Display only** is mandatory; interpolation cannot establish arrival, slip or parking alignment.
 
-Older persisted plans without the visualization payload remain readable: they show the complete planned route without invented action-to-geometry progress. Prepare a new plan to obtain segment bindings. Changed map identity/version/hash inhibits mismatched route projection rather than redrawing an old plan over a new installation.
+Independent scene inspection cannot advance a mission. Recorded pairs can affect only their bound simulated review; explicit physical reviews use their own native-image evidence and policy. Preview polling itself neither calls MUSE nor completes actions.
 
-## Replace the map without rewriting the interface
+## Replacement and fidelity
 
-The frontend reads location names from map metadata, while goal interpretation receives its supported identifiers, labels and aliases. Destination choices, route labels and the schematic therefore follow the selected map instead of a hardcoded list of shops. The current temporary drawing is still Little Town; this change does not release a new physical layout.
+Names, choices and route geometry follow map metadata. A changed map identity/version/hash withholds incompatible plans/registration. Older plans without visualization remain readable as planned-only; no progress binding is guessed. Use [Map replacement](MAP_REPLACEMENT.md), preserving old definitions and evidence.
 
-Use the replacement workflow in [Temporary map](TEMPORARY_MAP.md#replace-the-temporary-map). Keep the map, plan and camera display registration bound to the same identity/version/hash. Artwork-only changes still need a reviewed version and a check of the installed print and marker geometry. Moving or reprinting the board can invalidate camera alignment even when road coordinates are unchanged.
+Camera keeps the unchanged JPEG's intrinsic coordinate system, perspective and aspect ratio. Image, mask and AR share local pan/zoom. Partial/complete expected marker covers retain the same fixed reference quietly; conflicting, changed or stale views keep their guards. Spatial uses its exact rendered camera and verified display manifest, without editing physical map hashes. Neither presentation creates robot coordinates.
 
-Only the current deterministic route to a selected destination is implemented. Via-point requests, user-selected alternatives, obstacle-aware rerouting, measured vehicle tracking and physical push/turn execution remain later work. A new map must satisfy the supported cardinal graph and temporary, non-executing contract; the JSON adapter is not a general road-network editor.
-
-Software and viewport results belong in [Verification](VERIFICATION.md). No test count or attractive AR overlay establishes real-car accuracy or physical mission success.
+Do not hot-swap an executing map or import prior installation poses. Each new physical installation separately requires reviewed START/contact geometry and executable recipes. The existing B/C/D site trials and C26 endpoint do not make every drawing alternative executable. Software/display results and dated hardware evidence belong in [Verification](VERIFICATION.md) and [Current status](CURRENT_STATUS.md).

@@ -10,13 +10,15 @@
 
 ---
 
-PushPilot can send a **before/after operator-selected recorded-image pair** to Muse Spark for the pending simulated action. The validated response is applied by the deterministic supervisor, with its approval, map, stop and signal gates intact. This is a recorded-input simulation feature. It does not open a camera, command a robot or establish fresh post-action physical evidence.
+**Scope reviewed November 2, 2026.** PushPilot has separate simulated-action and configured physical-unit review paths. The physical site trial executes coordinates, withdraws, then reviews original live images; see [Delivery trial](DELIVERY_SITE_TRIAL.md), [C review matrix](C_INTERMEDIATE_PROGRESS_REVIEW.md#current-c-review-matrix) and [Robot operations](ROBOT_OPERATIONS.md). Its Native receipts, signal admission and delivery review are not supplied by the recorded-input controls below.
+
+In the recorded-input simulation workflow, PushPilot can send a **before/after operator-selected recorded-image pair** to MUSE Spark for the pending simulated action. The validated response is applied by the deterministic supervisor, with its approval, map, stop and signal gates intact. This is a recorded-input simulation feature. It does not open a camera, command a robot or establish fresh post-action physical evidence.
 
 Independent **Inspect image with MUSE** scene inspection remains separate. Its USABLE result cannot complete an action.
 
 ## Operator workflow
 
-1. Prepare a Bakery, Bookstore or School plan and inspect its temporary route.
+1. Prepare a plan for the active map: Office Building, Villa or Hanok on Seoul City. Bakery/Bookstore/School belong only to the historical Little Town example. Inspect the route and keep Simulation selected for this recorded-input workflow.
 2. In **Image tools**, choose **Upload recorded frame** for the before image. Optional capture time is operator-provided provenance.
 3. In **Compare the result.**, choose **Use current frame as BEFORE**. The panel retains this immutable frame identity. It can be pinned during preparation.
 4. Approve the plan and run one bounded simulated action until `REVIEW_REQUIRED`.
@@ -88,7 +90,7 @@ Generate fixtures and a report without contacting a provider:
 python tools/evaluate_action_reviews.py --output ../../output/action-review-fixtures-new
 ```
 
-With the ignored backend `.env` configured, explicitly make the three actual Meta requests:
+With the ignored repository-root `.env` configured, explicitly make the three actual Meta requests:
 
 ```bash
 python tools/evaluate_action_reviews.py --output ../../output/action-review-meta-new --call-meta
@@ -102,7 +104,7 @@ The initial actual run on October 27, 2026 produced PASS → READY for the depic
 
 ## Physical evaluation remains a separate gate
 
-The next visual evaluation needs the actual car, independently labelled real before/after recordings, no-progress and occlusion examples, and held-out input before prompt tuning. A later live path needs controller receipts, a trusted capture window, qualified local measurements and signal inhibition. Neither synthetic image success nor a real provider response on a recording establishes physical pushing, turning, arrival or stopping.
+The implemented [physical mission pipeline](DELIVERY_SITE_TRIAL.md) now binds Native completion receipts, fresh source images, MUSE review and separate signal admission. Broader visual qualification still needs independently labelled real before/after recordings, no-progress and occlusion examples, and held-out input before prompt tuning. Neither synthetic image success nor a real provider response on a recording establishes physical pushing, turning, arrival or stopping.
 
 ---
 

@@ -59,11 +59,11 @@ Credential-bearing requests do not follow redirects or use environment proxy set
 
 Streaming ASR and TTS are outside this slice. The frontend's microphone state must remain disconnected until capture, editing, cancellation and explicit acceptance have been implemented and checked on the actual device. Target tablets need trusted HTTPS for browser microphone access.
 
-## Offline verification and tomorrow's device checks
+## Offline verification and remaining device checks
 
 `tests/test_voice.py` uses generated sine-wave fixtures and mocked HTTP/provider transports only. It checks supported sample preservation, metadata stripping, malformed/truncated/compressed/stereo/rate/duration/size rejection, silence, fixed multipart provider fields, redirect refusal, bounded provider responses, sanitized errors, concurrency, preparation/revision gates, late-result rejection, registry expiry/supersession/deletion and absence of mission mutation. These tests establish software behavior, not recognition quality or actual voice access.
 
-Before claiming connected voice input, verify on the target browser:
+As of November 2, 2026, the finite backend remains implemented and the browser microphone/editor path remains pending. The [current voice illustration](assets/voice-current.png) marks that split; the earlier diagram is historical. Before claiming connected voice input, verify on the target browser:
 
 1. Trusted HTTPS, device permission, record/stop/cancel and typed fallback.
 2. Supported mono PCM WAV encoding without unexpected duration/size changes.

@@ -2,91 +2,91 @@
 
 # PushPilot documentation
 
-**Understand the mission. Inspect the decisions. Build within clear boundaries.**
+**From sight to action. A shared plan. A checked outcome.**
 
-[Repository](../README.md) · [Design system](DESIGN_SYSTEM.md) · [Architecture](ARCHITECTURE.md) · [Live intelligence](LIVE_INTELLIGENCE.md) · [Live camera](LIVE_CAMERA.md) · [Voice backend](VOICE_BACKEND.md) · [Mission](MISSION.md) · [Roadmap](ROADMAP.md)
+[Repository](../README.md) · [Current status](CURRENT_STATUS.md) · [Meta intelligence](META_INTELLIGENCE.md) · [Architecture](ARCHITECTURE.md) · [Robot operations](ROBOT_OPERATIONS.md)
 
 </div>
 
 ---
 
-PushPilot is being developed as a tablet workspace for an image-grounded tabletop robot mission. An operator states or types a goal, confirms the chosen text, reviews and approves the proposed task, and follows the evidence behind each decision to proceed, wait or observe again. A future glasses companion extends the interaction concept.
+The original loop still organizes the product: **Observe → Plan → Approve → Act → Verify**. Meta MUSE turns operator intent and original images into a route proposal, signal interpretation and outcome judgment. The supervisor validates those judgments; a configured Robot executor follows taught BASE coordinates and records Native receipts. Camera and Spatial make the plan and decision evidence visible.
 
-The current [visual direction](DESIGN_SYSTEM.md) follows the user's industrial references through a continuous scene, rounded translucent overlays, Pretendard typography and restrained orange accents. Earlier flat-light and navy/cyan screenshots document their original design stage and do not define the current interface composition.
+Start with the [current capability matrix](CURRENT_STATUS.md). The repository contains an equipment-free simulation path, an opt-in current-site physical trial, and dated implementation/commissioning history. Historical screenshots and trials are retained with their source and limits; they are not the current runtime specification.
 
-**The application now implements explicit native-frame MUSE planning, action review and stopped-signal services alongside simulation and recorded-image review.** React/TypeScript and FastAPI/Uvicorn provide replaceable graph routes, SQLite supervision and source-labelled evidence. Preview polling remains ephemeral; deliberate live-intelligence requests separately select unchanged originals for inference and private evidence. The voice backend accepts bounded PCM WAV uploads and returns workspace-bound transcript candidates. Browser microphone capture is disconnected. Offline checks and [actual provider records](META_API_CHECK.md) retain separate scopes; real-car action/signal recognition, ASR access, robot registration, measured stopping and physical control remain unverified or unavailable.
+## Operate and recover
 
-## Choose a reading path
-
-| Your goal | Start here | Continue with |
-|---|---|---|
-| Understand the product | [Mission](MISSION.md) | [Meta intelligence](META_INTELLIGENCE.md) |
-| Confirm the intersection scenario | [MUSE signal gate](MUSE_SIGNAL_GATE.md) | Implemented native-frame judgments after simulated stop receipts; physical stopping remains unqualified |
-| Follow MUSE route selection and native-frame reviews | [Live intelligence](LIVE_INTELLIGENCE.md) | [Live contracts](../contracts/live-intelligence.ts) and [backend](../backend/README.md) |
-| Design the operator workspace | [Design system](DESIGN_SYSTEM.md) | [Frontend](../frontend/README.md) |
-| Review the designer layout and read-only execution display | [Designer live display](DESIGNER_LIVE_DISPLAY.md) | Preserved physical controller, estimated Spatial car and isolated rollout |
-| Follow route progress or replace the drawing | [Route display](ROUTE_DISPLAY.md) | [Map validation and replacement](MAP_REPLACEMENT.md) |
-| Use the placed City A3 print | [City A3](CITY_A3.md) | New places and shared Camera/Spatial drawing correspondence; physical geometry remains unqualified |
-| Understand the system | [Architecture](ARCHITECTURE.md) | [Service composition](SERVICE_COMPOSITION.md) |
-| Prepare isolated robot tests | [Robot commissioning](ROBOT_CONTROL.md) | [Dedicated GX10 delivery](../deploy/ROBOT_CONTROL.md); startup disarmed, no motion replay |
-| Collect robot coordinates and fit map registration | [Robot calibration](ROBOT_CALIBRATION.md) | Read-only Native teaching and measured XY fit with a held-out check; physical qualification remains separate |
-| Review voice goal entry | [Voice input](VOICE_INPUT.md) | [Finite-upload backend](VOICE_BACKEND.md); browser capture remains disconnected |
-| Test Meta authentication and goal interpretation | [API connection check](META_API_CHECK.md) | [Meta intelligence](META_INTELLIGENCE.md) |
-| Connect image judgment to a simulated action | [Live intelligence](LIVE_INTELLIGENCE.md) | [Explicit recorded-pair alternative](ACTION_REVIEWS.md) and [verification](VERIFICATION.md) |
-| Test the temporary printed map | [Temporary map](TEMPORARY_MAP.md) | [Test inputs](TEST_INPUTS.md) and [verification](VERIFICATION.md) |
-| Connect a preview-only live camera | [Live camera](LIVE_CAMERA.md) | [Development](DEVELOPMENT.md) and [verification](VERIFICATION.md) |
-| Work on the repository | [Development workflow](DEVELOPMENT.md) | [Roadmap](ROADMAP.md) |
-| Review a demonstration claim | [Evidence model](ARCHITECTURE.md#evidence-that-explains-a-decision) | [Contribution record](../CONTRIBUTIONS.md) |
-| Inspect completed software checks | [Verification](VERIFICATION.md) | [Current workspace screenshot](assets/scene-workspace.jpg) |
-| Prepare a release | [Development workflow](DEVELOPMENT.md) | [GX10 delivery plan](../deploy/README.md) |
-
-## The interaction in one line
-
-> **Observe → Plan → Approve → Act → Verify**
->
-> Fresh observations and accepted checks determine the next action. Uncertainty stays visible and changes the workflow.
-
-The mission begins at symbolic **PIZZA** and pushes a wheel-less car toward a selected destination. Every configured intersection requires a stop, even when its signal is already green. Red, unclear or stale signal observations mean wait. A live-backed plan uses server-bound native-image MUSE reviews and a current approach-specific MUSE GREEN after a matching simulated stop; separate demo missions retain explicit demo/recorded review and injected simulation signals. Independent scene inspection cannot advance either path. Native images do not establish physical robot completion, measured vehicle position or actual stopping.
-
-## Component boundaries
-
-| Directory | Intended ownership | Present state |
-|---|---|---|
-| [`frontend/`](../frontend/README.md) | English tablet workspace, camera/recorded sources, route progress, model evidence, approval and replay | React/TypeScript implementation; full live-operation controls and browser voice capture still need integration |
-| [`backend/`](../backend/README.md) | Live frame/graph planning, native/recorded review, MUSE signal judgments, simulation supervision, finite voice uploads and evidence | FastAPI/Uvicorn, SQLite, OpenCV and NumPy; offline service/provider tests |
-| [`contracts/`](../contracts/README.md) | Workspace/map/scene/preview/live-intelligence DTOs, capabilities and source-labelled events | TypeScript interfaces plus backend request validation; voice multipart contract documented separately |
-| [`prompts/`](../prompts/README.md) | Model instructions and review expectations | Goal/scene instructions plus the action-review contract; complete template catalog remains later work |
-| [`tools/`](../tools/) | Source checks, packaging, local application startup and an explicitly started standalone native camera helper | Implemented; preview helper is separate from application deployment |
-| [`tests/`](../tests/) | Release, provider-boundary, mission and API behavior | Offline automated suite |
-| [`deploy/`](../deploy/README.md) | Separate GX10 releases and shared runtime state | Isolated frontend/API release and independent camera helper verified on October 28; see deployment evidence |
-
-Run `python tools/serve.py` after installing `requirements.lock` and building `frontend/dist`; see [Development](DEVELOPMENT.md). Python 3.12+ serves both API and compiled frontend. Node 24 is required only for frontend development/build. The repository is self-contained; parent planning files, old maps and historical operating archives are not build dependencies.
-
-## Keep these distinctions visible
-
-| Label | What it can establish |
+| Need | Current guide |
 |---|---|
-| **Simulation** | Software behavior under generated actions and observations |
-| **Recorded input** | Behavior on a previously captured image or event |
-| **Live preview** | A current source-labelled camera display within its stated age limit; not a qualified action observation |
-| **Selected native evidence** | An original live frame bound to a deliberate inference request; it does not prove a physical action or stop |
-| **Real provider call** | An actual model request and response on the stated input |
-| **Physical execution** | Hardware activity supported by corresponding measured evidence |
+| Know what is implemented, demonstrated or still unqualified | [Current status](CURRENT_STATUS.md) · [Known limitations](KNOWN_LIMITATIONS.md) |
+| Prepare a mission, stop, return, reset or recover | [Robot operations](ROBOT_OPERATIONS.md) |
+| Understand the B/Office, C/Villa and D/Hanok delivery scope | [Delivery-first site trial](DELIVERY_SITE_TRIAL.md) · [Autonomous policy and trial boundary](AUTONOMOUS_EXECUTOR.md) |
+| Review the paper-signal admission | [Single signal departure](SINGLE_SIGNAL_DEPARTURE.md) · [Signal wait reference](ROBOT_SIGNAL_WAIT.md) · [Signal service scopes](MUSE_SIGNAL_GATE.md) |
+| Review C's endpoint and visual policies | [C26 delivery endpoint](C26_DELIVERY_ENDPOINT.md) · [C intermediate review matrix](C_INTERMEDIATE_PROGRESS_REVIEW.md) |
+| Continue a known completed action after review hold | [Explicit continuation](EXPLICIT_REVIEW_CONTINUATION.md) |
+| Prepare the scoped C11 boundary or a fresh START session reference | [C11 boundary recovery](C11_BOUNDARY_RECOVERY.md) · [Stationary START reference](SESSION_START_REFERENCE.md) |
 
-These describe separate parts of a run. For example, a real provider may review a recorded image while the robot remains simulated. One label must never silently upgrade the others.
+Reset retires an ended mission at an independently verified START; it does not move the robot. A lost movement outcome never permits automatic replay. The unresolved receiver idle-timeout limitation belongs in [known limitations](KNOWN_LIMITATIONS.md), separate from MUSE and signal waiting.
 
-## Decisions currently fixed
+## Understand the product and Meta intelligence
 
-- Push the car on the surface; do not pick up or carry it.
-- Stop before every configured intersection and evaluate its operator-switched paper signal.
-- Include bounded push-to-talk goal entry through backend Meta transcription, editable text confirmation and typed fallback in the first demo. Explicit tablet mission approval remains separate.
-- Use MUSE to interpret and review evidence; deterministic checks retain action admission authority.
-- Keep the tablet interface English and follow the industrial light-dashboard [design system](DESIGN_SYSTEM.md). Label future wearable interaction as a concept.
-- Use the replaceable map adapter for simulation and explicitly labelled image overlays. Validate proposed definitions without installing them; configure reviewed paper-signal regions per approach before live signal testing. Defer robot coordinates, final production geometry/registration and qualified stop lines until the physical installation is available.
-- Keep location labels, destination vocabulary and route geometry in the selected map definition. Replacing it requires a new plan and reviewed display registration; simulated AR progress never supplies measured car pose.
+| Need | Guide |
+|---|---|
+| Follow the original user scenario and next decision | [Mission](MISSION.md) |
+| See how MUSE connects intent, route and visual evidence | [Meta intelligence](META_INTELLIGENCE.md) · [Prompt catalogue](../prompts/README.md) |
+| Understand modules, processes and source ownership | [Architecture](ARCHITECTURE.md) · [Service composition](SERVICE_COMPOSITION.md) |
+| Inspect APIs and data contracts | [Backend](../backend/README.md) · [Contracts](../contracts/README.md) |
+| Understand native-image graph planning and simulation live-review services | [Live intelligence](LIVE_INTELLIGENCE.md) |
+| Inspect recorded-pair review and actual dated provider requests | [Action reviews](ACTION_REVIEWS.md) · [Meta API records](META_API_CHECK.md) |
+| Understand finite voice upload versus pending browser capture | [Voice input](VOICE_INPUT.md) · [Voice backend](VOICE_BACKEND.md) |
 
-For implementation priorities and the conditions that open later work, read the [roadmap](ROADMAP.md). For inherited work, rights and supported claims, read [contributions](../CONTRIBUTIONS.md) and [third-party notices](../THIRD_PARTY_NOTICES.md).
+MUSE review is not TCP control. Native completion is not proof of vehicle arrival. Keep these separate sources visible when explaining a run.
+
+## Display the scene and replace its inputs
+
+| Need | Guide |
+|---|---|
+| Preserve the light glass workspace, Pretendard and viewport priorities | [Design system](DESIGN_SYSTEM.md) · [Frontend](../frontend/README.md) · [Designer display](DESIGNER_LIVE_DISPLAY.md) |
+| Understand current City A3 drawing identities | [City A3](CITY_A3.md) |
+| Follow the selected route in Camera and Spatial | [Route display](ROUTE_DISPLAY.md) |
+| Install the current private model and distinguish older model packages | [Spatial 3D](SPATIAL_3D.md) |
+| Connect the separately authorized preview and preserve original frames | [Live camera](LIVE_CAMERA.md) · [Camera preview recovery](CAMERA_PREVIEW_RECOVERY.md) |
+| Replace a drawing without migrating obsolete plans/registrations | [Map replacement](MAP_REPLACEMENT.md) |
+| Read the earlier compatibility map and source boundaries | [Little Town history](TEMPORARY_MAP.md) · [Test inputs](TEST_INPUTS.md) |
+| Inspect current illustration versus old screenshots | [Artwork inventory](assets/README.md) |
+
+The private model and nominal map fit are display inputs. The illustrated Spatial car is an execution estimate. Neither supplies measured car pose or authorizes physical motion.
+
+## Build, verify and release
+
+| Need | Guide |
+|---|---|
+| Set up equipment-free development or deliberate private configuration | [Development](DEVELOPMENT.md) |
+| Build locally and serve compiled assets on GX10 | [Application deployment](../deploy/README.md) |
+| Install the separate commissioning API and inherited receiver runtime | [Robot deployment](../deploy/ROBOT_CONTROL.md) · [Robot control](ROBOT_CONTROL.md) |
+| Find offline, provider and equipment-contacting utilities | [Tools](../tools/README.md) |
+| Inspect software checks and dated validation | [Tests](../tests/README.md) · [Verification](VERIFICATION.md) |
+| See remaining implementation and qualification work | [Roadmap](ROADMAP.md) |
+| Contribute while preserving source/evidence boundaries | [Contributing](../CONTRIBUTING.md) · [Workspace instructions](../AGENTS.md) |
+| Record authorship and imported material | [Contributions](../CONTRIBUTIONS.md) · [Third-party notices](../THIRD_PARTY_NOTICES.md) |
+
+Publication, source packaging, GX10 activation and physical mission start are separate actions. Releases exclude credentials, raw camera media, private artwork/models, taught geometry, profiles, old mailboxes and operational archives.
+
+## Inspect the history without mistaking it for current operation
+
+| Historical or scope-specific material | Read with |
+|---|---|
+| [Measured route catalogue](MEASURED_ROUTE_CATALOGUE.md) | Original B/C/D arrival/return records, packet cutoffs and derived-path limitations |
+| [Taught-course compatibility executor](TAUGHT_EXECUTOR.md) · [TCP coordinate control](TCP_COORDINATE_CONTROL.md) | The runner/version and dated commissioning cutoff stated in each section |
+| [Contact pushing](PUSH_ALIGNMENT.md) · [Local contact trials](LOCAL_CONTACT_TRIALS.md) | Experimental response fitting versus the active delivery-only trial |
+| [Robot calibration](ROBOT_CALIBRATION.md) | Rejected/global fit evidence versus independently taught BASE routes |
+| [Fixed-face review](FIXED_FACE_CALIBRATION_REVIEW.md) · [Line datum](LINE_DATUM_COMMISSIONING.md) | Historical acquisition proposals and preserved failed checks |
+| [POC receiver review](POC_RECEIVER_REVIEW.md) | Original missing-profile/HELLO defect, distinct from later Native idle timeouts |
+| [Evidence index](evidence/README.md) | All original dated evidence records and their current successor guides |
+| [Original diagram prompts](assets/GENERATION_PROMPTS.md) · [Original voice prompts](assets/VOICE_GENERATION_PROMPTS.md) | Exact historical generation records; new assets have a separate [current prompt record](assets/CURRENT_GENERATION_PROMPTS.md) |
+
+The unmodified [Pretendard font record](../frontend/public/fonts/pretendard/README.md) retains its pinned upstream source and license. Older generated concepts, rejected design passes, synthetic provider examples and failed physical observations remain dated records.
 
 ---
 
-[← Back to PushPilot](../README.md) · [Next: architecture →](ARCHITECTURE.md)
+[← Back to PushPilot](../README.md) · [Current status →](CURRENT_STATUS.md)

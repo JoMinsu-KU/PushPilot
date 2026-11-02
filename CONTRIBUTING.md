@@ -22,7 +22,7 @@ These are ownership boundaries. Application modules are introduced as they are i
 ## Before making a change
 
 - Read [AGENTS.md](AGENTS.md) and retain English code, copy, tests and documentation.
-- Keep the current map hold: work with symbolic goals, abstract actions and labelled inputs. Final routes, calibration, installed signal regions and spatial AR remain deferred.
+- Read [current status](docs/CURRENT_STATUS.md) before using older commissioning notes. Keep the explicitly selected drawing/map, display manifest and private taught-BASE packet separate; changing a drawing does not recalibrate the robot. Equipment-free simulation is the default, while physical site trials require their own reviewed installation, source/session binding and deliberate activation.
 - Keep the repository self-contained. Add inherited code/assets deliberately with their provenance; never copy a private workspace or operating directory wholesale.
 - Treat model interpretation, deterministic execution gates and measured physical evidence as separate responsibilities.
 

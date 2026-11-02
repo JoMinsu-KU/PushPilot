@@ -2,6 +2,8 @@
 
 # Relative image agreement does not yet locate the physical pushing face.
 
+> **Historical commissioning record — October 28, 2026.** “Current”, “latest” and pending-work statements below refer to that cutoff, not the November 2 product state. Use [Robot operations](ROBOT_OPERATIONS.md), [delivery trial](DELIVERY_SITE_TRIAL.md) and [known limitations](KNOWN_LIMITATIONS.md) for current behavior. Keep rejected fits, unavailable reference tools, unsuccessful observations and original outcomes intact. Later taught BASE deliveries do not validate an earlier failed global calibration or authorize replay of these trials.
+
 **October 28, 2026 result: physical calibration incomplete. No accepted transform or qualified operating region was produced.**
 
 **Later operator correction:** the tablet acquisition and gripper-image tracking approach below were stopped. Preserve this review as historical diagnostics, not the active procedure. Current control uses TCP coordinates, a fixed planar frame and endpoint/basis interpolation; vision verifies vehicle/signal outcomes. See [TCP coordinate control](TCP_COORDINATE_CONTROL.md). Three new fixed-pose TCP moves completed to receiver sequence 29 without qualifying a whole-map transform or a destination.
