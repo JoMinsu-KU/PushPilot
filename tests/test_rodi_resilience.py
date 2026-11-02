@@ -280,7 +280,7 @@ class StationaryReacquisitionTests(unittest.TestCase):
 
     def test_bad_program_flags_speed_pose_and_journal_failures_do_not_recover(self):
         cases = [native_row(program_after=[4]), native_row(flags=[1, 1, 1, 0, 0, 0]),
-                 native_row(speed=[.1, 0., 0., 0., 0., 0.]), native_row(pose=[10.6, *POSE[1:]]),
+                 native_row(speed=[.2, 0., 0., 0., 0., 0.]), native_row(pose=[10.6, *POSE[1:]]),
                  OSError(errno.ENOSPC, 'Synthetic journal disk full')]
         for case in cases:
             with self.subTest(case=case):
@@ -290,6 +290,78 @@ class StationaryReacquisitionTests(unittest.TestCase):
                     h.recovery.stationary(POSE, (2,), True)
                 self.assertEqual(len(h.inner.sent), 1)
                 self.assertEqual(h.waiting_calls, [])
+
+    def test_one_quantized_speed_sample_requires_two_new_exact_zeros_without_motion(self):
+        h = Harness([native_row(speed=[0., .1, 0., 0., 0., 0.]), native_row(), native_row()])
+        h.idle()
+        result = h.recovery.stationary(POSE, (2,), True)
+        self.assertEqual(result, native_row())
+        self.assertEqual(len(h.native.calls), 3)
+        self.assertEqual(len(h.waiting_calls), 1)
+        self.assertEqual(h.waiting_calls[0][1]['reason'], 'NATIVE_STATIONARITY_PENDING')
+        self.assertFalse(h.waiting_calls[0][1]['speed_tolerance_relaxed'])
+        self.assertFalse(h.recovery.unavailable)
+        self.assertTrue(all(packet['type'] == 'idle' and packet['seq'] == 7 for packet in h.inner.sent))
+
+    def test_speed_wait_resets_an_earlier_exact_zero_sample(self):
+        h = Harness([native_row(), native_row(speed=[0., -.1, 0., 0., 0., 0.]), native_row(), native_row()])
+        h.idle()
+        h.recovery.stationary(POSE, (2,), True)
+        self.assertEqual(len(h.native.calls), 4)
+        last_ack = max(i for i, row in enumerate(h.journal.rows)
+                       if row['kind'] == 'rx' and row['data']['type'] == 'idle_ok')
+        self.assertEqual(sum(row['kind'] == 'native_readonly' for row in h.journal.rows[last_ack+1:]), 2)
+
+    def test_sustained_quantized_speed_exhausts_one_eight_second_window_without_go(self):
+        h = Harness(default_delay=.2, fallback=native_row(speed=[.1, 0., 0., 0., 0., 0.]))
+        h.idle()
+        with self.assertRaisesRegex(ValueError, 'eight seconds'):
+            h.recovery.stationary(POSE, (2,), True)
+        first_wait = h.waiting_calls[0][0]/1e9
+        self.assertGreaterEqual(h.clock()-first_wait, 8.)
+        self.assertLess(h.clock()-first_wait, 8.5)
+        self.assertTrue(h.recovery.unavailable)
+        self.assertTrue(all(packet['type'] == 'idle' for packet in h.inner.sent))
+        self.assertFalse(any(row['kind'] == 'endpoint_settled' for row in h.journal.rows))
+
+    def test_bad_posture_with_quantized_speed_never_enters_speed_wait(self):
+        for row in (native_row(speed=[.1, 0., 0., 0., 0., 0.], flags=[1, 1, 1, 0, 0, 0]),
+                    native_row(speed=[.1, 0., 0., 0., 0., 0.], pose=[11., *POSE[1:]]),
+                    native_row(speed=[.1, 0., 0., 0., 0., 0.], program_after=[4])):
+            with self.subTest(row=row):
+                h = Harness([row])
+                h.idle()
+                with self.assertRaises(ValueError):
+                    h.recovery.stationary(POSE, (2,), True)
+                self.assertEqual(len(h.native.calls), 1)
+                self.assertEqual(h.waiting_calls, [])
+                self.assertEqual(len(h.inner.sent), 1)
+
+    def test_nonfinite_malformed_or_larger_speed_is_fatal_without_wait(self):
+        for speed in ([.2, 0., 0., 0., 0., 0.], [float('nan'), 0., 0., 0., 0., 0.],
+                      [True, 0., 0., 0., 0., 0.], [0.] * 5, None):
+            with self.subTest(speed=speed):
+                h = Harness([native_row(speed=speed)])
+                h.idle()
+                with self.assertRaisesRegex(ValueError, 'Unexpected motion'):
+                    h.recovery.stationary(POSE, (2,), True)
+                self.assertEqual(h.waiting_calls, [])
+                self.assertEqual(len(h.inner.sent), 1)
+
+    def test_speed_recovery_still_produces_original_host_journal_exact_zero_proof(self):
+        h = Harness([native_row(speed=[0., .1, 0., 0., 0., 0.]), native_row(), native_row()])
+        h.idle()
+        h.recovery.stationary(POSE, (2,), True)
+        h.clock.sleep(1.)
+        state = {key: HEADER[key] for key in ('schema', 'session_id', 'seq', 'profile_id')}
+        state.update(stage='idle', physical_execution=True, updated_monotonic_ns=h.clock.ns(),
+                     actual_pose=list(POSE), planned_pose=list(POSE), actual_joint=[0.] * 6)
+        raw = b''.join(json.dumps(row).encode()+b'\n' for row in h.journal.rows)
+        proof = prove_host_journal_cycle(state, raw, now_monotonic_ns=h.clock.ns()+1,
+            expected_receiver={key: HEADER[key] for key in ('session_id', 'seq', 'profile_id')},
+            publication_after_ns=999_000_000)
+        self.assertEqual(len(proof['native_rows']), 2)
+        self.assertTrue(all(row['data']['speed'] == [0.] * 6 for row in proof['native_rows']))
 
     def test_network_reset_is_reacquired_without_any_nonidle_send(self):
         h = Harness([ConnectionResetError('read socket reset'), native_row(), native_row()])

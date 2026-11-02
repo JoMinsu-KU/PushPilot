@@ -231,21 +231,53 @@ class NativeRecovery:
             # IDLE there would invalidate the unchanged pendant program.
             return self.transport.read_stationary(self.native, expected, programs, motion)
         valid = 0
+        speed_deadline = None
         while True:
+            if speed_deadline is not None and self.clock() >= speed_deadline:
+                raise ValueError("Exact-zero stationary reacquisition exceeded eight seconds")
             if self.clock()-self.wire.last_activity >= 3:
                 self.wire.heartbeat(expected)
                 valid = 0
             self.owner_check()
+            remaining = 2. if speed_deadline is None else min(2., speed_deadline-self.clock())
+            if remaining <= 0:
+                raise ValueError("Exact-zero stationary reacquisition exceeded eight seconds")
             try:
-                row = self.native.snapshot(timeout_s=2)
+                row = self.native.snapshot(timeout_s=remaining)
             except Exception as error:
                 if not read_unavailable(error):
                     raise
                 valid = 0
                 self._unavailable(error, expected, "stationary")
                 continue
-            self.transport.native_stationary(row, expected, programs, motion)
+            # Never mistake a posture/program/stop fault for speed noise. A
+            # quantized one-register nonzero speed is still NOT stationary;
+            # reacquire the original two exact-zero samples while top-level
+            # IDLE is legal, with one absolute bounded wait and no new motion.
+            self.transport.native_posture(row, expected, programs, motion)
             self.transport.near(row["pose"], expected, .5)  # literal Euler check
+            speed = row["speed"]
+            if (type(speed) is not list or len(speed) != 6 or
+                    any(type(v) not in (int, float) or not math.isfinite(v) or abs(v) > .1 for v in speed)):
+                raise ValueError("Unexpected motion during stationary acquisition")
+            if speed_deadline is not None and self.clock() >= speed_deadline:
+                raise ValueError("Exact-zero stationary reacquisition exceeded eight seconds")
+            if any(v != 0 for v in speed):
+                if speed_deadline is None:
+                    speed_deadline = self.clock()+8.
+                valid = 0
+                self.unavailable = True
+                detail = {"reason": "NATIVE_STATIONARITY_PENDING", "phase": "stationary",
+                    "speed": speed, "exact_zero_samples_required": 2, "budget_s": 8.,
+                    "motion_retried": False, "speed_tolerance_relaxed": False}
+                self.waiting(detail)
+                self.native.log.event("stationary_speed_pending", detail)
+                # A fresh IDLE boundary also keeps a nonzero Native row out of
+                # the later accepted host-journal stationary proof.
+                self.wire.heartbeat(expected)
+                self.sleep(min(.1, max(0., speed_deadline-self.clock())))
+                continue
+            self.transport.native_stationary(row, expected, programs, motion)
             valid += 1
             if valid == 2:
                 self.unavailable = False

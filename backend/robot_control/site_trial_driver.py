@@ -395,6 +395,13 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
             if state not in allowed or self.pending_command_id and state != "DISPATCH_UNRESOLVED":
                 raise ExecutionBlocked("RESET_RECONCILIATION_REQUIRED", "Preserve and explicitly reconcile the unresolved preparation first.")
             candidate, candidate_sha = self._retirement_registration_candidate()
+            # Validate a detached, file-only candidate. Do not replace the held
+            # mission's plan, pins or review before its independent START proof.
+            effective = self
+            if candidate is not None:
+                effective = SiteTrialMissionDriver(self.config_file)
+                if effective._configuration_error or effective._loaded_config_sha256 != candidate_sha:
+                    raise ExecutionBlocked("RESET_CONFIGURATION_CHANGED", "The explicit retirement candidate must pass full teaching/reference validation.")
             registration = (candidate or self._loaded_source_config)["ports"]["registration_id"]
             probe = self.ports or self.port_factory(adapter=self.coordinate_binding, journal=journal,
                 **{**self.config["ports"], "registration_id": registration})
@@ -417,12 +424,12 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
                 if terminal.get("id") != request_id or terminal.get("state") not in {"complete", "reconciled"}:
                     raise ExecutionBlocked("RESET_COMMAND_OUTCOME_UNRESOLVED", "Reconcile the exact prior robot request before resetting.")
             before = probe._status()  # Original profile/tool/limits guards remain binding.
-            self._reset_stationary_status(before)
+            self._reset_stationary_status(before, effective.profile_review)
             probe._camera_status()
             probe._native_cache = None
             native = checked_snapshot(probe, self.coordinate_binding, 5.)
             after = probe._status()
-            self._reset_stationary_status(after)
+            self._reset_stationary_status(after, effective.profile_review)
             expected = (native.session_id, native.sequence, native.profile_id, native.installation_id, native.tcp_base)
             for observed in (before, after):
                 receiver = observed["receiver"]
@@ -430,19 +437,32 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
                           observed["installation"]["installation_id"], tuple(receiver["actual_pose"]))
                 if actual != expected:
                     raise ExecutionBlocked("RESET_BASELINE_CHANGED", "Keep the stationary receiver/profile unchanged during reset.")
-            starts = {p.start_context_id for _, p in self.routes if self._matches(native.tcp_base, p.start_context_id)}
+            reference = effective.session_start_reference
+            if reference is not None and (native.session_id != reference["session_id"]
+                    or native.tcp_base != tuple(reference["observed_start"])):
+                raise ExecutionBlocked("RESET_START_REFERENCE_MISMATCH", "Independently verify this exact session and explicit stationary START readback.")
+            starts = {p.start_context_id for _, p in effective.routes
+                      if effective._matches(native.tcp_base, p.start_context_id)}
             if not starts:
                 raise ExecutionBlocked("ROBOT_NOT_AT_START", "Return the empty tool to its measured START before reset.")
             if self.currentplan is not None and self.currentplan.start_context_id not in starts:
                 raise ExecutionBlocked("RESET_START_MISMATCH", "Use this mission's measured START.")
             if hashlib.sha256(self.config_file.read_bytes()).hexdigest() != candidate_sha:
                 raise ExecutionBlocked("RESET_CONFIGURATION_CHANGED", "Keep the exact deployment fixed during the stationary check.")
+            source_config = candidate or self._loaded_source_config
+            for key in ("packet", "profile_review", "session_start_reference"):
+                if key in source_config:
+                    _reference(source_config[key], self.config_file.parent)
             proof = {"mission_id": mission_id, "reason": reason, "previous_checkpoint": previous,
                 "terminal_robot_command": terminal, "native": asdict(native), "site_review_sha256": self.review_sha,
                 "camera_epoch": self.binding.camera_epoch, "registration_id": registration,
                 "previous_registration_id": self.binding.calibration_id,
                 "previous_configuration_sha256": self._loaded_config_sha256,
-                "configuration_sha256": candidate_sha, "registration_identity_rebound": candidate is not None,
+                "configuration_sha256": candidate_sha,
+                "registration_identity_rebound": registration != self.binding.calibration_id,
+                "start_reference_rebound": source_config.get("session_start_reference") != self._loaded_source_config.get("session_start_reference"),
+                "session_start_reference": source_config.get("session_start_reference"),
+                "effective_site_review_sha256": effective.review_sha,
                 "current_profile_sha256": content_hash(after["receiver"]["profile"]),
                 "motion_issued": False, "command_replayed": False, "car_reset_verified": False,
                 "historical_outcome_changed": False}
@@ -474,12 +494,12 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
             self.execution_lock.release()
 
     def _retirement_registration_candidate(self):
-        """Permit only an explicit display identity rebind during retirement.
+        """Permit only explicit display and stationary START reference rebinds.
 
         Normal startup/reload remains blocked by an unresolved checkpoint.
-        Camera epoch, map, geometry, physical review, signal pixels and all
-        hardware settings must remain byte-equivalent JSON values. The reset
-        still checks the terminal command and actual camera/Native source.
+        Raw teaching/review references, camera epoch, map, signal pixels and
+        hardware settings remain equivalent JSON values. Existing precision
+        binding validation and a fresh exact Native source are both required.
         """
         raw = self.config_file.read_bytes()
         digest = hashlib.sha256(raw).hexdigest()
@@ -494,18 +514,20 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
         permitted["site_binding"]["calibration_id"] = registration
         for target in (permitted.get("observations", {}).get("signal_targets") or {}).values():
             target["registration_id"] = registration
+        if "session_start_reference" in candidate:
+            permitted["session_start_reference"] = candidate["session_start_reference"]
         if candidate != permitted:
-            raise ExecutionBlocked("RESET_CONFIGURATION_CHANGED", "Retirement may rebind only the display registration identity.")
+            raise ExecutionBlocked("RESET_CONFIGURATION_CHANGED", "Retirement may rebind only display registration and the explicit stationary START reference.")
         return candidate, digest
 
-    def _reset_stationary_status(self, status):
+    def _reset_stationary_status(self, status, review=None):
         receiver = status.get("receiver", {})
         if (status.get("hold") is not True or status.get("armed") is not False
                 or status.get("active_commands") != [] or receiver.get("connected") is not True
                 or receiver.get("idle") is not True or receiver.get("physical_execution") is not True
                 or receiver.get("profile_pending") or receiver.get("reason") == "RECEIVER_RECONCILIATION_REQUIRED"):
             raise ExecutionBlocked("RESET_HELD_IDLE_REQUIRED", "Require held, disarmed, idle and no active or pending robot operation.")
-        if any(status["installation"].get(k) != v for k, v in self.profile_review["site"].items()):
+        if any(status["installation"].get(k) != v for k, v in (review or self.profile_review)["site"].items()):
             raise ExecutionBlocked("RESET_SITE_CHANGED", "The current tool, payload, surface and fixed height must match review.")
 
     def _pin(self, status):

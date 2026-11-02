@@ -110,3 +110,23 @@ for the extended protected budget; the old v1 advertisement gets the original
 bounded policy. No new IDLE, resend, reconnect or movement argument is added.
 The v1 artifact and failed handshake evidence are preserved. Actual v2
 installation, no-motion verification and START return remain separate checks.
+
+## Reacquire stationary evidence without accepting nonzero speed
+
+The v2 no-motion exchange succeeded, followed by eleven completed empty-tool
+XY return commands. After the last confirmed endpoint, one later Native row
+reported a single `0.1` speed register; the prior guard closed the connection.
+The motion receipt remains complete and the completed movement is not replayed.
+
+During a legal top-level IDLE only, a valid posture with nonzero speed up to
+`0.1` now starts one bounded eight-second reacquisition window. Such a row is
+never accepted as stationary. The host maintains IDLE liveness and requires
+two new exact-zero samples before publishing readiness. Repeated noise does
+not extend the deadline; larger speed, invalid pose/program/flags or failure to
+obtain the original zero proof still blocks. READY→GO remains strict.
+
+Explicit retirement can also validate a new stationary START reference through
+the existing 0.005 component precision bound, unchanged original teaching/review
+hashes and a fresh exact Native session/START match. This resolves connection
+readback representation without moving Z or loosening profile admission. A
+failed preparation still requires its separate documented reconciliation.
