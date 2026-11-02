@@ -369,6 +369,14 @@ button:not(:disabled):active, [role="button"]:active, [role="tab"]:not(:disabled
 .route-kind.kind-cross { color: #8a5a00; background: #fdf3d8; }
 .route-kind.kind-verify { color: #2d5f9a; background: #e9f1fb; }
 
+/* Only reported complete rows receive the filled marker; check SVGs inherit white. */
+.floating-mission .context-steps > li.complete > .context-number,
+.route-page > li.complete > .route-number {
+  background: #e87949;
+  border-color: #e87949;
+  color: #fff;
+}
+
 /* Spatial: the destination dot fades out under the arrived car. */
 [data-endpoint-dot] { transition: opacity .3s ease; }
 
@@ -377,8 +385,8 @@ button:not(:disabled):active, [role="button"]:active, [role="tab"]:not(:disabled
 .physical-detail-link { display: flex; align-items: center; gap: 4px; margin-top: 5px; color: #75818a; font-size: 10px; }
 /* An accepted approval is read-only; actual execution state stays in Robot status. */
 .approval-feedback.physical-check p { display: block; overflow: visible; }
-.approval-approved > div { color: #538568; }
-.approval-approved > div h3 { color: inherit; }
+.floating-mission .next-check.approval-approved > div,
+.floating-mission .next-check.approval-approved > div h3 { color: #538568; }
 .primary-button.mission-approved-button:disabled { background: #528a69; color: #fff; opacity: 1; cursor: default; box-shadow: none; }
 .primary-button.mission-status-button:disabled { background: #dfe6e7; color: #465d68; opacity: 1; cursor: default; box-shadow: none; }
 .physical-status-panel { display: flex; flex-direction: column; gap: 15px; min-height: 0; }
