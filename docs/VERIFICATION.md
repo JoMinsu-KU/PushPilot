@@ -20,6 +20,14 @@ No new provider call, robot movement, service restart or camera adjustment was p
 
 The [evidence index](evidence/README.md) links original public summaries without modifying their observations. Original navy/cyan and early light screenshots below are design history; active architecture/artwork is indexed in [Documentation artwork](assets/README.md), with generated illustrations labelled accordingly.
 
+## Judge-facing presentation checkpoint · November 2, 2026
+
+The later [demo guide](DEMO.md) adds two user-supplied tablet playback links, three selected real capture assets and a self-contained read-only explorer. The Camera clip shows post-arrival empty return, not an entire delivery; Spatial is a rendered estimate. Source IDs, checksums and extraction limits are in [physical media provenance](assets/PHYSICAL_MEDIA.md). The setup photograph's metadata/auxiliary trailer was removed while its primary decoded pixels remained identical.
+
+Later November 2 source adds [legal-idle Native recovery](HOST_NATIVE_RECOVERY.md), with its own server-only activation and evidence record. This supersedes the earlier unimplemented-recovery statement in the initial checkpoint table; it does not establish universal connection recovery or loaded-route repeatability.
+
+The explorer's three embedded provider records match the original public JSON exactly; all four synthetic image bytes match its recorded SHA-256 values. JavaScript syntax, selected-media hashes, unchanged original evidence, loaded images, case/state switching and tablet/narrow-layout behavior were checked. Source checks passed. This update makes no new model inference or robot command, changes no physical recipe and claims no new physical qualification. The earlier full application test totals above retain their checkpoint scope; a parallel frontend update has its own [activation record](SPATIAL_SIGNAL_PREVIEW.md).
+
 ## Historical verification ledger · October 27–28, 2026
 
 Sections below describe the software, hardware and UI state at each recorded checkpoint. Their original test totals, model responses, residuals and limitations are preserved. In particular, a historical “simulation only,” “pending” or 125 ms polling statement is a checkpoint fact, not a current system-wide claim.

@@ -12,7 +12,7 @@
 
 The original loop still organizes the product: **Observe → Plan → Approve → Act → Verify**. Meta MUSE turns operator intent and original images into a route proposal, signal interpretation and outcome judgment. The supervisor validates those judgments; a configured Robot executor follows taught BASE coordinates and records Native receipts. Camera and Spatial make the plan and decision evidence visible.
 
-Start with the [current capability matrix](CURRENT_STATUS.md). The repository contains an equipment-free simulation path, an opt-in current-site physical trial, and dated implementation/commissioning history. Historical screenshots and trials are retained with their source and limits; they are not the current runtime specification.
+Start with the [demo and recorded-decision guide](DEMO.md) for actual tablet footage and the equipment-free archived-review explorer, then the [current capability matrix](CURRENT_STATUS.md). The repository contains an equipment-free simulation path, an opt-in current-site physical trial, and dated implementation/commissioning history. Historical screenshots and trials are retained with their source and limits; they are not the current runtime specification.
 
 ## Operate and recover
 
@@ -49,7 +49,7 @@ MUSE review is not TCP control. Native completion is not proof of vehicle arriva
 | Preserve the light glass workspace, Pretendard and viewport priorities | [Design system](DESIGN_SYSTEM.md) · [Frontend](../frontend/README.md) · [Designer display](DESIGNER_LIVE_DISPLAY.md) |
 | Understand current City A3 drawing identities | [City A3](CITY_A3.md) |
 | Follow the selected route in Camera and Spatial | [Route display](ROUTE_DISPLAY.md) |
-| Install the current private model and distinguish older model packages | [Spatial 3D](SPATIAL_3D.md) |
+| Install the current private model and distinguish older model packages | [Spatial 3D](SPATIAL_3D.md) · [Spatial signal display and preview](SPATIAL_SIGNAL_PREVIEW.md) |
 | Connect the separately authorized preview and preserve original frames | [Live camera](LIVE_CAMERA.md) · [Camera preview recovery](CAMERA_PREVIEW_RECOVERY.md) |
 | Replace a drawing without migrating obsolete plans/registrations | [Map replacement](MAP_REPLACEMENT.md) |
 | Read the earlier compatibility map and source boundaries | [Little Town history](TEMPORARY_MAP.md) · [Test inputs](TEST_INPUTS.md) |

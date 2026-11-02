@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "selected_on": "2026-11-02",
+  "timezone": "Asia/Seoul",
+  "source": "User-supplied Google Drive archive, selected explicitly for repository feedback update",
+  "scope": "Selected real tablet captures and setup photograph; not a continuous full-route or repeatability claim",
+  "source_timing_note": "Device clocks and Drive timestamps differ; no cross-file timing alignment is asserted.",
+  "processing": "OpenCV frame extraction and JPEG encoding only for video frames. Photograph retains identical primary compressed image data and decoded pixels; metadata and auxiliary gain-map trailer removed. No crop, resize, overlays, compositing or generative edits.",
+  "assets": [
+    {
+      "file": "robot-tablet-recording.jpg",
+      "source_drive_id": "1Hflx4wuoLFTQvOuHA_Aqk8_FBQhNt1bp",
+      "origin": "Full decoded video frame",
+      "requested_video_time_seconds": 30,
+      "width_px": 2752,
+      "height_px": 2064,
+      "bytes": 945298,
+      "sha256": "c4071ba6df58a664c3458eebae8226553b0876fa7b42ca90e5c694539203bc89",
+      "generative_editing": false
+    },
+    {
+      "file": "spatial-tablet-recording.jpg",
+      "source_drive_id": "1ZxNHMMrLSJfVC78_qcFdsB_DVkqEp-f3",
+      "origin": "Full decoded video frame",
+      "requested_video_time_seconds": 0,
+      "width_px": 2752,
+      "height_px": 2064,
+      "bytes": 665134,
+      "sha256": "381a9a0a45243d79739c61bf8cc29111836f5b9486febdd0db2f6aea044d63b6",
+      "generative_editing": false
+    },
+    {
+      "file": "robot-tabletop-setup.jpg",
+      "source_filename": "KakaoTalk_Photo_2026-10-31-03-25-27 001.jpeg",
+      "origin": "User-supplied photograph, metadata removed without pixel changes",
+      "requested_video_time_seconds": null,
+      "width_px": 5712,
+      "height_px": 4284,
+      "bytes": 3018725,
+      "sha256": "172a581028de22851f77eb8a54799e04520eb15227e9ee34a232b3302ae2c018",
+      "generative_editing": false,
+      "source_sha256": "c6c3a4d315958cb5d32df6ac7d83c87fcb6dffd61d827814c4e1e4065b3ca61d",
+      "metadata_removed": [
+        "EXIF",
+        "XMP",
+        "IPTC",
+        "JPEG comment",
+        "MPF index",
+        "auxiliary gain-map trailer"
+      ],
+      "decoded_pixels_unchanged": true
+    }
+  ],
+  "source_videos": [
+    {
+      "source_drive_id": "1Hflx4wuoLFTQvOuHA_Aqk8_FBQhNt1bp",
+      "bytes": 258155682,
+      "sha256": "2b2c2a0c5b94453aa334243fce100b806611ccf7a3416c8f91a09ffd3e51fdfe",
+      "decoded_width_px": 2752,
+      "decoded_height_px": 2064,
+      "reported_duration_seconds": 139.31,
+      "bundled_in_repository": false
+    },
+    {
+      "source_drive_id": "1ZxNHMMrLSJfVC78_qcFdsB_DVkqEp-f3",
+      "bytes": 232769024,
+      "sha256": "a70a0651c650962ceffc63aaf882b4b40b39bafee4bd7609f505cfba4cbfb568",
+      "decoded_width_px": 2752,
+      "decoded_height_px": 2064,
+      "reported_duration_seconds": 134.332,
+      "bundled_in_repository": false
+    }
+  ]
+}

@@ -4,9 +4,19 @@
 
 [Repository](../../README.md) · [Current design system](../DESIGN_SYSTEM.md) · [Current status](../CURRENT_STATUS.md) · [Exact current prompts](CURRENT_GENERATION_PROMPTS.md) · [Asset hashes](current-assets.json)
 
-The public documentation uses seven new illustrations in the current light glass/orange visual language. Meta MUSE connects the operator's intent with grounded routes, signal interpretation and visual outcome review. The original **Observe → Plan → Approve → Act → Verify** loop remains the organizing idea.
+The README now leads with an actual tablet-recording frame and a source playback link. Seven supporting illustrations retain the current light glass/orange visual language. Meta MUSE connects the operator's intent with grounded routes, signal interpretation and visual outcome review. The original **Observe → Plan → Approve → Act → Verify** loop remains the organizing idea.
 
-The cover is an original product concept illustration. It is deliberately labelled **CONCEPT ILLUSTRATION** and is not an actual application screenshot or the installed map. Technical diagrams describe the source architecture and its boundaries; their adjacent text and tables carry the same information in accessible English.
+The generated cover has moved to the README's **Product vision** section. It is deliberately labelled **CONCEPT ILLUSTRATION** and is not an actual application screenshot or the installed map. Technical diagrams describe the source architecture and its boundaries; their adjacent text and tables carry the same information in accessible English.
+
+## Selected actual captures
+
+| Asset | Origin and purpose |
+|---|---|
+| [`robot-tablet-recording.jpg`](robot-tablet-recording.jpg) | Full decoded frame from the user's actual Camera tablet recording, at a requested 30 seconds. Current README thumbnail; car at Villa, empty-tool return and last recorded MUSE PASS. |
+| [`spatial-tablet-recording.jpg`](spatial-tablet-recording.jpg) | First decoded frame of the actual Spatial tablet recording. Rendered city/application view; the car is an execution estimate. |
+| [`robot-tabletop-setup.jpg`](robot-tabletop-setup.jpg) | User-supplied setup photograph with metadata removed and identical decoded pixels. Actual robot/tool/camera installation; no mission-success inference. |
+
+The [physical media record](PHYSICAL_MEDIA.md) links the verified source files and defines each clip's scope. [physical-media.json](physical-media.json) records dimensions, source IDs, extraction positions and hashes. The two recording frames use decoding/JPEG encoding only; there is no generative editing or visual alteration. Original videos remain in Drive. The [read-only decision explorer](../review/index.html) separately embeds original synthetic inputs and archived provider results; its cases are not physical recordings.
 
 ## Current illustrations
 
@@ -46,7 +56,7 @@ These original assets remain available with their original generation records an
 
 The earlier SVGs embed no third-party photographs, fonts or vendor logos. Historical workspace screenshots use self-authored schematics rather than supplied map artwork or raw camera frames. Their provider results and browser checks retain the limits recorded in [verification](../VERIFICATION.md). None is evidence of physical vehicle delivery.
 
-The original supplied industrial-reference photographs are not repository assets. Private map artwork, raw camera media and model files remain outside Git. Camera board focus preserves perspective; display masking does not replace original image bytes in MUSE requests or immutable evidence.
+The original supplied industrial-reference photographs are not repository assets. Private source artwork, original operational camera archives and model files remain outside Git; only the explicitly selected user-supplied captures above are included. Camera board focus preserves perspective; display masking does not replace original image bytes in MUSE requests or immutable evidence.
 
 The original four generated PNG inputs remain in [GENERATION_PROMPTS.md](GENERATION_PROMPTS.md). The earlier voice architecture edit and voice-flow inputs remain in [VOICE_GENERATION_PROMPTS.md](VOICE_GENERATION_PROMPTS.md). Their exact prompts were retained rather than rewritten to match later implementation.
 

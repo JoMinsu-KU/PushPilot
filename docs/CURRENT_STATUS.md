@@ -8,6 +8,8 @@ PushPilot's original promise is unchanged: **see the scene, express a goal, insp
 
 ## Capability and evidence matrix
 
+For a first visit, [Demo and recorded decisions](DEMO.md) links selected real tablet footage and an equipment-free, read-only explorer of three existing synthetic-input Meta API records. These are presentation/inspection paths; they do not invoke new inference or control equipment. The short Camera clip shows post-arrival return, and the Spatial clip shows the rendered application estimate.
+
 | Capability | Current implementation | Evidence boundary |
 |---|---|---|
 | Goal understanding and route selection | MUSE receives the selected graph, operator goal and deliberately selected native image; local checks validate its exact directed path and constraints. | Actual provider records are dated and map-specific. A route preview is not physical reachability or motion permission. |
@@ -50,6 +52,8 @@ The public map's `temporary: true` and `physical_execution_enabled: false` remai
 On November 2, runtime code `7aa7753` was published to GitHub main and the deployment branch. The five previously uncommitted recovery/START code files matched the inspected GX10 source release `20261031-c11-activation-fix` before publication. This is a source comparison, not a live mission/readiness test or a new activation.
 
 Publication checks ran 1,177 backend tests with five skips, 126 frontend tests, source checks and the frontend production build. Older test totals in [verification](VERIFICATION.md) retain their original dates and scopes. Documentation/image refreshes are separate from physical execution.
+
+A subsequent November 2 frontend-only Spatial signal overlay has its own [source and activation record](SPATIAL_SIGNAL_PREVIEW.md#operational-activation--november-2-2026), including its separate 136-test frontend checkpoint. That display update is distinct from the runtime-code baseline and source-publication checks above.
 
 Public source contains wrappers, UI, maps' drawing facts, schemas and tests. Private inherited receiver code, taught coordinates/profiles, credentials, model/artwork bytes and operational evidence are installed separately. The web process, camera helper, commissioning API and receiver host have separate owners/lifecycles. [Deployment](../deploy/README.md) · [Robot deployment](../deploy/ROBOT_CONTROL.md)
 
