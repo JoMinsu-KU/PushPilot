@@ -1,0 +1,38 @@
+{
+  "schema": "pushpilot.negotiated-commit-wait-evidence.v1",
+  "date": "2026-11-02",
+  "server_code_commit": "a6e4b577518049866a32b06e895d5e69f5991366",
+  "frontend_source_commit": "361a81cb3d538387dc8d7065049dc51487d7f00f",
+  "deployment_release": "20261102-commit-wait-a6e4b57",
+  "frontend_index_sha256": "84a5f3ed7def763804e345bd700bedd4dbc5e67e41ff18308dfa11cc30341612",
+  "verification": {
+    "integrated_backend_tests": 1237,
+    "integrated_backend_skipped": 6,
+    "frontend_tests_passed": 152,
+    "gx10_targeted_tests": 131,
+    "gx10_targeted_skipped": 1,
+    "actual_profile_file_offline_fault_scenarios_passed": 9,
+    "offline_hardware_socket_calls": 0,
+    "served_frontend_files_hash_verified": 5,
+    "pendant_comparison_equivalence_cases": 22054,
+    "pendant_read_helper_cases": 12,
+    "pendant_full_mock_cases": 105
+  },
+  "activation": {
+    "server_api_web_active": true,
+    "held_mission_progress_preserved": "18/31",
+    "unresolved_command_history_preserved": true,
+    "motion_commands_submitted": 0,
+    "camera_epoch_preserved": true,
+    "saved_display_reference_lineage_and_same_matrix_verified": true,
+    "model_and_font_unchanged": true,
+    "manual_pendant_installation_verified": false,
+    "fresh_start_preparation_completed": false
+  },
+  "limits": [
+    "Desktop syntax and mock tests do not establish Rodi interpreter compatibility.",
+    "The extended protected budget requires the new explicitly negotiated pendant capability.",
+    "Persistent unavailable state and expired or uncertain commands still block execution.",
+    "No loaded mission or physical repeatability qualification is claimed by deployment."
+  ]
+}

@@ -70,3 +70,26 @@ Actual manual installation, no-motion handshake and later physical mission
 evidence must be reported separately from those tests and server activation.
 
 [Earlier idle recovery](HOST_NATIVE_RECOVERY.md) · [Operations](ROBOT_OPERATIONS.md)
+
+## Activation checkpoint
+
+Server code `a6e4b57` and the separate final frontend source `361a81c` were
+activated as GX10 release `20261102-commit-wait-a6e4b57`. The actual HTTP index
+and four chunks matched the frontend manifest. Backend verification ran 1,237
+tests with six skips; the frontend ran 152 tests. The actual startup-profile
+file also passed all nine hash-verified inherited-exchange fault scenarios
+using virtual telemetry and zero hardware sockets, plus 131 GX10 tests with
+one skip. [Dated record](evidence/negotiated-commit-wait-20261102.json)
+
+The first deployment verification deliberately rolled back when the web
+restart changed the display registration identity. The subsequent activation
+verified the persisted `resumed_from` lineage, identical homography, same camera
+epoch and current agreeing markers. No camera optical setting, refit, map,
+signal pixel region, robot command or old unresolved outcome was changed by
+that display-reference restoration. New identity binding during later explicit
+START preparation is a separate operation.
+
+At this checkpoint the old mission remained HOLD at 18/31, its original unknown
+request was preserved and deployment submitted no movement. The full pendant
+file had been delivered for manual installation; actual installation and the
+separately requested empty START return were still pending.
