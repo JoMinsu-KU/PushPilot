@@ -350,8 +350,97 @@ class PhysicalMissionService:
             self.status["vision"]["in_flight"] = False
             self._persist("OBSERVATION_FINISHED")
 
+    async def prepare_boundary(self, command):
+        """Prepare an explicitly recovered C11 boundary without starting motion."""
+        from backend.robot_control.mission_driver import plan_from_dict
+        from backend.robot_control.mission_resume import state_from_dict
+        from backend.robot_control.boundary_recovery import prepare
+        async with self.lock:
+            prior = self._existing(command)
+            if prior is not None:
+                return prior
+            if (command['expected_revision'] != self.status['revision']
+                    or command['mission_id'] != self.status['mission_id']
+                    or self.status['state'] != 'HOLD' or self.status['error'] not in {'ROBOT_NOT_COMPLETE','BOUNDARY_READY'}
+                    or self.task and not self.task.done()):
+                raise CommandError('Boundary preparation requires the exact ended transport hold.',409)
+            rows = [(seq,kind,json.loads(value)) for seq,kind,value in self.db.execute('SELECT seq,kind,value FROM events ORDER BY seq')]
+            accepted = [r for r in rows if r[1]=='MISSION_ACCEPTED' and r[2]['policy']['id']==command['mission_id']]
+            if len(accepted)!=1:
+                raise CommandError('Original mission unavailable.',409)
+            original=accepted[0]
+            interrupted=[r for r in rows if r[0]>original[0] and r[1]=='MISSION_INTERRUPTED']
+            if len(interrupted)!=1 or any(r[0]>original[0] and r[1]=='BOUNDARY_RESUMED' for r in rows):
+                raise CommandError('Require one preserved interrupted command.',409)
+            workspace=original[2]['workspace']
+            self._bound_workspace(workspace)
+            self._persist('BOUNDARY_PREPARATION_REQUESTED',command)
+            generation=self.stop_generation
+            try:
+                plan,state,proof=await asyncio.to_thread(prepare,self.driver,workspace,
+                    plan_from_dict(original[2]['policy']),state_from_dict(interrupted[0][2]['state']))
+                self._bound_workspace(workspace)
+                if self.stop_generation!=generation or proof['motion_issued'] is not False:
+                    raise ValueError('Boundary preparation interrupted.')
+            except Exception as error:
+                self.status.update(error='ROBOT_NOT_COMPLETE',stage_label='Continuation check failed · Remain stopped')
+                self._persist('BOUNDARY_PREPARATION_BLOCKED',{'code':getattr(error,'code',type(error).__name__)})
+                raise CommandError('Boundary preparation blocked: '+getattr(error,'code',type(error).__name__),409) from error
+            self._boundary_workspace=workspace
+            self.status.update(error='BOUNDARY_READY',stage_label='C11 complete · Ready to resume C12',available=False)
+            self.status['robot'].update(connected=True,stationary=True,at_start=False)
+            self._sequence_status(plan.steps[11].primitive.id,'held','Ready to resume from C11 boundary')
+            self._persist('BOUNDARY_PREPARED',{'proof':proof,'state':asdict(state),'policy':asdict(plan)})
+            return self._save_request(command)
+
+    async def _resume_boundary(self, command):
+        from backend.robot_control.boundary_recovery import activate, restore_prepared
+        from backend.robot_control.mission_driver import plan_from_dict
+        from backend.robot_control.mission_resume import state_from_dict
+        async with self.lock:
+            prior=self._existing(command)
+            if prior is not None:
+                return prior
+            if (command['expected_revision']!=self.status['revision']
+                    or command['mission_id']!=self.status['mission_id'] or self.status['error']!='BOUNDARY_READY'
+                    or self.status['state']!='HOLD' or self.task and not self.task.done()):
+                raise CommandError('Refresh and explicitly prepare the stopped boundary before resuming.',409)
+            restore=None
+            if not hasattr(self.driver,'_prepared_boundary'):
+                rows=[(kind,json.loads(value)) for kind,value in self.db.execute('SELECT kind,value FROM events ORDER BY seq')]
+                accepted=[v for k,v in rows if k=='MISSION_ACCEPTED' and v['policy']['id']==command['mission_id']]
+                prepared=[v for k,v in rows if k=='BOUNDARY_PREPARED' and v['policy']['id']==command['mission_id']]
+                launched=[v for k,v in rows if k=='BOUNDARY_RESUMED' and v['state']['mission_id']==command['mission_id']]
+                if len(accepted)!=1 or not prepared or launched:
+                    raise CommandError('The saved boundary preparation cannot be reconstructed.',409)
+                self._boundary_workspace=accepted[0]['workspace']
+                restore=prepared[-1]
+            workspace=self._boundary_workspace
+            self._bound_workspace(workspace)
+            generation=self.stop_generation
+            self._persist('BOUNDARY_RESUME_REQUESTED',command)
+            try:
+                if restore:
+                    await asyncio.to_thread(restore_prepared,self.driver,workspace,
+                        plan_from_dict(restore['policy']),state_from_dict(restore['state']),restore['proof'])
+                plan,state,proof=await asyncio.to_thread(activate,self.driver)
+                if self.stop_generation!=generation:
+                    raise ValueError('Stop during continuation.')
+                self._bound_workspace(workspace)
+            except Exception as error:
+                await asyncio.to_thread(self.driver.hold,'BOUNDARY_RESUME_BLOCKED')
+                raise CommandError('Continuation blocked: '+getattr(error,'code',type(error).__name__),409) from error
+            self.stopping.clear()
+            self.status.update(state='READY',error=None,stage_label='Continuing at C12')
+            self._persist('BOUNDARY_RESUMED',{'state':asdict(state),'proof':proof})
+            response=self._save_request(command)
+            self.task=asyncio.create_task(self._run(MissionPolicy(plan),state,workspace),name='physical-mission')
+            return response
+
     async def resume(self, command):
         """Explicit reviewed continuation, never an ambiguous-command retry."""
+        if self.status.get('error') == 'BOUNDARY_READY':
+            return await self._resume_boundary(command)
         from backend.robot_control.mission_driver import plan_from_dict
         from backend.robot_control.mission_resume import REVIEW_HOLD, C19_REVIEW_HOLD, state_from_dict
         async with self.lock:

@@ -9,6 +9,7 @@ from dataclasses import asdict, replace
 from copy import deepcopy
 import hashlib
 import json
+import logging
 import math
 from pathlib import Path
 from types import SimpleNamespace
@@ -20,6 +21,7 @@ from .mission_driver import ConfigBackedMissionDriver, WORKSPACE_KEYS, _referenc
 from .mission_policy import SiteBinding
 from .mission_profile import ReviewedProfilePreparer, resolve_wrist_descriptor, validate_site_review
 from .taught_executor import ExecutionBlocked, checked_snapshot
+from .session_start_reference import apply_start_reference
 from tools.build_delivery_release import policy_plan
 
 
@@ -40,7 +42,7 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
         data = json.loads(raw_config)
         required = {"schema", "enabled", "site_binding", "coordinate_binding", "ports", "journal_root",
                     "packet", "profile_review", "workspace_bindings", "measurement_adapter", "observations", "wrist_intents"}
-        if set(data) != required or data["schema"] != "pushpilot.site-trial-driver.v1" or type(data["enabled"]) is not bool:
+        if (set(data) - {"session_start_reference", "boundary_recovery"} != required or data["schema"] != "pushpilot.site-trial-driver.v1" or type(data["enabled"]) is not bool):
             raise ValueError("Use the explicit current-site delivery trial configuration.")
         self.config = data
         self.binding = SiteBinding(**data["site_binding"])
@@ -64,6 +66,30 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
         if packet["schema"] != "pushpilot.current-site-delivery-packet.v1" or packet["repeatability_qualified"] is not False:
             raise ValueError("A trial packet must preserve its unqualified provenance.")
         self.profile_review = validate_site_review(_reference(data["profile_review"], self.config_file.parent))
+        self.session_start_reference = None
+        if "session_start_reference" in data:
+            self.session_start_reference = _reference(data["session_start_reference"], self.config_file.parent)
+            packet, self.profile_review = apply_start_reference(packet, self.profile_review,
+                self.session_start_reference, data["packet"]["sha256"], data["profile_review"]["sha256"])
+            self.profile_review = validate_site_review(self.profile_review)
+            self.config["measurement_adapter"] = {**self.config["measurement_adapter"],
+                "working_z_mm": self.profile_review["site"]["fixed_tcp_z_mm"]}
+        self.boundary_recovery = None
+        if "boundary_recovery" in data:
+            from .boundary_recovery import apply_boundary_reference
+            self.boundary_recovery = _reference(data["boundary_recovery"], self.config_file.parent)
+            previous = self.boundary_recovery['connection']['original_config']
+            allowed = deepcopy(previous)
+            allowed['boundary_recovery'] = data['boundary_recovery']
+            allowed['ports']['registration_id'] = data['ports']['registration_id']
+            allowed['site_binding']['calibration_id'] = data['site_binding']['calibration_id']
+            for target in allowed['observations']['signal_targets'].values():
+                target['registration_id'] = data['ports']['registration_id']
+            if json.loads(raw_config) != allowed:
+                raise ValueError('Boundary recovery cannot replace the original teaching or policy configuration.')
+            packet, self.profile_review = apply_boundary_reference(packet, self.profile_review, self.boundary_recovery)
+            self.profile_review = validate_site_review(self.profile_review)
+            self.config['measurement_adapter']['working_z_mm'] = self.profile_review['site']['fixed_tcp_z_mm']
         self.review_sha = content_hash(self.profile_review)
         if (not Path(data["journal_root"]).is_absolute()
                 or any(self.profile_review["site"][key] != getattr(self.coordinate_binding, key)
@@ -490,6 +516,13 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
     def _validate_profile(self, status):
         if self._preparing_profile:
             return
+        receiver = status.get("receiver", {})
+        if receiver.get("connected") is not True:
+            raise ExecutionBlocked("ROBOT_CONNECTION_REQUIRED", "Reconnect the stopped receiver; a missing profile is not a changed profile.")
+        reference_session = (self.boundary_recovery['anchor_native']['session_id'] if self.boundary_recovery
+                             else self.session_start_reference['session_id'] if self.session_start_reference else None)
+        if reference_session and receiver.get("session_id") != reference_session:
+            raise ExecutionBlocked("START_REFERENCE_SESSION_CHANGED", "A new connection needs an explicit stationary common START reference check.")
         if self.pinned_profile_sha256 is not None and (
             content_hash(status["receiver"]["profile"]) != self.pinned_profile_sha256
             or content_hash(status["installation"]) != self.pinned_installation_sha256):
@@ -567,6 +600,9 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
         except Exception as error:
             result["reasons"].append(getattr(error, "code", "PHYSICAL_STATUS_UNAVAILABLE"))
             result["detail"] = type(error).__name__ + ": " + str(error)
+            if result["detail"] != getattr(self, "_last_readiness_error", None):
+                logging.getLogger(__name__).warning("Physical readiness: %s", result["detail"])
+                self._last_readiness_error = result["detail"]
         return result
 
     def _snapshot(self):
