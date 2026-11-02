@@ -698,6 +698,107 @@ class SiteTrialMissionDriver(ConfigBackedMissionDriver):
         finally:
             self._preparing_profile = False
 
+    def _commissioning_clear_cached_owner(self):
+        """Drop only local execution references; never call HOLD or a device API."""
+        self.journal = self.ports = self.profile_preparer = self.raw_api = None
+        self.currentplan = self.plan = self.current_context_id = self.pending_command_id = None
+        self.workspace_binding = self.before_frame = self.last_contact_outcome = self.last_snapshot = None
+        self.actual_installation_id = None
+        self.pinned_profile_sha256 = self.pinned_installation_sha256 = None
+        self._preparing_profile = False
+        self.stop_latch.set()
+
+    def _commissioning_stationary_proof(self, ports, *, require_start):
+        status = getattr(ports, "status_nowait", ports._status)()
+        if status.get("mode") != "physical_commissioning" or status.get("hardware_connected") is not True:
+            raise ExecutionBlocked("COMMISSIONING_PHYSICAL_STATUS_REQUIRED", "Use the actual connected physical API.")
+        self._reset_stationary_status(status)
+        self._validate_profile(status)
+        ports._camera_status()
+        prior_timeout = getattr(ports, "status_wait_timeout_s", 120.)
+        ports.status_wait_timeout_s = 0.
+        ports._native_cache = None
+        try:
+            native = checked_snapshot(ports, self.coordinate_binding, 5.)
+        finally:
+            ports.status_wait_timeout_s = prior_timeout
+        after = getattr(ports, "status_nowait", ports._status)()
+        self._reset_stationary_status(after)
+        self._validate_profile(after)
+        ports._camera_status()
+        if hashlib.sha256(self.config_file.read_bytes()).hexdigest() != self._loaded_config_sha256:
+            raise ExecutionBlocked("COMMISSIONING_CONFIGURATION_CHANGED", "Keep the production configuration unchanged during proof.")
+        keys = ("session_id", "seq", "profile_id", "actual_pose", "actual_joint", "profile")
+        if (any(status["receiver"].get(k) != after["receiver"].get(k) for k in keys)
+                or status["installation"] != after["installation"]
+                or (native.session_id, native.sequence, native.profile_id, native.installation_id,
+                    tuple(native.tcp_base)) != (after["receiver"]["session_id"], after["receiver"]["seq"],
+                    after["receiver"]["profile_id"], after["installation"]["installation_id"],
+                    tuple(after["receiver"]["actual_pose"]))):
+            raise ExecutionBlocked("COMMISSIONING_BASELINE_CHANGED", "Keep one exact stationary receiver baseline.")
+        starts = {tuple(self.config["contexts"][p.start_context_id]["pose_base"]) for _, p in self.routes}
+        at_start = len(starts) == 1 and all(abs(a-b) <= .100000001 for a, b in zip(native.tcp_base, next(iter(starts))))
+        if require_start and not at_start:
+            raise ExecutionBlocked("COMMISSIONING_COMMON_START_REQUIRED", "Return to the original common START before releasing commissioning.")
+        return {"motion_issued": False, "stationary": True, "at_start": at_start,
+                "session_id": native.session_id, "sequence": native.sequence,
+                "profile_id": native.profile_id, "native_evidence_sha256": native.native_evidence_sha256,
+                "configuration_sha256": self._loaded_config_sha256}, after
+
+    def commissioning_handoff(self, owner_id, reason):
+        """Release the production journal only after a fresh no-motion proof."""
+        if not self.execution_lock.acquire(blocking=False):
+            raise ExecutionBlocked("MISSION_BUSY", "An existing physical operation owns the executor.")
+        try:
+            if self.pending_command_id or self._preparing_profile or self._configuration_error:
+                raise ExecutionBlocked("COMMISSIONING_OPERATION_UNRESOLVED", "Resolve the existing operation before handoff.")
+            if hashlib.sha256(self.config_file.read_bytes()).hexdigest() != self._loaded_config_sha256:
+                raise ExecutionBlocked("COMMISSIONING_CONFIGURATION_CHANGED", "Keep the production configuration unchanged.")
+            self._ensure_ports()
+            previous = self.journal.load()
+            if previous and previous.get("state") not in {"STATIONARY_COMMAND_COMPLETE", "PROFILE_PREPARATION_COMPLETE",
+                    "RECONCILED_STATIONARY_NO_MOTION", "MISSION_RETIRED_AT_START"}:
+                raise ExecutionBlocked("COMMISSIONING_OPERATION_UNRESOLVED", "The existing journal has an unresolved operation.")
+            proof, _ = self._commissioning_stationary_proof(self.ports, require_start=False)
+            self.journal.append("commissioning_handoff", {"owner_id": owner_id, "reason": reason, "proof": proof})
+            self.journal.close()
+            self._commissioning_clear_cached_owner()
+            self._commissioning_detached = True
+            return {**proof, "ownership_released": True}
+        finally:
+            self.execution_lock.release()
+
+    def commissioning_rejoin(self, owner_id, reason):
+        """Reacquire the same OS owner; never bypass a test owner's live lock."""
+        if not self.execution_lock.acquire(blocking=False):
+            raise ExecutionBlocked("MISSION_BUSY", "An existing physical operation owns the executor.")
+        journal = None
+        try:
+            if self.journal is not None or self.ports is not None or self.pending_command_id:
+                raise ExecutionBlocked("COMMISSIONING_OWNER_NOT_RELEASED", "Production must remain detached until verified handback.")
+            journal = self.journal_factory(Path(self.config["journal_root"]))
+            previous = journal.load()
+            if previous and previous.get("state") not in {"STATIONARY_COMMAND_COMPLETE", "PROFILE_PREPARATION_COMPLETE",
+                    "RECONCILED_STATIONARY_NO_MOTION", "MISSION_RETIRED_AT_START"}:
+                raise ExecutionBlocked("COMMISSIONING_OPERATION_UNRESOLVED", "Do not hand back an unresolved production journal.")
+            handoffs = [json.loads(raw)["payload"] for raw in journal.event_path.read_text().splitlines()
+                        if json.loads(raw).get("kind") == "commissioning_handoff"]
+            if (not handoffs or handoffs[-1]["owner_id"] != owner_id
+                    or handoffs[-1]["proof"]["configuration_sha256"] != self._loaded_config_sha256
+                    or hashlib.sha256(self.config_file.read_bytes()).hexdigest() != self._loaded_config_sha256):
+                raise ExecutionBlocked("COMMISSIONING_HANDOFF_MISMATCH", "Preserve the exact owner and production configuration.")
+            options = {**self.config["ports"], "status_wait_timeout_s": 0.}
+            ports = self.port_factory(adapter=self.coordinate_binding, journal=journal, **options)
+            proof, _ = self._commissioning_stationary_proof(ports, require_start=True)
+            journal.append("commissioning_rejoined_at_start", {"owner_id": owner_id, "reason": reason, "proof": proof})
+            self._commissioning_clear_cached_owner()
+            self._commissioning_detached = False
+            return proof
+        finally:
+            if journal is not None:
+                journal.close()
+            self.execution_lock.release()
+
 
 def configured_driver(path, observer_callback):
     schema = json.loads(Path(path).read_bytes()).get("schema")
