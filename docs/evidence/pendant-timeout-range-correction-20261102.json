@@ -28,7 +28,8 @@
     "strict_range_checked_read_calls": 450,
     "server_tests": 57,
     "server_skipped": 1,
-    "actual_pendant_interpreter_verified": false
+    "actual_pendant_interpreter_verified": false,
+    "scope": "Offline checks do not emulate the pendant interpreter. Actual installed evidence is recorded separately below."
   },
   "deployment": {
     "host_waiting_for_manual_play": true,
@@ -36,6 +37,29 @@
     "camera_reconfiguration": false,
     "route_changes": false,
     "original_failed_evidence_preserved": true,
-    "fresh_start_ready": false
+    "fresh_start_ready": false,
+    "scope": "Range-correction deployment checkpoint before manual v2 verification and later empty return."
+  },
+  "subsequent_actual_verification": {
+    "operator_installed_v2": true,
+    "actual_v2_HELLO_verified": true,
+    "no_motion_profile_exchange_verified": true,
+    "empty_XY_return_commands_completed": 11,
+    "original_START_wrist_return_completed": true,
+    "completed_XY_commands_replayed": false,
+    "transient_nonzero_speed_original_failure_preserved": true,
+    "legal_idle_exact_zero_reacquisition_fix_deployed": true,
+    "original_teaching_and_motion_limits_unchanged": true,
+    "saved_camera_epoch_and_matrix_unchanged": true,
+    "fresh_START_available": true,
+    "robot_connected_stationary_at_start": true,
+    "active_mission": false,
+    "active_commands": 0,
+    "mission_progress": {"completed": 0, "total": 0},
+    "workspace_goal_and_plan_cleared": true,
+    "startup_matches_applied_profile": true,
+    "automatic_mission_start": false,
+    "forced_delayed_second_or_third_read_physically_verified": false,
+    "loaded_B_C_D_routes_requalified_by_this_check": false
   }
 }

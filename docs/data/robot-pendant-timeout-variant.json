@@ -27,6 +27,8 @@
   "protected_calls": ["PROFILE_READY_TO_PROFILE_COMMIT", "READY_TO_GO"],
   "unchanged_packet_wait_ms": 10000,
   "inherited_runtime_files_modified": false,
-  "physical_installation_verified": false,
+  "physical_installation_verified": true,
+  "installation_evidence": "Operator installed v2; actual HELLO capability and no-motion profile exchanges verified. Empty START return subsequently completed.",
+  "forced_delayed_second_or_third_native_read_physically_verified": false,
   "physical_route_requalification_claimed": false
 }

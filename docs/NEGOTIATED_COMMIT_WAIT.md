@@ -130,3 +130,20 @@ the existing 0.005 component precision bound, unchanged original teaching/review
 hashes and a fresh exact Native session/START match. This resolves connection
 readback representation without moving Z or loosening profile admission. A
 failed preparation still requires its separate documented reconciliation.
+
+## Actual final START preparation
+
+The operator installed v2 and its HELLO capability was received. Actual
+no-motion profile exchanges succeeded. The eleven empty XY return movements
+were preserved as completed; after the separate speed-evidence fix, only the
+remaining reviewed wrist return was executed. The original common START was
+independently confirmed, the ended HOLD was retired through the official reset
+API and the workspace goal/plan were cleared. The applied stationary profile
+and startup file match, with an explicit fresh-session START reference.
+
+Final status was available, connected, stationary and at START, with no active
+mission, no queued command and progress 0/0. The same saved camera epoch and
+homography were resumed without a refit. No vehicle mission was automatically
+started and this check does not claim fresh loaded B/C/D route qualification.
+Forced second/third-read delay branches were verified with strict offline
+mocks, separately from the actual immediate installed exchanges.
