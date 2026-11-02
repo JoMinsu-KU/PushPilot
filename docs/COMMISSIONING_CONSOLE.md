@@ -114,3 +114,32 @@ filters, rectification, resampling or AR-coordinate changes.
 Software tests and no-motion handoff checks are separate from a real D course
 qualification. A successful commissioning framework test does not establish
 that D16/D17 reproduce the old car contact state or that D will complete.
+
+## November 2 activation and verification
+
+- Workbench code commit: `52d33e4`. GX10 runs the verified complete source
+  bundle on 8192. Product 8080 received only the three broker/driver source
+  files after C completed and returned to START.
+- The local full backend run completed **1,329 tests, six skipped, no failures**.
+  The final focused commissioning suite completed **48 tests without failure**.
+  The existing frontend completed **152 tests**, TypeScript checking and the
+  Vite production build. The workbench JS syntax check also passed.
+- GX10 completed **108 equipment-free related tests** and loaded effective
+  B/C/D geometry. A real **no-motion acquire → reserved product → release**
+  check passed. Product state/history remained COMPLETE; the receiver stayed
+  in the same session at sequence 551 with the same exact TCP, joints, profile
+  and installation, held/disarmed with no active commands.
+- The first candidate deployment omitted the inherited runtime's public
+  source manifest. Its acquire failed before runtime loading, profile
+  preparation or command intent. That failed setup state is retained
+  privately. The final deployment uses the complete verified source bundle;
+  CLI startup now verifies exact runtime sources before exposing the GUI.
+- Restoring the saved camera reference after the idle web restart generated a
+  new display-reference identity. Its stored lineage, camera epoch and exact
+  homography were verified; only the three matching display identity fields
+  in private configuration were rebound. No new fit, coordinate, height,
+  orientation, signal pixels or taught geometry was introduced. Camera and
+  RODI processes were not restarted for this deployment.
+- No loaded unit, new MUSE inference or D trial was executed. The GUI is left
+  in READ_ONLY without a reservation. Browser authentication uses the separate
+  console token; private access material is excluded from source releases.
