@@ -68,7 +68,7 @@ Do not point a development instance at a live private configuration merely to in
 
 The [contract index](../contracts/README.md) lists exact physical fields and recovery distinctions. Physical commands use physical revision; start additionally binds workspace session, plan/revision, selected map/hash, destination and route nodes. Simulation commands keep their own UUID/revision idempotency. Scene, preview and voice operations have different binding contracts; they are not interchangeable command authority.
 
-Inference runs outside workspace locks and rechecks context after completion. Stale/superseded results, malformed output and actual provider errors cannot fall back to a fabricated demo acceptance. A copied old receipt may have an older revision than the latest state; it must not overwrite a newer poll.
+Live-frame planning and recorded/native action-review inference release their stores during provider work and recheck context afterward. The still-exposed **symbolic Meta goal branch** is a different path: its synchronous dispatch/provider call can block the event loop and retain the workspace lock. That reviewed limitation remains unresolved; this documentation update does not implement its repair. [Review follow-up](../docs/REVIEW_FOLLOW_UP.md) tracks it alongside Stop idempotency and request/UI concurrency. Stale/superseded results, malformed output and actual provider errors cannot fall back to a fabricated demo acceptance. A copied old receipt may have an older revision than the latest state; it must not overwrite a newer poll.
 
 ## Review and signal policy
 
@@ -76,7 +76,7 @@ Simulation live plans use their dedicated native-frame review/signal APIs and re
 
 The physical site trial combines Native endpoint evidence with applicable MUSE car/signal review after coordinate withdrawal. One accepted stopped GREEN admits measured recontact and continuation under `single_departure`; no second color wait occurs after recontact. A new mission needs new admission. C4/C6 detail crops, C14 reference lineage, qualitative C17, configured C19 omission and C26 destination-only arrival have narrow documented scope. `clear_problem: null` is preserved as unknown, not rewritten false. See [prompts](../prompts/README.md).
 
-Simulation watch defaults to 30 judgments, two-second intervals and a 300-second total budget; these limits do not establish the physical signal timer. Requested physical 120-second behavior needs exact deployed-configuration evidence. Native read/freshness, provider and wrist completion are separate clocks. Idle Native-read connection repair is **unimplemented**.
+Simulation watch defaults to 30 judgments, two-second intervals and a 300-second total budget; these limits do not establish the physical signal timer. Requested physical 120-second behavior needs exact deployed-configuration evidence. Native read/freshness, provider and wrist completion are separate clocks. The separate host's legal-idle Native recovery is implemented and deployed: `native_wait` blocks dispatch until two new stationary samples are available. One actual idle timeout recovered without reconnect or motion replay; non-idle/unknown-outcome limits remain. [Recovery record](../docs/HOST_NATIVE_RECOVERY.md)
 
 ## Preview and evidence
 
@@ -97,7 +97,7 @@ python tools/dev.py check
 python tools/dev.py test
 ```
 
-Offline tests inject isolated state, synthetic images/audio and mock provider/equipment transports; they do not read the real `.env`, call Meta or contact a robot. The November 2 publication recorded 1,177 backend tests run, five skipped; 126 frontend tests and the build passed. These counts establish software checks, not perception accuracy or physical repeatability. [Verification](../docs/VERIFICATION.md) preserves earlier counts/results by date.
+Offline tests inject isolated state, synthetic images/audio and mock provider/equipment transports; they do not read the real `.env`, call Meta or contact a robot. The initial November 2 publication recorded 1,177 backend tests run/five skipped and 126 frontend tests. The later Native recovery checkpoint `bcac769` recorded 1,199 backend tests/five skipped and 143 frontend tests, with zero failures and a passing build. These counts establish software checks, not perception accuracy or physical repeatability. [Verification](../docs/VERIFICATION.md) preserves counts/results by source and date.
 
 ---
 

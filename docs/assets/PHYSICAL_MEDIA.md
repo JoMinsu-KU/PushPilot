@@ -4,7 +4,30 @@
 
 [Demo guide](../DEMO.md) · [Artwork inventory](README.md) · [Hashes and source IDs](physical-media.json)
 
-The user explicitly approved publishing these three selected captures and associated Drive video links to the public PushPilot GitHub repository on November 2, 2026. They are separate from the original private operational archives, original evidence JSON and generated product illustrations. No model-evaluation PDF or other unrelated folder content is included.
+The user explicitly approved publishing the initial three selected captures and associated Drive video links, then separately approved the 55-second physical-action clip and its new representative capture, on November 2, 2026. They are separate from the original private operational archives, original evidence JSON and generated product illustrations. No model-evaluation PDF or other unrelated folder content is included.
+
+## Representative physical action and fresh review
+
+**[Watch the continuous 55-second clip](https://drive.google.com/file/d/1TSuzN94-EOozUoWs5WLEXWVgjVezt0j9/view)**
+
+The actual Camera tablet archive contains the selected contiguous source interval **01:10–02:05**. It shows C Step 1 physically pushing the car east from Pizza, the tool withdrawing, **Checking car · MUSE**, a **new PASS at 06:42:17**, and **C Step 2 · Robot command in progress**. The earlier displayed PASS was 06:40:53. The review result changes within this interval; it is not a prior result displayed throughout empty return.
+
+| Position in selected clip | Sampled visible state |
+|---|---|
+| 0:00 | C Step 1 pushing the car; prior PASS remains displayed. |
+| 0:15 | Car farther east relative to the pink departure outline. |
+| 0:25 | Tool withdrawing left; car becomes unobstructed. |
+| 0:35 | Checking car · MUSE; next action awaits execution. |
+| 0:45 | New PASS timestamp 06:42:17. |
+| 0:50 | C Step 2 executing with the new PASS. |
+
+These are sample positions, not exact state-transition boundaries or synchronized sensor times. The archived host-state sequence independently confirms observation in flight, a newly recorded progress result, and the next MOVING state. Device review times and host receive times have distinct meanings; no precise clock alignment is asserted.
+
+The published MP4 is a **55.000-second, 1,376 × 1,032, 15 fps H.264/yuv420p viewing derivative**, 9,418,812 bytes, with no audio or source container metadata. Its 825 frames all decoded successfully; progressive-download layout and actual loopback browser playback were checked. Processing is one continuous cut, half-size resampling, frame-rate resampling and encoding. There are no inserted frames, annotations, replacement results, generative edits or reordered events. The original brief AR redraw interruption around source 01:15 is retained.
+
+[`physical-action-muse-review.jpg`](physical-action-muse-review.jpg) is the full frame at selected-clip 0:50 (source 02:00), showing the new PASS and Step 2. JPEG encoding is the only additional processing; EXIF, XMP, IPTC and location metadata are absent. The original long recording is not linked or bundled here; its full-file hash is not asserted because it was inspected using bounded reads. The approved short derivative is hosted in the user's existing Drive archive, with its existing inherited sharing unchanged. It is not bundled in Git.
+
+This clip demonstrates **one physical action, fresh review and continuation**. It does not establish full-route arrival, signal admission, parking alignment or repeatability. No new model request, robot motion, camera adjustment or operational service restart was performed to prepare it.
 
 ## Camera recording
 
@@ -14,7 +37,7 @@ The user explicitly approved publishing these three selected captures and associ
 - Reported duration: approximately 2 minutes 19 seconds; decoded canvas 2752 × 2064.
 - The inspected early, middle and late frames show the actual car near Villa, the physical tool/hoses, the AR path and an empty-tool return in progress. The tablet displays the last MUSE PASS and signal-passed state.
 - The beginning already shows return receipts. This is a **post-arrival/return recording**, not a continuous start-to-arrival demonstration. Displaying a prior PASS is not a new inference during return. The clip is not used to claim verified completion of every return stage.
-- [`robot-tablet-recording.jpg`](robot-tablet-recording.jpg), the README thumbnail, is a full frame extracted at a requested position of 30 seconds. It has no crop, resized geometry, added annotation, replacement UI or generated pixels. Decoding/JPEG encoding is the only processing.
+- [`robot-tablet-recording.jpg`](robot-tablet-recording.jpg), the earlier README thumbnail retained as supporting material, is a full frame extracted at a requested position of 30 seconds. It has no crop, resized geometry, added annotation, replacement UI or generated pixels. Decoding/JPEG encoding is the only processing.
 
 ## Spatial recording
 
@@ -32,7 +55,7 @@ The user explicitly approved publishing these three selected captures and associ
 
 ## Provenance and limits
 
-The [machine-readable manifest](physical-media.json) records image dimensions, SHA-256 values, source IDs, source-video checksums and extraction positions. No generative editing, compositing or visual enhancement was used. Original videos remain at their existing Drive URLs rather than being copied into Git. Their existing sharing settings were inspected and not changed.
+The [machine-readable manifest](physical-media.json) records image dimensions, SHA-256 values, selected source IDs, video checksums and extraction positions. No generative editing, compositing or visual enhancement was used. Approved video links remain in Drive rather than copying video bytes into Git. Existing sharing settings were inspected and not changed.
 
 Device clocks and Drive timestamps differ. We do not assert precise acquisition dates from filenames or synchronization across recordings. The selection date above is known; historical B/C/D trial records retain their own dates and acceptance criteria.
 

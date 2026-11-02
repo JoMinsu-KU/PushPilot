@@ -26,7 +26,7 @@ Start with the [demo and recorded-decision guide](DEMO.md) for actual tablet foo
 | Continue a known completed action after review hold | [Explicit continuation](EXPLICIT_REVIEW_CONTINUATION.md) |
 | Prepare the scoped C11 boundary or a fresh START session reference | [C11 boundary recovery](C11_BOUNDARY_RECOVERY.md) · [Stationary START reference](SESSION_START_REFERENCE.md) |
 
-Reset retires an ended mission at an independently verified START; it does not move the robot. A lost movement outcome never permits automatic replay. The unresolved receiver idle-timeout limitation belongs in [known limitations](KNOWN_LIMITATIONS.md), separate from MUSE and signal waiting.
+Reset retires an ended mission at an independently verified START; it does not move the robot. A lost movement outcome never permits automatic replay. [Legal-idle Native read recovery](HOST_NATIVE_RECOVERY.md) is implemented and has one recorded actual recovery; non-idle failures and broader reliability qualification remain separate from MUSE and signal waiting. See [known limitations](KNOWN_LIMITATIONS.md).
 
 ## Understand the product and Meta intelligence
 
@@ -66,6 +66,7 @@ The private model and nominal map fit are display inputs. The illustrated Spatia
 | Install the separate commissioning API and inherited receiver runtime | [Robot deployment](../deploy/ROBOT_CONTROL.md) · [Robot control](ROBOT_CONTROL.md) |
 | Find offline, provider and equipment-contacting utilities | [Tools](../tools/README.md) |
 | Inspect software checks and dated validation | [Tests](../tests/README.md) · [Verification](VERIFICATION.md) |
+| Separate corrected documentation from unresolved review findings | [Repository review follow-up](REVIEW_FOLLOW_UP.md) |
 | See remaining implementation and qualification work | [Roadmap](ROADMAP.md) |
 | Contribute while preserving source/evidence boundaries | [Contributing](../CONTRIBUTING.md) · [Workspace instructions](../AGENTS.md) |
 | Record authorship and imported material | [Contributions](../CONTRIBUTIONS.md) · [Third-party notices](../THIRD_PARTY_NOTICES.md) |

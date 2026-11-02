@@ -75,7 +75,9 @@ Workspace SQLite, selected-frame evidence, physical coordinator records and rece
 
 A process restart never automatically resumes a worker, replays movement or restores old GREEN authority. Explicit review continuation, C11 boundary preparation and session-scoped START precision binding are narrow operations with different preconditions. Reset retires the old mission; it is not a robot return command. [Robot operations](ROBOT_OPERATIONS.md) is the operational decision guide.
 
-Intermittent Native-read timeouts can still close the Rodi connection while idle. Separating connection heartbeat from blocking reads and adding bounded read-only recovery was analyzed but **has not been implemented**. A web HOLD is not a hardware emergency stop. Simulation watch, provider timeout, receiver freshness, wrist completion and physical signal budgets are separate clocks; no public-source claim here verifies the requested physical 120-second signal wait.
+Legal-idle Native read recovery is **implemented and deployed**. The same I/O owner exchanges permitted IDLE heartbeats, publishes non-idle `native_wait` while telemetry is unavailable and requires two new stationary samples before dispatch can resume. One real idle timeout recovered in the unchanged session without reconnecting or replaying motion. Non-idle handshakes, expired requests and unknown outcomes retain their bounded failures; this is not an uninterrupted-operation guarantee. [Current recovery evidence](HOST_NATIVE_RECOVERY.md)
+
+A web HOLD is not a hardware emergency stop. Simulation watch, provider timeout, receiver freshness, wrist completion and physical signal budgets are separate clocks; no public-source claim here verifies the requested physical 120-second signal wait.
 
 Measured vehicle pose, robust slip correction, parallel parking, unattended repeatability, tablet microphone/HTTPS and full calibration qualification remain open. [Known limitations](KNOWN_LIMITATIONS.md), [verification](VERIFICATION.md) and the [evidence index](evidence/README.md) retain their exact scope.
 

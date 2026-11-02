@@ -12,7 +12,7 @@ The public clone starts equipment-free simulation by default. The configured Cit
 
 Physical site-trial code is implemented separately under `/api/v1/physical/*`. It requires explicit private `PUSHPILOT_PHYSICAL_CONFIG`, taught packet/review geometry, verified controller runtime, profiles, source-bound receiver state and installed camera/signal configuration. These are intentionally not published in a public clone. Read [Current status](CURRENT_STATUS.md), [Robot operations](ROBOT_OPERATIONS.md) and [deployment prerequisites](../deploy/ROBOT_CONTROL.md) before configuring equipment access. A successful source build alone cannot reproduce the installed Robot mode.
 
-The November 2 publication recorded 1,177 backend tests run with five skipped, 126 frontend tests and a successful build. This is a software checkpoint; earlier dated evidence/counts remain in [Verification](VERIFICATION.md). No provider or hardware call is required to check documentation or the default offline suite.
+The initial November 2 publication recorded 1,177 backend tests run with five skipped, 126 frontend tests and a successful build. The later Native recovery source `bcac769` recorded 1,199 backend tests/five skipped, 143 frontend tests, zero failures and a passing build. These are separate software checkpoints in [Verification](VERIFICATION.md), not perception or physical-repeatability measurements. No provider or hardware call is required to check documentation or the default offline suite.
 
 ## Runtime and dependency setup
 
@@ -159,6 +159,8 @@ The builder refuses an existing output path. The manifest binds committed source
 
 ## Boundaries and next implementation work
 
+The [review follow-up](REVIEW_FOLLOW_UP.md) records open Start/Stop concurrency, duplicate physical Stop side effects, synchronous symbolic Meta inference, general request deadlines/polling and full CI work. These are documented findings and proposed acceptance checks, not newly implemented or independently rerun results. This update changes Markdown only.
+
 | Area | Current boundary |
 | :--- | :--- |
 | Map | Replaceable City/Little Town drawing graph and board-to-image display overlays; physical recipes remain private taught BASE data, separate from display geometry. General calibration qualification is open. |
@@ -177,7 +179,7 @@ Push-to-talk will require trusted target-device HTTPS, secure-context and permis
 
 Runtime state belongs in ignored `runtime/` locally or dedicated shared storage on GX10. SQLite contains mission state/events and command receipts; the private scene directory contains frames, hashes, map/reference bindings, and validated inspection records. Preserve both deliberately across updates, restrict access, and apply a reviewed media retention policy. A rollback must not overwrite newer history.
 
-After restart, active work remains non-executing. Pending commands, admitted crossings, previous approval and old GREEN observations do not automatically regain authority. Simulation reconciliation and physical reset/resume are separate operations. Never automatically replay an unknown motion; follow [Robot operations](ROBOT_OPERATIONS.md) for exact completed-boundary continuation and START preparation. Native idle-timeout repair remains unimplemented, and an HTTP HOLD is not a hardware emergency stop.
+After restart, active work remains non-executing. Pending commands, admitted crossings, previous approval and old GREEN observations do not automatically regain authority. Simulation reconciliation and physical reset/resume are separate operations. Never automatically replay an unknown motion; follow [Robot operations](ROBOT_OPERATIONS.md) for exact completed-boundary continuation and START preparation. The separate host's [legal-idle Native recovery](HOST_NATIVE_RECOVERY.md) is implemented/deployed, with one actual same-session timeout recovery recorded; it requires new stationary telemetry and does not repair every protocol phase or replay a target. An actual disconnect still requires explicit connection/source preparation. An HTTP HOLD is not a hardware emergency stop.
 
 ---
 

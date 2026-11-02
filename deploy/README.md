@@ -14,7 +14,7 @@ The separate [robot-control deployment guide](ROBOT_CONTROL.md) covers the commi
 
 ## Current source and last inspected deployment
 
-**Reviewed November 2, 2026.** Public baseline `7aa7753` includes C11 recovery, mission retirement/reset and session START precision binding. The last read-only host audit identified web release `20261031-c11-activation-fix`. These are separate identities: a Git push does not change an active symlink, restart services or prove a connected robot. No deployment or hardware action is performed by this documentation update.
+**Reviewed November 2, 2026.** Initial public baseline `7aa7753` includes C11 recovery, mission retirement/reset and session START precision binding; the corresponding inspected web release was `20261031-c11-activation-fix`. Later Native recovery source `bcac769` was separately activated as host release `20261102-native-recovery-bcac769`, retaining the other service identities. [Activation and observation record](../docs/HOST_NATIVE_RECOVERY.md) distinguishes these releases: a Git push alone changes no active symlink or connected-robot state. No deployment or hardware action is performed by this documentation update.
 
 | Process / artifact | Last documented role | Access / boundary |
 | --- | --- | --- |
@@ -25,7 +25,7 @@ The separate [robot-control deployment guide](ROBOT_CONTROL.md) covers the commi
 | Controller Native FC03 | Read-only state/endpoints | Controller port 502; the host owns normal acquisition. |
 | `docs/data/robot-runtime-source.json` | Public provenance for exact privately imported runtime bytes | Hash manifest only; runtime source, operational geometry and mailboxes are excluded. |
 
-A readiness check is point-in-time. The known idle Native-read failure can still close a Rodi session; source publication and the 120-second wrist budget do not repair it. See [operations](../docs/ROBOT_OPERATIONS.md) and [limitations](../docs/KNOWN_LIMITATIONS.md).
+A readiness check is point-in-time. Deployed legal-idle Native recovery has retained the same session through one actual read timeout, using `native_wait` and fresh stationary samples without reconnecting or replaying movement. Non-idle handshakes, wire loss, expired requests and unknown outcomes retain their failure boundaries; the 120-second wrist budget does not extend them. [Recovery](../docs/HOST_NATIVE_RECOVERY.md), [operations](../docs/ROBOT_OPERATIONS.md) and [limitations](../docs/KNOWN_LIMITATIONS.md) separate these cases.
 
 ## Verified runtime direction
 

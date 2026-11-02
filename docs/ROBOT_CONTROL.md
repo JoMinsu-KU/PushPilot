@@ -2,7 +2,7 @@
 
 # One command. One receipt. No automatic replay.
 
-**Current baseline: November 2, 2026, source `7aa7753`.** The configured Robot trial connects the tablet's live MUSE plan to coordinate action units, real robot receipts, original-frame MUSE review and a separate empty START return. The equipment-free simulator remains the default without private physical configuration. This is an opt-in current-site trial; it does not establish unattended repeatability.
+**Current summary: November 2, 2026.** The initial public baseline `7aa7753` is followed by [server-only Native recovery source `bcac769`](HOST_NATIVE_RECOVERY.md). The configured Robot trial connects the tablet's live MUSE plan to coordinate action units, real robot receipts, original-frame MUSE review and a separate empty START return. The equipment-free simulator remains the default without private physical configuration. This is an opt-in current-site trial; it does not establish unattended repeatability.
 
 [Operations and recovery](ROBOT_OPERATIONS.md) · [Delivery trial](DELIVERY_SITE_TRIAL.md) · [Known limitations](KNOWN_LIMITATIONS.md) · [Measured catalogue](MEASURED_ROUTE_CATALOGUE.md) · [GX10 deployment](../deploy/ROBOT_CONTROL.md)
 
@@ -44,10 +44,10 @@ The reviewed site-trial release preserves fixed work height, literal translation
 | Confirmed camera/map/site/profile/session mismatch | Hold; display relocking does not rewrite taught BASE coordinates. |
 | Lost DONE, ambiguous publication or interrupted movement | Preserve the unresolved command and disarm; independent reconciliation precedes new motion. |
 | API/web restart | Preserve journals; HOLD/recovery, no automatic worker or command replay. |
-| Native idle read budget exhausted | Current synchronous host closes the session. A listening port is not a connected pendant. |
+| Native read unavailable at a legal idle boundary | Deployed recovery publishes `native_wait`, retains the same session and requires two new stationary samples before admission. One actual timeout recovery is recorded; non-idle failures and expiry can still terminate a session. A listening port alone is not a connected pendant. |
 | Eligible completed visual-review hold | Explicit source/scene/Native checks can admit the next unit; the completed unit never repeats. |
 
-HTTP/MUSE/camera processing is separate from the host process. **Host heartbeat is not fully isolated from synchronous Native acquisition.** Idle-timeout hardening is unimplemented at this cutoff. A longer signal timer and START precision binding do not repair it; see [timeout distinctions](ROBOT_OPERATIONS.md#distinguish-the-clocks).
+HTTP/MUSE/camera processing is separate from the host process. **Host heartbeat is not fully isolated from synchronous Native acquisition.** The deployed wrapper now contains known read failures with legal-idle liveness and fresh reacquisition; it does not guarantee every protocol phase, renew expired requests or replay an unknown target. Longer signal timers and START binding remain separate from this repair. See [recovery scope](HOST_NATIVE_RECOVERY.md) and [timeout distinctions](ROBOT_OPERATIONS.md#distinguish-the-clocks). The newly identified UI/request-coordination issues remain [open review findings](REVIEW_FOLLOW_UP.md#code-findings-remain-open).
 
 Admission is rechecked before durable command commit. A later HOLD/cancel cannot revoke an already admitted blocking MoveL/MoveJ operation. The installed protocol has no emergency-stop wire command. Use actual controller stop facilities when needed.
 

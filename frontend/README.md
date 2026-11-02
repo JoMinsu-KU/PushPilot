@@ -15,7 +15,7 @@ This describes source behavior reviewed on **November 2, 2026**, not a currently
 | Area | Implemented behavior |
 |---|---|
 | Goal | Original Typed/Voice query stays separate from interpretation. **From / To** shows the map start and interpreted destination. Edits are preparation actions. |
-| Workspace | Continuous stage, glass overlays, collapsible mission controls and complete bounded route/history views. Stop stays accessible during an active physical mission, including open application dialogs. |
+| Workspace | Continuous stage, glass overlays, collapsible mission controls and complete bounded route/history views. Stop remains visible during an active physical mission, including open application dialogs; a pending Start response can still disable it through shared request state. [Open finding](../docs/REVIEW_FOLLOW_UP.md#code-findings-remain-open) |
 | Simulation | Equipment-free planning, exact-plan approval and symbolic actions/reviews. Demo inputs are labelled. Explicit live-backed simulation can use native images and MUSE without robot commands. |
 | Robot | Configured current-site Start/Stop, actual sequence rows, Native receipt counts, physical MUSE/signal status, history and faults. Missing physical data is unavailable, never filled from simulator values. |
 | Camera | Live/Recorded, original JPEG decode-before-swap, age, fixed display registration, Board focus and shared image/route pan/zoom. Natural perspective; no rectified camera top view. |
@@ -82,7 +82,7 @@ Preview alone does not persist MUSE evidence or complete actions. Explicit live-
 ## State and tablet interaction
 
 - Workspace and physical status retain separate revisions, sessions and plan bindings. Mutations require unique request IDs and expected revisions; uncertain replies require reconciliation, never automatic motion replay.
-- Robot Start requires configured readiness and a matching plan. Stop stays available. View changes and evidence browsing send no motion commands.
+- Robot Start requires configured readiness and a matching plan. Stop is shown for an active mission, with the pending-request limitation above. View changes and evidence browsing send no motion commands.
 - Missing telemetry, stale imagery and provider failures show actual source errors rather than mock values, timed progress or demo substitutions.
 - Scene-only inspection cannot resolve an action review. Recorded pairs bind immutable IDs/hashes to the pending simulated review.
 - Keep microphone capture disabled until implemented and verified.

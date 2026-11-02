@@ -1,6 +1,6 @@
 # From sight to action · current status
 
-**Source-backed status, November 2, 2026 · runtime code baseline `7aa7753`.**
+**Source-backed status, November 2, 2026 · Native recovery source `bcac769`, with dated recovery and subsequent stationary START-preparation evidence.**
 
 [Documentation](README.md) · [Architecture](ARCHITECTURE.md) · [Meta intelligence](META_INTELLIGENCE.md) · [Robot operations](ROBOT_OPERATIONS.md) · [Known limitations](KNOWN_LIMITATIONS.md)
 
@@ -8,7 +8,7 @@ PushPilot's original promise is unchanged: **see the scene, express a goal, insp
 
 ## Capability and evidence matrix
 
-For a first visit, [Demo and recorded decisions](DEMO.md) links selected real tablet footage and an equipment-free, read-only explorer of three existing synthetic-input Meta API records. These are presentation/inspection paths; they do not invoke new inference or control equipment. The short Camera clip shows post-arrival return, and the Spatial clip shows the rendered application estimate.
+For a first visit, [Demo and recorded decisions](DEMO.md) leads with the approved **55-second physical action → fresh MUSE review → next step** recording: C Step 1 pushes the car, the tool withdraws, a new PASS appears at 06:42:17, and C Step 2 begins. The older Camera clip is supporting post-arrival/empty-return footage; the Spatial clip shows the rendered application estimate. The public [recorded-decision explorer](https://jominsu-ku.github.io/PushPilot/) presents three existing synthetic-input Meta API records. Watching/selecting these archives invokes no new inference or equipment control. [Exact media scope](assets/PHYSICAL_MEDIA.md)
 
 | Capability | Current implementation | Evidence boundary |
 |---|---|---|
@@ -23,7 +23,7 @@ For a first visit, [Demo and recorded decisions](DEMO.md) links selected real ta
 | Voice | Backend accepts bounded supported WAV, targets the Meta transcription adapter and returns revision-bound candidate text. | Browser capture/encoding/confirmation, actual ASR access and recognition quality remain pending or unverified. Typed goals remain available. |
 | Goal editing | Robot UI disables edits during a physical mission; simulation validates its workspace state. | Workspace/voice APIs do not yet share a server-side active-mission lock with the separate physical service. |
 | Recovery | Explicit completed-review continuation, scoped C19 omission, C11 boundary preparation and session-bound START reference; ended-mission retirement at verified START. | No automatic unknown-command replay. Reset does not itself move the robot. Some reconnects require local PLAY. |
-| Receiver resilience | Same-owner legal-idle heartbeats contain transient Native read failures; `native_wait` blocks dispatch and requires fresh measurements. [Recovery](HOST_NATIVE_RECOVERY.md) | Server implementation and equipment-free tests do not establish a live idle soak. Non-idle protocol handshakes and unknown outcomes remain bounded failures; no automatic reconnect or motion replay. |
+| Receiver resilience | Deployed same-owner legal-idle heartbeats contain transient Native read failures; `native_wait` blocks dispatch until two new stationary Native samples are available. [Recovery](HOST_NATIVE_RECOVERY.md) | One actual idle read timeout recovered in the unchanged session at 13:42:35–13:42:37 KST. No reconnect, motion or profile dispatch occurred. Non-idle protocol phases and loaded-route repeatability remain unqualified; no automatic motion replay. |
 | Glasses companion | Retained product concept for seeing, stating and reviewing the shared plan. | No wearable integration is claimed. |
 
 ## One start. Three destinations.
@@ -49,11 +49,15 @@ The public map's `temporary: true` and `physical_execution_enabled: false` remai
 
 ## Build and deployment snapshot
 
-On November 2, runtime code `7aa7753` was published to GitHub main and the deployment branch. The five previously uncommitted recovery/START code files matched the inspected GX10 source release `20261031-c11-activation-fix` before publication. This is a source comparison, not a live mission/readiness test or a new activation.
+The latest recorded software checkpoint for Native recovery source `bcac769` ran **1,199 backend tests with five skips and zero failures**, **143 frontend tests with zero failures**, and the TypeScript/Vite build successfully. The GX10 related suite ran 80 tests with zero failures. These are software checks; they do not measure model accuracy or loaded-route repeatability. [Dated source and validation record](evidence/native-read-recovery-20261102.json)
 
-Publication checks ran 1,177 backend tests with five skips, 126 frontend tests, source checks and the frontend production build. Older test totals in [verification](VERIFICATION.md) retain their original dates and scopes. Documentation/image refreshes are separate from physical execution.
+That source was activated as the server-only host release `20261102-native-recovery-bcac769`. The initial 13:35:44–13:41:52 KST idle observation had no read failure. Observation continued through 13:45:54; a real Native timeout at 13:42:35 retained the same pendant session/sequence/profile and reacquired two new valid samples by 13:42:37, restoring the original fresh host-journal proof. No connection close, reconnect, movement or profile dispatch was observed. This establishes **one real idle read-failure recovery**, with the installed Rodi script and other service identities retained. [Activation and limits](HOST_NATIVE_RECOVERY.md#validation-and-activation-boundary)
 
-A subsequent November 2 frontend-only Spatial signal overlay has its own [source and activation record](SPATIAL_SIGNAL_PREVIEW.md#operational-activation--november-2-2026), including its separate 136-test frontend checkpoint. That display update is distinct from the runtime-code baseline and source-publication checks above.
+At that recovery cutoff, the new session still needed a stationary START binding. The subsequent explicitly requested preparation completed one no-motion profile/reference handoff; its **13:58:44 KST** post-handoff proof confirmed available, connected, stationary, held/disarmed at START, with no blockers, active command or mission. Original teaching files, workspace bounds, tool/payload and motion limits stayed unchanged. This was point-in-time readiness for operator tablet Start, not a mission or new vehicle-placement check. [Separate START-readiness record](evidence/start-reference-ready-20261102.json)
+
+The **initial November 2 publication checkpoint** was runtime code `7aa7753`: 1,177 backend tests with five skips, 126 frontend tests, source checks and the frontend production build. Its five recovery/START code files matched the inspected GX10 source release `20261031-c11-activation-fix` before publication; that earlier comparison was not a new activation or mission-readiness test. The documentation/image refresh reran those earlier totals. They remain explicitly historical in [verification](VERIFICATION.md#initial-publication-and-documentation-checkpoint--november-2-2026).
+
+The earlier November 2 frontend-only Spatial signal overlay has its own [source and activation record](SPATIAL_SIGNAL_PREVIEW.md#operational-activation--november-2-2026), including its separate 136-test frontend checkpoint. That display update is distinct from the later Native recovery activation and the initial source-publication checks above.
 
 Public source contains wrappers, UI, maps' drawing facts, schemas and tests. Private inherited receiver code, taught coordinates/profiles, credentials, model/artwork bytes and operational evidence are installed separately. The web process, camera helper, commissioning API and receiver host have separate owners/lifecycles. [Deployment](../deploy/README.md) · [Robot deployment](../deploy/ROBOT_CONTROL.md)
 

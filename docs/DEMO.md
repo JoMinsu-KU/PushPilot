@@ -12,15 +12,20 @@ The user supplied the following tablet recordings and setup photograph from the 
 
 | Watch | What is visible | Scope |
 |---|---|---|
+| **[Physical action → fresh MUSE review → next step](https://drive.google.com/file/d/1TSuzN94-EOozUoWs5WLEXWVgjVezt0j9/view) · 0:55** | C Step 1 pushes the car; the tool withdraws; Checking car · MUSE changes to a new PASS at 06:42:17; C Step 2 begins. | One continuous action/review/continuation interval from an archived actual tablet recording. Not a full delivery, signal-admission or repeatability claim. |
 | [Camera · Villa and empty-tool return](https://drive.google.com/file/d/1Hflx4wuoLFTQvOuHA_Aqk8_FBQhNt1bp/view) · about 2:19 | Actual robot/car, AR route, return receipts and the last recorded MUSE PASS. | The clip begins after arrival, with return already in progress. It does not show the full delivery or new inference during return. |
 | [Spatial · route and sequence](https://drive.google.com/file/d/1ZxNHMMrLSJfVC78_qcFdsB_DVkqEp-f3/view) · about 2:14 | Actual rendered application view, selected route and sequence-details dialog during return. | The rendered car is an execution estimate, not measured vehicle tracking. No synchronization with the separate Camera recording is claimed. |
 
-<a href="https://drive.google.com/file/d/1Hflx4wuoLFTQvOuHA_Aqk8_FBQhNt1bp/view"><img src="assets/robot-tablet-recording.jpg" width="960" alt="Actual tablet Camera recording showing the physical car at Villa and the empty robot returning, with the last recorded MUSE PASS."></a>
+<a href="https://drive.google.com/file/d/1TSuzN94-EOozUoWs5WLEXWVgjVezt0j9/view"><img src="assets/physical-action-muse-review.jpg" width="960" alt="Actual tablet capture showing a new MUSE PASS at 06:42:17 and C Step 2 executing after the car push and clear-view review."></a>
 
-*Click the image for the Camera recording. Source-video clocks differ; filenames are not used to assert cross-recording timing. [Source/extraction record](assets/PHYSICAL_MEDIA.md)*
+*Click the image for the 55-second recording. Sampled moments: 0:00 push · 0:25 tool withdrawal · 0:35 MUSE review · 0:45 new PASS · 0:50 next step. These are observation positions, not exact transition timestamps. The original brief AR redraw interruption remains visible. [Source/extraction record](assets/PHYSICAL_MEDIA.md)*
 
 <details>
 <summary><strong>Actual setup and Spatial view</strong></summary>
+
+<a href="https://drive.google.com/file/d/1Hflx4wuoLFTQvOuHA_Aqk8_FBQhNt1bp/view"><img src="assets/robot-tablet-recording.jpg" width="960" alt="Supporting actual Camera recording of the car at Villa and empty-tool return, with a prior MUSE PASS."></a>
+
+*Supporting post-arrival/empty-return recording; the displayed PASS is a prior result.*
 
 <img src="assets/robot-tabletop-setup.jpg" width="700" alt="User-supplied photograph of the actual robot, rubber pushing tool, printed tabletop and camera installation.">
 
@@ -34,13 +39,11 @@ The user supplied the following tablet recordings and setup photograph from the 
 
 ## Explore three recorded decisions
 
-The [recorded review explorer](review/index.html) puts **the actual input pair, original MUSE judgment and resulting simulated supervisor state** on one page. It is a self-contained HTML file. No key, server, robot, camera or new inference is needed.
+**[Explore 3 recorded Muse decisions →](https://jominsu-ku.github.io/PushPilot/)**
 
-1. Download and extract the repository, or clone it with Git.
-2. Open `docs/review/index.html` in a browser directly from the extracted folder.
-3. Select **Progress visible**, **No progress** and **View occluded**. Compare the depicted change, the original MUSE response and the recorded state. Expand provenance to inspect hashes and the full public record.
+The public read-only explorer puts **the actual input pair, original MUSE judgment and resulting simulated supervisor state** on one page. Open the link, then select **Progress visible**, **No progress** or **View occluded**. Expand provenance to inspect hashes and the full public record. No download, account, equipment or API key is needed, and no new inference occurs.
 
-GitHub displays HTML source instead of running this page. Use the Markdown table below for an immediate GitHub preview, or open the downloaded file to explore the image pairs.
+For offline use, download/extract or clone this repository and open [`docs/review/index.html`](review/index.html) directly in a browser. The Markdown table below remains an immediate GitHub preview. [Hosting scope and reproduction](REVIEW_HOSTING.md)
 
 | Designed input condition | Original Meta MUSE judgment | Recorded supervisor state | What the example makes visible |
 |---|---|---|---|
@@ -65,6 +68,12 @@ The [measured route catalogue](MEASURED_ROUTE_CATALOGUE.md) preserves historical
 | **D · Hanok** | Original MUSE arrival judgment after the clean START reset | A derived return corridor includes an unexecuted reverse transition | Do not describe the derived final-D return as physically verified. |
 
 Arrival, robot endpoint completion and return are distinct records. The current delivery-first scope does not guarantee final parallel parking or numeric vehicle alignment. Hardware trials depend on the private installation, reviewed geometry and current source state. [Known limitations](KNOWN_LIMITATIONS.md)
+
+### When completed motion is not a successful task
+
+The original [D extended-contact trial](evidence/taught-D-extended-contact-20261029.json) records **11 actual motion stages and all Native endpoints verified**, but the separate MUSE result is **FAIL**, `arrived: false`, with `OVERLAPS_ISLAND`. Its provider receipt and original BEFORE/AFTER hashes are public in that record; private images and taught coordinates are not republished. The operator then requested a clean START reset. This historical result is distinct from the successful action/review clip above.
+
+For an operator, the useful distinction is visible: **the controller finished its motion; the reviewed vehicle outcome still failed the then-current requirement**. This single example explains the review layer without claiming general model accuracy or an autonomous recovery. The [published real-image failure summary](META_INTELLIGENCE.md#published-real-image-failure-analysis) also retains C4/C6 missed movement, C14 occlusion, a rejected signal-mask judgment and provider timeouts, together with the narrow responses adopted for each.
 
 ## Follow the decision, then inspect the implementation
 
