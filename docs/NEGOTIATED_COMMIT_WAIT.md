@@ -14,7 +14,7 @@ the taught routes, TCP, height, speed, payload, workspace or motion primitives.
 | Clock or policy | Behavior |
 | --- | --- |
 | Connection / BEGIN / top-level packet wait | Original 3-second connection and 10-second packet waits. |
-| PROFILE_READY → PROFILE_COMMIT and READY → GO | The separately supplied full script advertises `bounded-commit-wait-30s-v1` and waits 30 seconds at these two calls only. |
+| PROFILE_READY → PROFILE_COMMIT and READY → GO | The corrected full script advertises `bounded-commit-wait-30s-v2`. Each native read uses 10,000ms; only an empty result permits another read, with three reads maximum. |
 | Protected Native verification | With that exact capability, at most 20 seconds measured from the earlier PREPARE send. Each acquisition stays bounded to two seconds; transient read failures discard the current pair. Two new eligible stationary samples are required. |
 | Original pendant | No capability means the original bounded stationary guard. The host must not assume a 30-second wait for the old script. |
 | Command lifetime | The original absolute 30-second wire expiry remains. Recovery never extends it. Check it again at PREPARE, IK_QUERY, GO and PROFILE_COMMIT transmission, as well as inherited validation. |
@@ -93,3 +93,20 @@ At this checkpoint the old mission remained HOLD at 18/31, its original unknown
 request was preserved and deployment submitted no movement. The full pendant
 file had been delivered for manual installation; actual installation and the
 separately requested empty START return were still pending.
+
+## Pendant argument-range correction
+
+The first installed v1 candidate failed with `wrong argument: timeout(30000)`
+during a no-motion profile handshake. The local official **Rodi Script
+Programming Guide_KR.pdf**, section 11.1.14, PDF page 178, specifies a 1–15,000ms
+argument range and an empty string when no line is available. The desktop mocks
+had not enforced that native range; their success did not establish interpreter
+compatibility. No motion command was submitted during this failed check.
+
+Do not install v1. The corrected v2 uses up to three explicit 10,000ms reads,
+continuing only after an empty string. Nonempty, oversized and malformed data
+are never retried or combined. The server recognizes only the v2 capability
+for the extended protected budget; the old v1 advertisement gets the original
+bounded policy. No new IDLE, resend, reconnect or movement argument is added.
+The v1 artifact and failed handshake evidence are preserved. Actual v2
+installation, no-motion verification and START return remain separate checks.

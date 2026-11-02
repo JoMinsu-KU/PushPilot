@@ -20,7 +20,7 @@ NETWORK_ERRNOS = frozenset(getattr(errno, name) for name in (
 
 # Only the matching pendant variant extends these two nested packet waits.
 # BEGIN, top-level packet reads and actual motion completion retain their bounds.
-COMMIT_WAIT_CAPABILITY = "bounded-commit-wait-30s-v1"
+COMMIT_WAIT_CAPABILITY = "bounded-commit-wait-30s-v2"
 PROTECTED_READ_BUDGET_S = 20.
 
 
@@ -140,7 +140,8 @@ class RecoveryWire:
                 and all(type(packet.get(key)) is type(sent.get(key)) and packet.get(key) == sent.get(key)
                         for key in ("schema", "robot_id", "session_id", "seq", "profile_id", "execute_motion"))):
             self.protected_phase = "profile_precommit" if protected == "profile_ready" else "motion_precommit"
-            # Sending PREPARE precedes the pendant starting its 30s read, so an
+            # v2 uses up to three legal 10s reads, extending only empty waits.
+            # Sending PREPARE precedes that bounded 30s window, so an
             # absolute deadline from that earlier instant is conservative even
             # when a READY reply itself was delayed in transit.
             self.protected_deadline = self.sent_at + PROTECTED_READ_BUDGET_S

@@ -1,0 +1,41 @@
+{
+  "schema": "pushpilot.pendant-range-correction.v1",
+  "date": "2026-11-02",
+  "actual_v1_error": "wrong argument: timeout(30000)",
+  "actual_v1_phase": "no-motion profile update",
+  "v1_motion_commands_submitted": 0,
+  "manual": {
+    "title": "Rodi Script Programming Guide_KR.pdf",
+    "pdf_page": 178,
+    "section": "11.1.14 socketReadLine",
+    "native_timeout_ms": [1, 15000],
+    "no_line_return": "empty string"
+  },
+  "v2": {
+    "sha256": "781f9aa7722a5e2b5a86872c64fcb23d9a2773e8dc82fca924edd03c803dd376",
+    "bytes": 39590,
+    "capability": "bounded-commit-wait-30s-v2",
+    "native_read_ms": 10000,
+    "maximum_reads": 3,
+    "continue_only_on_empty": true,
+    "server_protected_budget_s": 20,
+    "message_replay": false
+  },
+  "offline_validation": {
+    "historical_full_mock_cases": 103,
+    "additional_full_mock_cases": 8,
+    "isolated_read_cases": 12,
+    "strict_range_checked_read_calls": 450,
+    "server_tests": 57,
+    "server_skipped": 1,
+    "actual_pendant_interpreter_verified": false
+  },
+  "deployment": {
+    "host_waiting_for_manual_play": true,
+    "web_restart": false,
+    "camera_reconfiguration": false,
+    "route_changes": false,
+    "original_failed_evidence_preserved": true,
+    "fresh_start_ready": false
+  }
+}

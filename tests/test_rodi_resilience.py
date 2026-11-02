@@ -416,7 +416,7 @@ class ProtectedCommitWaitTests(unittest.TestCase):
         self.assertEqual(len(h.native.calls), 4)
 
     def test_old_or_wrong_capability_retains_original_bounded_guard(self):
-        for capability in ([], ['bounded-commit-wait-60s-v1']):
+        for capability in ([], ['bounded-commit-wait-60s-v1'], ['bounded-commit-wait-30s-v1']):
             h = Harness()
             h.inner.responses.append({'type': 'hello', 'capabilities': capability})
             h.wire.receive()

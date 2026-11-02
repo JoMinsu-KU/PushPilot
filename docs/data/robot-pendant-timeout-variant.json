@@ -1,18 +1,28 @@
 {
   "schema": "pushpilot.pendant-timeout-variant.v1",
-  "capability": "bounded-commit-wait-30s-v1",
+  "capability": "bounded-commit-wait-30s-v2",
   "original": {
     "sha256": "889b79b44e3c1729597b767c506d7cb4ce993fe37e7855bea1b49453dbec6938",
     "bytes": 38730
   },
   "candidate": {
-    "filename": "hcr1_pose_receiver.commit-wait-30s-v1.script",
-    "sha256": "0e1d48fce588503fda4983eb5883af49a7f0ca2cb05740226e3fd0e9826533dd",
-    "bytes": 39276,
+    "filename": "hcr1_pose_receiver.commit-wait-30s-v2.script",
+    "sha256": "781f9aa7722a5e2b5a86872c64fcb23d9a2773e8dc82fca924edd03c803dd376",
+    "bytes": 39590,
     "distribution": "private full-file handoff; manual pendant installation required"
   },
   "interpreter_compatibility": "Exact historical ppNear six-component expansion avoids the photographed local loop-index ReferenceError; original validation semantics retained.",
   "protected_wait_ms": 30000,
+  "native_read_timeout_ms": 10000,
+  "maximum_native_read_calls": 3,
+  "continue_only_on_empty_string": true,
+  "documented_native_timeout_range_ms": [1, 15000],
+  "manual_source": "Rodi Script Programming Guide_KR.pdf, section 11.1.14, PDF page 178",
+  "rejected_v1": {
+    "sha256": "0e1d48fce588503fda4983eb5883af49a7f0ca2cb05740226e3fd0e9826533dd",
+    "reason": "Actual pendant rejected timeout(30000) during no-motion profile handshake. Do not install.",
+    "physical_motion_commands_sent": 0
+  },
   "host_protected_budget_s": 20,
   "protected_calls": ["PROFILE_READY_TO_PROFILE_COMMIT", "READY_TO_GO"],
   "unchanged_packet_wait_ms": 10000,
