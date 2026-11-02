@@ -29,6 +29,7 @@ node_modules/
 coverage/
 build/
 dist/
+dist-spatial-preview/
 
 # Runtime state and deployment outputs
 runtime/

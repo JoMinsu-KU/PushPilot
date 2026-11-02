@@ -14,6 +14,7 @@ import { currentSignalJunction, signalDisplay } from './routeProgress';
 import { commandErrorMessage, readableError } from './commandError';
 import { usePhysicalDisplay, displaySignalLabel } from './usePhysicalDisplay';
 import { usePhysicalMission } from './usePhysicalMission';
+import { spatialSignalState } from './spatialSignal';
 import { physicalAvailable, physicalProgress, physicalReviewLabel, physicalTelemetry, physicalDestinationBlocker, physicalDetail, physicalFinished, physicalMatchesPlan, physicalParkingEnabled, physicalRunning, physicalStartCommand, physicalTitle, physicalVisionActive, type ExecutionMode } from './physicalMission';
 
 type View = 'Workspace' | 'Plan' | 'Replay';
@@ -179,6 +180,7 @@ export function App() {
   const robotRunning = physicalRunning(physical.status);
   const robotMode = executionMode === 'physical' || robotRunning;
   const display = usePhysicalDisplay(physical.status, robotMode && physical.connected);
+  const spatialSignal = robotMode ? spatialSignalState(physical.status, workspace, physical.connected, display.snapshot, Date.now() / 1000) : 'base';
   const sceneReadOnly = actionReviewPending || robotRunning || physicalBusy || Boolean(physicalUnconfirmed);
   const robotStatusDialog = robotMode || modal === 'robot';
   const robotMission = robotMode && (robotRunning || physicalMatchesPlan(physical.status, workspace));
@@ -303,7 +305,7 @@ export function App() {
         <button className={`header-replay ${view === 'Replay' ? 'active' : ''}`} aria-pressed={view === 'Replay'} onClick={() => setView('Replay')}><Icon name="clock" size={18}/><span>Mission Log</span></button></div>
     </header>
     <main ref={stageRef} className={`workspace-stage ${mobileMission ? 'mission-visible' : ''}`}>
-      <MapScene presentation="stage" workspace={workspace} physicalLabel={robotMode ? robotMission ? robotStatusTitle : 'Awaiting robot execution' : undefined} physicalDisplay={display.snapshot} onSnapshot={setSceneSnapshot} onMapSnapshot={setMapSnapshot} onPreviewSource={setPreviewSource} onLiveCamera={setCameraPreview} sceneInsetRight={sceneInsetRight} readOnly={sceneReadOnly} openToolsRequest={imageToolsRequest}/>
+      <MapScene presentation="stage" workspace={workspace} physicalLabel={robotMode ? robotMission ? robotStatusTitle : 'Awaiting robot execution' : undefined} physicalDisplay={display.snapshot} signalState={spatialSignal} onSnapshot={setSceneSnapshot} onMapSnapshot={setMapSnapshot} onPreviewSource={setPreviewSource} onLiveCamera={setCameraPreview} sceneInsetRight={sceneInsetRight} readOnly={sceneReadOnly} openToolsRequest={imageToolsRequest}/>
       <div className="scene-heading"><GoalIntentBar query={workspace?.goal?.text ?? null} source={workspace?.goal?.source ?? null} onQuery={openQuery} onVoice={openVoice}/></div>
       <button className="mobile-mission-switch glass-surface" onClick={() => setMobileMission(value => !value)} aria-expanded={mobileMission}>{mobileMission ? 'Show scene' : 'Mission'}<Icon name={mobileMission ? 'close' : 'chevron'} size={16}/></button>
       {(error || !online) && <div className={`stage-notice ${error ? 'error' : ''}`} role={error ? 'alert' : 'status'}><Icon name="shield" size={17}/><span>{error || 'Backend unavailable. Refresh before taking action.'}</span><button aria-label={error ? 'Dismiss error' : 'Retry connection'} onClick={() => error ? setError('') : void refresh()}><Icon name={error ? 'close' : 'refresh'} size={16}/></button></div>}

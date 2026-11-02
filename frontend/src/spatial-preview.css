@@ -1,0 +1,41 @@
+:root { font-family: 'Pretendard Variable', Pretendard, system-ui, sans-serif; color: #334148; background: #edf1f5; font-synthesis: none; --fs-12: 12px; --fs-13: 13px; --fs-16: 16px; --stage-content-left: 22px; --stage-source-bottom: 8px; }
+* { box-sizing: border-box; }
+body { margin: 0; overflow: hidden; }
+button, a { font: inherit; -webkit-tap-highlight-color: transparent; }
+button { cursor: pointer; }
+button:focus-visible, a:focus-visible { outline: 2px solid #c77c54; outline-offset: 4px; }
+.spatial-preview { position: relative; height: calc(100dvh - 24px); margin: 12px; overflow: hidden; border-radius: 27px; border: 1px solid #ffffffc2; }
+.preview-glass { background: linear-gradient(120deg, #ffffffb0, #ffffff85); border: 1px solid #ffffffc7; box-shadow: 0 10px 36px #3b4b5910; backdrop-filter: blur(18px) saturate(108%); -webkit-backdrop-filter: blur(18px) saturate(108%); }
+.preview-header { position: absolute; inset: 16px 18px auto; height: 62px; border-radius: 22px; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; gap: 16px; }
+.preview-brand { display: flex; align-items: center; gap: 15px; text-decoration: none; color: inherit; font-size: 15px; }
+.preview-brand img { height: 24px; width: 28px; margin-right: 3px; }
+.preview-brand strong { font-size: 19px; letter-spacing: -.6px; font-weight: 650; }
+.preview-brand span { color: #78878e; }
+.preview-brand span:first-of-type { color: #b5c1c8; font-size: 24px; font-weight: 300; }
+.preview-badge { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #76858b; white-space: nowrap; }
+.preview-badge i, .preview-section-title i { width: 5px; height: 5px; border-radius: 50%; background: #c58d69; display: inline-block; }
+.preview-cameras { position: absolute; top: 95px; left: 23px; padding: 5px; border-radius: 18px; display: flex; gap: 4px; }
+.preview-cameras button { background: transparent; border: 0; padding: 11px 18px; border-radius: 13px; color: #75858c; font-size: 13px; }
+.preview-cameras button.selected { background: #ffffffe6; color: #364850; box-shadow: 0 3px 12px #51657307; }
+.preview-signal-controls { position: absolute; left: 23px; bottom: 25px; width: 352px; border-radius: 25px; padding: 21px; }
+.preview-section-title { display: flex; align-items: center; justify-content: space-between; gap: 15px; color: #6d7f87; font-size: 12px; }
+.preview-section-title>span { display: flex; align-items: center; gap: 7px; }
+.preview-section-title i.green { background: #29a477; }
+.preview-section-title small { font-size: 10px; color: #90a0a6; }
+.preview-state { margin: 17px 0 20px; }
+.preview-state strong { font-size: 25px; font-weight: 450; letter-spacing: -.85px; }
+.preview-state p { margin: 7px 0 0; font-size: 12px; color: #7a8b93; line-height: 1.5; }
+.preview-state-options { display: flex; gap: 6px; padding: 5px; border: 1px solid #ffffff58; background: #dbe4ea54; border-radius: 16px; }
+.preview-state-options button { display: flex; align-items: center; justify-content: center; gap: 9px; flex: 1; background: transparent; border: 0; border-radius: 12px; padding: 12px 8px; font-size: 12px; color: #74858d; white-space: nowrap; }
+.preview-state-options button.selected { background: #ffffffdc; box-shadow: 0 3px 10px #4a657009; color: #344e58; }
+.mini-signal { display: flex; gap: 3px; }
+.mini-signal i { height: 7px; width: 7px; border-radius: 50%; background: #269b71; }
+.mini-signal i+i { background: #d96052; }
+.green-lamp { height: 8px; width: 8px; border-radius: 50%; background: #209b70; }
+.preview-state-options button.selected .green-lamp { box-shadow: 0 0 0 3px #29c18c20, 0 0 9px #29c18c70; }
+.preview-hint { position: absolute; right: 23px; bottom: 25px; padding: 10px 14px; border-radius: 20px; font-size: 11px; color: #7c8e99; display: flex; gap: 9px; pointer-events: none; }
+.spatial-preview .city-display-caption { display: none; }
+.spatial-preview .city-model-view-controls { left: auto; right: 23px; bottom: 74px; }
+.spatial-preview .city-model-reset { width: auto; padding: 0 14px; border-radius: 18px; gap: 7px; white-space: nowrap; font-size: 12px; }
+@media (max-width: 680px) { .spatial-preview { margin: 0; height: 100dvh; border-radius: 0; } .preview-header { inset: 10px 10px auto; padding: 0 15px; height: 57px; } .preview-brand { gap: 10px; } .preview-brand strong { font-size: 17px; } .preview-badge { font-size: 10px; } .preview-cameras { top: 80px; left: 12px; } .preview-signal-controls { left: 12px; bottom: 14px; width: min(340px, calc(100% - 24px)); padding: 18px; } .preview-hint { display: none; } .spatial-preview .city-model-view-controls { right: 13px; bottom: 246px; } }
+@media (max-height: 570px) and (min-width: 681px) { .preview-signal-controls { padding: 16px 19px; bottom: 14px; } .preview-state { margin: 11px 0 13px; } .preview-state strong { font-size: 22px; } }

@@ -12,6 +12,7 @@ import { pathLength, pointAlong, SIMULATED_CAR_MM, SIMULATED_CAR_SCALE, SIMULATE
 import { projectRouteDisplay, type RouteDisplay } from './routeProgress';
 import { RouteOverlay } from './RouteOverlay';
 import type { Point } from './projection';
+import { createCitySignal, type CitySignalState } from './citySignal';
 import './city-model.css';
 
 const MODEL_URL = '/models/private/pushpilot-city-clean-roads.glb';
@@ -30,6 +31,7 @@ const VIEWS = [
   { id: 'ne', label: 'Cafe · Hanok Stay', position: [150, 80, 10], target: [128, 10, -85], hfov: lens(34) },
   { id: 'se', label: 'Office · Beauty salon', position: [150, 95, 200], target: [128, 14, 85], hfov: lens(34) },
   { id: 'tower', label: 'Namsan Tower', position: [70, 40, -110], target: [0, 24, -196], hfov: lens(40) },
+  { id: 'signal', label: 'Traffic signal', position: [14, 59, 140], target: [57, 20, 65], hfov: lens(42) },
 ] as const satisfies readonly { id: string; label: string; position: Vec3; target: Vec3; hfov: number }[];
 type ViewId = typeof VIEWS[number]['id'];
 const HOME_VIEW: ViewId = 'wide';
@@ -49,7 +51,7 @@ const isCornerMarker = (mesh: THREE.Mesh) => mesh.parent?.name === 'roads'
   && (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).some(material => CORNER_MARKER_MATERIALS.has(material.name));
 const pickName = (name: string) => NAMES[name] ?? (/^trees_/.test(name) ? 'Trees' : /^block_/.test(name) ? 'Block (sidewalk · grass · streetlights)' : name);
 type ModelStatus = { kind: 'loading' | 'ready' | 'error' | 'lost'; message: string };
-interface ViewRuntime { go: (view: ViewId, animate: boolean) => void; relayout: () => void; syncCar: (animate: boolean) => void }
+interface ViewRuntime { go: (view: ViewId, animate: boolean) => void; relayout: () => void; syncCar: (animate: boolean) => void; syncSignal: () => void }
 interface Resources {
   geometry: Set<THREE.BufferGeometry>; materials: Set<THREE.Material>; textures: Set<THREE.Texture>;
   images: Set<ImageBitmap>; instances: Set<THREE.InstancedMesh>;
@@ -212,10 +214,13 @@ function createSimulatedCar(): THREE.Group {
 }
 
 /** A display-only model. It never estimates a car pose or supplies robot coordinates. */
-export function CityModelView({ map, display, names, insetRight = 0, physicalDisplay = null, physicalMode = false }: { map: TemporaryMap | null; display: RouteDisplay | null; names?: { start: string; goal: string }; insetRight?: number; physicalDisplay?: PhysicalDisplaySnapshot | null; physicalMode?: boolean }) {
+export function CityModelView({ map, display, names, insetRight = 0, physicalDisplay = null, physicalMode = false, signalState = null, previewCamera = 'wide', previewCameraRevision = 0 }: { map: TemporaryMap | null; display: RouteDisplay | null; names?: { start: string; goal: string }; insetRight?: number; physicalDisplay?: PhysicalDisplaySnapshot | null; physicalMode?: boolean; signalState?: CitySignalState | null; previewCamera?: 'wide' | 'signal'; previewCameraRevision?: number }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const runtimeRef = useRef<ViewRuntime | null>(null);
   const insetRef = useRef(insetRight);
+  // The caller supplies a display-only appearance, never robot permission.
+  const signalRef = useRef(signalState);
+  const previewCameraRef = useRef(previewCamera);
   const pickAnchorRef = useRef<HTMLDivElement>(null);
   const carMaskRef = useRef<SVGPathElement>(null);
   const namesRef = useRef(names);
@@ -262,6 +267,8 @@ export function CityModelView({ map, display, names, insetRight = 0, physicalDis
     const pickBox = new THREE.Box3(), pickPoint = new THREE.Vector3();
     // Display distance advances only to confirmed contact receipt positions; the renderer has no command authority.
     const car = createSimulatedCar();
+    const signal = createCitySignal(signalRef.current ?? 'base');
+    signal.group.visible = signalRef.current !== null;
     const silhouette: Float32Array = car.userData.silhouette, corner = new THREE.Vector3();
     let carKey: string | null = null, carDistance = 0;
     let carTween: { from: number; to: number; start: number; duration: number } | null = null;
@@ -370,6 +377,11 @@ export function CityModelView({ map, display, names, insetRight = 0, physicalDis
       }
     };
     function requestRender() { if (active() && !frame) frame = requestAnimationFrame(render); }
+    const syncSignal = () => {
+      signal.group.visible = signalRef.current !== null;
+      signal.setState(signalRef.current ?? 'base');
+      requestRender();
+    };
     // Pose from the simulated distance along the drawn route; while moving, look a little ahead to round corners.
     function placeCar(moving: boolean) {
       const { fit: currentFit, track } = carRef.current;
@@ -500,15 +512,17 @@ export function CityModelView({ map, display, names, insetRight = 0, physicalDis
       rememberObject(car, modelResources);
       car.traverse(object => { if (object instanceof THREE.Mesh) pickable.push(object); });
       scene.add(car);
+      rememberObject(signal.group, modelResources);
+      scene.add(signal.group);
       syncCar(false);
-      resize(); go(HOME_VIEW, false);
+      resize(); go(previewCameraRef.current, false);
       resizeObserver = new ResizeObserver(resize); resizeObserver.observe(host);
       intersectionObserver = new IntersectionObserver(entries => {
         intersecting = entries.some(entry => entry.isIntersecting); onVisibility();
       }, { threshold: .01 });
       intersectionObserver.observe(host);
       document.addEventListener('visibilitychange', onVisibility);
-      runtimeRef.current = { go, relayout: () => { applyFov(); requestRender(); }, syncCar };
+      runtimeRef.current = { go, relayout: () => { applyFov(); requestRender(); }, syncCar, syncSignal };
       const loader = new GLTFLoader().setDRACOLoader(draco);
       loadDeadline = window.setTimeout(() => {
         if (disposed || !loadValid) return;
@@ -600,6 +614,8 @@ export function CityModelView({ map, display, names, insetRight = 0, physicalDis
   }, [attempt]);
 
   useEffect(() => { insetRef.current = insetRight; runtimeRef.current?.relayout(); }, [insetRight]);
+  useEffect(() => { signalRef.current = signalState; runtimeRef.current?.syncSignal(); }, [signalState]);
+  useEffect(() => { previewCameraRef.current = previewCamera; runtimeRef.current?.go(previewCamera, true); }, [previewCamera, previewCameraRevision]);
   useEffect(() => { carRef.current = { fit, track: carTrack, physical: physicalMode, fresh: physicalDisplay?.feed_fresh !== false }; runtimeRef.current?.syncCar(true); }, [fit, carTrack, physicalMode, physicalDisplay?.feed_fresh]);
   useEffect(() => { namesRef.current = names; runtimeRef.current?.relayout(); }, [names]);
   // The cut-out polygon is written by the render loop; draw once more when the overlay mounts.
