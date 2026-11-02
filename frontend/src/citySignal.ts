@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export type CitySignalState = 'base' | 'green-approved';
+export type CitySignalState = 'base' | 'red-observed' | 'green-approved';
 
 /** Display coordinates only: beside the east end of the south crosswalk. */
 export const CITY_SIGNAL_POSITION = [57, 3.02, 65] as const;
@@ -35,7 +35,7 @@ function haloTexture() {
   return texture;
 }
 
-/** Two printed colors remain visible. Only an explicitly approved green emits light. */
+/** Both printed colors remain visible; only the selected observed/approved face emits light. */
 export function createCitySignal(initialState: CitySignalState = 'base') {
   const group = new THREE.Group();
   group.name = 'city_signal_preview';
@@ -46,7 +46,7 @@ export function createCitySignal(initialState: CitySignalState = 'base') {
   const black = new THREE.MeshStandardMaterial({ color: '#20272a', roughness: .83 });
   const bezel = new THREE.MeshStandardMaterial({ color: '#101a1c', roughness: .85 });
   const green = new THREE.MeshStandardMaterial({ color: '#159c69', roughness: .54, emissive: '#16bd65', emissiveIntensity: 0 });
-  const red = new THREE.MeshStandardMaterial({ color: '#dc483b', roughness: .65, emissive: '#000000', emissiveIntensity: 0 });
+  const red = new THREE.MeshStandardMaterial({ color: '#dc483b', roughness: .65, emissive: '#d93428', emissiveIntensity: 0 });
   green.name = 'Signal green face'; red.name = 'Signal red face';
 
   const edge = new THREE.Mesh(roundedCard(14.4, 34.4, 1.1, .65), paper);
@@ -70,7 +70,7 @@ export function createCitySignal(initialState: CitySignalState = 'base') {
     depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending, toneMapped: false });
   // Keep the halo parallel to the card so an orbit cannot cut a billboard through the lens.
   const glow = new THREE.Mesh(new THREE.PlaneGeometry(17, 17), glowMaterial);
-  glow.name = 'Approved green glow';
+  glow.name = 'Signal face glow';
   glow.position.set(0, FACE_HEIGHTS.green, 1.2);
   group.add(glow);
   group.traverse(object => {
@@ -79,11 +79,15 @@ export function createCitySignal(initialState: CitySignalState = 'base') {
 
   const setState = (state: CitySignalState) => {
     const approved = state === 'green-approved';
+    const observedRed = state === 'red-observed';
     green.color.set(approved ? '#1ba966' : '#159c69');
     green.emissiveIntensity = approved ? .8 : 0;
-    red.emissiveIntensity = 0;
-    glow.visible = approved;
-    group.userData.signalState = approved ? 'green-approved' : 'base';
+    red.color.set(observedRed ? '#e75446' : '#dc483b');
+    red.emissiveIntensity = observedRed ? .8 : 0;
+    glowMaterial.color.set(observedRed ? '#f26454' : '#46ec8e');
+    glow.position.y = observedRed ? FACE_HEIGHTS.red : FACE_HEIGHTS.green;
+    glow.visible = approved || observedRed;
+    group.userData.signalState = approved ? 'green-approved' : observedRed ? 'red-observed' : 'base';
   };
   setState(initialState);
   return { group, setState, green, red, glow };

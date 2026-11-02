@@ -11,6 +11,7 @@ function SpatialSignalPreview() {
   const [cameraRevision, setCameraRevision] = useState(0);
   const selectCamera = (view: 'wide' | 'signal') => { setCamera(view); setCameraRevision(current => current + 1); };
   const green = signal === 'green-approved';
+  const red = signal === 'red-observed';
   return <main className="spatial-preview">
     <CityModelView map={null} display={null} signalState={signal} previewCamera={camera} previewCameraRevision={cameraRevision}/>
     <header className="preview-header preview-glass">
@@ -24,13 +25,14 @@ function SpatialSignalPreview() {
       <button className={camera === 'signal' ? 'selected' : ''} aria-pressed={camera === 'signal'} onClick={() => selectCamera('signal')}>Signal detail</button>
     </nav>
     <section className="preview-signal-controls preview-glass" aria-label="Traffic signal preview controls">
-      <div className="preview-section-title"><span><i className={green ? 'green' : ''}/>Traffic signal</span><small>Preview controls</small></div>
+      <div className="preview-section-title"><span><i className={green ? 'green' : red ? 'red' : ''}/>Traffic signal</span><small>Preview controls</small></div>
       <div className="preview-state" aria-live="polite">
-        <strong>{green ? 'Green approved' : 'Both colors visible'}</strong>
-        <p>{green ? 'Only the green face illuminates.' : 'Green and red retain their printed colors.'}</p>
+        <strong>{green ? 'Green approved' : red ? 'Red observed' : 'Both colors visible'}</strong>
+        <p>{green ? 'Only the lower green face illuminates.' : red ? 'Only the upper red face illuminates.' : 'Green and red retain their printed colors.'}</p>
       </div>
       <div className="preview-state-options" role="group" aria-label="Signal appearance">
-        <button className={!green ? 'selected' : ''} aria-pressed={!green} onClick={() => setSignal('base')}><span className="mini-signal"><i/><i/></span>Base state</button>
+        <button className={signal === 'base' ? 'selected' : ''} aria-pressed={signal === 'base'} onClick={() => setSignal('base')}><span className="mini-signal"><i/><i/></span>Base state</button>
+        <button className={red ? 'selected' : ''} aria-pressed={red} onClick={() => setSignal('red-observed')}><span className="red-lamp"/>Red observed</button>
         <button className={green ? 'selected' : ''} aria-pressed={green} onClick={() => setSignal('green-approved')}><span className="green-lamp"/>Green approved</button>
       </div>
     </section>

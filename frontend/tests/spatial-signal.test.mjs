@@ -30,6 +30,16 @@ function fixture(phase = 'admitted') {
 
 const appearance = f => spatialSignalState(f.status, f.workspace, f.connected, f.snapshot, f.now);
 
+function redFixture() {
+  const f = fixture('waiting');
+  // Active physical missions intentionally do not advertise start availability.
+  f.status.available = false;
+  f.status.signal = { color: 'RED', waiting: true, stable_green_frames: 0, required_green_frames: 2 };
+  f.snapshot.signal.green_count = 0;
+  return f;
+}
+const displayFixture = phase => phase === 'waiting' ? redFixture() : fixture(phase);
+
 test('only a server-admitted two-frame GREEN enables the Spatial green face', () => {
   assert.equal(appearance(fixture()), 'green-approved');
   for (const phase of ['none', 'waiting', 'confirming']) {
@@ -51,24 +61,43 @@ test('only a server-admitted two-frame GREEN enables the Spatial green face', ()
   assert.equal(appearance(checking), 'base', 'an outstanding signal check does not approve a face');
 });
 
-test('admission requires a fresh feed and a valid observation timestamp, without a second UI age limit', () => {
-  for (const phase of ['admitted', 'recontacting', 'passed']) {
+test('source-bound observed RED illuminates only during a stopped signal wait', () => {
+  assert.equal(appearance(redFixture()), 'red-observed');
+  const changes = [
+    ['unknown', f => { f.status.signal.color = 'UNKNOWN'; }],
+    ['unaccepted green', f => { f.status.signal.color = 'GREEN'; }],
+    ['not waiting', f => { f.status.signal.waiting = false; }],
+    ['another mission stage', f => { f.status.state = 'RUNNING'; }],
+    ['not stationary', f => { f.status.robot.stationary = false; }],
+    ['new signal check', f => { f.status.vision = { in_flight: true, kind: 'signal' }; }],
+    ['display not at signal wait', f => { f.snapshot.phase = 'contact'; }],
+    ...['none', 'confirming', 'admitted'].map(phase => [phase, f => { f.snapshot.signal.phase = phase; }]),
+  ];
+  for (const [label, change] of changes) {
+    const f = redFixture(); change(f);
+    assert.equal(appearance(f), 'base', label);
+  }
+});
+
+test('signal appearance requires a fresh feed and a valid observation timestamp, without a second UI age limit', () => {
+  for (const phase of ['waiting', 'admitted', 'recontacting', 'passed']) {
     for (const observedAt of [NOW + 1, 0, -1, NaN, Infinity, null, undefined]) {
-      const f = fixture(phase); f.status.telemetry.signal_observed_at = observedAt;
+      const f = displayFixture(phase); f.status.telemetry.signal_observed_at = observedAt;
       assert.equal(appearance(f), 'base', `${phase}: observation ${observedAt}`);
     }
     for (const age of [15, 15.001, 30, 600]) {
-      const f = fixture(phase); f.status.telemetry.signal_observed_at = NOW - age;
-      assert.equal(appearance(f), 'green-approved', `${phase}: server acceptance survives image age ${age}`);
+      const f = displayFixture(phase); f.status.telemetry.signal_observed_at = NOW - age;
+      assert.equal(appearance(f), phase === 'waiting' ? 'red-observed' : 'green-approved',
+        `${phase}: server observation/admission survives image age ${age}`);
     }
   }
   for (const now of [NaN, Infinity]) {
     const f = fixture(); f.now = now;
     assert.equal(appearance(f), 'base');
   }
-  for (const phase of ['admitted', 'recontacting', 'passed']) {
+  for (const phase of ['waiting', 'admitted', 'recontacting', 'passed']) {
     for (const fresh of [false, undefined]) {
-      const f = fixture(phase); f.snapshot.feed_fresh = fresh;
+      const f = displayFixture(phase); f.snapshot.feed_fresh = fresh;
       assert.equal(appearance(f), 'base', `${phase}, feed freshness ${fresh}`);
     }
   }
@@ -88,14 +117,14 @@ test('missing, disconnected, disabled, errored or ended evidence stays at the ba
     ['gate missing', f => { f.status.telemetry.signal_gate_id = null; }],
     ['observation missing', f => { f.status.telemetry = undefined; }],
   ];
-  for (const phase of ['admitted', 'recontacting', 'passed']) {
+  for (const phase of ['waiting', 'admitted', 'recontacting', 'passed']) {
     for (const [label, change] of changes) {
-      const f = fixture(phase); change(f);
+      const f = displayFixture(phase); change(f);
       assert.equal(appearance(f), 'base', `${phase}: ${label}`);
     }
     for (const state of ['COMPLETE', 'COMPLETED', 'HOLD', 'HELD', 'STOPPING', 'FAILED', 'FAULT', 'ERROR',
       'CANCELLED', 'DISABLED', 'READY', 'IDLE', 'UNAVAILABLE']) {
-      const f = fixture(phase); f.status.state = state;
+      const f = displayFixture(phase); f.status.state = state;
       assert.equal(appearance(f), 'base', `${phase}: ${state}`);
     }
   }
@@ -117,9 +146,9 @@ test('another mission, plan, revision, workspace session or map cannot light thi
     ['display map', f => { f.snapshot.map_hash = 'b'.repeat(64); }],
     ['workspace map', f => { f.workspace.plan.route.map_hash = 'b'.repeat(64); }],
   ];
-  for (const phase of ['admitted', 'recontacting', 'passed']) {
+  for (const phase of ['waiting', 'admitted', 'recontacting', 'passed']) {
     for (const [label, change] of changes) {
-      const f = fixture(phase); change(f);
+      const f = displayFixture(phase); change(f);
       assert.equal(appearance(f), 'base', `${phase}: ${label}`);
     }
   }
@@ -134,7 +163,7 @@ test('accepted single-departure approval survives recontact and passage without 
     const f = fixture(phase);
     f.status.state = phase === 'recontacting' ? 'RECONTACTING' : 'RUNNING';
     f.status.signal.stable_green_frames = 0;
-    f.status.signal.color = 'UNKNOWN';
+    f.status.signal.color = 'RED';
     f.status.telemetry.signal_observed_at = NOW - 600;
     f.snapshot.signal.green_count = 0;
     const before = structuredClone(f);
@@ -146,5 +175,8 @@ test('accepted single-departure approval survives recontact and passage without 
     assert.equal(f.snapshot.motion_authority, false);
     assert.equal(f.snapshot.vehicle.moving, false);
     assert.equal(f.snapshot.vehicle.confirmed_contact_stages, 0);
+    const laterRed = redFixture();
+    laterRed.snapshot.signal.phase = phase;
+    assert.equal(appearance(laterRed), 'green-approved', 'accepted departure takes precedence over a later RED wait display');
   }
 });

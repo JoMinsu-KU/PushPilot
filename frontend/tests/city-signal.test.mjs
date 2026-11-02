@@ -65,62 +65,96 @@ test('approved green emits only from the lower green face and preserves the uppe
   assert.equal(signal.group.userData.signalState, 'green-approved');
 });
 
-test('returning to the base state restores both printed colors and removes glow', () => {
+test('observed red emits only from the upper red face and preserves the lower green face', () => {
+  const signal = createCitySignal();
+  const greenBefore = materialAppearance(signal.green);
+  signal.setState('red-observed');
+  const { green, red } = faces(signal);
+  assert.ok(green.visible && red.visible);
+  assert.ok(signal.red.emissiveIntensity > 0);
+  assert.ok(signal.red.emissive.r > signal.red.emissive.g);
+  assert.deepEqual(materialAppearance(signal.green), greenBefore);
+  assert.equal(signal.green.emissiveIntensity, 0);
+  assert.equal(signal.glow.visible, true);
+  assert.ok(signal.glow.material.color.r > signal.glow.material.color.g);
+  assert.equal(signal.glow.position.x, red.position.x);
+  assert.equal(signal.glow.position.y, red.position.y);
+  assert.ok(signal.glow.position.y > green.position.y);
+  assert.equal(signal.group.userData.signalState, 'red-observed');
+});
+
+test('red, green and base transitions reset both faces and reuse the same halo resources', () => {
   const signal = createCitySignal();
   const greenBefore = materialAppearance(signal.green);
   const redBefore = materialAppearance(signal.red);
+  const { geometry, material } = signal.glow;
+  const texture = material.map, childCount = signal.group.children.length;
   for (let cycle = 0; cycle < 2; cycle++) {
+    signal.setState('red-observed');
     signal.setState('green-approved');
+    assert.equal(signal.red.emissiveIntensity, 0);
+    assert.deepEqual(materialAppearance(signal.red), redBefore);
+    assert.ok(signal.glow.material.color.g > signal.glow.material.color.r);
+    signal.setState('red-observed');
+    assert.equal(signal.green.emissiveIntensity, 0);
+    assert.deepEqual(materialAppearance(signal.green), greenBefore);
     signal.setState('base');
     assert.deepEqual(materialAppearance(signal.green), greenBefore);
     assert.deepEqual(materialAppearance(signal.red), redBefore);
     assert.equal(signal.glow.visible, false);
+    assert.equal(signal.glow.geometry, geometry);
+    assert.equal(signal.glow.material, material);
+    assert.equal(signal.glow.material.map, texture);
+    assert.equal(signal.group.children.length, childCount);
   }
 });
 
-test('the active halo stays parallel to the card and entirely in front of the green lens', () => {
-  const signal = createCitySignal('green-approved');
-  const { green } = faces(signal);
-  signal.group.updateMatrixWorld(true);
-  const glow = signal.glow;
-  assert.ok(glow instanceof Mesh && glow.visible);
-  assert.ok(glow.material instanceof MeshBasicMaterial);
-  assert.ok(glow.material.transparent && glow.material.opacity > 0 && glow.material.opacity < 1);
-  assert.equal(glow.material.depthWrite, false);
-  assert.equal(glow.material.depthTest, true);
-  assert.equal(glow.castShadow, false);
-  assert.equal(glow.receiveShadow, false);
-  assert.equal(glow.castShadow, false, 'a transparent glow must not cast a rectangular shadow');
-  assert.equal(glow.receiveShadow, false);
+for (const [state, color] of [['red-observed', 'red'], ['green-approved', 'green']]) {
+  test(`the ${color} halo stays parallel to the card and entirely in front of its lens`, () => {
+    const signal = createCitySignal(state);
+    const lens = faces(signal)[color];
+    signal.group.rotation.y = .35;
+    signal.group.updateMatrixWorld(true);
+    const glow = signal.glow;
+    assert.ok(glow instanceof Mesh && glow.visible);
+    assert.ok(glow.material instanceof MeshBasicMaterial);
+    assert.ok(glow.material.transparent && glow.material.opacity > 0 && glow.material.opacity < 1);
+    assert.equal(glow.material.depthWrite, false);
+    assert.equal(glow.material.depthTest, true);
+    assert.equal(glow.castShadow, false, 'a transparent glow must not cast a rectangular shadow');
+    assert.equal(glow.receiveShadow, false);
 
-  const cardNormal = new Vector3(0, 0, 1).transformDirection(signal.group.matrixWorld);
-  const haloNormal = new Vector3(0, 0, 1).transformDirection(glow.matrixWorld);
-  assert.ok(cardNormal.dot(haloNormal) > 1 - 1e-10, 'halo shares the card plane instead of facing the camera');
-  const depths = mesh => {
-    const vertices = mesh.geometry.getAttribute('position');
-    const point = new Vector3();
-    const result = [];
-    for (let index = 0; index < vertices.count; index++) {
-      result.push(point.fromBufferAttribute(vertices, index).applyMatrix4(mesh.matrixWorld).dot(cardNormal));
-    }
-    return result;
-  };
-  const haloDepths = depths(glow);
-  const lensDepths = depths(green);
-  assert.ok(Math.max(...haloDepths) - Math.min(...haloDepths) < 1e-6, 'all halo vertices share one plane');
-  assert.ok(Math.min(...haloDepths) > Math.max(...lensDepths) + 1e-3,
-    'the whole halo clears the lens front, so an angled camera cannot cut its plane through the lens');
-});
+    const cardNormal = new Vector3(0, 0, 1).transformDirection(signal.group.matrixWorld);
+    const haloNormal = new Vector3(0, 0, 1).transformDirection(glow.matrixWorld);
+    assert.ok(cardNormal.dot(haloNormal) > 1 - 1e-10, 'halo shares the card plane instead of facing the camera');
+    const depths = mesh => {
+      const vertices = mesh.geometry.getAttribute('position');
+      const point = new Vector3();
+      const result = [];
+      for (let index = 0; index < vertices.count; index++) {
+        result.push(point.fromBufferAttribute(vertices, index).applyMatrix4(mesh.matrixWorld).dot(cardNormal));
+      }
+      return result;
+    };
+    const haloDepths = depths(glow);
+    const lensDepths = depths(lens);
+    assert.equal(glow.position.y, lens.position.y);
+    assert.ok(Math.max(...haloDepths) - Math.min(...haloDepths) < 1e-6, 'all halo vertices share one plane');
+    assert.ok(Math.min(...haloDepths) > Math.max(...lensDepths) + 1e-3,
+      'the whole halo clears the lens front, so an angled camera cannot cut its plane through the lens');
+  });
+}
 
 test('the entire card and glow stay outside the central crosswalk corridors', () => {
-  const signal = createCitySignal();
-  signal.setState('green-approved');
-  signal.group.updateMatrixWorld(true);
-  const bounds = new Box3().setFromObject(signal.group);
-  // Audited private city: southeast block begins at x/z 45. South stripes
-  // occupy x -42..42, z 47..63; east stripes occupy x 47..63, z -42..42.
-  assert.ok(bounds.min.x > 45, 'signal remains east of the north/south road and crosswalk');
-  assert.ok(bounds.min.z > 45, 'signal remains south of the east/west road and crosswalk');
-  assert.ok(bounds.min.y >= 3, 'signal rests above the southeast grass surface');
-  assert.equal(signal.group.userData.coordinateAuthority, 'display_only');
+  for (const state of ['base', 'red-observed', 'green-approved']) {
+    const signal = createCitySignal(state);
+    signal.group.updateMatrixWorld(true);
+    const bounds = new Box3().setFromObject(signal.group);
+    // Audited private city: southeast block begins at x/z 45. South stripes
+    // occupy x -42..42, z 47..63; east stripes occupy x 47..63, z -42..42.
+    assert.ok(bounds.min.x > 45, 'signal remains east of the north/south road and crosswalk');
+    assert.ok(bounds.min.z > 45, 'signal remains south of the east/west road and crosswalk');
+    assert.ok(bounds.min.y >= 3, 'signal rests above the southeast grass surface');
+    assert.equal(signal.group.userData.coordinateAuthority, 'display_only');
+  }
 });

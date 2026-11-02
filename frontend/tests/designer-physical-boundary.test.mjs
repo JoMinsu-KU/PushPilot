@@ -11,6 +11,7 @@ globalThis.window = { matchMedia: () => ({ matches: false }) };
 const server = await createServer({ root: fileURLToPath(new URL('../', import.meta.url)), configFile: false, server: { middlewareMode: true, watch: null }, appType: 'custom' });
 test.after(() => server.close());
 const { PhysicalRouteBrowser, PhysicalHistoryBrowser, executionStepLabel, signalGateLabel, physicalSequenceFocus } = await server.ssrLoadModule('/src/WorkspaceUI.tsx');
+const { ApprovedMissionButton, MissionApprovalMessage } = await server.ssrLoadModule('/src/ApprovalFeedback.tsx');
 const telemetry = () => ({
   sequence: Array.from({ length: 31 }, (_, n) => ({ id: `C-step-${n}`, label: `C-step-${n}`, kind: n > 26 ? 'RETURN_HOME' : 'MOVE', detail: `Actual executor receipt ${n}`, status: n < 13 ? 'complete' : n === 13 ? 'current' : 'pending' })),
   history: Array.from({ length: 77 }, (_, n) => ({ id: `actual-${n}`, at: 1793320000 + n, title: `Recorded outcome ${n}`, kind: 'motion', source: 'native', detail: `Original outcome ${n}` })),
@@ -67,12 +68,26 @@ test('rendered action names preserve receipt rows, order, focus and pending or h
   assert.doesNotMatch(html, /Wait for green|Verify arrival|Mission complete/);
   assert.equal(JSON.stringify(data), original);
 });
-test('native dialogs preserve the Stop request while Start remains blocked in Mission Log', () => {
+test('operator-requested Stop UI removal preserves the existing start request and Mission Log guard', () => {
   const source = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
   assert.match(source, /kind === 'start' && view === 'Replay'/);
-  assert.match(source, /actions=\{robotMission && !robotFinished \? renderStopAction\(\)/);
+  assert.doesNotMatch(source, /renderStopAction|Stop robot mission/);
+  assert.match(source, /onClick=\{\(\) => void physicalCommand\('start'\)\}/);
   assert.match(source, /physicalBusy \|\| physicalUnconfirmed === kind/);
   assert.match(source, /expected_revision: physical.status.revision/);
+  assert.match(source, /missionApprovalFeedback\(physical.status, workspace, physical.connected && online/);
+});
+
+test('Approved is a disabled status button and approval copy matches the reviewed presentation', () => {
+  const html = renderToStaticMarkup(React.createElement(ApprovedMissionButton));
+  assert.match(html, /mission-approved-button/);
+  assert.match(html, /disabled=""/);
+  assert.match(html, /Approved<\/button>/);
+  const message = renderToStaticMarkup(React.createElement(MissionApprovalMessage, { feedback: {
+    phase: 'awaiting', title: 'Awaiting approval', detail: 'Review and explicitly approve this plan revision.', buttonLabel: 'Approve plan',
+  } }));
+  assert.match(message, /Awaiting approval/);
+  assert.match(message, /Review and explicitly approve this plan revision/);
 });
 
 test('held sequence without current ID anchors after the last real completion without changing pending status', () => {

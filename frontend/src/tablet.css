@@ -375,8 +375,12 @@ button:not(:disabled):active, [role="button"]:active, [role="tab"]:not(:disabled
 /* Operational data keeps its existing semantics inside the new surfaces. */
 .physical-check p { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .physical-detail-link { display: flex; align-items: center; gap: 4px; margin-top: 5px; color: #75818a; font-size: 10px; }
-.physical-stop { background: #a95f49; border-color: #a95f49; }
-.physical-stop:hover:not(:disabled) { background: #934f3b; }
+/* An accepted approval is read-only; actual execution state stays in Robot status. */
+.approval-feedback.physical-check p { display: block; overflow: visible; }
+.approval-approved > div { color: #538568; }
+.approval-approved > div h3 { color: inherit; }
+.primary-button.mission-approved-button:disabled { background: #528a69; color: #fff; opacity: 1; cursor: default; box-shadow: none; }
+.primary-button.mission-status-button:disabled { background: #dfe6e7; color: #465d68; opacity: 1; cursor: default; box-shadow: none; }
 .physical-status-panel { display: flex; flex-direction: column; gap: 15px; min-height: 0; }
 .physical-status-panel > h3 { font-size: 22px; font-weight: 500; color: #344650; }
 .physical-status-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding-top: 14px; border-top: 1px solid #dce3e6; }
@@ -398,15 +402,11 @@ button:not(:disabled):active, [role="button"]:active, [role="tab"]:not(:disabled
 @keyframes muse-request-pulse { 0%, 100% { box-shadow: 0 0 0 0 #d28e6833; opacity: .65; } 50% { box-shadow: 0 0 0 5px #d28e6800; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .status-card.is-scanning .status-card-top i { animation: none; opacity: 1; } }
 
-/* The same stop request remains reachable in collapsed cards and native modal focus scopes. */
+/* Native dialog header actions retain their layout; physical Stop controls are omitted. */
 .dialog-header .dialog-header-actions { display: flex; flex-direction: row; align-items: center; gap: 12px; flex: 0 1 auto; }
-.dialog-header-actions .physical-stop { width: auto; min-width: 170px; max-width: 250px; }
-.dialog-header-actions .physical-stop svg { margin: 0; }
 .floating-mission .physical-detail-link { min-height: 32px !important; font-size: var(--fs-12); color: #4f5f69; }
 .floating-mission .mission-actions { flex: none; }
 .floating-mission .mission-intro, .floating-mission .mission-progress, .floating-mission .next-check { flex: none; }
-.floating-mission .physical-stop { background: #a95f49; }
-@media (hover: hover) { .floating-mission .physical-stop:hover:not(:disabled) { background: #934f3b; } }
 .status-card-value { min-width: 0; }
 .physical-telemetry .event-page > button > span { display: flex; flex-direction: column; gap: 5px; }
 .physical-telemetry .decision-page dd { overflow-wrap: anywhere; }
@@ -421,9 +421,6 @@ button:not(:disabled):active, [role="button"]:active, [role="tab"]:not(:disabled
   .device-status { gap: 8px; }
   .header-replay { padding: 0 12px; }
   .topbar { gap: 12px; padding: 0 18px; }
-}
-@media (max-width: 700px) {
-  .dialog-header-actions .physical-stop { min-width: 44px; max-width: 160px; font-size: var(--fs-12); }
 }
 
 /* A hold/replay anchor positions the list without implying an active robot command. */

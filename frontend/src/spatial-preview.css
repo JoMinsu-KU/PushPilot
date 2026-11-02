@@ -32,6 +32,9 @@ button:focus-visible, a:focus-visible { outline: 2px solid #c77c54; outline-offs
 .mini-signal i { height: 7px; width: 7px; border-radius: 50%; background: #269b71; }
 .mini-signal i+i { background: #d96052; }
 .green-lamp { height: 8px; width: 8px; border-radius: 50%; background: #209b70; }
+.red-lamp { height: 8px; width: 8px; border-radius: 50%; background: #dc483b; }
+.preview-section-title i.red { background: #dc483b; }
+.preview-state-options button.selected .red-lamp { box-shadow: 0 0 0 3px #dc483b20, 0 0 9px #dc483b70; }
 .preview-state-options button.selected .green-lamp { box-shadow: 0 0 0 3px #29c18c20, 0 0 9px #29c18c70; }
 .preview-hint { position: absolute; right: 23px; bottom: 25px; padding: 10px 14px; border-radius: 20px; font-size: 11px; color: #7c8e99; display: flex; gap: 9px; pointer-events: none; }
 .spatial-preview .city-display-caption { display: none; }

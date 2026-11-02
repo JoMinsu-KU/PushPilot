@@ -219,7 +219,7 @@ export function PhysicalStatusPanel({ status, connected, map = null, missionBoun
       <div><dt>Signal</dt><dd>{missionBound && connected ? status?.signal.color ?? 'UNKNOWN' : 'UNKNOWN'}</dd></div>
       <div><dt>{physicalModeLabel(status)}</dt><dd>{!missionBound ? 'No active stage' : connected ? status?.stage_label || 'No active stage' : 'Current stage unconfirmed'}</dd></div>
     </dl>
-    <p className="physical-stop-note">A stop request holds further dispatch. A stopped state is confirmed separately by the robot.</p>
+    <p className="physical-stop-note">Robot status is confirmed separately from plan approval.</p>
   </section>;
 }
 
