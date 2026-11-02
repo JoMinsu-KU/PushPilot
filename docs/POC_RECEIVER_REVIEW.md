@@ -18,6 +18,8 @@ This review records the October 28, 2026 KST investigation of the pendant connec
 
 The POC receiver used the pendant TCP listener and independent Native checks; the new commissioning HTTP API is a separate application layer. The controller initiates the TCP connection to the host. The HTTP API does not replace that listener and does not open a second robot-command socket. Its inherited adapter publishes one expiring, bound mailbox request for the host to consume. Camera and MUSE processing are separate from the host process. The host itself calls Native guards synchronously inside its exchange; an idle Native timeout can terminate that session. Heartbeat hardening remains unimplemented; see [the current operations runbook](ROBOT_OPERATIONS.md#distinguish-the-clocks).
 
+**November 2 successor:** the preceding limitation describes the October 28 source. [Legal-idle Native recovery](HOST_NATIVE_RECOVERY.md) was subsequently implemented/deployed and one actual same-session idle timeout recovery was recorded. Non-idle protocol phases, expiry and unknown motion outcomes retain their existing limits. This does not change the historical imported-source hashes or trial results below.
+
 The inherited source was imported without historical operating profiles, pending mailboxes, coordinates or run state. Source verification occurs before runtime imports. The original POC operating policy is to preserve the receiver and use its profile-update exchange for ordinary target, direction and setting changes. A healthy connection does not need another PLAY for each target.
 
 ## Exact inherited source identity

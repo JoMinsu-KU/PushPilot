@@ -8,7 +8,7 @@
 
 ## Catalogue and access boundaries
 
-**Reviewed November 2, 2026 against source baseline `7aa7753`.** Run from the repository root with Python 3.12+ and the pinned environment. Table entries are files/tools, not instructions to activate equipment. `--help` describes the current arguments; do not assume every helper exposes a command-line interface.
+**Reviewed November 2, 2026, including Native recovery source `bcac769`.** Run from the repository root with Python 3.12+ and the pinned environment. Table entries are files/tools, not instructions to activate equipment. `--help` describes the current arguments; do not assume every helper exposes a command-line interface.
 
 | Group | Tools / files | External access and effect |
 | --- | --- | --- |
@@ -25,7 +25,7 @@
 | Application/mock startup | [serve.py](serve.py), `serve_robot_control.py --backend mock` | Starts local HTTP services. Main app defaults to simulation; explicitly configured live-camera/physical adapters can read their services. It does not install services, PLAY Rodi or automatically start a route. |
 | Real camera helper | [camera_preview.py](camera_preview.py) | Explicit Linux capture with device permission and ffmpeg; owns its own capture child. No MUSE or robot commands. Do not restart it for a frontend change. |
 | Commissioning API/client | `serve_robot_control.py --backend legacy`, [robotctl.py](robotctl.py) | Real backend owns the mailbox ledger and reads current host state. Client status/events are reads; arm/command/profile/reconcile operations mutate control state and can issue physical motion. Verify selected target and private token. |
-| Persistent host | [serve_rodi_host.py](serve_rodi_host.py) | Without `--listen --motion`, validates the supplied profile offline. With both flags, opens the real pendant listener and uses Native/wire IO. `--wait-for-profile` waits before binding. Never replays, performs PLAY or fixes idle Native timeouts. |
+| Persistent host | [serve_rodi_host.py](serve_rodi_host.py) | Without `--listen --motion`, validates the supplied profile offline. With both flags, opens the real pendant listener and uses Native/wire IO. `--wait-for-profile` waits before binding. Deployed legal-idle recovery retains the session during known read outages and requires fresh stationary samples; no automatic PLAY, reconnect or motion replay. [Scope](../docs/HOST_NATIVE_RECOVERY.md) |
 | Physical commissioning runners | [run_coordinate_unit.py](run_coordinate_unit.py), [run_taught_executor.py](run_taught_executor.py) | Offline validation unless `--execute` is explicit. Execution uses real robot/camera/provider ports and new private journals. Coordinate-unit runner matches current whole-unit mechanics; taught runner is the separate compatibility per-action path. |
 
 All Python tools and the camera target in `tools/` are covered above. Commands fail nonzero on rejected input; this does not imply a controller stopped. Never run a live provider check, real capture, profile activation or physical runner as part of a documentation/source validation task.

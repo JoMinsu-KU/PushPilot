@@ -74,6 +74,24 @@ Private evidence retains original JPEGs, hashes, command/Native lineage and scop
 
 The October 27 integration records include text planning, one recorded Little Town inspection and three original synthetic action pairs with PASS/FAIL/REOBSERVE consequences. These remain dated integration examples, not the current physical accuracy claim. Later physical and archived-image review summaries are linked from [API evidence](META_API_CHECK.md) and the [evidence index](evidence/README.md). Original FAIL/UNKNOWN/timeouts and rejected prompt variants are preserved.
 
+### Actual robot completion, rejected task outcome
+
+The public [D extended-contact record](evidence/taught-D-extended-contact-20261029.json) contains **11 actual motion stages with every Native endpoint verified**, while the original whole-unit MUSE result is **FAIL**, `arrived: false`, and `car_footprint: OVERLAPS_ISLAND`. Its two contact TCP segments total 39.8 mm; that is tool travel, not measured vehicle displacement. The provider receipt and original input-image hashes remain in the record. A subsequent operator-directed clean START reset is recorded separately from the rejected contact result.
+
+This is a concrete reason to separate controller completion from visual task review. It does not establish that every MUSE judgment is correct, nor does it turn the historical operator-directed experiment into an autonomous mission.
+
+### Published real-image failure analysis
+
+The [existing October 30 C review summary](C_INTERMEDIATE_PROGRESS_REVIEW.md#archived-evaluation-2026-10-30) reports archived actual-camera input evaluations using Muse Spark 1.3, minimal reasoning and a 2,200-completion-token ceiling. The initial replay used **124 API calls covering 168 observations**: 71 intermediate comparisons, six fixed-start checks, 44 signal pairs containing 88 samples, and three C26 arrival checks. These are distinct units, not 168 independent API calls or an accuracy denominator.
+
+| Published evaluation scope | Observed result / failure | Scoped response and remaining limit |
+| --- | --- | --- |
+| Initial 71 intermediate comparisons | Model outputs: 66 progress, three no-progress, two uncertain. Manual C4/C6 inspection found visible motion missed by the model; C14's uncertain BEFORE views hid the car. | C4/C6 identical-coordinate detail crops; C14's explicitly wider clear-reference interval. Neither establishes reliable detection in every frame. |
+| Separate 12-case C4/C6 detail experiment | Eleven final judgments indicated progress. One case timed out, then returned no-progress on an explicitly recorded retry despite visible movement. | Preserve the timeout and false negative; do not turn the 11 outputs into a general accuracy percentage. |
+| Final signal-detail replay: 44 pairs / 88 sample judgments | 18 GREEN, four RED, 66 UNKNOWN; no HTTP/schema errors in this replay. An earlier candidate incorrectly called moving-mask case 082 GREEN. | Same-source signal details made case 082 UNKNOWN in the focused follow-up; its two API timeouts remain separate failures. Two ordered samples and stop/source gates still apply. |
+
+The source summary preserves rejected prompt variants, focused follow-ups and later re-evaluations separately. These selected archived inputs were not an independently labelled held-out benchmark. No raw private images, offline comparison files or new evaluations are added here, and their output distributions must not be pooled into a success rate.
+
 Software checks verify contracts and rejection behavior. General accuracy requires independently labelled held-out inputs, matched success/no-progress/occlusion cases, false-continuation and uncertainty rates, latency and reported usage. Historical arrivals do not establish repeatable unattended delivery on a later recipe or installation. No new provider request was made for this documentation refresh.
 
 Keep credentials, operational photos and private geometry outside Git, prompts and public logs. The finite voice backend uses the server-held credential; it does not establish ASR access or microphone support. [Voice backend](VOICE_BACKEND.md), [contributions](../CONTRIBUTIONS.md) and [third-party notices](../THIRD_PARTY_NOTICES.md) retain implementation/provenance boundaries.

@@ -2,7 +2,7 @@
 
 # Keep the demonstration claim precise.
 
-**As of November 2, 2026; public source baseline `7aa7753`.** PushPilot connects a tablet plan to an explicitly configured current-site robot trial. This page records the boundaries of that implementation; historical tests retain the narrower claims in their original records.
+**As of November 2, 2026.** The initial public baseline `7aa7753` is followed by the scoped Native-recovery implementation/deployment `bcac769`. PushPilot connects a tablet plan to an explicitly configured current-site robot trial. This page records the boundaries of that implementation; historical tests retain the narrower claims in their original records.
 
 | Area | Implemented or evidenced | Remaining limit |
 | --- | --- | --- |
@@ -20,6 +20,8 @@
 | Empty return | Separate reviewed return recipes and robot endpoint checks. | Car reset is separate. Historical D return candidates are not all physically exercised; a changed actual source requires a newly bound reviewed return. |
 | Voice/tablet | Text goals and current workspace operate over the selected LAN setup. | Browser microphone capture requires a trusted secure context and its own verified capture/normalization path. LAN HTTP availability does not establish voice readiness. |
 | Goal editing across modes | Robot UI disables goal editing during its active mission; simulation endpoints validate their own workspace state. | A server-side lock shared by the workspace/voice endpoints and separate physical service is not implemented. Direct API callers must not treat UI gating as cross-service enforcement. |
+| Request coordination | Dedicated camera/physical display transports have bounded reads and sequential polling. | Shared Start/Stop pending state, symbolic-provider inference under the workspace lock, historical Stop replay side effects and general request deadlines remain [open findings](REVIEW_FOLLOW_UP.md#code-findings-remain-open). This documentation update does not repair them. |
+| Public CI and accessibility | The recorded-review Pages workflow verifies its narrow static artifact. | Full application CI and the custom Select's active-candidate announcement are follow-ups, not completed changes. [Review scope](REVIEW_FOLLOW_UP.md) |
 | Evidence | Source checks, offline tests, archived-image evaluations, point-in-time deployment inspection and historical physical logs are distinct. | None alone establishes a recognition accuracy benchmark, contact simulation, current equipment readiness or production qualification. |
 
-The last read-only deployment audit identified GX10 web release `20261031-c11-activation-fix`; the November 2 source publication added the current recovery work to main. Neither date is a claim that the connection is currently live. Check [robot operations](ROBOT_OPERATIONS.md), [deployment](../deploy/README.md), [measured routes](MEASURED_ROUTE_CATALOGUE.md) and the [dated evidence index](evidence/README.md) for the appropriate scope.
+The initial read-only deployment audit identified GX10 web release `20261031-c11-activation-fix`. The later server-only host activation, actual idle recovery and 13:58:44 stationary START preparation have separate [dated records](HOST_NATIVE_RECOVERY.md#validation-and-activation-boundary). These are point-in-time observations, not a claim that the connection is currently live. Check [robot operations](ROBOT_OPERATIONS.md), [deployment](../deploy/README.md), [measured routes](MEASURED_ROUTE_CATALOGUE.md) and the [dated evidence index](evidence/README.md) for the appropriate scope.

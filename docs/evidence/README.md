@@ -2,7 +2,7 @@
 
 # Evidence has a date and a boundary.
 
-**Index reviewed November 2, 2026 against public source baseline `7aa7753`.** The 31 original JSON records below are unchanged. They end on October 29 and include unsuccessful, uncertain, incomplete and later-superseded checkpoints. Their source commits, cutoff identities and original verdicts remain authoritative for those observations; this index does not promote them to current readiness.
+**Index reviewed November 2, 2026.** The 31 original JSON records in the first table are unchanged and end on October 29. Two later November 2 recovery/readiness records are indexed separately below, for 33 dated JSON records in total. These include unsuccessful, uncertain, incomplete and later-superseded checkpoints. Their source commits, cutoff identities and original verdicts remain authoritative for those observations; this index does not promote a historical result to current readiness.
 
 A source commit not stated in an original record is labelled **not stated**, never filled from a nearby release. A map identity is listed only when the record binds it explicitly. Consult the linked JSON for full hashes, exact source variants and limits; the table intentionally does not reproduce operating coordinates, photographs, profiles or secret paths.
 
@@ -40,7 +40,14 @@ A source commit not stated in an original record is labelled **not stated**, nev
 | 2026-10-28<br>map .2 / short windows | [vision-stability-20261028](vision-stability-20261028.json) | source `0a57d22`<br>Map: `seoul-city-a3` / `2026-10-28.2` | Paired detector and short live display windows improved partial-marker behavior. | Development samples, not general accuracy, long-term liveness or robot calibration. | [Current camera](../LIVE_CAMERA.md) |
 | 2026-10-29<br>sequences 42 / 46 / 50 | [wrist-reposition-20261029](wrist-reposition-20261029.json) | Source: not stated<br>Map: not stated | Three actual unloaded directed wrist trials with original controller FK reports. | FK is not independent metrology, whole-tool sweep or car-turn qualification. | [Current wrist boundary](../DELIVERY_SITE_TRIAL.md) |
 
-## Later source and recovery records
+## Later dated recovery and readiness JSON
+
+| Date / cutoff | Original record | Source / deployment identity | Supported observation | Limit / current context |
+| --- | --- | --- | --- | --- |
+| 2026-11-02<br>13:35:44–13:45:54 KST | [Native read recovery](native-read-recovery-20261102.json) | Source `bcac769`<br>Host `20261102-native-recovery-bcac769` | Deployed legal-idle reacquisition; initial six-minute no-outage interval, then one actual read timeout recovered in the same session with fresh Native proof. | No reconnect, movement or profile dispatch. Not every protocol phase or loaded-route repeatability. [Recovery guide](../HOST_NATIVE_RECOVERY.md) |
+| 2026-11-02<br>post-handoff proof 13:58:44 KST | [Stationary START readiness](start-reference-ready-20261102.json) | Host `20261102-native-recovery-bcac769`<br>Source commit: not stated in this record | Same-session no-motion profile/reference handoff; real tablet readiness at unchanged START for Office, Villa and Hanok. | Point-in-time held/disarmed preparation only; no mission, PREPARE/GO or new vehicle-placement verification. [START contract](../SESSION_START_REFERENCE.md) |
+
+## Later source and recovery guides
 
 The following are redacted feature/deployment summaries, not additional physical success JSON records. They describe source behavior or the specific evaluation stated in the document. No new hardware or provider calls were performed for this documentation refresh.
 
@@ -53,5 +60,6 @@ The following are redacted feature/deployment summaries, not additional physical
 | October 31 / `20261031-c11-activation-fix`; public `7aa7753` | [C11 boundary recovery](../C11_BOUNDARY_RECOVERY.md) | Source-bound preparation and explicit resume from a known restored boundary; no general controller-fault recovery. |
 | October 31 / public `7aa7753` | [Session START reference](../SESSION_START_REFERENCE.md) | Explicit stationary session precision binding within 0.005 mm/degree; no START redefinition or Native-timeout fix. |
 | November 2 / public `7aa7753` | [Operations](../ROBOT_OPERATIONS.md), [limitations](../KNOWN_LIMITATIONS.md), [deployment](../../deploy/README.md) | Consolidated current source and last read-only deployment identity. Source publication is distinct from activation, equipment connectivity and physical qualification. |
+| November 2 / `bcac769` and dated observations | [Native recovery](../HOST_NATIVE_RECOVERY.md) | Deployed permitted-idle heartbeats and fresh reacquisition; one actual same-session timeout recovery. Non-idle handshakes, expired requests and unknown outcomes retain their boundaries. |
 
 Preserve private full archives and their checksums separately. Do not edit an old evidence file to change its result after a later success. New observations require a new dated record with its own source, scene, outcome and limitation.

@@ -1,6 +1,6 @@
 # From sight to action · current status
 
-**Source-backed status, November 2, 2026 · Native recovery source `bcac769`, deployment and live-idle evidence through `85561b8`.**
+**Source-backed status, November 2, 2026 · Native recovery source `bcac769`, with dated recovery and subsequent stationary START-preparation evidence.**
 
 [Documentation](README.md) · [Architecture](ARCHITECTURE.md) · [Meta intelligence](META_INTELLIGENCE.md) · [Robot operations](ROBOT_OPERATIONS.md) · [Known limitations](KNOWN_LIMITATIONS.md)
 
@@ -8,7 +8,7 @@ PushPilot's original promise is unchanged: **see the scene, express a goal, insp
 
 ## Capability and evidence matrix
 
-For a first visit, [Demo and recorded decisions](DEMO.md) links selected real tablet footage and an equipment-free, read-only explorer of three existing synthetic-input Meta API records. These are presentation/inspection paths; they do not invoke new inference or control equipment. The short Camera clip shows post-arrival return, and the Spatial clip shows the rendered application estimate.
+For a first visit, [Demo and recorded decisions](DEMO.md) leads with the approved **55-second physical action → fresh MUSE review → next step** recording: C Step 1 pushes the car, the tool withdraws, a new PASS appears at 06:42:17, and C Step 2 begins. The older Camera clip is supporting post-arrival/empty-return footage; the Spatial clip shows the rendered application estimate. The public [recorded-decision explorer](https://jominsu-ku.github.io/PushPilot/) presents three existing synthetic-input Meta API records. Watching/selecting these archives invokes no new inference or equipment control. [Exact media scope](assets/PHYSICAL_MEDIA.md)
 
 | Capability | Current implementation | Evidence boundary |
 |---|---|---|
@@ -51,7 +51,9 @@ The public map's `temporary: true` and `physical_execution_enabled: false` remai
 
 The latest recorded software checkpoint for Native recovery source `bcac769` ran **1,199 backend tests with five skips and zero failures**, **143 frontend tests with zero failures**, and the TypeScript/Vite build successfully. The GX10 related suite ran 80 tests with zero failures. These are software checks; they do not measure model accuracy or loaded-route repeatability. [Dated source and validation record](evidence/native-read-recovery-20261102.json)
 
-That source was activated as the server-only host release `20261102-native-recovery-bcac769`. The initial 13:35:44–13:41:52 KST idle observation had no read failure. Observation continued through 13:45:54; a real Native timeout at 13:42:35 retained the same pendant session/sequence/profile and reacquired two new valid samples by 13:42:37, restoring the original fresh host-journal proof. No connection close, reconnect, movement or profile dispatch was observed. This establishes **one real idle read-failure recovery**, with the installed Rodi script and other service identities retained. The new session still requires a separate stationary START-reference binding before mission admission. [Activation and limits](HOST_NATIVE_RECOVERY.md#validation-and-activation-boundary)
+That source was activated as the server-only host release `20261102-native-recovery-bcac769`. The initial 13:35:44–13:41:52 KST idle observation had no read failure. Observation continued through 13:45:54; a real Native timeout at 13:42:35 retained the same pendant session/sequence/profile and reacquired two new valid samples by 13:42:37, restoring the original fresh host-journal proof. No connection close, reconnect, movement or profile dispatch was observed. This establishes **one real idle read-failure recovery**, with the installed Rodi script and other service identities retained. [Activation and limits](HOST_NATIVE_RECOVERY.md#validation-and-activation-boundary)
+
+At that recovery cutoff, the new session still needed a stationary START binding. The subsequent explicitly requested preparation completed one no-motion profile/reference handoff; its **13:58:44 KST** post-handoff proof confirmed available, connected, stationary, held/disarmed at START, with no blockers, active command or mission. Original teaching files, workspace bounds, tool/payload and motion limits stayed unchanged. This was point-in-time readiness for operator tablet Start, not a mission or new vehicle-placement check. [Separate START-readiness record](evidence/start-reference-ready-20261102.json)
 
 The **initial November 2 publication checkpoint** was runtime code `7aa7753`: 1,177 backend tests with five skips, 126 frontend tests, source checks and the frontend production build. Its five recovery/START code files matched the inspected GX10 source release `20261031-c11-activation-fix` before publication; that earlier comparison was not a new activation or mission-readiness test. The documentation/image refresh reran those earlier totals. They remain explicitly historical in [verification](VERIFICATION.md#initial-publication-and-documentation-checkpoint--november-2-2026).
 

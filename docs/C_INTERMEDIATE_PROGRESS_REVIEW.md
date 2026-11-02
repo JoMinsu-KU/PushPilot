@@ -19,9 +19,11 @@ The private candidate was loaded through the actual site-trial driver without op
 | C14, `c14_clear_signal_reference` | Same-mission clear C13 GREEN frame compared through exactly admitted recontact + C14. | Wider interval is labelled; it cannot isolate C14-only movement. Missing volatile lineage, restart or changed source blocks selection. |
 | C17, v2 intermediate progress | Qualitative visible translation/rotation, without numeric angle, compass heading or guessed nose direction. | Explicit problems and failed visibility/Native/context checks still hold. |
 | C19, optional `c19_native_endpoint_only` | Verified robot endpoint only; no MUSE car review when explicitly configured. Exact ended C19 review holds have a separate explicit continuation endpoint. | Omission is not PASS or proof of car movement. It applies to no other step, signal or terminal arrival. |
-| C26, destination delivery / prompt v3 | Fresh original image of visible car in the selected Villa frontage road zone; diagonal orientation alone is acceptable. | Native endpoint alone is insufficient. Unconfirmed arrival reobserves/holds; no unavailable numeric straightening is requested. |
+| C26, destination delivery / physical observation v4 | Fresh original image of visible car in the selected Villa frontage road zone; diagonal orientation alone is acceptable. | Native endpoint alone is insufficient. Unconfirmed arrival reobserves/holds; no unavailable numeric straightening is requested. |
 
 See [C19 continuation](EXPLICIT_REVIEW_CONTINUATION.md#explicit-c19-review-omission), [C26 endpoint](C26_DELIVERY_ENDPOINT.md) and [single signal departure](SINGLE_SIGNAL_DEPARTURE.md). `clear_problem: null` is preserved as unknown; eligible visible intermediate progress may advance without rewriting it to false. This does not relax start, signal, arrival or unknown-motion requirements.
+
+The current physical observation constant is `pushpilot.physical-observation.v4` in [`mission_vision.py`](../backend/robot_control/mission_vision.py). The [earlier C26 prompt-v3 evaluation](C26_DELIVERY_ENDPOINT.md#verification-on-october-30) remains a dated result under that earlier request version; updating this current matrix does not relabel its original provider record.
 
 ## Intermediate judgment
 

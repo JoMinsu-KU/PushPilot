@@ -69,6 +69,12 @@ The [measured route catalogue](MEASURED_ROUTE_CATALOGUE.md) preserves historical
 
 Arrival, robot endpoint completion and return are distinct records. The current delivery-first scope does not guarantee final parallel parking or numeric vehicle alignment. Hardware trials depend on the private installation, reviewed geometry and current source state. [Known limitations](KNOWN_LIMITATIONS.md)
 
+### When completed motion is not a successful task
+
+The original [D extended-contact trial](evidence/taught-D-extended-contact-20261029.json) records **11 actual motion stages and all Native endpoints verified**, but the separate MUSE result is **FAIL**, `arrived: false`, with `OVERLAPS_ISLAND`. Its provider receipt and original BEFORE/AFTER hashes are public in that record; private images and taught coordinates are not republished. The operator then requested a clean START reset. This historical result is distinct from the successful action/review clip above.
+
+For an operator, the useful distinction is visible: **the controller finished its motion; the reviewed vehicle outcome still failed the then-current requirement**. This single example explains the review layer without claiming general model accuracy or an autonomous recovery. The [published real-image failure summary](META_INTELLIGENCE.md#published-real-image-failure-analysis) also retains C4/C6 missed movement, C14 occlusion, a rejected signal-mask judgment and provider timeouts, together with the narrow responses adopted for each.
+
 ## Follow the decision, then inspect the implementation
 
 | Question | Inspect |

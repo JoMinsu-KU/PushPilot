@@ -24,17 +24,18 @@ The original **Observe → Plan → Approve → Act → Verify** concept remains
 | **Delivery outcome** | Active delivery_only; C26 destination/zone arrival, numeric straightening/parallel parking deferred | Parking alignment and independent measured vehicle pose |
 | **MUSE** | Route v3, physical observation v4, qualitative C progress v2, C4/C6 details, C14 lineage, C17 qualitative judgment and C19 explicit omission | Held-out recognition accuracy, false-continuation analysis and stable perception across setup changes |
 | **Signal** | Far-RIGHT wait, two-source manual-mask review, single accepted stopped GREEN followed by measured recontact without a second color wait | Exact deployed physical 120-second budget evidence and broader repeatability qualification |
-| **Recovery** | Explicit review continuation, narrow C11 preparation, session-scoped stationary START reference and ended-mission reset | Native idle-read timeout/heartbeat separation and bounded connection recovery; currently unimplemented |
+| **Recovery** | Explicit review continuation, narrow C11 preparation, stationary START reference/reset, and deployed legal-idle Native reacquisition; one actual idle timeout recovered in the same session | Longer/repeated idle observations, non-idle boundary validation and loaded-route repeatability; no replay of unknown motion. [Recovery evidence](HOST_NATIVE_RECOVERY.md) |
 | **Voice** | Finite PCM upload, transcription adapter and explicit candidate/goal binding | Browser microphone/encoder/editor, trusted tablet HTTPS and actual ASR access/quality |
-| **Publication** | November 2 source publication: 1,177 backend tests run, five skipped; 126 frontend tests and build passed | Software checks do not qualify physical or provider performance |
+| **Publication** | Initial `7aa7753`: 1,177 backend tests/five skips and 126 frontend tests. Later recovery `bcac769`: 1,199 backend tests/five skips and 143 frontend tests; builds passed | Distinct dated software checkpoints, not physical or provider performance. [Current ledger](VERIFICATION.md) |
 
 ### Next work, in order
 
-1. Repair idle connection handling without automatic replay of unknown motion; validate fault paths and no-motion soak separately from route geometry.
-2. Record repeated complete START → delivery → empty return trials for each installed B/C/D recipe, preserving failures and interruptions.
-3. Establish held-out car/signal visual evaluation and independent endpoint/vehicle measurements before expanding correction or parking claims.
-4. Complete tablet voice/device/HTTPS and accessibility acceptance without presenting pending capture as connected.
-5. Extend geometry/model/route capabilities only through explicit map/install qualification, retaining source labels and no-replay recovery.
+1. Resolve the documented Start/Stop, duplicate-request, symbolic-inference and general network-wait boundaries, with targeted regression checks and full CI. These remain **open review findings**, not implemented changes. [Review follow-up](REVIEW_FOLLOW_UP.md)
+2. Extend validation of the deployed legal-idle recovery: retain one-session/fresh-measurement proof across longer repeated observations and boundary faults, without replaying unknown motion or implying loaded-route qualification.
+3. Record repeated complete START → delivery → empty return trials for each installed B/C/D recipe, preserving failures and interruptions.
+4. Establish held-out car/signal visual evaluation and independent endpoint/vehicle measurements before expanding correction or parking claims.
+5. Complete tablet voice/device/HTTPS and accessibility acceptance without presenting pending capture as connected.
+6. Extend geometry/model/route capabilities only through explicit map/install qualification, retaining source labels and no-replay recovery.
 
 The requested physical 120-second wait is not proven by the 300-second simulation watcher or a wrist deadline. No new hardware run or provider evaluation was performed for this documentation refresh. See [Robot operations](ROBOT_OPERATIONS.md) and [Known limitations](KNOWN_LIMITATIONS.md).
 

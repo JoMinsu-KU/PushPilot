@@ -62,7 +62,7 @@ The current physical northbound approach withdraws to the far-RIGHT stopped obse
 
 The configured `single_departure` sequence is **accepted stopped GREEN → measured recontact → continuation**, with no second color wait. A new mission needs new admission. Contact and recontact remain coordinate based. C4/C6 detail crops, C14 wider reference lineage, qualitative C17, explicit C19 omission and C26 destination-only arrival have documented scope; they do not turn every uncertainty into success. See [prompts](../prompts/README.md), [single signal departure](SINGLE_SIGNAL_DEPARTURE.md) and [C endpoint](C26_DELIVERY_ENDPOINT.md).
 
-The simulation `/live-signals/watch` defaults to a 300-second total budget and is unrelated to the requested physical 120-second wait. Provider, Native freshness, receiver read and wrist-completion clocks also differ. Idle Native timeout recovery remains unimplemented; [robot operations](ROBOT_OPERATIONS.md) explains the current disconnect/PLAY boundary.
+The simulation `/live-signals/watch` defaults to a 300-second total budget and is unrelated to the requested physical 120-second wait. Provider, Native freshness, receiver read and wrist-completion clocks also differ. The separate host's [legal-idle Native recovery](HOST_NATIVE_RECOVERY.md) is implemented and deployed: permitted IDLE exchanges retain the session while `native_wait` blocks dispatch and two new stationary measurements are acquired. One actual idle timeout recovered without reconnect or motion/profile dispatch. Non-idle failures and actual disconnect/PLAY preparation retain their [operational boundaries](ROBOT_OPERATIONS.md).
 
 ## Two inputs, one reviewed goal
 
@@ -72,7 +72,7 @@ New goals belong to non-executing preparation. Simulation APIs reject replacemen
 
 ## Verification and delivery
 
-The public source includes offline tests and dated physical/provider summaries, not private operating prerequisites. The November 2 publication recorded 1,177 backend tests run with five skipped, 126 frontend tests and a successful frontend build. These are software checks; actual arrival records and incomplete repeatability qualification retain separate labels in [verification](VERIFICATION.md) and the [evidence index](evidence/README.md).
+The public source includes offline tests and dated physical/provider summaries, not private operating prerequisites. Initial November 2 source `7aa7753` recorded 1,177 backend tests/five skips and 126 frontend tests; later recovery source `bcac769` recorded 1,199 backend tests/five skips and 143 frontend tests, with zero failures and a passing build. These are software checks; actual arrival records and incomplete repeatability qualification retain separate labels in [verification](VERIFICATION.md) and the [evidence index](evidence/README.md).
 
 Build locally, package committed source plus matching compiled assets, verify an isolated release and deliberately activate it. Do not restore old profiles, mailboxes or pending actions during deployment. [Current status](CURRENT_STATUS.md) and [known limitations](KNOWN_LIMITATIONS.md) identify remaining work.
 

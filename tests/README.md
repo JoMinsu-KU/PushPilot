@@ -23,7 +23,7 @@ The Python suite uses temporary Git/ZIP/configuration fixtures, isolated SQLite 
 
 ## Implemented coverage
 
-**Catalogue reviewed November 2, 2026 against public baseline `7aa7753`.** Every top-level Python test module is indexed below. These are equipment-free tests with fake transports/providers, temporary state and source fixtures. The presence of a hardware/provider adapter test does not mean that adapter was run against equipment.
+**Catalogue reviewed November 2, 2026, including public Native recovery `bcac769` and recorded-review hosting.** Every top-level Python test module is indexed below. These are equipment-free tests with fake transports/providers, temporary state and source fixtures. The presence of a hardware/provider adapter test does not mean that adapter was run against equipment.
 
 | Group | Modules | Boundary exercised |
 | --- | --- | --- |
@@ -44,6 +44,7 @@ The Python suite uses temporary Git/ZIP/configuration fixtures, isolated SQLite 
 | Policy and observation decisions | [test_mission_policy.py](test_mission_policy.py), [test_mission_policy_site_trial.py](test_mission_policy_site_trial.py), [test_mission_robustness.py](test_mission_robustness.py), [test_mission_observer.py](test_mission_observer.py), [test_mission_vision.py](test_mission_vision.py), [test_mission_measurement.py](test_mission_measurement.py) | Generic qualified policy versus site-trial delivery-only mode, single-departure/fresh-entry distinction, mask ambiguity, measurement qualification and fault injection. |
 | Catalogue/profile/current-source driver | [test_mission_catalog.py](test_mission_catalog.py), [test_mission_driver.py](test_mission_driver.py), [test_mission_profile.py](test_mission_profile.py) | Archive/provenance, current-profile handoff, exact primitive joins, Native/receipt validation and final-dispatch Stop latch. |
 | C review and explicit recovery | [test_mission_progress.py](test_mission_progress.py), [test_mission_resume.py](test_mission_resume.py), [test_boundary_recovery.py](test_boundary_recovery.py), [test_session_start_reference.py](test_session_start_reference.py), [test_start_reference.py](test_start_reference.py) | C4/C6 detail, C14 wider clear reference, qualitative progress/null scope, exact C19 omission, review-only continuation, C11 boundary, stationary START precision and reset/source binding. |
+| Legal-idle Native resilience | [test_rodi_resilience.py](test_rodi_resilience.py), [test_robot_legacy.py](test_robot_legacy.py) | Read outages, legal/illegal IDLE boundaries, fresh-sample proof, endpoint settling, sequence/profile identity and no replay of unknown GO outcomes. Offline transport injection is separate from the single actual idle timeout observation. |
 
 The frontend's `npm test` runs `frontend/tests/*.test.mjs` with Node's test runner. It covers shared route/navigation/image-source/display behavior and presentation contracts. `npm run build` checks TypeScript and asset generation; neither substitutes for a browser/tablet visual review. Run both from `frontend/` after `npm ci`.
 
@@ -72,13 +73,14 @@ Real provider tests are opt-in and outside the offline suite. See [Meta checks](
 
 ## Remaining acceptance work
 
+- [Open review findings](../docs/REVIEW_FOLLOW_UP.md): delayed Start/Stop interaction, prior-mission Stop replay, symbolic Meta concurrency, bounded general request/body waits and full CI. Proposed regressions are not claimed as implemented tests or passing results by this Markdown-only update.
 - Held-out provider accuracy with independent labels and complete receipts; existing archived evaluations are specific-image outcomes, not a general accuracy benchmark.
 - Repeatable real-site car/signal perception and disagreement handling. Bound live Meta MUSE progress/signal/arrival review is implemented; independent scene inspection and recorded-input simulation never replace its mission lineage or Native/local gates.
 - Voice permission denial, bounded upload/normalization, cancellation, empty recognition, edited text confirmation and late/superseded results.
 - Held-out vehicle/signal image evaluation with independent labels.
 - Tablet-origin HTTPS and actual microphone capture.
 - Current-site delivery/return repeatability and independently measured correction/contact-clearance evidence. Historical B/C/D arrivals exist; they do not accept the rejected global board-to-BASE fit or qualify parallel parking. Temporary marker residual is not metric accuracy.
-- No-motion idle/reconnect fault-injection and soak verification for a future Native-timeout lifecycle repair; that repair is currently unimplemented.
+- Extended idle/boundary and loaded-route validation beyond the deployed legal-idle Native recovery. [Recovery tests](test_rodi_resilience.py) already cover acquisition outages, permitted IDLE boundaries, fresh samples and no GO replay; [dated evidence](../docs/HOST_NATIVE_RECOVERY.md) records one real idle read-failure recovery without reconnecting. That observation is not universal recovery or route-repeatability qualification.
 
 Visual acceptance must inspect readable source labels, wait/review/fault/recovery states, keyboard focus, responsive panel layouts, arrow alignment, and evidence replay driven by backend state. Replay must not dispatch movement.
 
