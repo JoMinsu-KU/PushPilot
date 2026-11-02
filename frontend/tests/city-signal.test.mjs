@@ -20,7 +20,7 @@ function faces(signal) {
   return { green, red };
 }
 
-test('the default standing card shows green above red without emitting light', () => {
+test('the default standing card shows red above green without emitting light', () => {
   const signal = createCitySignal();
   const { green, red } = faces(signal);
   signal.group.updateMatrixWorld(true);
@@ -42,13 +42,13 @@ test('the default standing card shows green above red without emitting light', (
     const hits = ray.intersectObjects(signal.group.children.filter(object => object instanceof Mesh && object.visible));
     assert.equal(hits[0]?.object, mesh, 'the standing card does not cover either colored face');
   }
-  assert.ok(green.position.y > red.position.y);
+  assert.ok(red.position.y > green.position.y);
   assert.deepEqual(signal.group.rotation.toArray().slice(0, 3), [0, 0, 0]);
   assert.equal(signal.glow.visible, false);
   assert.equal(signal.group.userData.signalState, 'base');
 });
 
-test('approved green emits only from green and preserves the visible red face', () => {
+test('approved green emits only from the lower green face and preserves the upper red face', () => {
   const signal = createCitySignal();
   const redBefore = materialAppearance(signal.red);
   signal.setState('green-approved');
@@ -59,6 +59,9 @@ test('approved green emits only from green and preserves the visible red face', 
   assert.deepEqual(materialAppearance(signal.red), redBefore);
   assert.equal(signal.red.emissiveIntensity, 0);
   assert.equal(signal.glow.visible, true);
+  assert.equal(signal.glow.position.x, green.position.x);
+  assert.equal(signal.glow.position.y, green.position.y);
+  assert.ok(signal.glow.position.y < red.position.y);
   assert.equal(signal.group.userData.signalState, 'green-approved');
 });
 

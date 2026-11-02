@@ -4,6 +4,8 @@ export type CitySignalState = 'base' | 'green-approved';
 
 /** Display coordinates only: beside the east end of the south crosswalk. */
 export const CITY_SIGNAL_POSITION = [57, 3.02, 65] as const;
+// Match the installed paper signal: red above green. Heights are display-only.
+const FACE_HEIGHTS = { red: 25, green: 10.4 } as const;
 
 function roundedCard(width: number, height: number, radius: number, depth: number) {
   const shape = new THREE.Shape();
@@ -55,7 +57,7 @@ export function createCitySignal(initialState: CitySignalState = 'base') {
   foot.position.set(0, .28, -1.2);
   group.add(edge, face, foot);
 
-  for (const [name, height, material] of [['green', 25, green], ['red', 10.4, red]] as const) {
+  for (const [name, height, material] of [['red', FACE_HEIGHTS.red, red], ['green', FACE_HEIGHTS.green, green]] as const) {
     const ring = new THREE.Mesh(new THREE.CylinderGeometry(4.95, 4.95, .3, 40), bezel);
     ring.rotation.x = Math.PI / 2; ring.position.set(0, height, .52);
     const lens = new THREE.Mesh(new THREE.SphereGeometry(4.45, 40, 20), material);
@@ -69,7 +71,7 @@ export function createCitySignal(initialState: CitySignalState = 'base') {
   // Keep the halo parallel to the card so an orbit cannot cut a billboard through the lens.
   const glow = new THREE.Mesh(new THREE.PlaneGeometry(17, 17), glowMaterial);
   glow.name = 'Approved green glow';
-  glow.position.set(0, 25, 1.2);
+  glow.position.set(0, FACE_HEIGHTS.green, 1.2);
   group.add(glow);
   group.traverse(object => {
     if (object instanceof THREE.Mesh && object !== glow) { object.castShadow = true; object.receiveShadow = true; }
