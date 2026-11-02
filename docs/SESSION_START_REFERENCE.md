@@ -32,5 +32,16 @@ the usual per-unit exact-source and profile checks still apply. A missing
 receiver now reports `ROBOT_CONNECTION_REQUIRED` rather than misleadingly
 reporting a changed profile. Actual changed profiles still block execution.
 
-This change does not repair Native FC03 timeouts. A connection closed after the
-existing timeout budget still requires an operator PLAY and fresh reconciliation.
+This reference contract is separate from [server-side Native recovery](HOST_NATIVE_RECOVERY.md).
+Legal-idle read failures can now reacquire telemetry while retaining the connection;
+an actual disconnect still requires operator PLAY and an explicit current-source check.
+
+On November 2, the operator explicitly requested preparation for continued tablet
+operation after the recovery deployment. Fresh host-journal measurements confirmed
+the original START within the existing 0.005 component allowance. One no-motion
+profile handoff refreshed the session reference while preserving exact workspace
+bounds and all original teaching files, tool, payload and safety limits. The
+verified applied bootstrap was atomically persisted before the availability wait.
+The real tablet service then reported available, connected, stationary and at START,
+with no blockers and exact current first-stage sources for Office, Villa and Hanok.
+No mission, target PREPARE or GO was issued. [Dated readiness evidence](evidence/start-reference-ready-20261102.json)

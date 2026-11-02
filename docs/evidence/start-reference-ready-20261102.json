@@ -1,0 +1,42 @@
+{
+  "schema": "pushpilot.stationary-start-readiness-evidence.v1",
+  "date": "2026-11-02",
+  "timezone": "Asia/Seoul",
+  "scope": "Explicit fresh-session START preparation after server recovery deployment",
+  "host_release": "20261102-native-recovery-bcac769",
+  "status": "ready_for_operator_tablet_start",
+  "ready_confirmed_at_kst": "2026-11-02T13:56:55.318057+09:00",
+  "post_handoff_native_proof_at_kst": "2026-11-02T13:58:44.773897+09:00",
+  "preparation": {
+    "same_receiver_session_retained": true,
+    "no_motion_profile_handoffs": 1,
+    "max_original_start_component_difference": 0.003745685371882246,
+    "unchanged_start_readback_allowance": 0.005,
+    "original_teaching_files_and_hashes": "unchanged",
+    "workspace_bounds": "unchanged_exactly",
+    "speed_acceleration_and_stage_limits": "unchanged",
+    "tool_payload_and_keepouts": "unchanged",
+    "camera_epoch_and_registration": "unchanged",
+    "installed_rodi_script": "unchanged",
+    "bootstrap_profile_matches_applied_profile": true,
+    "bootstrap_persisted_before_availability_wait": true,
+    "reference_and_bootstrap_writes": "atomic_with_file_and_directory_fsync"
+  },
+  "readiness": {
+    "available": true,
+    "blockers": [],
+    "connected": true,
+    "stationary": true,
+    "at_start": true,
+    "destinations_with_exact_current_start_source": ["OFFICE_BUILDING", "VILLA", "HANOK"],
+    "fresh_post_handoff_host_journal_native_proof": true,
+    "held": true,
+    "armed": false,
+    "active_commands": 0,
+    "active_mission": false,
+    "workspace_goal_and_plan": null,
+    "motion_prepare_or_go_sent": false,
+    "automatic_mission_start": false
+  },
+  "evidence_boundary": "Stationary readiness and profile/reference handoff only; no loaded route or new vehicle-placement verification was performed."
+}
