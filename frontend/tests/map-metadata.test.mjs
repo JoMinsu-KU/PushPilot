@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { nodeLabel, destinationOptions, destinationPage, destinationGoal } from '../src/mapMetadata.ts';
+import { nodeLabel, planStepLabel, destinationOptions, destinationPage, destinationGoal } from '../src/mapMetadata.ts';
 
 const map = {
   id: 'replacement-map', title: 'Harbor District', start: 'DEPOT',
@@ -24,4 +24,16 @@ test('additional destinations stay accessible through bounded pages after map re
   assert.deepEqual(destinationPage(options, 1).items.map(item=>item.id), ['STATION']);
   assert.equal(destinationPage(options, 99).page, 1);
   assert.deepEqual(destinationPage([], 5), {items:[],page:0,pages:1});
+});
+
+test('Pizza shop is a display alias without changing map, goal or destination identifiers', () => {
+  const city = { ...map, start: 'PIZZA', nodes: [{ id: 'PIZZA', label: 'Pizza' }, ...map.nodes] };
+  const before = JSON.stringify(city);
+  assert.equal(nodeLabel(city, 'PIZZA'), 'Pizza shop');
+  assert.equal(nodeLabel(null, 'PIZZA'), 'Pizza shop');
+  assert.equal(planStepLabel(city, { label: 'Leave PIZZA', node_id: 'PIZZA' }), 'Leave Pizza shop');
+  assert.equal(destinationGoal(city, 'PORT'), 'Push the car from PIZZA to PORT.');
+  assert.equal(JSON.stringify(city), before);
+  assert.equal(nodeLabel({ ...city, nodes: [{ id: 'PIZZA', label: 'New restaurant' }] }, 'PIZZA'), 'New restaurant');
+  assert.equal(nodeLabel({ ...city, nodes: [{ id: 'OTHER', label: 'Pizza' }] }, 'OTHER'), 'Pizza');
 });

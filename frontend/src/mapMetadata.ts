@@ -3,7 +3,9 @@ import type { TemporaryMap } from '../../contracts/scene';
 /** Display names come from the selected map; identifiers remain the API binding. */
 export function nodeLabel(map: TemporaryMap | null, id: string | null | undefined): string {
   if (!id) return '—';
-  return map?.nodes.find(node => node.id === id)?.label ?? id;
+  const label = map?.nodes.find(node => node.id === id)?.label ?? id;
+  // Presentation alias only: keep the selected map, goal and API node ID intact.
+  return id === 'PIZZA' && /^pizza$/i.test(label) ? 'Pizza shop' : label;
 }
 
 /** Round nominal drawing distances for presentation; retain full geometry in the API. */

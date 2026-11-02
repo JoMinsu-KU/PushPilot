@@ -33,13 +33,39 @@ test('unavailable telemetry stays unavailable without simulator completion', () 
   assert.match(html, /Robot telemetry is unavailable/); assert.match(html, /Awaiting execution/);
   assert.doesNotMatch(html, /route-number|Mission complete/);
 });
-test('display label shortening never changes source IDs', () => {
-  const step = { label: 'C-step-26', id: 'C-step-26', kind: 'MOVE' };
-  assert.equal(executionStepLabel(step), 'C · Step 26'); assert.equal(step.id, 'C-step-26');
+test('display action names never change source IDs', () => {
+  const step = Object.freeze({ label: 'C-step-26', id: 'C-west-course-review-20261028T231958806301Z', kind: 'route' });
+  assert.equal(executionStepLabel(step), 'Deliver at Villa');
+  assert.equal(step.id, 'C-west-course-review-20261028T231958806301Z');
   assert.equal(signalGateLabel('SOUTH_JUNCTION_NORTHBOUND_SIGNAL_WAIT'), 'South Junction');
   const recontact = { label: 'D-fixed-plan-review-20261029T012151991079Z/signal-recontact', id: 'D-fixed-plan-review-20261029T012151991079Z/signal-recontact', kind: 'MOVE' };
-  assert.equal(executionStepLabel(recontact), 'Recontact vehicle');
+  assert.equal(executionStepLabel(recontact), 'Recontact the car');
   assert.equal(recontact.id, 'D-fixed-plan-review-20261029T012151991079Z/signal-recontact');
+});
+
+test('rendered action names preserve receipt rows, order, focus and pending or held states', () => {
+  const data = telemetry();
+  data.sequence = [
+    { id: 'B-delivery-group-1', label: 'B-step-1', kind: 'route', status: 'complete', detail: 'Native endpoint confirmed' },
+    { id: 'C-upper-unloaded-WEST', label: 'C-step-18', kind: 'route', status: 'held', detail: 'Completion not confirmed' },
+    { id: 'D-fixed-plan-review-20261029T012151991079Z/signal-recontact', label: 'Recontact receipt', kind: 'motion', status: 'pending', detail: 'Awaiting robot execution' },
+    { id: 'return-stage-1', label: 'Return to start', kind: 'return', status: 'pending', detail: 'After confirmed vehicle arrival' },
+  ];
+  data.current_step_id = data.sequence[1].id;
+  const original = JSON.stringify(data);
+  data.sequence.forEach(Object.freeze); Object.freeze(data.sequence); Object.freeze(data);
+  const html = renderToStaticMarkup(React.createElement(PhysicalRouteBrowser, { status: { mission_id: 'mission-a', destination: 'VILLA', progress: { completed: 1, total: 4 } }, telemetry: data, connected: true, map: null }));
+  assert.equal((html.match(/class="route-number"/g) ?? []).length, 4);
+  const titles = ['Leave Pizza shop', 'Orient the gripper for Villa', 'Recontact the car', 'Return to start'];
+  const positions = titles.map(title => html.indexOf(`>${title}</strong>`));
+  assert.ok(positions.every((position, index) => position >= 0 && (!index || position > positions[index - 1])));
+  assert.match(html, /class="held focused"/);
+  for (const step of data.sequence) {
+    assert.ok(html.includes(`${step.status} · ${step.id}`));
+    assert.ok(html.includes(step.detail));
+  }
+  assert.doesNotMatch(html, /Wait for green|Verify arrival|Mission complete/);
+  assert.equal(JSON.stringify(data), original);
 });
 test('native dialogs preserve the Stop request while Start remains blocked in Mission Log', () => {
   const source = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');

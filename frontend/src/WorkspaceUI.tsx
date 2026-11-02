@@ -5,11 +5,13 @@ import { physicalDetail, physicalModeLabel, physicalParkingEnabled, physicalProg
 import type { TemporaryMap } from '../../contracts/scene';
 import { Icon } from './Icons';
 import { drawingDistance, nodeLabel, planStepLabel } from './mapMetadata';
+import { executionStepLabel } from './executionLabels';
+export { executionStepLabel } from './executionLabels';
 
 function humanizeNodeIds(map: TemporaryMap | null, text: string): string {
   return [...(map?.nodes ?? [])].sort((a, b) => b.id.length - a.id.length).reduce((value, node) => {
     const escaped = node.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    return value.replace(new RegExp(`\\b${escaped}\\b`, 'g'), node.label ?? node.id);
+    return value.replace(new RegExp(`\\b${escaped}\\b`, 'g'), nodeLabel(map, node.id));
   }, text);
 }
 
@@ -162,15 +164,6 @@ export function SelectField<T extends string>({ id, label, value, options, disab
   </div>;
 }
 
-
-export function executionStepLabel(step: { label: string; id: string; kind: string }): string {
-  const simple = /^([BCD])-step-(\d+)$/.exec(step.label);
-  if (simple) return `${simple[1]} · Step ${simple[2]}`;
-  if (step.id.endsWith('/signal-recontact')) return 'Recontact vehicle';
-  if (step.kind === 'SIGNAL_RECONTACT') return 'Return to contact';
-  if (step.kind === 'RETURN_HOME') return 'Return to start';
-  return step.label;
-}
 
 /** A scroll anchor only: a missing active step never becomes an execution status. */
 export function physicalSequenceFocus(steps: readonly { id: string; status: string }[], currentStepId: string | null | undefined): number {
