@@ -7,10 +7,11 @@
   },
   "candidate": {
     "filename": "hcr1_pose_receiver.commit-wait-30s-v1.script",
-    "sha256": "b9b122cac554183cb99ce90b4f7f4a0fd97e51d7a782437da6e2faf5bea29ffb",
-    "bytes": 38994,
+    "sha256": "0e1d48fce588503fda4983eb5883af49a7f0ca2cb05740226e3fd0e9826533dd",
+    "bytes": 39276,
     "distribution": "private full-file handoff; manual pendant installation required"
   },
+  "interpreter_compatibility": "Exact historical ppNear six-component expansion avoids the photographed local loop-index ReferenceError; original validation semantics retained.",
   "protected_wait_ms": 30000,
   "host_protected_budget_s": 20,
   "protected_calls": ["PROFILE_READY_TO_PROFILE_COMMIT", "READY_TO_GO"],

@@ -55,6 +55,13 @@ Keep the old file for rollback. Install the full file while stopped, start it
 from the beginning, and confirm the new HELLO capability before relying on the
 extended policy. A syntax check on a desktop is not a Rodi interpreter test.
 
+The supplied full candidate also includes the exact earlier `ppNear` expansion:
+six explicit comparisons replace its local-index loop, preserving both vector
+checks, literal Euler values and the original tolerance. This avoids shipping
+the call site photographed with `i is not defined` again. The separate historic
+patch and its equivalence tests are retained privately; it does not establish
+the internal cause of that interpreter behavior or claim current installation.
+
 Offline faults cover old/new negotiation, repeated timeouts and recovery,
 deadline exhaustion, expired/mismatched requests, malformed actual state,
 lost committed acknowledgments, exactly-once dispatch and callback restoration.
