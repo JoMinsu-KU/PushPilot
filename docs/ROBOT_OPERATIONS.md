@@ -51,7 +51,7 @@ The alternative `fresh_entry` signal policy remains for compatibility configurat
 | Native stationary acquisition | Diagnosed idle failures exhausted three approximately two-second reads, closing the session after about six seconds. These are inherited-runtime observations, not a new public resilience setting. | It is not the traffic-signal timer. |
 | Receiver/wire and publication freshness | Inherited pendant receive and host wire bounds are separate (10 and 12 seconds in the reviewed runtime); the public wrapper rejects a host snapshot older than five seconds. Exact imported bytes are bound by the runtime manifest. | A fresh web status response does not prove a fresh Native or pendant state. |
 
-The host calls the Native guard synchronously inside the persistent exchange. MUSE and camera run in other processes, but the Native guard can block the same exchange that maintains pendant liveness. **Idle-timeout hardening is not implemented at this cutoff.** A future fix must separate connection liveness from unavailable telemetry while inhibiting dispatch, with explicit recovery for ambiguous motion; raising every timeout would not solve that lifecycle problem.
+The November 2 [server recovery](HOST_NATIVE_RECOVERY.md) retains legal idle liveness while reacquiring unavailable Native reads. It publishes non-idle `native_wait`, blocks new admission and requires fresh stationary proof before readiness. There is no parallel wire writer, timeout inflation or automatic motion replay. HELLO/BEGIN, READY/GO and other non-idle handshakes retain bounded failure behavior; an uncertain operation still requires explicit reconciliation. Confirm the actual host release and live-idle validation separately from source publication.
 
 ## What to retain after a failure
 

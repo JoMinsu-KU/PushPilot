@@ -21,6 +21,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from backend.robot_control.legacy import DEFAULT_RUNTIME, PrewireRejected, load_runtime
+from backend.robot_control.host_resilience import NativeRecovery, RecoveryWire
 
 
 def read_profile(path, modules, motion):
@@ -118,24 +119,38 @@ def run_session(connection, peer, runtime, profile_path, modules, motion=True):
         server.environment_check(journal)
         server.legacy_receiver_absent(journal)
         native = transport.Native(journal)
+        wire = RecoveryWire(transport.Wire(connection, journal), server)
+        last_publication = None
+
+        def waiting(detail):
+            report["native_telemetry"] = detail
+            if last_publication is not None:
+                publish("native_wait", *last_publication)
+            journal.event("native_telemetry_wait", detail)
+
+        recovery = NativeRecovery(native, wire, transport,
+            owner_check=lambda: server.legacy_receiver_absent(journal), waiting=waiting)
 
         def guard(expected, programs=(2,)):
             server.legacy_receiver_absent(journal)
-            return transport.read_stationary(native, expected, programs, motion)
+            return recovery.stationary(expected, programs, motion)
 
-        # The pendant has already entered its script before opening this socket.
-        # The original host's (1, 6) pre-PLAY check ran BEFORE accept(); here the
-        # accepted connection must be checked as running program state 2.
-        row = guard(profile["expected_start_tcp_mm_deg"], (2,))
-        g.near(row["joint"], profile["expected_start_joint_deg"], .5)
+        # The inherited exchange validates HELLO/profile origin and performs
+        # the fresh running-program (2) Native/joint guard before BEGIN. Do
+        # not duplicate that acquisition before reading HELLO: two otherwise
+        # successful slow guards could exhaust the pendant's 10s BEGIN wait.
 
         def publish(stage, sid, seq, pid, actual, planned, joints, active_profile, capabilities, actual_joint):
+            nonlocal last_publication
+            last_publication = (sid, seq, pid, actual, planned, joints, active_profile, capabilities, actual_joint)
             server.atomic_json(path / "state.json", dict(schema=g.SCHEMA, stage=stage, session_id=sid, seq=seq,
                 profile_id=pid, profile=active_profile, actual_pose=actual, planned_pose=planned,
                 planned_joint=joints, actual_joint=actual_joint, capabilities=capabilities,
                 ik_baseline_verified=report.get("ik_baseline_verified", False),
                 rejected_requests=report.get("rejected_requests", 0),
                 last_rejected_request=report.get("last_rejected_request"), physical_execution=motion,
+                native_telemetry_available=not recovery.unavailable,
+                native_telemetry=report.get("native_telemetry") if recovery.unavailable else None,
                 updated_monotonic_ns=time.monotonic_ns()))
             _host_status(runtime, modules, {"source": "rodi_host", "status": stage,
                 "ready": stage == "idle", "receiver_session_active": True,
@@ -143,9 +158,9 @@ def run_session(connection, peer, runtime, profile_path, modules, motion=True):
                 "server_exit_is_robot_stop": False})
 
         server.atomic_json(Path(runtime) / "current_session.json", {"path": name})
-        server.exchange(transport.Wire(connection, journal), guard, profile, motion, report, publish,
+        server.exchange(wire, guard, profile, motion, report, publish,
                         path / "command.json", journal.event,
-                        settle=lambda endpoint: transport.wait_endpoint_settled(native, endpoint, motion))
+                        settle=lambda endpoint: recovery.settled(endpoint, motion))
     except Exception as error:
         report["errors"].append(type(error).__name__ + ": " + str(error)[:512])
         report["status"] = ("outcome_unknown_check_pendant" if report["motion_permission_may_have_been_sent"] else
@@ -154,16 +169,24 @@ def run_session(connection, peer, runtime, profile_path, modules, motion=True):
         report["status"] = "outcome_unknown_check_pendant" if report["motion_permission_may_have_been_sent"] else "host_interrupted"
         raise
     finally:
-        server.atomic_json(path / "state.json", dict(stage="closed", status=report["status"],
-                                                    updated_monotonic_ns=time.monotonic_ns()))
-        _host_status(runtime, modules, {"source": "rodi_host", "status": report["status"],
-            "ready": False, "receiver_session_active": False, "automatic_retry": False,
-            "waiting_for_manual_play": True, "server_exit_is_robot_stop": False})
-        journal.event("pose_session_closed", dict(session_id=report.get("session_id"), status=report["status"],
-            in_flight=report.get("in_flight"), active_command=report.get("active_command"), errors=report["errors"]))
-        journal.event("summary", report)
-        journal.close()
-        server.atomic_json(path / "summary.json", report)
+        try:
+            server.atomic_json(path / "state.json", dict(stage="closed", status=report["status"],
+                errors=report["errors"], updated_monotonic_ns=time.monotonic_ns()))
+            journal.event("pose_session_closed", dict(session_id=report.get("session_id"), status=report["status"],
+                in_flight=report.get("in_flight"), active_command=report.get("active_command"), errors=report["errors"]))
+            journal.event("summary", report)
+        finally:
+            # A failed archive write must not leak the journal descriptor or
+            # leave global diagnostics ready. The listener's outer exception
+            # boundary still records a failed session; nothing is replayed.
+            _host_status(runtime, modules, {"source": "rodi_host", "status": report["status"],
+                "ready": False, "receiver_session_active": False, "automatic_retry": False,
+                "errors": report["errors"], "waiting_for_manual_play": True,
+                "server_exit_is_robot_stop": False})
+            try:
+                journal.close()
+            finally:
+                server.atomic_json(path / "summary.json", report)
     return {"status": report["status"], "run": name, "automatic_retry": False,
             "ready": False, "receiver_session_active": False,
             "waiting_for_manual_play": True, "server_exit_is_robot_stop": False}

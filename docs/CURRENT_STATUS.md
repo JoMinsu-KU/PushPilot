@@ -21,7 +21,7 @@ PushPilot's original promise is unchanged: **see the scene, express a goal, insp
 | Voice | Backend accepts bounded supported WAV, targets the Meta transcription adapter and returns revision-bound candidate text. | Browser capture/encoding/confirmation, actual ASR access and recognition quality remain pending or unverified. Typed goals remain available. |
 | Goal editing | Robot UI disables edits during a physical mission; simulation validates its workspace state. | Workspace/voice APIs do not yet share a server-side active-mission lock with the separate physical service. |
 | Recovery | Explicit completed-review continuation, scoped C19 omission, C11 boundary preparation and session-bound START reference; ended-mission retirement at verified START. | No automatic unknown-command replay. Reset does not itself move the robot. Some reconnects require local PLAY. |
-| Receiver resilience | Camera/MUSE work is outside the host exchange. Native acquisition remains synchronous within that exchange. | Intermittent Native timeouts can close idle Rodi sessions. The proposed independent wait/heartbeat repair is **not implemented**. |
+| Receiver resilience | Same-owner legal-idle heartbeats contain transient Native read failures; `native_wait` blocks dispatch and requires fresh measurements. [Recovery](HOST_NATIVE_RECOVERY.md) | Server implementation and equipment-free tests do not establish a live idle soak. Non-idle protocol handshakes and unknown outcomes remain bounded failures; no automatic reconnect or motion replay. |
 | Glasses companion | Retained product concept for seeing, stating and reviewing the shared plan. | No wearable integration is claimed. |
 
 ## One start. Three destinations.

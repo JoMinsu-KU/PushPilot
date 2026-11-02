@@ -487,9 +487,30 @@ class HostSessionTests(unittest.TestCase):
         self.exchange.assert_not_called()
 
     def test_accepted_pendant_is_checked_in_running_program_state(self):
+        def exchange(wire, guard, profile, motion, report, publish, command, emit, settle):
+            # HELLO and its origin checks belong to the inherited exchange;
+            # do not spend another acquisition before it can read HELLO.
+            self.modules["transport"].read_stationary.assert_not_called()
+            guard(profile["expected_start_tcp_mm_deg"])
+        self.exchange.side_effect = exchange
         self.run_session()
         self.modules["transport"].read_stationary.assert_called_once_with(
             self.native.return_value, [0] * 6, (2,), True)
+
+    def test_session_finalize_failure_still_closes_journal_and_revokes_ready(self):
+        journal = SimpleNamespace(event=Mock(), close=Mock())
+        def new_journal(path):
+            path.mkdir(parents=True)
+            return journal
+        def event(kind, data):
+            if kind == "pose_session_closed":
+                raise OSError("archive unavailable")
+        journal.event.side_effect = event
+        with patch.object(self.modules["transport"], "Journal", side_effect=new_journal):
+            with self.assertRaisesRegex(OSError, "archive unavailable"):
+                self.run_session()
+        journal.close.assert_called_once()
+        self.assertFalse(json.loads((self.root / "host-status.json").read_text())["ready"])
 
     def test_listener_remains_available_after_a_failed_session_without_outbound_reconnect(self):
         fake_fcntl = SimpleNamespace(LOCK_EX=2, LOCK_NB=4, flock=Mock())
