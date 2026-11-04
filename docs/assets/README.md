@@ -25,6 +25,12 @@ The current source uses it in the workspace, Spatial preview, browser/iPad icons
 
 The [physical media record](PHYSICAL_MEDIA.md) links the selected recordings and defines each clip's scope. [physical-media.json](physical-media.json) records dimensions, source IDs, extraction positions, per-asset processing and hashes. The new clip is a continuous resized/frame-rate-resampled H.264 derivative; its poster adds JPEG encoding only. Earlier recording frames use decoding/JPEG encoding only. There is no generative editing or compositing. Video bytes remain in Drive. The [read-only decision explorer](../review/index.html) separately embeds original synthetic inputs and archived provider results; its cases are not physical recordings.
 
+## Supplied system architecture
+
+[`system-architecture-supplied.png`](system-architecture-supplied.png) is the user-provided system overview selected for the main README on November 4, 2026. The original 3840 × 2160 RGB PNG is copied unchanged: 3,797,604 bytes, SHA-256 `cf30962fdb60258252af349b282ca5b5646d86cf444578608a35840985474ea6`.
+
+The diagram combines the labelled setup photograph and tablet capture with an explanatory service/data-flow layout. Its own November 2 date and earlier mark are retained as supplied. It is an architecture overview, not a new execution, voice-recognition or repeatability test. The adjacent README prose carries the service responsibilities in accessible text; current implementation and limitations remain in [Architecture](../ARCHITECTURE.md) and [Current status](../CURRENT_STATUS.md). No designer attribution, generation method or new license grant is inferred.
+
 ## Current illustrations
 
 | Asset | Canvas | Purpose |

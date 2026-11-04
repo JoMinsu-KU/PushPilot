@@ -9,6 +9,8 @@
 A **Meta Muse Spark 1.3** workspace for operators running robot demos and pilot tasks,<br>
 bringing the goal, execution feedback and visual result into one view.
 
+**Authors** · Jinhong Yang · Minsu Jo · Jaeeun Jung
+
 [Watch 55 seconds: motion → new MUSE review → next step](https://drive.google.com/file/d/1TSuzN94-EOozUoWs5WLEXWVgjVezt0j9/view) · [Explore 3 recorded Muse decisions](https://jominsu-ku.github.io/PushPilot/) · [How MUSE is used](#how-muse-changes-the-next-step)
 
 </div>
@@ -70,6 +72,11 @@ Camera shows the actual perspective with an AR route. Spatial shows the same sel
 The short recording above shows one physical action, a new MUSE review and continuation. It is separate from the October 29 B/C/D arrival records. The earlier [post-arrival/empty-return recording](docs/DEMO.md#watch-the-physical-recordings) remains supporting material.
 
 ## How it is built
+
+<p align="center">
+  <a href="docs/assets/system-architecture-supplied.png"><img src="docs/assets/system-architecture-supplied.png" width="1180" alt="PushPilot system architecture: a tablet workspace and USB camera connect to the GX10 camera service, mission supervisor and coordinate executor; Meta MUSE interprets goals, routes, signals and outcomes, while the executor sends taught BASE commands to the HCR robot and records Native status."></a><br>
+  <sub>MUSE understands. The coordinate executor moves. <a href="docs/assets/system-architecture-supplied.png">Open the full-resolution diagram (3840 × 2160)</a> · <a href="docs/assets/README.md#supplied-system-architecture">Artwork provenance</a></sub>
+</p>
 
 **MUSE interprets intent and visual evidence. The supervisor admits actions. The executor follows taught BASE coordinates. Native/controller receipts verify robot completion.**
 
@@ -136,7 +143,5 @@ The original vision extends the same intent–plan–action–review loop to oth
 </details>
 
 ---
-
-**Team** · Jinhong Yang · Minsu Jo · Jaeeun Jung
 
 <p align="center"><strong>PushPilot · From sight to action</strong><br><sub>A shared plan. A checked outcome. An understandable next step.</sub></p>
