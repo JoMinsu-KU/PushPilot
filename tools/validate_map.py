@@ -1,3 +1,5 @@
+# Audit a replacement drawing map.
+# Contacts no providers or hardware.
 """Audit a replacement drawing map without contacting providers or hardware."""
 from __future__ import annotations
 

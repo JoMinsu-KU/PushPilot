@@ -1,3 +1,5 @@
+// Workspace panels: mission cards, telemetry, evidence, and paged text.
+// Operator display only; commands flow through explicit backend calls.
 import { useEffect, useRef, useState } from 'react';
 import type { EvidenceEvent, WorkspaceSnapshot } from '../../contracts/workspace';
 import type { PhysicalStatus, PhysicalTelemetry } from '../../contracts/physical';

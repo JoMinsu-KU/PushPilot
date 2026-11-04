@@ -1,3 +1,5 @@
+// Tests for preview poll gating, frame age, and overlay eligibility.
+// Offline node:test; snapshot fixtures only.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createLivePollGate, liveDisplaySnapshot, liveFrameAge, liveFrameFresh, liveOverlayAllowed } from '../src/liveCamera.ts';

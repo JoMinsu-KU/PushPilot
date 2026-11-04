@@ -1,3 +1,5 @@
+// Evidence display only; provider verdicts are never edited here.
+// Read-only viewer for live native-image planning/action/signal evidence.
 import { useState } from 'react';
 import type { LiveActionEvidence, LiveFrameEvidence, LivePlanningEvidence, LiveSignalEvidence } from '../../contracts/live-intelligence';
 import { Icon } from './Icons';
@@ -5,6 +7,7 @@ import { TextPages } from './WorkspaceUI';
 
 export type LiveDecisionEvidence = LivePlanningEvidence | LiveActionEvidence | LiveSignalEvidence;
 
+/** One native evidence image linking to its original bytes. */
 function Frame({ frame, label }: { frame: LiveFrameEvidence; label: string }) {
   return <figure className="ar-frame">
     <a className="ar-frame-image" href={frame.image_url} target="_blank" rel="noreferrer" aria-label={`Open original ${label.toLowerCase()} image`}>

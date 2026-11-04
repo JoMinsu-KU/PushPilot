@@ -1,3 +1,5 @@
+// Tests for reviewed site-trial primitive titles.
+// Offline node:test; labels never guess across recipes.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { executionStepLabel } from '../src/executionLabels.ts';

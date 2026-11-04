@@ -1,3 +1,5 @@
+// Tests for the display-only board-focus viewport and mask.
+// Offline node:test; geometry fixtures only.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { recordedDisplay } from '../src/boardFocus.ts';

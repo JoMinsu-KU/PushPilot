@@ -1,3 +1,5 @@
+// Tests for the 3D signal prop appearance and raycast behavior.
+// Offline node:test; display appearance only.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Box3, Mesh, MeshBasicMaterial, MeshStandardMaterial, Raycaster, Vector3 } from 'three';

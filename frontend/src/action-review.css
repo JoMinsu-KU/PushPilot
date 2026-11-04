@@ -1,3 +1,5 @@
+/* BEFORE/AFTER review panel layout: paged result and evidence views. */
+/* Presentation only; review data comes from recorded evidence. */
 .ar-workspace {
   display: flex;
   flex-direction: column;

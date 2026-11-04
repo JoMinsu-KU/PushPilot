@@ -1,3 +1,5 @@
+// 3D paper-signal prop: red-over-green faces at a display-only position.
+// Appearance only; signal admission stays with the stopped-live gate.
 import * as THREE from 'three';
 
 export type CitySignalState = 'base' | 'red-observed' | 'green-approved';

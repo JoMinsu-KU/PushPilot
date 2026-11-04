@@ -1,3 +1,5 @@
+// Tests for display-feed parsing and car-track projection.
+// Offline node:test; display math only.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHash } from 'node:crypto';

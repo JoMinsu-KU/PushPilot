@@ -1,3 +1,5 @@
+// Tests for the drawing-to-city-model preview fit and projection.
+// Offline node:test; pinned model identity asserted.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Matrix4, PerspectiveCamera, Vector3 } from 'three';

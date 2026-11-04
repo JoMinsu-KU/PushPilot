@@ -1,3 +1,5 @@
+# Synthetic review fixtures: original synthetic image pairs for hardware-free evaluation.
+# Test inputs only; not photographs, motion evidence, or model results.
 """Create original synthetic image pairs for explicit, hardware-free evaluation.
 
 These diagrams are test inputs, not photographs, motion evidence or model results.

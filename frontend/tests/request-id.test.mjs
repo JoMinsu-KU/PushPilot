@@ -1,3 +1,5 @@
+// Tests for idempotency-key generation and LAN fallback.
+// Offline node:test; identity format only.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createRequestId } from '../src/requestId.ts';

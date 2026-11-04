@@ -1,3 +1,5 @@
+// Pure math; a null result means unprojectable input, not a fitted fix.
+// Pure 2D helpers: homography projection and route direction arrows.
 export type Point = [number, number];
 
 /** Project drawing millimeters into the original, uncropped image pixel plane. */

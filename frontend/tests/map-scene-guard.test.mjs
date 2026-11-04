@@ -1,3 +1,5 @@
+// Guards that scene tools never trap Stop behind a modal.
+// Offline source assertions; physical controls stay read-only.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';

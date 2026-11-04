@@ -1,3 +1,5 @@
+# Prepare an opt-in experimental contact-turn profile entirely offline.
+# No measurement, clearance qualification, or application.
 """Prepare an opt-in experimental contact-turn profile entirely offline.
 
 The caller supplies actual current site/tool/car review, finite full Euler

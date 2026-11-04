@@ -1,3 +1,5 @@
+# Serve the built operator workspace and simulation API in one Python process.
+# Installs/builds nothing, contacts no provider, issues no robot commands.
 """Serve the built operator workspace and simulation API in one Python process.
 
 This launcher does not install dependencies, build assets, contact a provider,

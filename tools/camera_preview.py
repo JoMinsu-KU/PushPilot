@@ -1,3 +1,5 @@
+# Serve one native MJPEG camera on loopback without decoding or saving frames.
+# Explicit GX10 capture; no MUSE or robot commands.
 """Serve one native MJPEG camera on loopback without decoding or saving frames.
 
 Run deliberately on GX10 with an explicit camera device and identity. This tool

@@ -1,3 +1,5 @@
+# Package the public read-only recorded review for static hosting (stdlib only).
+# Loads no API, camera, backend, or robot code.
 """Package only the public, read-only recorded review for static hosting.
 
 Uses the standard library only. No API, camera, backend or robot code is loaded.

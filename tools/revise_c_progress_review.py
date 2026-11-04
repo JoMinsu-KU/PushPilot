@@ -1,3 +1,5 @@
+# Prepare an offline C-only observation-policy candidate.
+# Never activates it.
 """Prepare an offline C-only observation-policy candidate; never activate it."""
 from copy import deepcopy
 

@@ -1,3 +1,5 @@
+// Labels only; lock/relock decisions stay with the backend.
+// Derive the live-camera status label, detail text, and alerts from a snapshot.
 import type { LiveCameraSnapshot } from '../../contracts/live-camera';
 import type { TemporaryMap } from '../../contracts/scene';
 

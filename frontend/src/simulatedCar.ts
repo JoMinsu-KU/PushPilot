@@ -1,3 +1,5 @@
+// Display-only simulated car along the drawn route for the Spatial view.
+// Follows nominal progress, never a measured car pose.
 import type { TemporaryMap } from '../../contracts/scene';
 import type { Point } from './projection.ts';
 import type { RouteDisplay } from './routeProgress.ts';

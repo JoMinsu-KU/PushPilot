@@ -1,3 +1,5 @@
+// Informational model; crossing authority stays with backend gates.
+// Build the route display model from supervisor receipts; informational only.
 import type { MapRoute, TemporaryMap } from '../../contracts/scene';
 import type { PlanStep, WorkspaceSnapshot } from '../../contracts/workspace';
 import type { Point } from './projection.ts';
@@ -24,6 +26,7 @@ const point = (value: unknown): value is Point => Array.isArray(value) && value.
 const samePoint = (a: Point, b: Point) => Math.hypot(a[0] - b[0], a[1] - b[1]) < .001;
 const geometryLength = (points: Point[]) => points.slice(1).reduce((length, next, index) => length + Math.hypot(next[0] - points[index][0], next[1] - points[index][1]), 0);
 
+/** A route renders only against the exact map identity it was planned on. */
 export function routeMatchesMap(route: MapRoute | null, map: TemporaryMap | null): boolean {
   return Boolean(route && map && route.map_id === map.id && route.map_version === map.version && route.map_hash === map.geometry_hash);
 }

@@ -1,3 +1,5 @@
+// Vite config for the standalone Spatial design preview (preview page only).
+// No API proxy or equipment connection; local design review only.
 import { defineConfig } from 'vite';
 
 /** A local design entry with no API proxy or equipment connection. */

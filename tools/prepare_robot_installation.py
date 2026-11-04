@@ -1,3 +1,5 @@
+# Build a fresh private translation-only profile from operator measurements.
+# Offline only; neither measures nor qualifies an installation.
 """Build a fresh private translation-only profile from operator measurements.
 
 This offline tool neither measures nor qualifies an installation. It imports no

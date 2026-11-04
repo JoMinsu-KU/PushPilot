@@ -1,3 +1,5 @@
+// Tests for the 3D preview signal-color decision.
+// Offline node:test; preview color is never admission.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { spatialSignalState } from '../src/spatialSignal.ts';

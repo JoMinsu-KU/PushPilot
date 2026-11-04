@@ -1,3 +1,5 @@
+// Optional 3D city viewer with an unaligned 2D route preview overlay.
+// Display fit only; isolated from camera registration and robot coordinates.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { TemporaryMap } from '../../contracts/scene';
 import * as THREE from 'three';

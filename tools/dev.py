@@ -1,3 +1,5 @@
+# Equipment-free development checks (syntax and offline suite) from the application root.
+# Contacts no hardware, providers, or services.
 """Run equipment-free development checks from the standalone application root."""
 from __future__ import annotations
 

@@ -1,3 +1,5 @@
+# Start an independent commissioning API; mock by default.
+# Never starts Rodi or cameras.
 """Start an independent commissioning API; mock by default, never start Rodi or cameras."""
 from __future__ import annotations
 

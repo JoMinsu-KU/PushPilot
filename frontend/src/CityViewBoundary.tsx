@@ -1,3 +1,5 @@
+// A failed 3D chunk returns to camera view instead of unmounting the workspace.
+// Error boundary isolating the optional 3D city viewer from the workspace.
 import { Component, type ReactNode } from 'react';
 
 /** Keep a missing or stale optional 3D chunk from unmounting the workspace. */

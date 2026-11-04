@@ -1,3 +1,5 @@
+/* Optional 3D city viewer layout and 2D route-preview overlay. */
+/* Display only; the preview fit never moves the camera registration. */
 .city-model-view { position: relative; width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; isolation: isolate; }
 .city-model-host { position: absolute; inset: 0; }
 .city-model-host { background: #d8e6f7; }

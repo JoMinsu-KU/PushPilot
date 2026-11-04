@@ -1,3 +1,5 @@
+// Preview color only; a shown green is not crossing authority.
+// Decide which signal color the 3D preview may show; display only, never admission.
 import type { PhysicalStatus } from '../../contracts/physical';
 import type { WorkspaceSnapshot } from '../../contracts/workspace';
 import type { CitySignalState } from './citySignal';

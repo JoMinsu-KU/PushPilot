@@ -1,3 +1,5 @@
+// Scene stage: camera/Spatial switch, route overlays, and scene tools.
+// Original pixels and overlay geometry stay untouched; navigation is display-only.
 import { lazy, Suspense, useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { MapRoute, SceneSnapshot, TemporaryMap } from '../../contracts/scene';
 import type { LiveCameraSnapshot } from '../../contracts/live-camera';

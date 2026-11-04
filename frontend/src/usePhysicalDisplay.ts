@@ -1,3 +1,5 @@
+// Hook for optional read-only display telemetry alongside mission state.
+// Display failures never reach the execution hook.
 import { useEffect, useRef, useState } from 'react';
 import type { PhysicalStatus } from '../../contracts/physical';
 import { advanceDisplayFeed, displayFeedFresh, displayMatchesStatus, parsePhysicalDisplay, type DisplayFeedState, type PhysicalDisplaySnapshot } from './physicalDisplay';

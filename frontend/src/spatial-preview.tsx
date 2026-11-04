@@ -1,3 +1,5 @@
+// Design review only; no mission state or equipment connection.
+// Standalone Spatial design preview: camera views and signal appearance controls.
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { CityModelView } from './CityModelView';
@@ -5,6 +7,7 @@ import type { CitySignalState } from './citySignal';
 import './fonts.css';
 import './spatial-preview.css';
 
+/** Interactive preview shell around the city model viewer. */
 function SpatialSignalPreview() {
   const [signal, setSignal] = useState<CitySignalState>('base');
   const [camera, setCamera] = useState<'wide' | 'signal'>('wide');

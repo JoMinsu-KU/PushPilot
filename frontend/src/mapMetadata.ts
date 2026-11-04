@@ -1,3 +1,5 @@
+// Map display names, destination options, and drawing-distance labels.
+// Presentation aliases only; API bindings keep canonical identifiers.
 import type { TemporaryMap } from '../../contracts/scene';
 
 /** Display names come from the selected map; identifiers remain the API binding. */

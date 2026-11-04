@@ -1,3 +1,5 @@
+# Offline contact-relative path screening with local clearance info.
+# Not a rigid-body physics simulator; screening is not activation.
 """Offline contact-relative path screening, not a rigid-body physics simulator.
 
 The reported 45 x 18 mm vehicle and 15 mm rubber face inform a local clearance

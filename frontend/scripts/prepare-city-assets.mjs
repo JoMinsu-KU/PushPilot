@@ -1,3 +1,5 @@
+// Stage pinned Three.js decoder assets for the city model from local node_modules.
+// Build-time file copy only; version changes need decoder review.
 import { copyFile, mkdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';

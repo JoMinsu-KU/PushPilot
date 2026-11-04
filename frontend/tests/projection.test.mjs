@@ -1,3 +1,5 @@
+// Tests for homography projection orientation.
+// Offline node:test; pure-math assertions only.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { projectPoint, directionArrows } from '../src/projection.ts';

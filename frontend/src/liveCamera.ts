@@ -1,3 +1,5 @@
+// Preview display only; the age limit is not a physical-control tolerance.
+// Live preview state helpers: poll gating, frame age, and overlay eligibility.
 import type { MapRoute, TemporaryMap } from '../../contracts/scene';
 import type { LiveCameraSnapshot } from '../../contracts/live-camera';
 
@@ -40,6 +42,7 @@ export function liveFrameAge(snapshot: LiveCameraSnapshot | null, receivedAt: nu
   return Math.max(0, snapshot.frame.age_ms) + Math.max(0, now - receivedAt);
 }
 
+/** A frame is fresh only while live, enabled, and within its age limit. */
 export function liveFrameFresh(snapshot: LiveCameraSnapshot | null, receivedAt: number, now: number): boolean {
   return Boolean(snapshot?.enabled && snapshot.state === 'live' && snapshot.frame
     && liveFrameAge(snapshot, receivedAt, now) <= (snapshot.freshness_limit_ms ?? LIVE_FRESHNESS_LIMIT_MS));

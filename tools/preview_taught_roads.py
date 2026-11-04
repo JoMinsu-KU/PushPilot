@@ -1,3 +1,5 @@
+# Preview directly taught BASE roads from a private JSON input.
+# Preview only; never dispatches.
 """Preview directly taught BASE roads from a private JSON input; never dispatch.
 
 Input fields: points [{id, pose_base_mm_deg, observation_sha256}] and optional

@@ -1,3 +1,5 @@
+/* Map/camera scene stage, controls, and panel layout. */
+/* Layout only; overlay geometry follows the scene snapshot. */
 .map-scene-component { position: relative; min-width: 0; min-height: 0; color: #36393b; background: transparent; isolation: isolate; }
 .map-scene-stage { width: 100%; height: 100%; }
 .map-scene-panel { height: 550px; }

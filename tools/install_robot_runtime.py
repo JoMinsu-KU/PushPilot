@@ -1,3 +1,5 @@
+# Copy only hash-reviewed POC runtime sources.
+# Never profiles, commands, or runs.
 """Copy only hash-reviewed POC runtime sources, never profiles, commands or runs."""
 from __future__ import annotations
 

@@ -1,3 +1,5 @@
+// Tests for the route display model and signal presentation.
+// Offline node:test; receipt fixtures only.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createRouteDisplay, currentSignalJunction, projectRouteDisplay, routeLabelLayout, signalDisplay } from '../src/routeProgress.ts';

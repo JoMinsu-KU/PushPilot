@@ -1,3 +1,5 @@
+// Navigation moves image and overlays together; registration stays fixed.
+// Pan/zoom wrapper for the camera plane: pointer, wheel, pinch, and keyboard.
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 import {
   DEFAULT_CAMERA_VIEWPORT,

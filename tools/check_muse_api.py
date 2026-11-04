@@ -1,3 +1,5 @@
+# Explicit Meta auth check plus one tiny Muse Spark completion.
+# Reads local .env, never prints credentials; calls can consume credits.
 """Explicitly test Meta authentication and one tiny Muse Spark completion.
 
 Reads the repository-local .env, never prints credentials, never follows redirects,

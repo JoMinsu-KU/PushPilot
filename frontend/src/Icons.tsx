@@ -1,3 +1,5 @@
+// Static artwork only; no behavior or state lives here.
+// Shared stroke-icon set and brand mark; decorative icons stay aria-hidden.
 import type { CSSProperties } from 'react';
 
 export type IconName = 'arrow' | 'chevron' | 'eye' | 'mic' | 'text' | 'home' | 'clock' | 'settings' | 'camera' | 'check' | 'pause' | 'play' | 'refresh' | 'stop' | 'glasses' | 'car' | 'shield' | 'close' | 'spark' | 'route' | 'upload' | 'plus' | 'minus';
@@ -26,9 +28,11 @@ const paths: Record<IconName, React.ReactNode> = {
   plus: <path d="M5 12h14M12 5v14" />,
   minus: <path d="M5 12h14" />,
 };
+/** Render one named 24px-grid stroke icon. */
 export function Icon({ name, size = 22, style, className = '' }: { name: IconName; size?: number; style?: CSSProperties; className?: string }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={style} className={className}>{paths[name]}</svg>;
 }
+/** Render the PushPilot brand mark. */
 export function BrandMark() {
   return <svg width="39" height="39" viewBox="0 0 40 40" aria-hidden="true"><path fill="currentColor" d="M2 18 23 5v15L2 33Z"/><path fill="currentColor" d="m17 25 21-13v23Z"/><path fill="currentColor" opacity=".55" d="m17 25 6-5v8Z"/></svg>;
 }

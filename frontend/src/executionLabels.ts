@@ -1,3 +1,4 @@
+// Display titles only; the server remains the execution source of truth.
 /** Read-only titles for the reviewed site-trial primitives. These are action
  * intentions, not completion, vehicle-pose or motion-authority assertions.
  * Unknown/replaced recipes keep their server-provided labels. No numeric

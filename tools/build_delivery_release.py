@@ -1,3 +1,5 @@
+# Offline compiler: portable, reviewable site trial from private delivery candidates.
+# No physical qualification; sends no commands.
 """Compile private delivery candidates into a portable, reviewable site trial.
 
 This is an offline compiler, not a physical qualification or command sender.

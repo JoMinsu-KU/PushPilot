@@ -1,3 +1,5 @@
+// Tests for live-camera status labels and overlay eligibility.
+// Offline node:test; snapshot fixtures only.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { liveCameraPresentation } from '../src/cameraPresentation.ts';

@@ -1,3 +1,5 @@
+# Build and verify a public-source ZIP from a clean local Git commit.
+# No server, robot code, or service contact; requires Git.
 """Build and verify a public-source ZIP from a clean local Git commit.
 
 This tool never connects to a server, imports robot code, or starts a service.

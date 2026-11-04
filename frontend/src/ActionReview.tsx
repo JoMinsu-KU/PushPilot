@@ -1,3 +1,5 @@
+// Recorded evidence only; live inference never writes into this panel.
+// Operator-selected BEFORE/AFTER review panel with paged result and evidence views.
 import { useEffect, useState } from 'react';
 import type { RecordedActionEvidence, RecordedActionReviewCommand, RecordedFrameEvidence } from '../../contracts/action-review';
 import type { SceneSnapshot } from '../../contracts/scene';
@@ -31,6 +33,7 @@ function textPages(text: string, limit = 520, lineLimit = 8): string[] {
   return pages;
 }
 
+/** Previous/next pager shared by text, editor, and evidence sections. */
 function PageControl({ page, count, onChange, label = 'Page' }: { page: number; count: number; onChange: (page: number) => void; label?: string }) {
   return <div className="ar-pagination" aria-label={`${label} navigation`}>
     <button type="button" aria-label={`Previous ${label.toLowerCase()}`} disabled={page === 0} onClick={() => onChange(page - 1)}><Icon name="chevron" size={17} className="ar-previous"/></button>
@@ -39,6 +42,7 @@ function PageControl({ page, count, onChange, label = 'Page' }: { page: number; 
   </div>;
 }
 
+/** Long review text split into pages so the dialog never scrolls vertically. */
 function PagedText({ text, label, code = false }: { text: string; label: string; code?: boolean }) {
   const [page, setPage] = useState(0);
   const pages = textPages(text, code ? 650 : 520, code ? 11 : 8);
@@ -50,6 +54,7 @@ function PagedText({ text, label, code = false }: { text: string; label: string;
   </div>;
 }
 
+/** Paged editor for the expected visual outcome, bounded to 1,000 characters. */
 function ExpectedEditor({ value, disabled, onChange }: { value: string; disabled: boolean; onChange: (value: string) => void }) {
   const [pages, setPages] = useState(() => textPages(value, 240, 4));
   const [page, setPage] = useState(0);
@@ -71,6 +76,7 @@ function ExpectedEditor({ value, disabled, onChange }: { value: string; disabled
   </div>;
 }
 
+/** One selected recording with source, size, capture, and hash provenance. */
 function FramePreview({ frame, label, empty }: { frame: Frame | null; label: 'BEFORE' | 'AFTER'; empty: string }) {
   return <figure className="ar-frame">
     <div className="ar-frame-image">{frame ? <img src={frame.image_url} alt={`${label.toLowerCase()} operator-selected recording`} loading="lazy"/> : <div className="ar-frame-placeholder"><Icon name="camera" size={24}/><span>{empty}</span></div>}<span className="ar-frame-label">{label}</span></div>
@@ -78,6 +84,7 @@ function FramePreview({ frame, label, empty }: { frame: Frame | null; label: 'BE
   </figure>;
 }
 
+/** Accepted review verdict with summary/expected/observed/limitations sections. */
 function ReviewResult({ evidence }: { evidence: RecordedActionEvidence }) {
   const [section, setSection] = useState<'summary' | 'expected' | 'observed' | 'limitations'>('summary');
   const sections = { summary: 'Summary', expected: 'Expected', observed: 'Observed', limitations: 'Limitations' };
@@ -89,6 +96,7 @@ function ReviewResult({ evidence }: { evidence: RecordedActionEvidence }) {
   </div>;
 }
 
+/** Action binding, recording provenance, provider receipt, and the full record. */
 function EvidenceDetails({ evidence }: { evidence: RecordedActionEvidence }) {
   const [page, setPage] = useState(0);
   const groups = [
@@ -118,10 +126,12 @@ function EvidenceDetails({ evidence }: { evidence: RecordedActionEvidence }) {
   </div>;
 }
 
+/** Simulation-only authority reminder shown under every review view. */
 function AuthorityNote() {
   return <p className="ar-authority"><Icon name="shield" size={15}/><span>Operator-selected recordings <span>·</span> Simulation only <span>·</span> No hardware motion authority</span></p>;
 }
 
+/** Read-only recorded evidence viewer for the mission log and replay. */
 export function ActionEvidence({ evidence }: { evidence: RecordedActionEvidence }) {
   const [tab, setTab] = useState<'images' | 'result' | 'evidence'>('result');
   return <section className="ar-workspace ar-readonly" aria-label="Recorded MUSE action evidence">
@@ -132,6 +142,7 @@ export function ActionEvidence({ evidence }: { evidence: RecordedActionEvidence 
   </section>;
 }
 
+/** Interactive BEFORE/AFTER selection, readiness, submission, and result tabs. */
 export function ActionReviewPanel({ workspace, scene, online, pending, busy, readOnly, replayEvidence, onReview, onOpenTools }: {
   workspace: WorkspaceSnapshot | null; scene: SceneSnapshot | null; online: boolean; pending: boolean; busy: boolean;
   readOnly: boolean; replayEvidence?: RecordedActionEvidence;

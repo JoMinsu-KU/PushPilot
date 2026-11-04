@@ -1,3 +1,4 @@
+// Pure viewport math; resets on camera/map/registration identity change.
 /** Display-only movement shared by the original camera image and its overlays. */
 export interface CameraViewport {
   zoom: number;

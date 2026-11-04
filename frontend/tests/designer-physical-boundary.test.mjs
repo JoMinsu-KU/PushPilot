@@ -1,3 +1,5 @@
+// Tests for the designer/physical boundary in rendered output.
+// Offline render assertions; no live backend or equipment.
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';

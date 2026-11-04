@@ -1,3 +1,5 @@
+// Tests for map display names and destination options.
+// Offline node:test; identifiers stay canonical.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { nodeLabel, planStepLabel, destinationOptions, destinationPage, destinationGoal } from '../src/mapMetadata.ts';

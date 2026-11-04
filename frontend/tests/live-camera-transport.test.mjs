@@ -1,3 +1,5 @@
+// Tests for bounded preview fetch, decode, and retry pacing.
+// Offline node:test; stalled requests must not stop polling.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createPreviewResources, decodeLiveFrame as decodeNative, fetchLiveSnapshot, PREVIEW_INTERVAL_MS, previewRetryDelay, withPreviewDeadline } from '../src/liveCameraTransport.ts';

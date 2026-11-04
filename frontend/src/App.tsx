@@ -1,3 +1,5 @@
+// Operator workspace root: mission state, scene views, and review panels.
+// Simulation UI; physical commands need explicit backend configuration.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ProviderMode, ReviewVerdict, SignalColor, WorkspaceSnapshot } from '../../contracts/workspace';
 import type { SceneSnapshot, TemporaryMap } from '../../contracts/scene';

@@ -1,3 +1,5 @@
+# Save an acknowledged fixed robot start without needing vehicle visibility.
+# Authenticated status reads and read-only Native FC03 only; no movement.
 """Save an acknowledged fixed robot start without needing vehicle visibility.
 
 This uses authenticated GET status and read-only Native FC03 only. It neither

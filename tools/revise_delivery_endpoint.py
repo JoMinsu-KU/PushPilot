@@ -1,3 +1,5 @@
+# Offline delivery-endpoint selection.
+# Preserves motion evidence and stage coordinates.
 """Offline endpoint selection; preserves motion evidence and stage coordinates."""
 from copy import deepcopy
 

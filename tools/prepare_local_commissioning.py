@@ -1,3 +1,5 @@
+# Prepare a newly reviewed local BASE-only commissioning profile, offline.
+# Neither measures nor qualifies clearance; applies no profile.
 """Prepare a newly reviewed local BASE-only commissioning profile, offline.
 
 This tool neither measures nor qualifies clearance. A supplied actual on-site

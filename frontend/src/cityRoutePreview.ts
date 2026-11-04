@@ -1,3 +1,5 @@
+// Unaligned preview fit; never a surveyed registration or robot coordinate.
+// Display-only mapping from drawing millimeters to the 3D city model plane.
 import type { SpatialPreview, TemporaryMap } from '../../contracts/scene.ts';
 import type { Point } from './projection.ts';
 
@@ -58,6 +60,7 @@ export function cityPreviewFit(map: TemporaryMap | null, binding: CityModelBindi
   return width > 0 && height > 0 ? { left, top, width, height } : null;
 }
 
+/** Short label describing whether the preview fit is aligned or pending. */
 export function cityPreviewLabel(fit: CityPreviewFit | null): string {
   return !fit ? 'Route correspondence unavailable' : fit.spatial
     ? 'Drawing-aligned route · display only' : '2D route preview · alignment pending';

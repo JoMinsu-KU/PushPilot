@@ -1,3 +1,5 @@
+// Display-only board focus: viewport region and paper mask in original pixels.
+// Masking adds no source detail and never refits the registration.
 import type { TemporaryMap } from '../../contracts/scene';
 import { projectPoint, type Point } from './projection.ts';
 

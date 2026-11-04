@@ -1,3 +1,5 @@
+# Validate, or explicitly execute, one reviewed experimental coordinate unit.
+# No IO without --execute; current-site commissioning, not a qualified route.
 """Validate or explicitly execute one reviewed experimental coordinate unit.
 
 No IO occurs without --execute. This is current-site commissioning, not an

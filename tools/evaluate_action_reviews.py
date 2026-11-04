@@ -1,3 +1,5 @@
+# Evaluate recorded-pair simulation reviews on three original synthetic cases.
+# Fixtures only by default; --call-meta makes exactly three real API calls.
 """Evaluate recorded-pair simulation reviews on three original synthetic cases.
 
 Defaults to generating labelled fixtures only. --call-meta makes exactly three

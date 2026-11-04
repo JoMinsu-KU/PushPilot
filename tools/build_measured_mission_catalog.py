@@ -1,3 +1,5 @@
+# Offline candidate catalogue from hash-verified commissioning evidence.
+# Retains source hashes and old outcomes; screening is not activation.
 """Build a private candidate catalogue from hash-verified commissioning evidence.
 
 Usage: python -m tools.build_measured_mission_catalog --audit-dir PATH --output PATH

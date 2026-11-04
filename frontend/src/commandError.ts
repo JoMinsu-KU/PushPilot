@@ -1,3 +1,5 @@
+// Messaging only; original error codes stay preserved for diagnosis.
+// Translate backend command failures into short operator-facing messages.
 /** Preserve bounded API diagnostics instead of treating every 409 as a revision conflict. */
 export function readableError(value: unknown): string {
   if (typeof value === 'string') return value;
@@ -5,6 +7,7 @@ export function readableError(value: unknown): string {
   return 'The request could not be completed. Refresh the state and try again.';
 }
 
+/** Prefer a structured code/message pair; fall back to revision or generic text. */
 export function commandErrorMessage(payload: unknown, status: number): string {
   const detail = payload && typeof payload === 'object' && 'detail' in payload ? payload.detail : payload;
   if (detail && typeof detail === 'object' && 'code' in detail && 'message' in detail

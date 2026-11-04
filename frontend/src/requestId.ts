@@ -1,3 +1,5 @@
+// Identity only; never a credential or authorization token.
+// Idempotency keys for mission commands; duplicates reuse the stored response.
 interface RequestRandomSource {
   randomUUID?: () => string;
   getRandomValues?: (buffer: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer>;
@@ -6,6 +8,7 @@ interface RequestRandomSource {
 /** Request identity only; this value is never a credential or an authorization token. */
 export function createRequestId(source: RequestRandomSource | undefined = globalThis.crypto): string {
   if (source?.randomUUID) return source.randomUUID();
+  // Fallback path builds an RFC 4122 v4-shaped UUID from available entropy.
   const bytes = new Uint8Array(16);
   if (source?.getRandomValues) source.getRandomValues(bytes);
   else for (let index = 0; index < bytes.length; index++) bytes[index] = Math.floor(Math.random() * 256);

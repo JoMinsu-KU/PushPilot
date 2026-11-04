@@ -1,6 +1,9 @@
+// Clearly illustrative artwork; never evidence of physical success.
+// Original illustrative SVG scenes; not a measured route or live camera view.
 import { Icon } from './Icons';
 import type { MissionState } from '../../contracts/workspace';
 
+/** Illustrative tabletop workspace with a mission-state chip. */
 export function Scene({ state }: { state: MissionState }) {
   return <div className="scene-art">
     <svg className="tabletop-scene" viewBox="0 0 1000 620" role="img" aria-labelledby="scene-title scene-description">
@@ -77,6 +80,7 @@ export function Scene({ state }: { state: MissionState }) {
   </div>;
 }
 
+/** Future AR-glasses companion concept illustration. */
 export function GlassesArt() {
   return <svg className="glasses-art" viewBox="0 0 330 140" role="img" aria-label="Future AR glasses companion concept">
     <defs><linearGradient id="lens"><stop stopColor="#21415d" stopOpacity=".8"/><stop offset=".6" stopColor="#0b1725"/><stop offset="1" stopColor="#08638b" stopOpacity=".6"/></linearGradient><linearGradient id="frame"><stop stopColor="#9db0c0"/><stop offset=".2" stopColor="#172a3c"/><stop offset=".6" stopColor="#020a12"/><stop offset="1" stopColor="#617b90"/></linearGradient></defs>

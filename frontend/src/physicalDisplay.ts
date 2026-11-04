@@ -1,3 +1,5 @@
+// Read-only physical display telemetry: feed parsing and car-track projection.
+// Display only; never a motion or measurement authority.
 import type { PhysicalStatus } from '../../contracts/physical.ts';
 import type { TemporaryMap } from '../../contracts/scene.ts';
 import type { Point } from './projection.ts';

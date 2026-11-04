@@ -1,3 +1,5 @@
+/* Standalone Spatial preview page theme and glass layout. */
+/* Design-preview styling only; not the mission workspace. */
 :root { font-family: 'Pretendard Variable', Pretendard, system-ui, sans-serif; color: #334148; background: #edf1f5; font-synthesis: none; --fs-12: 12px; --fs-13: 13px; --fs-16: 16px; --stage-content-left: 22px; --stage-source-bottom: 8px; }
 * { box-sizing: border-box; }
 body { margin: 0; overflow: hidden; }

@@ -1,3 +1,5 @@
+// Overlay geometry only; phases mirror supervisor receipts.
+// SVG route layer: phased segments, stop lines, endpoints, and status labels.
 import { useId } from 'react';
 import type { Point } from './projection';
 import { routeLabelLayout, type RouteDisplay, type RoutePhase } from './routeProgress';
@@ -103,6 +105,7 @@ export function RouteOverlay({ display, scale = 1, labelScale = scale, boundary,
   </g>;
 }
 
+/** Legend describing the current route display source and progress. */
 export function RouteLegend({ display, physicalLabel }: { display: RouteDisplay | null; physicalLabel?: string }) {
   if (!display) return null;
   return <div className="route-progress-legend" aria-label="Route display status">

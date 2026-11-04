@@ -1,3 +1,5 @@
+# Bounded camera-only checkerboard acquisition via the existing preview.
+# Requires separately proven optics identity; never sends robot commands.
 """Bounded camera-only checkerboard acquisition; never sends robot commands.
 
 Run on GX10 with the existing camera/web/receiver kept alive. A separately

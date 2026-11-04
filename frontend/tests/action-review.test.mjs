@@ -1,3 +1,5 @@
+// Tests for recorded BEFORE/AFTER pair selection and readiness.
+// Offline node:test; no provider or hardware contact.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { pairReadiness, recordedCaptureLabel, selectRecordedFrame } from '../src/recordedReview.ts';

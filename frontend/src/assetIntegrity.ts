@@ -1,3 +1,4 @@
+// Portable SHA-256 verifier for model bytes before GLTFLoader sees them.
 // SHA-256 is also available on the tablet's plain LAN HTTP origin, where WebCrypto may be absent.
 // This verifier has no network or robot authority. Model bytes are rejected before GLTFLoader sees them.
 const K = Uint32Array.from([

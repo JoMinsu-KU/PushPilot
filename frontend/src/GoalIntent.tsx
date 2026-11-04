@@ -1,3 +1,5 @@
+// Typed input stays available; voice capture is not connected.
+// Goal entry bar and the explicitly disconnected voice-input panel.
 import { Icon } from './Icons';
 
 /** The accepted request stays visible independently of the interpreted destination. */

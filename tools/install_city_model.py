@@ -1,3 +1,5 @@
+# Preserve the supplied private city GLB and derive clean roads.
+# Executes no package scripts; no network.
 """Preserve the supplied private city GLB and derive clean roads without executing package scripts."""
 from __future__ import annotations
 

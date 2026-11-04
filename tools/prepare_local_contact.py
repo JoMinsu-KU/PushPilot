@@ -1,3 +1,5 @@
+# Prepare an explicitly reviewed experimental contact profile offline.
+# Performs no review and applies no profile.
 """Prepare an explicitly reviewed experimental contact profile offline.
 
 This neither performs the review nor applies a profile. A current actual

@@ -1,3 +1,5 @@
+// Mounts App once; no services start from this entry point.
+// React entry point: mount the operator workspace and load global styles.
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';

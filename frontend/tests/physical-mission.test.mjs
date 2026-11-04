@@ -1,3 +1,5 @@
+// Tests for physical mission labels, progress, and start commands.
+// Offline node:test; status fixtures only.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';

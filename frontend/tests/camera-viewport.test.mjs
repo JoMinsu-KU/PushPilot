@@ -1,3 +1,5 @@
+// Tests for pan/zoom/pinch viewport math.
+// Offline node:test; pure-math assertions only.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {

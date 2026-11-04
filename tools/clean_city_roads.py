@@ -1,3 +1,5 @@
+# Export a private city GLB with clean asphalt, preserving geometry and markings.
+# Offline derivative writer; no package scripts or network.
 """Export a private city GLB with clean asphalt, preserving all geometry and markings."""
 from __future__ import annotations
 

@@ -1,3 +1,5 @@
+// Physical mission state helpers: labels, progress, and start-command shaping.
+// Presentation and polling only; the backend owns execution authority.
 import type { PhysicalStartCommand, PhysicalStatus, PhysicalTelemetry } from '../../contracts/physical';
 import type { WorkspaceSnapshot } from '../../contracts/workspace';
 

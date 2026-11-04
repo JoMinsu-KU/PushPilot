@@ -1,3 +1,5 @@
+# Validate, or explicitly run, one approved private taught physical course.
+# No network or hardware contact without --execute.
 """Validate, or explicitly run, one approved private taught physical course.
 
 No network or hardware is contacted without --execute. Interrupted journals are

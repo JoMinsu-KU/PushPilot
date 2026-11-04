@@ -1,3 +1,5 @@
+// Hook polling physical mission state; reconnection only re-reads state.
+// Never starts, retries, or resumes robot motion.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PhysicalStatus } from '../../contracts/physical';
 import { parsePhysicalStatus } from './physicalMission';

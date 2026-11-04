@@ -1,3 +1,5 @@
+// Recorded simulation only; live frames follow the separate live path.
+// BEFORE/AFTER recorded-pair selection and review-readiness checks.
 import type { SceneSnapshot } from '../../contracts/scene';
 import type { WorkspaceSnapshot } from '../../contracts/workspace';
 
@@ -8,6 +10,7 @@ export interface SelectedRecordedFrame {
   map_hash: string;
 }
 
+/** Capture the current scene frame plus its map identity as a review candidate. */
 export function selectRecordedFrame(scene: SceneSnapshot | null): SelectedRecordedFrame | null {
   return scene?.frame ? { frame: scene.frame, map_id: scene.map_id, map_version: scene.map_version, map_hash: scene.map_hash } : null;
 }
@@ -37,6 +40,7 @@ export function pairReadiness({ workspace, scene, before, expected, online, pend
   return { ready: true, reason: 'This explicit request reviews the selected pair for the pending simulated action.' };
 }
 
+/** Format the capture timestamp, or report it as unknown. */
 export function recordedCaptureLabel(frame: Pick<NonNullable<SceneSnapshot['frame']>, 'captured_at' | 'timestamp_source'>): string {
   if (!frame.captured_at || frame.timestamp_source === 'unknown') return 'Capture time unknown';
   const date = new Date(frame.captured_at);

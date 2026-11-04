@@ -1,3 +1,5 @@
+// Tests for operator-facing command-failure messages.
+// Offline node:test; original codes must stay preserved.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { commandErrorMessage } from '../src/commandError.ts';

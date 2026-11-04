@@ -1,3 +1,5 @@
+/* Goal entry bar and stage layout for the intent workflow. */
+/* Layout only; goals are accepted only during non-executing preparation. */
 .workspace-stage { --stage-controls-top: 224px; --stage-content-left: 108px; }
 .scene-heading { left: var(--stage-content-left); width: calc(100% - var(--stage-content-left) - var(--stage-overlay-width, 340px) - 24px); max-width: none; }
 .scene-context { display: flex; align-items: baseline; gap: 12px; min-width: 0; height: 24px; }

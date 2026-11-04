@@ -1,3 +1,5 @@
+// Bounded RAM display path; polling persists nothing and runs no inference.
+// Bounded preview transport: snapshot fetch, JPEG decode, and retry pacing.
 import type { LiveCameraSnapshot } from '../../contracts/live-camera';
 
 export const PREVIEW_INTERVAL_MS = 250;
@@ -25,6 +27,7 @@ export async function withPreviewDeadline<T>(operation: (signal: AbortSignal) =>
   }
 }
 
+/** Fetch and schema-check the live-camera status snapshot. */
 export async function fetchLiveSnapshot(signal: AbortSignal,
   { fetcher = fetch, timeoutMs = 1000 }: { fetcher?: typeof fetch; timeoutMs?: number } = {}): Promise<LiveCameraSnapshot> {
   return withPreviewDeadline(async requestSignal => {
@@ -36,6 +39,7 @@ export async function fetchLiveSnapshot(signal: AbortSignal,
   }, signal, timeoutMs);
 }
 
+/** Download the original JPEG once, verify it, and expose a revocable URL. */
 export async function decodeLiveFrame(frame: NonNullable<LiveCameraSnapshot['frame']>, signal: AbortSignal,
   { createImage = () => new Image(), fetcher = fetch, createUrl = URL.createObjectURL,
     revokeUrl = URL.revokeObjectURL, timeoutMs = 1250 }: { createImage?: () => HTMLImageElement;
@@ -87,6 +91,7 @@ export function createPreviewResources() {
   };
 }
 
+/** Capped exponential backoff between failed preview polls. */
 export function previewRetryDelay(failures: number): number {
   return Math.min(1000, 125 * 2 ** Math.min(3, Math.max(0, failures - 1)));
 }

@@ -1,3 +1,5 @@
+# Opt-in dedicated host for the unchanged persistent Rodi receiver.
+# Offline validation unless --listen --motion; never auto-PLAYs or replays motion.
 """Opt-in dedicated host for the unchanged persistent Rodi receiver.
 
 The listener survives a failed session and waits for a new manual PLAY. It never

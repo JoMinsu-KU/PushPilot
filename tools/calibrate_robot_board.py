@@ -1,3 +1,5 @@
+# Offline fit of measured drawing-to-BASE pairs; never installs or authorizes motion.
+# Input/output hold private operating coordinates.
 """Fit measured drawing-to-BASE pairs offline; never install or authorize motion.
 
 Input and output contain private operating coordinates. A fit and independent

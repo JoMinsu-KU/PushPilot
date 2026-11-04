@@ -1,3 +1,5 @@
+# Capture current HCR1 coordinates via verified read-only Native FC03 reads.
+# Needs no pendant session or API; no movement.
 """Capture current HCR1 coordinates through verified read-only Native FC03 reads.
 
 This tool needs no pendant session, motion profile or robot-control API. A

@@ -1,3 +1,5 @@
+# Authenticated local commissioning client; no script evaluation or implicit motion retry.
+# Status/events are reads, but arm/command/profile ops can move hardware.
 """Authenticated local commissioning client. No script evaluation or implicit motion retry."""
 from __future__ import annotations
 
