@@ -31,10 +31,10 @@ export function GoalIntentBar({ query, onQuery, onVoice, voice, canRecord = true
   </div>;
 }
 
-export function VoiceInputOptions({ canEdit, onContinue, voice, onRecord, onStop, onCancel, onText, onUseGoal, busy = false }: {
+export function VoiceInputOptions({ canEdit, onContinue, voice, onRecord, onStop, onCancel, onText, onUseGoal, busy = false, blockedReason }: {
   canEdit: boolean; onContinue: () => void; voice: VoiceInputState;
   onRecord: () => void; onStop: () => void; onCancel: () => void; onText: (text: string) => void;
-  onUseGoal: () => void; busy?: boolean;
+  onUseGoal: () => void; busy?: boolean; blockedReason?: string;
 }) {
   const recording = voice.phase === 'recording';
   const pending = voice.phase === 'requesting' || voice.phase === 'transcribing';
@@ -47,7 +47,7 @@ export function VoiceInputOptions({ canEdit, onContinue, voice, onRecord, onStop
         {recording && <VoiceWaveform levels={voice.levels}/>}<h3>{recording ? 'Listening to your goal.' : pending ? 'Turning speech into words.' : 'A goal, in your own words.'}</h3>
         <p>{recording ? 'Tap the microphone when you finish. Recording ends after 20 seconds.' : pending ? 'Your microphone is released after recording. Wait for the transcription or cancel.' : 'Tap once to record, then tap again to finish. Review the words before creating a plan.'}</p></>}
     {voice.error && <p className="voice-error" role="alert">{voice.error}</p>}
-    {!canEdit && !busy && <p className="voice-error">Finish the current mission and prepare a new workspace before entering another goal.</p>}
+    {!canEdit && !busy && <p className="voice-error">{blockedReason || 'Finish the current mission and prepare a new workspace before entering another goal.'}</p>}
     {ready && <p className="voice-confirmation-note">Edit any recognition mistakes. Creating a plan does not approve it or start the robot.</p>}
     <footer><div className="voice-secondary-actions"><button className="voice-text-fallback" onClick={onContinue}>{canEdit ? 'Type instead' : 'View original query'}</button>{(recording || pending || ready) && <button onClick={onCancel}>{ready ? 'Discard' : 'Cancel'}</button>}{ready && <button onClick={onRecord} disabled={!canEdit || busy}>Record again</button>}</div>
       {ready && <button className="primary-button" onClick={onUseGoal} disabled={!canEdit || !valid || busy}>{busy ? <><VoiceSpinner/>Creating a plan…</> : <>Create a plan<Icon name="arrow" size={17}/></>}</button>}</footer>
