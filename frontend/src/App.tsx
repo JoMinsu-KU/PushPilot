@@ -11,6 +11,7 @@ import { ActionReviewPanel } from './ActionReview';
 import { LiveEvidence } from './LiveEvidence';
 import { ViewportDialog, PlanBrowser, EvidenceBrowser, PhysicalHistoryBrowser, PhysicalReviewPanel, PhysicalRouteBrowser, PhysicalStatusPanel, TextPages, SelectField, executionStepLabel, physicalSequenceFocus, signalGateLabel } from './WorkspaceUI';
 import { GoalIntentBar, VoiceInputOptions } from './GoalIntent';
+import { useVoiceInput } from './useVoiceInput';
 import { destinationGoal, destinationOptions, destinationPage, drawingDistance, nodeLabel, planStepLabel } from './mapMetadata';
 import { currentSignalJunction, signalDisplay } from './routeProgress';
 import { commandErrorMessage, readableError } from './commandError';
@@ -111,7 +112,7 @@ export function App() {
 
   async function command(endpoint: string, data: Record<string, unknown> = {}) {
     const snapshot = current.current;
-    if (!snapshot || physicalRunning(physical.status) || physicalBusy || physicalUnconfirmed || (busy && endpoint !== 'cancel') || view === 'Replay' || (actionReviewPending && endpoint !== 'cancel')) return;
+    if (!snapshot || physicalRunning(physical.status) || physicalBusy || physicalUnconfirmed || (busy && endpoint !== 'cancel') || view === 'Replay' || (actionReviewPending && endpoint !== 'cancel') || (voiceActive && endpoint !== 'cancel')) return;
     const liveInference = ['live-actions/run', 'live-actions/reviews', 'live-signals/wait'].includes(endpoint)
       || (endpoint === 'goals' && data.provider === 'meta' && Boolean(snapshot.capabilities.live_planning));
     setBusy(true); setError('');
@@ -136,7 +137,7 @@ export function App() {
     let submitted = false;
     let responseConfirmed = false;
     try {
-      if (kind === 'start' && (!physical.connected || busy || actionReviewPending)) throw new Error('Wait for a fresh robot status before starting.');
+      if (kind === 'start' && (!physical.connected || busy || actionReviewPending || voiceActive)) throw new Error('Finish voice input and wait for a fresh robot status before starting.');
       const body = kind === 'start' ? physicalStartCommand(current.current, physical.status, createRequestId())
         : { request_id: createRequestId(), expected_revision: physical.status.revision };
       submitted = true;
@@ -160,7 +161,7 @@ export function App() {
   }
   async function reviewRecordedAction(data: Omit<RecordedActionReviewCommand, 'request_id' | 'expected_revision'>) {
     const snapshot = current.current;
-    if (!snapshot || busy || actionReviewPending || physicalRunning(physical.status) || physicalBusy || physicalUnconfirmed || view === 'Replay') return;
+    if (!snapshot || busy || actionReviewPending || physicalRunning(physical.status) || physicalBusy || physicalUnconfirmed || view === 'Replay' || voiceActive) return;
     setActionReviewPending(true); setLocalVisionRequest('car'); setError('');
     try {
       const response = await fetch('/api/v1/action-reviews', {
@@ -185,7 +186,6 @@ export function App() {
   const robotMode = executionMode === 'physical' || robotRunning;
   const display = usePhysicalDisplay(physical.status, robotMode && physical.connected);
   const spatialSignal = robotMode ? spatialSignalState(physical.status, workspace, physical.connected, display.snapshot, Date.now() / 1000) : 'base';
-  const sceneReadOnly = actionReviewPending || robotRunning || physicalBusy || Boolean(physicalUnconfirmed);
   const robotStatusDialog = robotMode || modal === 'robot';
   const robotMission = robotMode && (robotRunning || physicalMatchesPlan(physical.status, workspace));
   const robotFinished = robotMission && physicalFinished(physical.status);
@@ -194,6 +194,13 @@ export function App() {
   const robotProgress = physicalProgress(physical.status, robotTelemetry);
   const missionStatus = robotMission ? physical.status : null;
   const canEditGoal = Boolean(workspace && ['IDLE', 'PLAN_READY'].includes(state) && online && !busy && !actionReviewPending && !robotRunning && !physicalBusy && !physicalUnconfirmed);
+  const voiceEnabled = canEditGoal && view === 'Workspace' && (modal === null || modal === 'goal' && goalMode === 'voice')
+    && (!robotMode || Boolean(physical.connected && physical.loaded && physical.status?.state === 'READY' && !physical.status.mission_id && !physical.status.error));
+  const voiceBinding = workspace && mapSnapshot ? { session_id: workspace.session_id, workspace_revision: workspace.revision,
+    map: { id: mapSnapshot.id, version: mapSnapshot.version, geometry_hash: mapSnapshot.geometry_hash } } : null;
+  const voice = useVoiceInput(voiceBinding, voiceEnabled, Boolean(workspace?.capabilities.voice_transcription));
+  const voiceActive = ['requesting', 'recording', 'transcribing'].includes(voice.state.phase);
+  const sceneReadOnly = actionReviewPending || robotRunning || physicalBusy || Boolean(physicalUnconfirmed) || voiceActive;
   const active = Boolean(workspace?.approved && !terminalStates.has(state));
   const selected = workspace?.events.find(event => event.id === selectedEvent) ?? workspace?.events.at(-1);
   const signal = workspace?.signal.color ?? 'UNKNOWN';
@@ -275,6 +282,7 @@ export function App() {
 
   function renderPrimaryAction() {
     if (!workspace) return <button className="primary-button" disabled>Connecting to workspace…</button>;
+    if (voiceActive) return <button className="primary-button" disabled>Finish voice input to continue</button>;
     if (robotMode && robotMission) {
       if (robotFinished) return <button className="primary-button" disabled={physicalBusy || busy || !online || !physical.connected || !physical.status?.robot.stationary} onClick={() => void command('reset')}><Icon name="refresh"/>Plan the next mission</button>;
       return approvalFeedback?.phase === 'approved' ? <ApprovedMissionButton/>
@@ -297,19 +305,25 @@ export function App() {
   const inspection = sceneSnapshot?.inspection;
   const modelLabel = actionReviewPending ? 'Reviewing images' : workspace?.review ? workspace.review.verdict : inspection?.verdict ?? 'No image review';
   const openImageTools = () => { if (sceneReadOnly) return; setModal(null); setView('Workspace'); window.setTimeout(() => setImageToolsRequest(value => value + 1), 0); };
-  const openVoice = () => { setGoalMode('voice'); setView('Workspace'); setModal('goal'); };
-  const openQuery = () => { setGoalMode(workspace?.goal ? 'query' : 'text'); setView('Workspace'); setModal('goal'); };
+  const openVoice = () => {
+    if (voice.state.phase === 'recording') { void voice.stop(); return; }
+    if (voice.state.phase === 'ready' || !voiceEnabled) { setGoalMode('voice'); setView('Workspace'); setModal('goal'); return; }
+    void voice.start();
+  };
+  const openQuery = () => { setGoalMode(['ready', 'error'].includes(voice.state.phase) ? 'voice' : workspace?.goal ? 'query' : 'text'); setView('Workspace'); setModal('goal'); };
+  const typeInstead = () => { voice.cancel(); setGoalMode(canEditGoal ? 'text' : 'query'); };
+  const acceptVoiceGoal = () => { const data = voice.goalInput(); if (data && voiceEnabled) { void command('goals', data); setModal(null); } };
 
   return <div className="app-shell">
     <header className="topbar">
       <div className="header-title"><span className="brand" aria-hidden="true"><BrandMark/></span><h1>PushPilot</h1>{mapSnapshot && <span className="header-map"><span aria-hidden="true">/</span>{mapSnapshot.title}</span>}</div>
       <div className="header-status"><ul className="device-status" aria-label="Connections">{devices.map(([name, on]) => <li key={name} className={on ? 'on' : ''}><i key={String(on)} aria-hidden="true"/>{name}<span className="sr-only">{name === 'MUSE' ? on ? ' configured' : ' not configured' : on ? ' connected' : ' offline'}</span></li>)}</ul>
-        <select className={`mode-label ${liveMode ? 'live' : ''}`} aria-label="Execution mode" value={robotMode ? 'physical' : 'simulation'} disabled={robotRunning || physicalBusy || Boolean(physicalUnconfirmed) || busy || actionReviewPending || (!robotMode && active)} onChange={event => { modeChosen.current = true; setExecutionMode(event.target.value as ExecutionMode); if (event.target.value === 'physical') setProvider('meta'); }}><option value="simulation">Simulation</option><option value="physical" disabled={!physical.connected || !physical.status?.enabled}>Robot</option></select>
+        <select className={`mode-label ${liveMode ? 'live' : ''}`} aria-label="Execution mode" value={robotMode ? 'physical' : 'simulation'} disabled={voiceActive || robotRunning || physicalBusy || Boolean(physicalUnconfirmed) || busy || actionReviewPending || (!robotMode && active)} onChange={event => { modeChosen.current = true; setExecutionMode(event.target.value as ExecutionMode); if (event.target.value === 'physical') setProvider('meta'); }}><option value="simulation">Simulation</option><option value="physical" disabled={!physical.connected || !physical.status?.enabled}>Robot</option></select>
         <button className={`header-replay ${view === 'Replay' ? 'active' : ''}`} aria-pressed={view === 'Replay'} onClick={() => setView('Replay')}><Icon name="clock" size={18}/><span>Mission Log</span></button></div>
     </header>
     <main ref={stageRef} className={`workspace-stage ${mobileMission ? 'mission-visible' : ''}`}>
       <MapScene presentation="stage" workspace={workspace} physicalLabel={robotMode ? robotMission ? robotStatusTitle : 'Awaiting robot execution' : undefined} physicalDisplay={display.snapshot} signalState={spatialSignal} onSnapshot={setSceneSnapshot} onMapSnapshot={setMapSnapshot} onPreviewSource={setPreviewSource} onLiveCamera={setCameraPreview} sceneInsetRight={sceneInsetRight} readOnly={sceneReadOnly} openToolsRequest={imageToolsRequest}/>
-      <div className="scene-heading"><GoalIntentBar query={workspace?.goal?.text ?? null} source={workspace?.goal?.source ?? null} onQuery={openQuery} onVoice={openVoice}/></div>
+      <div className="scene-heading"><GoalIntentBar query={workspace?.goal?.text ?? null} source={workspace?.goal?.source ?? null} onQuery={openQuery} onVoice={openVoice} voice={voice.state} canRecord={voiceEnabled} onCancelVoice={voice.cancel}/></div>
       <button className="mobile-mission-switch glass-surface" onClick={() => setMobileMission(value => !value)} aria-expanded={mobileMission}>{mobileMission ? 'Show scene' : 'Mission'}<Icon name={mobileMission ? 'close' : 'chevron'} size={16}/></button>
       {(error || !online) && <div className={`stage-notice ${error ? 'error' : ''}`} role={error ? 'alert' : 'status'}><Icon name="shield" size={17}/><span>{error || 'Backend unavailable. Refresh before taking action.'}</span><button aria-label={error ? 'Dismiss error' : 'Retry connection'} onClick={() => error ? setError('') : void refresh()}><Icon name={error ? 'close' : 'refresh'} size={16}/></button></div>}
 
@@ -332,17 +346,17 @@ export function App() {
 
     </main>
 
-    <ViewportDialog open={modal === 'goal'} title="Mission goal" subtitle="SET THE INTENT" onClose={() => setModal(null)} className="goal-dialog">
-      <nav className="goal-modal-tabs" role="tablist" aria-label="Goal input sections"><button role="tab" aria-selected={goalMode === 'text'} disabled={!canEditGoal} onClick={() => setGoalMode('text')}>Type a goal</button><button role="tab" aria-selected={goalMode === 'voice'} onClick={() => setGoalMode('voice')}><Icon name="mic" size={15}/>Voice input</button>{workspace?.goal && <button role="tab" aria-selected={goalMode === 'query'} onClick={() => setGoalMode('query')}>Original query</button>}</nav>
+    <ViewportDialog open={modal === 'goal'} title="Mission goal" subtitle="SET THE INTENT" onClose={() => { if (voiceActive) voice.cancel(); setModal(null); }} className="goal-dialog">
+      <nav className="goal-modal-tabs" role="tablist" aria-label="Goal input sections"><button role="tab" aria-selected={goalMode === 'text'} disabled={!canEditGoal} onClick={typeInstead}>Type a goal</button><button role="tab" aria-selected={goalMode === 'voice'} onClick={() => setGoalMode('voice')}><Icon name="mic" size={15}/>Voice input</button>{workspace?.goal && <button role="tab" aria-selected={goalMode === 'query'} onClick={() => setGoalMode('query')}>Original query</button>}</nav>
       <div className="goal-mode-panel" role="tabpanel" aria-label={goalMode === 'voice' ? 'Voice input options' : goalMode === 'query' ? 'Original user query' : 'Typed goal input'}>
-      {goalMode === 'voice' ? <VoiceInputOptions canEdit={canEditGoal} onContinue={() => setGoalMode(canEditGoal ? 'text' : 'query')}/>
+      {goalMode === 'voice' ? <VoiceInputOptions canEdit={voiceEnabled} onContinue={typeInstead} voice={voice.state} onRecord={() => void voice.start()} onStop={() => void voice.stop()} onCancel={voice.cancel} onText={voice.setText} onUseGoal={acceptVoiceGoal} busy={busy}/>
         : goalMode === 'query' ? <section className="original-query-panel"><div className="original-query-source"><Icon name={workspace?.goal?.source === 'voice' ? 'mic' : 'text'} size={16}/><span>{workspace?.goal?.source === 'voice' ? 'Voice input' : 'Typed input'} · original request</span></div><TextPages text={workspace?.goal?.text ?? 'No submitted goal yet.'} size={220}/><footer><span>{canEditGoal ? 'Your original words, saved with this plan.' : 'The active goal is read-only during execution.'}</span>{canEditGoal && <button className="secondary-button" onClick={() => setGoalMode('text')}>Edit goal<Icon name="arrow" size={16}/></button>}</footer></section>
         : <form className="goal-form" onSubmit={event => { event.preventDefault(); if (canEditGoal && draft.trim()) { void command('goals', { text: draft, provider, source: 'typed' }); setModal(null); } }}>
         <div className="goal-choices"><div className="goal-destinations">{goalChoices.items.map(place => <button type="button" key={place.id} title={`${place.label} · ${place.id}`} disabled={!canEditGoal} onClick={() => mapSnapshot && setDraft(destinationGoal(mapSnapshot, place.id))}><span>{place.label}</span><Icon name="arrow" size={16}/></button>)}</div>{goalChoices.pages > 1 && <nav className="goal-choice-pager" aria-label="Destination pages"><button type="button" disabled={goalChoices.page === 0} onClick={() => setGoalPage(value => value - 1)} aria-label="Previous destinations"><Icon name="chevron" className="reverse" size={14}/></button><span>{goalChoices.page + 1} / {goalChoices.pages}</span><button type="button" disabled={goalChoices.page + 1 >= goalChoices.pages} onClick={() => setGoalPage(value => value + 1)} aria-label="Next destinations"><Icon name="chevron" size={14}/></button></nav>}</div>
         <label htmlFor="goal-input">Your goal<input ref={goalInput} id="goal-input" value={draft} onChange={event => setDraft(event.target.value)} disabled={!canEditGoal} maxLength={500} aria-label="Your mission goal"/></label>
         <SelectField id="provider-mode" label="Goal interpreter" value={provider} disabled={!canEditGoal} onChange={setProvider} options={[{ value: 'demo', label: 'Demo interpreter', disabled: robotMode }, { value: 'meta', label: `MUSE · Meta API${workspace?.capabilities.muse_configured ? '' : ' (not configured)'}`, disabled: !workspace?.capabilities.muse_configured }]}/>
 
-        <button className="goal-voice-shortcut" type="button" onClick={() => setGoalMode('voice')}><Icon name="mic" size={16}/><span>Voice input</span><small>Not connected</small><Icon name="chevron" size={14}/></button>
+        <button className="goal-voice-shortcut" type="button" onClick={() => setGoalMode('voice')}><Icon name="mic" size={16}/><span>Voice input</span><small>MUSE · Review before planning</small><Icon name="chevron" size={14}/></button>
         <div className="dialog-bottom"><span>A new plan requires explicit approval.</span><button className="primary-button" type="submit" disabled={!canEditGoal || !draft.trim()}><Icon name="spark" size={17}/>Create a plan<Icon name="arrow" size={17}/></button></div>
       </form>}
       </div>

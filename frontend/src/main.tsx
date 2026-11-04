@@ -8,5 +8,6 @@ import './styles.css';
 import './goal-intent.css';
 import './tablet.css';
 import './typography.css';
+import './voice-input.css';
 
 createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>);

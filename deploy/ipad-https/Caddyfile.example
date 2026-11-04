@@ -1,0 +1,40 @@
+# Candidate only. Not installed, adapted, started, or device-trusted by this file.
+# See README.md before use. The existing application must already be running.
+{
+	admin off
+	persist_config off
+	skip_install_trust
+	auto_https disable_redirects
+	grace_period 5s
+
+	# Explicit owner-private storage, separate from another Caddy installation.
+	storage file_system {
+		root {$PUSHPILOT_HTTPS_DATA_DIR}
+	}
+
+	# TCP only: no additional HTTP/3 UDP listener or administrative endpoint.
+	servers {
+		protocols h1 h2
+	}
+}
+
+https://192.168.10.31:8443 {
+	bind 192.168.10.31
+	tls internal
+
+	# All application paths stay on this origin; no rewrites, auth changes,
+	# caching, response compression, or separate camera/robot exposure.
+	reverse_proxy 127.0.0.1:8080 {
+		lb_retries 0
+		lb_try_duration 0s
+
+		# Positive flush interval preserves upstream cancellation on disconnect.
+		# SSE is also recognized and flushed immediately by Caddy itself.
+		flush_interval 50ms
+		transport http {
+			versions 1.1
+			keepalive off
+			compression off
+		}
+	}
+}

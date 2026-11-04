@@ -22,8 +22,9 @@ from backend.scene_api import router as scene_router
 from backend.action_review import ActionReviewProvider, ActionReviewService
 from backend.live_camera import LiveCamera
 from backend.live_intelligence import LiveIntelligenceService
-from backend.voice import VoiceService
+from backend.voice import VoiceError, VoiceService
 from backend.voice_api import router as voice_router
+from backend.goal_input_guard import require_voice_preparation
 from backend.map_api import router as map_router
 from backend.signal_watch import SignalWatchService
 from backend.display_registration import DisplayRegistrationService
@@ -270,6 +271,11 @@ def create_app(settings: Settings | None = None, *, db_path: str | None = None,
     async def live_plan(request: Request, command: LiveGoalCommand):
         if command.provider != "meta":
             raise CommandError("Select the MUSE provider for live-image planning.", 422)
+        if command.source == "voice":
+            try:
+                await require_voice_preparation(request.app.state.physical)
+            except VoiceError as error:
+                raise HTTPException(error.status_code, detail={"code": error.code, "message": str(error)}) from None
         payload, status = await request.app.state.live_intelligence.plan(command.model_dump(mode="json"))
         return JSONResponse(payload, status_code=status)
 

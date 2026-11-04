@@ -49,6 +49,18 @@ class StubVoice:
         return "피자집에서 학교로 가줘."
 
 
+class StubPhysical:
+    """A local coordinator snapshot, with no Native client or hardware methods."""
+
+    def __init__(self, **state):
+        self.lock = asyncio.Lock()
+        self.task = None
+        self.state = {"enabled": True, "state": "READY", "mission_id": None, "error": None, **state}
+
+    def snapshot(self):
+        return deepcopy(self.state)
+
+
 class WaveValidationTests(unittest.TestCase):
     def assert_code(self, data, code):
         with self.assertRaises(VoiceError) as raised:
@@ -252,7 +264,7 @@ class VoiceApiTests(unittest.TestCase):
         self.store = Store()
         self.provider = StubVoice()
         self.service = VoiceService(provider=self.provider)
-        app = FastAPI()
+        app = self.app = FastAPI()
         app.state.store, app.state.voice = self.store, self.service
         app.include_router(router)
         self.client = TestClient(app)
@@ -289,6 +301,74 @@ class VoiceApiTests(unittest.TestCase):
         response = self.upload()
         self.assertEqual(response.status_code, 409)
         self.assertEqual(len(self.service._transcripts), 0)
+
+    def test_active_held_and_unretired_robot_missions_reject_before_provider(self):
+        physical = self.app.state.physical = StubPhysical()
+        before = self.store.snapshot()
+        for state in ("STARTING", "RUNNING", "WAITING_SIGNAL", "OBSERVING", "HOLD", "COMPLETE", "READY"):
+            with self.subTest(state=state):
+                physical.state.update(state=state, mission_id="retained-mission")
+                response = self.upload()
+                self.assertEqual(response.status_code, 409)
+                self.assertEqual(response.json()["detail"]["code"], "VOICE_PHYSICAL_MISSION_ACTIVE")
+        self.assertEqual(self.provider.calls, [])
+        self.assertEqual(self.store.snapshot(), before)
+
+    def test_busy_robot_lock_does_not_wait_or_dispatch(self):
+        physical = self.app.state.physical = StubPhysical()
+        asyncio.run(physical.lock.acquire())
+        try:
+            response = self.upload()
+            self.assertEqual(response.status_code, 409)
+            self.assertEqual(response.json()["detail"]["code"], "VOICE_PHYSICAL_STATUS_REQUIRED")
+            self.assertEqual(self.provider.calls, [])
+            self.assertTrue(physical.lock.locked())
+        finally:
+            physical.lock.release()
+
+    def test_unknown_robot_state_worker_and_snapshot_failure_fail_closed(self):
+        physical = self.app.state.physical = StubPhysical(state="UNKNOWN")
+        self.assertEqual(self.upload().status_code, 409)
+        physical.state.update(state="READY", error="UNRESOLVED")
+        self.assertEqual(self.upload().status_code, 409)
+        physical.state["error"] = None
+        physical.task = type("RunningTask", (), {"done": lambda _self: False})()
+        self.assertEqual(self.upload().status_code, 409)
+        physical.task = None
+
+        def unavailable():
+            raise RuntimeError("Synthetic local snapshot failure")
+
+        physical.snapshot = unavailable
+        response = self.upload()
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["detail"]["code"], "VOICE_PHYSICAL_STATUS_REQUIRED")
+        self.assertNotIn("Synthetic", response.text)
+        self.assertEqual(self.provider.calls, [])
+
+    def test_robot_started_during_asr_discards_candidate(self):
+        physical = self.app.state.physical = StubPhysical()
+        self.provider.callback = lambda: physical.state.update(state="WAITING_SIGNAL", mission_id="new-mission")
+        before = self.store.snapshot()
+        response = self.upload()
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["detail"]["code"], "VOICE_PHYSICAL_MISSION_ACTIVE")
+        self.assertEqual(len(self.provider.calls), 1)
+        self.assertEqual(len(self.service._transcripts), 0)
+        self.assertEqual(self.store.snapshot(), before)
+
+    def test_robot_hold_blocks_candidate_lookup_but_not_discard(self):
+        physical = self.app.state.physical = StubPhysical()
+        result = self.upload().json()
+        path = "/api/v1/voice/transcriptions/" + result["transcript_id"]
+        physical.state.update(state="HOLD", mission_id="retained-mission")
+        self.assertEqual(self.client.get(path).status_code, 409)
+        self.assertEqual(self.client.delete(path).status_code, 200)
+
+    def test_disabled_physical_coordinator_keeps_simulation_voice_available(self):
+        self.app.state.physical = StubPhysical(enabled=False, state="DISABLED")
+        self.assertEqual(self.upload().status_code, 200)
+        self.assertEqual(len(self.provider.calls), 1)
 
     def test_old_receipt_superseded_by_new_capture_or_revision(self):
         first = self.upload().json()
@@ -333,6 +413,67 @@ class VoiceApiTests(unittest.TestCase):
         self.assertFalse(result["microphone_connected"])
         self.assertFalse(result["provider_access_verified"])
         self.assertEqual(result["accepted_audio"]["sample_rates_hz"], [16000, 24000])
+
+
+class VoiceGoalPhysicalGuardTests(unittest.TestCase):
+    """Exercise both accepted-transcript routes without cameras or providers."""
+
+    def setUp(self):
+        from backend.app import create_app
+        from backend.settings import Settings
+
+        self.app = create_app(Settings(db_path=":memory:"), automatic_signal_watch=False)
+        self.client = self.enterContext(TestClient(self.app))
+        self.physical = self.app.state.physical
+        self.calls = []
+        state = self.app.state.store.snapshot()
+        definition = self.app.state.store.map_definition
+        self.transcript_id = str(uuid4())
+        self.app.state.voice.remember_transcript({"transcript_id": self.transcript_id,
+            "text": "Go to School.", "audio_source": "microphone"},
+            {"session_id": state["session_id"], "workspace_revision": state["revision"],
+             "map": {"id": definition.id, "version": definition.version, "geometry_hash": definition.geometry_hash}})
+
+        async def plan(payload):
+            self.calls.append(payload)
+            return {"accepted_for_test": True}, 200
+
+        self.app.state.live_intelligence.plan = plan
+
+    def goal(self, path):
+        return self.client.post(path, json={"request_id": str(uuid4()),
+            "expected_revision": self.app.state.store.snapshot()["revision"],
+            "text": "Go to School.", "provider": "meta", "source": "voice",
+            "transcript_id": self.transcript_id})
+
+    def test_voice_goal_cannot_bypass_physical_guard_with_existing_receipt(self):
+        before = self.app.state.store.snapshot()
+        for path in ("/api/v1/goals", "/api/v1/plans/live"):
+            for state in ("RUNNING", "WAITING_SIGNAL", "HOLD", "COMPLETE"):
+                with self.subTest(path=path, state=state):
+                    self.physical.status.update(enabled=True, state=state, mission_id="retained-mission")
+                    response = self.goal(path)
+                    self.assertEqual(response.status_code, 409)
+                    self.assertEqual(response.json()["detail"]["code"], "VOICE_PHYSICAL_MISSION_ACTIVE")
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.app.state.store.snapshot(), before)
+
+    def test_default_simulation_and_retired_ready_state_reach_normal_planning(self):
+        for state, enabled in (("DISABLED", False), ("READY", True)):
+            self.physical.status.update(enabled=enabled, state=state, mission_id=None, error=None)
+            response = self.goal("/api/v1/goals")
+            self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(len(self.calls), 2)
+
+    def test_voice_goal_rejects_busy_coordinator_without_planning(self):
+        asyncio.run(self.physical.lock.acquire())
+        try:
+            response = self.goal("/api/v1/plans/live")
+            self.assertEqual(response.status_code, 409)
+            self.assertEqual(response.json()["detail"]["code"], "VOICE_PHYSICAL_STATUS_REQUIRED")
+            self.assertEqual(self.calls, [])
+        finally:
+            self.physical.lock.release()
 
 
 if __name__ == "__main__":

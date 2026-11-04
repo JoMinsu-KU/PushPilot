@@ -11,6 +11,7 @@ from python_multipart.multipart import parse_options_header
 from starlette.requests import ClientDisconnect
 
 from backend.voice import MAX_AUDIO_BYTES, VoiceError
+from backend.goal_input_guard import require_voice_preparation
 
 router = APIRouter(prefix="/api/v1/voice")
 MAX_BODY_BYTES = MAX_AUDIO_BYTES + 16 * 1024
@@ -126,7 +127,8 @@ async def _read_upload(request: Request) -> tuple[bytes, dict]:
         parser.value.clear()
 
 
-def _binding(request: Request, expected_revision: int) -> dict:
+async def _binding(request: Request, expected_revision: int) -> dict:
+    await require_voice_preparation(getattr(request.app.state, "physical", None))
     snapshot = request.app.state.store.snapshot()
     if snapshot["state"] not in {"IDLE", "PLAN_READY"}:
         raise VoiceError(409, "New voice input is available only during non-executing preparation. Complete or terminate and reconcile the current mission first.", "VOICE_MISSION_ACTIVE")
@@ -148,7 +150,7 @@ async def transcribe(request: Request):
     try:
         # This preliminary check prevents uploads/provider work in an active mission.
         snapshot = request.app.state.store.snapshot()
-        _binding(request, snapshot["revision"])
+        await _binding(request, snapshot["revision"])
         try:
             async with asyncio.timeout(15):
                 data, fields = await _read_upload(request)
@@ -169,14 +171,14 @@ async def transcribe(request: Request):
         if language not in {None, "ko", "en"}:
             raise VoiceError(422, "Use ko or en as the language hint, or omit it.", "VOICE_LANGUAGE")
         revision = int(fields["expected_revision"])
-        before = _binding(request, revision)
+        before = await _binding(request, revision)
         if await request.is_disconnected():
             raise VoiceError(400, "Voice upload was cancelled. No goal was submitted.", "VOICE_REQUEST_CANCELLED")
         request.app.state.voice.invalidate_session(before["session_id"])
         result = await request.app.state.voice.transcribe(data, capture_id=capture_id,
                                                         audio_source=audio_source, language=language)
         del data
-        after = _binding(request, revision)
+        after = await _binding(request, revision)
         if before != after or await request.is_disconnected():
             raise VoiceError(409, "Voice result was superseded or cancelled. No goal was submitted.", "VOICE_WORKSPACE_CHANGED")
         return request.app.state.voice.remember_transcript(result, before)
@@ -185,10 +187,10 @@ async def transcribe(request: Request):
 
 
 @router.get("/transcriptions/{transcript_id}")
-def transcript(request: Request, transcript_id: str):
+async def transcript(request: Request, transcript_id: str):
     try:
         record = request.app.state.voice.get_transcript(transcript_id)
-        current = _binding(request, record["binding"]["workspace_revision"])
+        current = await _binding(request, record["binding"]["workspace_revision"])
         if current != record["binding"]:
             raise VoiceError(409, "This transcript belongs to a different workspace or map.", "VOICE_WORKSPACE_CHANGED")
         return record

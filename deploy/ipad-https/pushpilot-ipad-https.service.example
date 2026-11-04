@@ -1,0 +1,23 @@
+# Candidate systemd USER unit; review and install manually.
+# No [Install] section: deliberately not enabled for login/boot activation.
+[Unit]
+Description=PushPilot manually started iPad LAN HTTPS proxy
+ConditionFileIsExecutable=/usr/bin/caddy
+ConditionPathExists=%h/.config/pushpilot-ipad-https/Caddyfile
+ConditionPathIsDirectory=%h/.local/share/pushpilot-ipad-https
+
+[Service]
+Type=simple
+Environment=PUSHPILOT_HTTPS_DATA_DIR=%h/.local/share/pushpilot-ipad-https
+Environment=XDG_CONFIG_HOME=%h/.local/share/pushpilot-ipad-https/config
+ExecStart=/usr/bin/caddy run --config %h/.config/pushpilot-ipad-https/Caddyfile --adapter caddyfile --resume=false
+Restart=no
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.local/share/pushpilot-ipad-https
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+TimeoutStopSec=10s
+KillSignal=SIGTERM
