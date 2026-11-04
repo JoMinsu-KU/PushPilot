@@ -38,7 +38,7 @@ button:not(:disabled):active, [role="button"]:active, [role="tab"]:not(:disabled
 /* Header: logo + product name, Evidence replay entry and one simulation badge. */
 .header-title { gap: 12px; }
 .header-title > .brand { width: 34px; height: 34px; margin: 0; color: #242a2f; }
-.header-title .brand svg { width: 30px; height: 30px; }
+.header-title .brand .pushpilot-brand-mark { width: 30px; height: 30px; }
 .header-title h1 { font-size: var(--fs-16); font-weight: 600; letter-spacing: -.4px; color: var(--ink); }
 .header-status { margin-left: auto; gap: 12px; }
 .header-replay {

@@ -1,6 +1,10 @@
 # Contribution record
 
-Prepared on 2026-10-27, Asia/Seoul. Current disclosure updated on 2026-11-02. Status: development provenance record, not a submitted competition disclosure. Earlier dated rows retain the implementation/evidence scope at their original checkpoint.
+Prepared on 2026-10-27, Asia/Seoul. Current disclosure updated on 2026-11-04. Status: development provenance record, not a submitted competition disclosure. Earlier dated rows retain the implementation/evidence scope at their original checkpoint.
+
+## November 4, 2026 — supplied mark integration
+
+The user supplied the current PushPilot mark and requested replacement across current frontend and GitHub presentation surfaces. The unchanged canonical PNG, exact source hash and audited scope are recorded in [Branding](docs/BRANDING.md). This work connects supplied artwork to the workspace, Spatial preview, browser/iPad icons, README and public review shell; it does not claim original design authorship or a new artwork license. Historical captures, concepts, generation prompts, model responses and fixture hashes remain unchanged. Source integration and operational activation are separate checkpoints; this presentation change adds no execution behavior or physical qualification.
 
 ## Current additions recorded November 2, 2026
 

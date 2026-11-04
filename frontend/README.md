@@ -4,7 +4,7 @@
 
 **From sight to action. One scene, a shared plan, and its evidence in view.**
 
-[Current status](../docs/CURRENT_STATUS.md) · [Design system](../docs/DESIGN_SYSTEM.md) · [Route display](../docs/ROUTE_DISPLAY.md) · [Architecture](../docs/ARCHITECTURE.md) · [Robot operations](../docs/ROBOT_OPERATIONS.md)
+[Current status](../docs/CURRENT_STATUS.md) · [Design system](../docs/DESIGN_SYSTEM.md) · [Current mark](../docs/BRANDING.md) · [Route display](../docs/ROUTE_DISPLAY.md) · [Architecture](../docs/ARCHITECTURE.md) · [Robot operations](../docs/ROBOT_OPERATIONS.md)
 
 The React/TypeScript workspace preserves **Observe → Plan → Approve → Act → Verify**. One Camera/Spatial stage sits beneath a slim rail, rounded translucent controls and a collapsible mission panel. Quiet charcoal text, restrained orange accents and self-hosted Pretendard carry the product identity. GX10 serves the compiled Vite bundle with Python; it does not need Node.js at runtime.
 

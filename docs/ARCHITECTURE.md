@@ -14,6 +14,8 @@ PushPilot keeps its original **Observe → Plan → Approve → Act → Verify**
 
 This page describes published source as of **November 2, 2026**. [Current status](CURRENT_STATUS.md) separates implementation, dated demonstrations and remaining qualification. The public repository excludes private route packets, controller runtime, profiles, operational images and model artwork.
 
+The November 4 [branding update](BRANDING.md) uses the unchanged user-supplied mark across current presentation surfaces. It changes display assets only; backend state, approval/execution gates, robot coordinates and original evidence remain separate and unchanged. Operational activation is recorded independently from source integration.
+
 ## System shape
 
 [![Current PushPilot architecture illustration: one tablet application branches into simulation and an explicitly configured physical trial, with separate camera display, MUSE review, Native receipts and private evidence.](assets/architecture-current.png)](assets/architecture-current.png)

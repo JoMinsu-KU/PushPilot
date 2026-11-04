@@ -22,6 +22,8 @@ HTML_SOURCE = "docs/review/index.html"
 RECORD_SOURCE = "docs/evidence/synthetic-action-reviews-20261027.json"
 FONT_SOURCE = "frontend/public/fonts/pretendard/PretendardVariable.woff2"
 LICENSE_SOURCE = "frontend/public/fonts/pretendard/OFL.txt"
+BRAND_SOURCE = "frontend/public/brand/pushpilot-mark.png"
+BRAND_SHA256 = "1fa5f8f55cce14bde9b382ece6f6dbe594d48dd1263ceaf59ee56edfeae6f675"
 FONT_SHA256 = "9599f12fd42fc0bce1cd50b47a0c022e108d7aa64dd0d1bb0ed44f3282d900b4"
 LICENSE_SHA256 = "d31ddd9f2bed32fd7e302a205cf2380ba0de6529152d239ef99cfb6f261bfc04"
 FONT_REFERENCE = "../../" + FONT_SOURCE
@@ -38,6 +40,7 @@ OUTPUT_FILES = frozenset({
 })
 _HREF = re.compile(r"\bhref=([\"'])(.*?)\1")
 _DATA_SCRIPT = re.compile(r'<script type="application/json" id="([^"]+)">([\s\S]*?)</script>')
+_BRAND_HEADER = re.compile(r"\.brand::before\{[^}]*\bbackground:url\('([^']+)'\)[^}]*\}")
 
 
 class ReviewSiteError(ValueError):
@@ -59,13 +62,19 @@ def _read(root: Path, name: str) -> bytes:
 
 
 class _BoundaryParser(HTMLParser):
-    def __init__(self) -> None:
+    def __init__(self, brand_uri: str) -> None:
         super().__init__()
         self.csp: list[str] = []
+        self.brand_uri = brand_uri
+        self.icons = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         values = dict(attrs)
-        if tag in {"iframe", "object", "embed", "form", "base", "link"}:
+        if tag == "link":
+            if len(attrs) != 3 or values != {"rel": "icon", "type": "image/png", "href": self.brand_uri}:
+                raise ReviewSiteError("Only the exact pinned inline brand favicon is allowed.")
+            self.icons += 1
+        if tag in {"iframe", "object", "embed", "form", "base"}:
             raise ReviewSiteError(f"Unexpected resource or interactive boundary: {tag}")
         if any(key.startswith("on") for key in values) or "src" in values or "srcset" in values:
             raise ReviewSiteError("Only existing inline scripts and embedded fixture images are allowed.")
@@ -73,13 +82,17 @@ class _BoundaryParser(HTMLParser):
             self.csp.append(values.get("content", ""))
 
 
-def _validate_html(html: str) -> None:
-    parser = _BoundaryParser()
+def _validate_html(html: str, brand_uri: str) -> None:
+    parser = _BoundaryParser(brand_uri)
     parser.feed(html)
+    if parser.icons != 1 or html.count(brand_uri) != 2:
+        raise ReviewSiteError("Exactly one pinned brand favicon and header image are required.")
+    if _BRAND_HEADER.findall(html) != [brand_uri]:
+        raise ReviewSiteError("The header must use the exact pinned inline brand image.")
     if len(parser.csp) != 1:
         raise ReviewSiteError("Exactly one original Content-Security-Policy is required.")
     directives = {part.strip() for part in parser.csp[0].split(";")}
-    if not {"default-src 'none'", "connect-src 'none'", "base-uri 'none'", "form-action 'none'"} <= directives:
+    if not {"default-src 'none'", "img-src data:", "connect-src 'none'", "base-uri 'none'", "form-action 'none'"} <= directives:
         raise ReviewSiteError("The original no-connection Content-Security-Policy must be preserved.")
 
 
@@ -117,7 +130,11 @@ def build_review_site(repo_root: Path, output: Path) -> dict[str, str]:
         raise ReviewSiteError("Output already exists and is not an empty directory; nothing was changed.")
 
     source = _read(root, HTML_SOURCE).decode("utf-8")
-    _validate_html(source)
+    brand = _read(root, BRAND_SOURCE)
+    if hashlib.sha256(brand).hexdigest() != BRAND_SHA256:
+        raise ReviewSiteError("Pinned brand bytes differ from the approved mark.")
+    brand_uri = "data:image/png;base64," + base64.b64encode(brand).decode("ascii")
+    _validate_html(source, brand_uri)
     _validate_record(source, _read(root, RECORD_SOURCE))
     font = _read(root, FONT_SOURCE)
     license_text = _read(root, LICENSE_SOURCE)
@@ -129,7 +146,7 @@ def build_review_site(repo_root: Path, output: Path) -> dict[str, str]:
 
     def hosted_link(match: re.Match[str]) -> str:
         target = match[2]
-        if target.startswith("#"):
+        if target.startswith("#") or target == brand_uri:
             return match[0]
         if target not in LINKS:
             raise ReviewSiteError(f"Unexpected source link; review the allowlist: {target}")
@@ -140,7 +157,7 @@ def build_review_site(repo_root: Path, output: Path) -> dict[str, str]:
     if hosted.count(FONT_REFERENCE) != 1:
         raise ReviewSiteError("Expected exactly one original self-hosted Pretendard reference.")
     hosted = hosted.replace(FONT_REFERENCE, "fonts/PretendardVariable.woff2")
-    _validate_html(hosted)
+    _validate_html(hosted, brand_uri)
     if _DATA_SCRIPT.findall(hosted) != _DATA_SCRIPT.findall(source):
         raise ReviewSiteError("Packaging changed an archived response or fixture payload.")
     files = {

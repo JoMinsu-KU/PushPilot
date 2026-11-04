@@ -26,11 +26,12 @@ class ReviewSiteTests(unittest.TestCase):
         self.directory = Path(temporary.name)
         self.root = self.directory / "repo"
         self.output = self.directory / "public-site"
-        for name in {site.HTML_SOURCE, site.RECORD_SOURCE, site.FONT_SOURCE, site.LICENSE_SOURCE, *site.LINKS.values()}:
+        for name in {site.HTML_SOURCE, site.RECORD_SOURCE, site.FONT_SOURCE, site.LICENSE_SOURCE, site.BRAND_SOURCE, *site.LINKS.values()}:
             target = self.root / name
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / name, target)
         self.original = (self.root / site.HTML_SOURCE).read_bytes()
+        self.brand_uri = "data:image/png;base64," + base64.b64encode((self.root / site.BRAND_SOURCE).read_bytes()).decode("ascii")
 
     def test_only_explicit_html_font_and_license_are_published(self):
         for name in (".env", "runtime/robot.json", "docs/assets/private.jpg", "backend/main.py"):
@@ -65,11 +66,44 @@ class ReviewSiteTests(unittest.TestCase):
         site.build_review_site(self.root, self.output)
         hosted = (self.output / "index.html").read_text(encoding="utf-8")
         for _, target in site._HREF.findall(hosted):
-            self.assertTrue(target.startswith("#") or target in {site.REPOSITORY_URL + path for path in site.LINKS.values()})
+            self.assertTrue(target.startswith("#") or target == self.brand_uri or target in {site.REPOSITORY_URL + path for path in site.LINKS.values()})
         for path in site.LINKS.values():
             self.assertIn(site.REPOSITORY_URL + path, hosted)
         self.assertIn("url('fonts/PretendardVariable.woff2')", hosted)
         self.assertNotIn(site.FONT_REFERENCE, hosted)
+
+    def test_header_and_favicon_embed_the_identical_approved_png_without_extra_files(self):
+        site.build_review_site(self.root, self.output)
+        hosted = (self.output / "index.html").read_text(encoding="utf-8")
+        icon = re.search(r'<link rel="icon" type="image/png" href="([^"]+)">', hosted)[1]
+        header = re.search(r"\.brand::before\{[^}]*background:url\('([^']+)'\)", hosted)[1]
+        self.assertEqual(icon, header)
+        self.assertEqual(icon, self.brand_uri)
+        embedded = base64.b64decode(icon.split(",", 1)[1], validate=True)
+        self.assertEqual(embedded, (self.root / site.BRAND_SOURCE).read_bytes())
+        self.assertEqual(hashlib.sha256(embedded).hexdigest(), site.BRAND_SHA256)
+        self.assertEqual(set(p.relative_to(self.output).as_posix() for p in self.output.rglob("*") if p.is_file()), site.OUTPUT_FILES)
+
+    def test_rejects_changed_brand_bytes_missing_or_divergent_branding_and_external_icons(self):
+        uri = self.brand_uri.encode("ascii")
+        mutations = (
+            (site.BRAND_SOURCE, lambda data: data + b"changed", "Pinned brand bytes"),
+            (site.HTML_SOURCE, lambda data: data.replace(uri, b"data:image/png;base64,AAAA", 1), "pinned inline brand favicon"),
+            (site.HTML_SOURCE, lambda data: data.replace(uri, b"data:image/png;base64,AAAA", 2), "pinned inline brand favicon"),
+            (site.HTML_SOURCE, lambda data: data.replace(uri, b"https://example.invalid/mark.png", 1), "pinned inline brand favicon"),
+            (site.HTML_SOURCE, lambda data: data.replace(b"</head>", b'<link rel="stylesheet" href="https://example.invalid/style.css"></head>'), "pinned inline brand favicon"),
+            (site.HTML_SOURCE, lambda data: data.replace(b"</head>", b'<link rel="icon" type="image/png" href="' + uri + b'"></head>'), "Exactly one pinned brand"),
+            (site.HTML_SOURCE, lambda data: data.replace(b".brand::before{", b".unrelated::before{", 1), "header must use"),
+        )
+        for name, change, message in mutations:
+            path = self.root / name
+            original = path.read_bytes()
+            with self.subTest(name=name, message=message):
+                path.write_bytes(change(original))
+                with self.assertRaisesRegex(site.ReviewSiteError, message):
+                    site.build_review_site(self.root, self.output)
+                self.assertFalse(self.output.exists())
+                path.write_bytes(original)
 
     def test_rejects_nonempty_output_and_output_inside_source(self):
         self.output.mkdir()

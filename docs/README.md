@@ -46,7 +46,7 @@ MUSE review is not TCP control. Native completion is not proof of vehicle arriva
 
 | Need | Guide |
 |---|---|
-| Preserve the light glass workspace, Pretendard and viewport priorities | [Design system](DESIGN_SYSTEM.md) · [Frontend](../frontend/README.md) · [Designer display](DESIGNER_LIVE_DISPLAY.md) |
+| Preserve the light glass workspace, Pretendard and viewport priorities | [Design system](DESIGN_SYSTEM.md) · [Current mark](BRANDING.md) · [Frontend](../frontend/README.md) · [Designer display](DESIGNER_LIVE_DISPLAY.md) |
 | Understand current City A3 drawing identities | [City A3](CITY_A3.md) |
 | Follow the selected route in Camera and Spatial | [Route display](ROUTE_DISPLAY.md) |
 | Install the current private model and distinguish older model packages | [Spatial 3D](SPATIAL_3D.md) · [Spatial signal display and preview](SPATIAL_SIGNAL_PREVIEW.md) |

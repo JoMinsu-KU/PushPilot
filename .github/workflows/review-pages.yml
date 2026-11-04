@@ -6,6 +6,7 @@ on:
     paths:
       - docs/review/index.html
       - docs/evidence/synthetic-action-reviews-20261027.json
+      - frontend/public/brand/pushpilot-mark.png
       - frontend/public/fonts/pretendard/PretendardVariable.woff2
       - frontend/public/fonts/pretendard/OFL.txt
       - tools/build_review_site.py

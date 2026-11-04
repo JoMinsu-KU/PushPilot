@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { CityModelView } from './CityModelView';
+import { BrandMark } from './Icons';
 import type { CitySignalState } from './citySignal';
 import './fonts.css';
 import './spatial-preview.css';
@@ -19,7 +20,7 @@ function SpatialSignalPreview() {
     <CityModelView map={null} display={null} signalState={signal} previewCamera={camera} previewCameraRevision={cameraRevision}/>
     <header className="preview-header preview-glass">
       <a href="/spatial-preview.html" className="preview-brand" aria-label="PushPilot Spatial preview">
-        <img src="/favicon.svg" alt=""/><strong>PushPilot</strong><span>/</span><span>Spatial</span>
+        <BrandMark/><strong>PushPilot</strong><span>/</span><span>Spatial</span>
       </a>
       <span className="preview-badge"><i/>Design preview</span>
     </header>

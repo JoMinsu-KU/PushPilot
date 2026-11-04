@@ -34,5 +34,5 @@ export function Icon({ name, size = 22, style, className = '' }: { name: IconNam
 }
 /** Render the PushPilot brand mark. */
 export function BrandMark() {
-  return <svg width="39" height="39" viewBox="0 0 40 40" aria-hidden="true"><path fill="currentColor" d="M2 18 23 5v15L2 33Z"/><path fill="currentColor" d="m17 25 21-13v23Z"/><path fill="currentColor" opacity=".55" d="m17 25 6-5v8Z"/></svg>;
+  return <img className="pushpilot-brand-mark" src="/brand/pushpilot-mark.png" width="39" height="39" alt="" aria-hidden="true"/>;
 }

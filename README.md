@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="frontend/public/brand/pushpilot-mark.png" width="88" height="88" alt="PushPilot mark">
+
 # PushPilot
 
 ### Give the robot a goal. See the plan. Review the result.
@@ -134,5 +136,7 @@ The original vision extends the same intent–plan–action–review loop to oth
 </details>
 
 ---
+
+**Team** · Jinhong Yang · Minsu Jo · Jaeeun Jung
 
 <p align="center"><strong>PushPilot · From sight to action</strong><br><sub>A shared plan. A checked outcome. An understandable next step.</sub></p>

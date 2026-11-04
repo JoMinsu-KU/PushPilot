@@ -8,6 +8,12 @@ The README now leads with an actual tablet-recording frame and a source playback
 
 The generated cover has moved to the README's **Product vision** section. It is deliberately labelled **CONCEPT ILLUSTRATION** and is not an actual application screenshot or the installed map. Technical diagrams describe the source architecture and its boundaries; their adjacent text and tables carry the same information in accessible English.
 
+## Current PushPilot mark
+
+The user supplied the mark on November 4, 2026. The canonical [`pushpilot-mark.png`](../../frontend/public/brand/pushpilot-mark.png) is the unchanged 1024 × 1024 RGBA PNG, 53,568 bytes, SHA-256 `1fa5f8f55cce14bde9b382ece6f6dbe594d48dd1263ceaf59ee56edfeae6f675`. It is supplied artwork, not an AI-generated documentation illustration; no designer, creation process or new license grant is inferred.
+
+The current source uses it in the workspace, Spatial preview, browser/iPad icons, README and public review shell. [Branding](../BRANDING.md) records the audit, square display rules and separate activation checks. Preserve dated screenshots, concept images, prompts and evidence hashes even when an earlier mark remains visible.
+
 ## Selected actual captures
 
 | Asset | Origin and purpose |
