@@ -12,6 +12,8 @@
 
 **Status, November 4, 2026: browser capture, waveform/loading states and transcript editing are implemented against the finite-upload backend. Actual iPad microphone behavior and Meta voice access are not verified.** The browser records bounded mono PCM WAV, and the backend returns an original-language, workspace/map-bound transcript candidate. The operator reviews or edits it and explicitly chooses **Create a plan**. The resulting plan still requires the existing separate approval. Software tests and historical Spark checks do not establish voice access or recognition quality. See the [exact upload/candidate contract](VOICE_BACKEND.md).
 
+The November 4 release `20261104-ipad-voice-d293dfd` is activated, including LAN-only Caddy 2.11.8 HTTPS on port 8443. The operator confirmed iPad certificate installation, full SSL trust and warning-free HTTPS access. That establishes the transport prerequisite, not a successful microphone recording or ASR call. Six served assets matched their hashes/MIME responses; the activation also preserved COMPLETE 31/31 and denied a voice probe before provider dispatch without resetting or moving the robot. No camera was started and original-JPEG comparison remains unperformed. See the [deployment and verification record](IPAD_VOICE_INPUT.md).
+
 ## Visible goal and voice entry
 
 The current workspace uses compact glass **From / To** preparation controls and a goal dialog. The accepted goal remains distinct from an unsent editor draft; its source is **Typed** or **Voice** from `goal.source`. The current plan can be inspected during execution while goal editing remains restricted to preparation. See [Current status](CURRENT_STATUS.md) and [Design system](DESIGN_SYSTEM.md) for the active layout.
@@ -41,7 +43,7 @@ Typing remains available whenever goal entry is allowed. A microphone denial, un
 
 New typed or spoken goals belong to non-executing preparation. Simulation APIs reject goal replacement outside workspace preparation, and the tablet disables editing while a Robot mission is active, including RED waiting, observation review and crossing. The November 4 voice-only server guard additionally checks the physical coordinator before/after transcription, on candidate lookup and before accepting `source: "voice"` through either goal route. Active/HOLD/unknown states, busy or unavailable local proof, an active worker, unresolved error or any unretired mission ID reject spoken intent. A completed physical mission must follow the existing reset/retirement procedure first. An absent/default disabled coordinator or READY with no mission/error remains eligible. Typed/live goal API paths retain the prior cross-service limitation; this change is not a global replacement lock. Cancelling voice input does not terminate or stop a mission.
 
-Before recording, the browser checks `isSecureContext`, backend configuration and microphone API/device availability. The actual tablet needs HTTPS trusted by that device; a plain HTTP LAN address is not the local-development `localhost` exception. [`deploy/ipad-https`](../deploy/ipad-https/README.md) is an unactivated configuration candidate, with certificate trust and actual device verification still pending. It does not make the existing HTTP address microphone-ready. Permission denial, an unavailable device or an unsuitable origin shows an actionable English status and preserves eligible text entry. See [browser microphone requirements](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia).
+Before recording, the browser checks `isSecureContext`, backend configuration and microphone API/device availability. The tablet needs HTTPS trusted by that device; a plain HTTP LAN address is not the local-development `localhost` exception. The LAN HTTPS endpoint is activated and iPad trust/access were operator-confirmed on November 4; actual microphone permission/capture and ASR still need separate checks. [`deploy/ipad-https`](../deploy/ipad-https/README.md) remains candidate/example provisioning documentation, while the [activation record](IPAD_VOICE_INPUT.md) describes the actual installation. It does not make the existing HTTP address microphone-ready. Permission denial, an unavailable device or an unsuitable origin shows an actionable English status and preserves eligible text entry. See [browser microphone requirements](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia).
 
 ### Language and display
 
@@ -112,12 +114,12 @@ Retain the minimum causal evidence needed to explain the accepted goal: capture 
 | Gate | Required evidence |
 |---|---|
 | Device capture | Actual target browser/device permission, record, stop and cancel behavior; unavailable microphone leaves typed entry usable |
-| Browser origin and audio | Trusted target-device HTTPS, secure-context preflight and verified normalization to the provider's accepted WAV format |
+| Browser origin and audio | HTTPS activation and operator-confirmed warning-free iPad trust/access completed November 4; actual capture and device audio normalization still require verification |
 | Real provider | Opt-in finite-recording request to the documented model with no secret exposure; failure and timeout behavior retained |
 | Language | Korean and English examples, original transcript preservation and operator correction before acceptance |
 | Causality | Cancelled, late and reordered results cannot replace the active revision or create duplicate missions |
 | Approval | No goal submission before explicit `Create a plan`; no action admission before approval of the latest plan |
-| Active mission | Voice-only UI/API active/HOLD/unretired checks are implemented and tested offline; actual operational validation remains pending; direct typed-goal cross-service enforcement remains separate work |
+| Active mission | Voice-only checks have offline coverage and a deployed retained-COMPLETE voice rejection with unchanged state/no provider dispatch; full recording lifecycle checks and general typed-goal cross-service enforcement remain separate work |
 | Sources | Fixture, live capture, simulated result and real provider call remain distinguishable |
 | Retention | Audio expires under every terminal outcome; evidence contains no keys or credential payloads |
 | End-to-end | Spoken goal → editable transcript → interpretation → approved simulated mission, with traceable revisions |

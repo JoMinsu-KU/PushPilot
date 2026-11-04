@@ -18,14 +18,30 @@ The frontend records only in eligible non-executing preparation, on Workspace wi
 
 ## iPad HTTPS prerequisite
 
-`http://192.168.10.31:8080` is not a secure microphone origin on an iPad. The frontend displays a typed-input fallback rather than faking a recording. [The LAN HTTPS candidate](../deploy/ipad-https/README.md) describes a same-origin proxy at `https://192.168.10.31:8443`, without changing the existing app process or exposing a public tunnel. It requires a separately provisioned certificate and explicit device-owner trust enrollment. Do not bypass a certificate warning.
+`http://192.168.10.31:8080` is not a secure microphone origin on an iPad. The frontend displays a typed-input fallback rather than faking a recording. [The LAN HTTPS example](../deploy/ipad-https/README.md) describes a same-origin proxy at `https://192.168.10.31:8443`, without exposing a public tunnel. Device-owner certificate installation and full SSL trust remain necessary for each new device. Do not bypass a certificate warning.
 
-Source implementation and offline verification do not establish an active HTTPS service, trusted iPad certificate, successful real microphone capture or actual MUSE Voice access. Those device/provider checks remain outstanding until separately performed and recorded. Keys stay exclusively on the backend; the standalone UI fixture never contacts Meta or equipment.
+Source implementation and offline verification alone do not establish successful real microphone capture or actual MUSE Voice access. The separate operational/device HTTPS checks below passed; microphone/provider checks remain outstanding. Keys stay exclusively on the backend; the standalone UI fixture never contacts Meta or equipment.
 
 ## Verification
 
 The frontend tests exercise actual WAV headers/sample conversion, worklet downmix/flush/limits, cleanup, permission failures, fallback, source-bound upload, cancellation/late responses, expiry, editing and explicit acceptance. SSR checks the real recording/loading/candidate/error components. Backend tests use generated PCM and mocked providers, including an active mission appearing while transcription is in flight. These checks are software evidence, not recognition accuracy or physical-route qualification.
 
 The static deployment must include **`voice-recorder.worklet.js`** alongside the normal entry and content-hashed chunks. It is a required same-origin public asset; an index/chunk-only archive is incomplete for the primary recorder path. Self-hosted Pretendard and private city asset requirements remain unchanged.
+
+## Operational activation · November 4, 2026
+
+Operational session (7) activated source `d293dfd3a1aad647199032c00fae46350d20a955` as web release `20261104-ipad-voice-d293dfd`. Only the voice-specific import/check in `backend/app.py`, updated `backend/voice_api.py`, new `backend/goal_input_guard.py` and six frontend payload files were applied over the existing operational release. Its extra commissioning modules, private model/font assets, configuration and persisted evidence were retained. This source publication excludes private runtime artifacts and certificate material.
+
+The owner-authorized LAN HTTPS proxy uses the official Caddy 2.11.8 ARM64 artifact with published checksum verification. Both example-unit binary paths were adapted to the private installed binary. Exact-version Caddy adaptation and user-unit verification passed. The only added listener is the designated LAN TCP 8443 address; no public tunnel, admin listener, HTTP redirect listener or UDP listener was added. Only the public root certificate was transferred through authenticated SCP. CA keys remain server-private.
+
+Certificate-validating HTTPS requests returned 200 with the expected MIME type and SHA-256 for all six frontend payload files, including the top-level worklet. Entry hash: `a3e9a0f9b9d303a3d5c4c03d294d81b62f30aa121f670173395104ae76e60d7a`; worklet hash: `fee9387b845d224afd1abbc820674ea757e1c8e19f70a303f27f34fbd78c5fd4`. The operational voice suite passed 35 tests; five trusted-loopback forwarded scheme/Host same-origin cases passed offline. Existing Origin checks were retained.
+
+The owner explicitly confirmed certificate installation, full SSL trust and warning-free access to the HTTPS application on the actual iPad. This is device TLS evidence, not a recording or provider-access test. Actual iPad permission, capture/stop/cancel, audio quality, MUSE transcription and spoken-goal acceptance remain unverified.
+
+The previous physical mission remains COMPLETE 31/31 with the same mission identity and status fields. The application restart added exactly one normal SERVICE_OPENED revision with `automatic_resume: false`; private motion configuration hashes and robot API/RODI process identities were preserved. An empty voice POST returned `409 VOICE_PHYSICAL_MISSION_ACTIVE` before provider dispatch, with workspace/physical state unchanged. No motion, automatic reset/retirement or camera activation was performed. Original camera-JPEG byte comparison was not performed because the camera helper was off.
+
+The visible **Plan the next mission** / **Create a new robot plan** workspace actions do not retire the separate retained physical mission. Normal physical retirement requires independently verified START under the established operational workflow. Do not suggest those workspace buttons bypass this prerequisite or automatically start hardware to enable a microphone test.
+
+The proxy currently runs in the retained login session with an untimed connection anchor. Boot/linger/automatic-start policies were not changed; continued availability after that login session ends or the host reboots is not established. The reusable files in `deploy/ipad-https/` remain examples, not a self-activating deployment script. Operator-private activation records retain exact runtime identities and checks separately from public source.
 
 [Voice backend](VOICE_BACKEND.md) · [Original interaction design](VOICE_INPUT.md) · [Robot operations](ROBOT_OPERATIONS.md)

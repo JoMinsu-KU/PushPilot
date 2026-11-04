@@ -2,6 +2,8 @@
 
 **November 4, 2026: finite browser capture, transcript editing and the existing upload backend are implemented; actual iPad capture and Meta voice access remain unverified.** This service returns an editable transcript candidate. Transcription alone does not submit a goal, generate a plan, approve a plan or control a robot. The operator explicitly chooses **Create a plan** after reviewing the words, then uses the existing separate plan-approval flow.
 
+The implementation `d293dfd` is activated in web release `20261104-ipad-voice-d293dfd`. LAN-only Caddy 2.11.8 serves HTTPS on port 8443, and the operator confirmed certificate installation, full SSL trust and warning-free HTTPS access on the iPad. Six served asset hashes/MIME responses, official proxy binary hashes, five offline forwarded same-origin cases and 35 mocked-provider voice tests on GX10 passed. A retained COMPLETE 31/31 mission rejected an empty voice POST with `409 VOICE_PHYSICAL_MISSION_ACTIVE` before provider dispatch; mission state was unchanged, with no automatic reset or motion. Actual microphone capture/ASR remain unverified. No camera was started or original-JPEG comparison performed. See the [activation record](IPAD_VOICE_INPUT.md).
+
 The backend uses the existing server-only `META_API_KEY`. Do not add a frontend environment variable or another vendor key for this adapter. A successful Spark image or text call does not establish permission to use Muse Voice Transcribe.
 
 ## Application endpoints
@@ -67,7 +69,7 @@ The transport follows Meta's official [speech-to-text guide](https://dev.meta.ai
 
 Credential-bearing requests do not follow redirects or use environment proxy settings. The client uses bounded connection/response timeouts, a 35-second application request deadline and a 64 KiB decoded provider-response limit. Rejections, rate limits, timeouts, malformed responses and empty transcripts return sanitized errors. The service never substitutes demo text or retries a paid request automatically. No audio, transcript, provider body or authorization header is logged by the adapter.
 
-Streaming ASR and TTS are outside this slice. Software capture/readiness is distinct from actual target-device and provider verification. Target tablets need trusted HTTPS for browser microphone access. [`deploy/ipad-https`](../deploy/ipad-https/README.md) is a configuration candidate only: it has not been activated or trusted on the iPad. Plain LAN HTTP remains ineligible; the local-development localhost exception does not apply to an iPad connecting to a LAN IP.
+Streaming ASR and TTS are outside this slice. Software capture/readiness is distinct from actual target-device recording and provider verification. The November 4 LAN HTTPS activation and operator-confirmed iPad trust satisfy the transport prerequisite, not microphone/ASR quality. [`deploy/ipad-https`](../deploy/ipad-https/README.md) remains reusable candidate/example configuration; actual activation is recorded separately in [iPad voice input](IPAD_VOICE_INPUT.md). Plain LAN HTTP remains ineligible; the local-development localhost exception does not apply to an iPad connecting to a LAN IP.
 
 ## Offline verification and remaining device checks
 
@@ -75,7 +77,7 @@ Streaming ASR and TTS are outside this slice. Software capture/readiness is dist
 
 Historical checkpoint, November 2, 2026: the finite backend was implemented and the browser microphone/editor path was pending. The [voice illustration](assets/voice-current.png) records that earlier split and is not current connection evidence. The November 4 implementation above does not replace or upgrade historical verification. Before claiming connected voice input, verify on the target browser:
 
-1. Trusted HTTPS, device permission, record/stop/cancel and typed fallback.
+1. Trusted HTTPS and warning-free iPad access were confirmed on November 4; device microphone permission, record/stop/cancel and typed fallback still need actual-device checks.
 2. Supported mono PCM WAV encoding without unexpected duration/size changes.
 3. Opt-in real Meta requests with Korean and English recordings, preserving the original words and allowing corrections.
 4. Capture supersession, late completion, original-versus-edited transcript evidence and explicit latest-revision goal submission.
